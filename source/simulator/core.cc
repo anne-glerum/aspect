@@ -1135,11 +1135,11 @@ namespace aspect
 
               assemble_stokes_system();
               build_stokes_preconditioner();
-              const double stokes_residual = solve_stokes();
+              const std_cxx1x::tuple<double,double,double> stokes_stopping_criteria = solve_stokes();
               current_linearization_point = solution;
 
-              pcout << "      Nonlinear Stokes residual: " << stokes_residual << std::endl;
-              if (stokes_residual < 1e-8)
+              pcout << "      Nonlinear Stokes residual: " << stokes_stopping_criteria[0] << std::endl;
+              if (stokes_stopping_criteria[0] < 1e-8)
                 break;
 
               ++iteration;
@@ -1195,7 +1195,7 @@ namespace aspect
               if (iteration == 0)
                 build_stokes_preconditioner();
 
-              const double stokes_residual = solve_stokes();
+              const std_cxx1x::tuple<double,double,double> stokes_stopping_criteria = solve_stokes();
 
               current_linearization_point = solution;
 
@@ -1273,7 +1273,8 @@ namespace aspect
 
               assemble_stokes_system();
               build_stokes_preconditioner();
-              const double stokes_residual = solve_stokes();
+//              const double stokes_residual = solve_stokes();
+              const std_cxx1x::tuple<double,double,double> stokes_residual = solve_stokes();
 
               if (i==0)
                 initial_stokes_residual = stokes_residual;

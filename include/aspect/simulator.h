@@ -56,7 +56,7 @@
 #include <aspect/postprocess/interface.h>
 #include <aspect/adiabatic_conditions.h>
 
-
+#include <deal.II/base/std_cxx1x/tuple.h>
 
 namespace aspect
 {
@@ -551,7 +551,8 @@ namespace aspect
        * This function is implemented in
        * <code>source/simulator/solver.cc</code>.
        */
-      double solve_stokes ();
+//      double solve_stokes ();
+      std_cxx1x::tuple<double,double,double> solve_stokes ();
 
       /**
        * This function is called at the end of every time step. It runs all

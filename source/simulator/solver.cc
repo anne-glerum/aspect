@@ -75,13 +75,48 @@ namespace aspect
         /**
          * Compute the residual with the Stokes block. In a departure from
          * the other functions, the #b variable may actually have more than
-         * two blocks so that we can put it a global system_rhs vector. The
+         * two blocks so that we can put in a global system_rhs vector. The
          * other vectors need to have 2 blocks only.
          */
-        double residual (LinearAlgebra::BlockVector       &dst,
+        double residual (const LinearAlgebra::BlockVector &dst,
                          const LinearAlgebra::BlockVector &x,
                          const LinearAlgebra::BlockVector &b) const;
 
+        double normalized_residual (const LinearAlgebra::BlockVector       &dst,
+                                    const LinearAlgebra::BlockVector &x,
+                                    const LinearAlgebra::BlockVector &b) const;
+       
+        /**
+        * Compute the infinite norm of the difference between the old and the new
+        * velocity solution, normalized by the norm of the old solution:
+        * norm(new-old)/norm(old).
+        */ 
+        double velocity_norm (const LinearAlgebra::BlockVector &curr,
+                              const LinearAlgebra::BlockVector &prev) const; //ACG
+
+        /**
+        * Compute the infinite norm of the difference between the old and the new
+        * pressure solution, normalized by the norm of the old solution:
+        * norm(new-old)/norm(old).
+        */ 
+        double pressure_norm (const LinearAlgebra::BlockVector &curr,
+                              const LinearAlgebra::BlockVector &prev) const; //ACG
+
+        /**
+        * Compute the correlation of the old and the new
+        * velocity solution. A value between 0 and 1 is returned; 0 being completely
+        * the same.
+        */ 
+        double velocity_correlation (const LinearAlgebra::BlockVector &curr,
+                                     const LinearAlgebra::BlockVector &prev) const; //ACG
+
+        /**
+        * Compute the correlation of the old and the new
+        * pressure solution. A value between 0 and 1 is returned; 0 indicating the solutions
+        * are the same.
+        */ 
+        double pressure_correlation (const LinearAlgebra::BlockVector &curr,
+                                     const LinearAlgebra::BlockVector &prev) const; //ACG
 
       private:
 
@@ -150,25 +185,163 @@ namespace aspect
 
 
 
-    double StokesBlock::residual (LinearAlgebra::BlockVector       &dst,
+    double StokesBlock::residual (const LinearAlgebra::BlockVector &dst,
                                   const LinearAlgebra::BlockVector &x,
                                   const LinearAlgebra::BlockVector &b) const
     {
       Assert (x.n_blocks() == 2, ExcInternalError());
       Assert (dst.n_blocks() == 2, ExcInternalError());
 
+      LinearAlgebra::BlockVector destination = dst;
+
       // compute b-Ax where A is only the top left 2x2 block
-      this->vmult (dst, x);
-      dst.block(0).sadd (-1, 1, b.block(0));
-      dst.block(1).sadd (-1, 1, b.block(1));
+      this->vmult (destination, x);
+      destination.block(0).sadd (-1, 1, b.block(0));
+      destination.block(1).sadd (-1, 1, b.block(1));
 
       // clear blocks we didn't want to fill
-      for (unsigned int block=2; block<dst.n_blocks(); ++block)
-        dst.block(block) = 0;
+      for (unsigned int b=2; b<destination.n_blocks(); ++b)
+        destination.block(b) = 0;
 
-      return dst.l2_norm();
+      return destination.l2_norm();
     }
 
+    //TODO this does almost the same thing as funtion above!!
+    double StokesBlock::normalized_residual (const LinearAlgebra::BlockVector &dst,
+                                             const LinearAlgebra::BlockVector &x,
+                                             const LinearAlgebra::BlockVector &b) const
+    {
+      Assert (x.n_blocks() == 2, ExcInternalError());
+      Assert (dst.n_blocks() == 2, ExcInternalError());
+
+      LinearAlgebra::BlockVector destination = dst;
+
+      // compute the rhs norm
+      const double b0_norm = b.block(0).l2_norm();
+      const double b1_norm = b.block(1).l2_norm();
+      const double rhs_norm = std::sqrt(b0_norm*b0_norm+b1_norm*b1_norm); 
+      // compute b-Ax where A is only the top left 2x2 block 
+      // TODO use the residual function for this
+      this->vmult (destination, x);
+      destination.block(0).sadd (-1, 1, b.block(0));
+      destination.block(1).sadd (-1, 1, b.block(1));
+
+      // clear blocks we didn't want to fill
+      for (unsigned int b=2; b<destination.n_blocks(); ++b)
+        destination.block(b) = 0;
+
+      return destination.l2_norm() / rhs_norm;
+     }
+
+     double StokesBlock::velocity_norm (const LinearAlgebra::BlockVector       &curr,
+                                        const LinearAlgebra::BlockVector &prev) const//ACG
+     {
+      Assert (curr.n_blocks() == 2, ExcInternalError());
+      Assert (prev.n_blocks() == 2, ExcInternalError());
+ 
+      // copy the block vectors
+      // TODO No need to copy both, only 1 is changed
+      LinearAlgebra::BlockVector current_solution = curr;
+      LinearAlgebra::BlockVector previous_solution = prev;
+ 
+      //compute linfty norm of previous solution
+      const double pnorm = previous_solution.block(0).linfty_norm();
+ 
+      //compute diff vector current - previous solution
+      previous_solution.block(0).sadd (-1,1,current_solution.block(0));
+ 
+      // return ||current - previous||/||previous||
+      return previous_solution.block(0).linfty_norm()/pnorm;
+     }
+
+    //TODO this does almost the same thing as funtion above!!
+     double StokesBlock::pressure_norm (const LinearAlgebra::BlockVector &curr,
+                                        const LinearAlgebra::BlockVector &prev) const//ACG
+     {
+      Assert (curr.n_blocks() == 2, ExcInternalError());
+      Assert (prev.n_blocks() == 2, ExcInternalError());
+ 
+      // copy the block vectors
+      // TODO No need to copy both, only 1 is changed
+      LinearAlgebra::BlockVector current_solution = curr;
+      LinearAlgebra::BlockVector previous_solution = prev;
+
+      //compute linfty norm of previous solution
+      const double pnorm = previous_solution.block(1).linfty_norm();
+ 
+      //compute diff vector current - previous solution
+      previous_solution.block(1).sadd (-1,1,current_solution.block(1));
+ 
+      return previous_solution.block(1).linfty_norm()/pnorm;
+     }
+     
+     double StokesBlock::velocity_correlation (const LinearAlgebra::BlockVector &curr,
+                                               const LinearAlgebra::BlockVector &prev) const//ACG
+     {
+      Assert (curr.n_blocks() == 2, ExcInternalError());
+      Assert (prev.n_blocks() == 2, ExcInternalError());
+
+      // copy the block vectors
+      LinearAlgebra::BlockVector current_solution = curr;
+      LinearAlgebra::BlockVector previous_solution = prev;
+
+      // compute the number of nodes in the
+      const double np_curr = curr.block(0).size();
+      const double np_prev = prev.block(0).size();
+      Assert (np_curr == np_prev, ExcInternalError());
+
+      //compute the average of the present and previous velocity
+      const double mean_vel_current = current_solution.block(0).mean_value();
+      const double mean_vel_previous = previous_solution.block(0).mean_value();
+
+      // subtract mean values
+      current_solution.block(0).add(-mean_vel_current);
+      previous_solution.block(0).add(-mean_vel_previous);
+
+      // normalize these vectors
+      current_solution.block(0) /= current_solution.block(0).l2_norm();
+      if(previous_solution.block(0).l2_norm()==0)
+      {
+       cout << "Previous solution norm = 0 " << std::endl;
+       return 1;
+      }
+ 
+      previous_solution.block(0) /= previous_solution.block(0).l2_norm();
+
+      return 1.0 - current_solution.block(0) * previous_solution.block(0);
+     }
+
+    //TODO this does almost the same thing as funtion above!!
+     double StokesBlock::pressure_correlation (const LinearAlgebra::BlockVector &curr,
+                                               const LinearAlgebra::BlockVector &prev) const//ACG
+     {
+      Assert (curr.n_blocks() == 2, ExcInternalError());
+      Assert (prev.n_blocks() == 2, ExcInternalError());
+
+      // copy the block vectors
+      LinearAlgebra::BlockVector current_solution = curr;
+      LinearAlgebra::BlockVector previous_solution = prev;
+
+      // compute the number of nodes in the
+      const double np_curr = curr.block(1).size();
+      const double np_prev = prev.block(1).size();
+      Assert (np_curr == np_prev, ExcInternalError());
+
+      //compute the average of the present and previous pressure
+      const double mean_p_current = current_solution.block(1).mean_value();
+      const double mean_p_previous = previous_solution.block(1).mean_value();
+
+      // subtract mean values
+      current_solution.block(1).add(-mean_p_current);
+      previous_solution.block(1).add(-mean_p_previous);
+      cout << previous_solution.block(1).l2_norm();
+      
+      // normalize these vectors
+      current_solution.block(1) /= current_solution.block(1).l2_norm();
+      previous_solution.block(1) /= previous_solution.block(1).l2_norm();
+
+      return 1.0 - current_solution.block(1) * previous_solution.block(1);
+     }
 
     /**
      * Implement the block Schur preconditioner for the Stokes system.
@@ -373,7 +546,7 @@ namespace aspect
 
 
   template <int dim>
-  double Simulator<dim>::solve_stokes ()
+  std_cxx1x::tuple<double,double,double> Simulator<dim>::solve_stokes ()
   {
     computing_timer.enter_section ("   Solve Stokes system");
 
@@ -409,6 +582,9 @@ namespace aspect
                                                            remap,
                                                            system_rhs);
 
+    const double norm_residual  = stokes_block.normalized_residual (distributed_stokes_solution,
+                                                                    remap,
+                                                                    system_rhs);
     // then overwrite it again with the current best guess and solve the linear system
     distributed_stokes_solution = remap;
 
@@ -471,6 +647,18 @@ namespace aspect
         solver.solve(stokes_block, distributed_stokes_solution,
                      distributed_stokes_rhs, preconditioner);
       }
+     // calculate the different stopping criteria
+     double previous_velocity_norm, previous_pressure_norm,current_velocity_correlation,current_pressure_correlation;
+
+     previous_velocity_norm = stokes_block.velocity_norm (distributed_stokes_solution,
+                                                                              remap); 
+     previous_pressure_norm = stokes_block.pressure_norm (distributed_stokes_solution,
+                                                                              remap);
+     current_velocity_correlation = stokes_block.velocity_correlation (distributed_stokes_solution,
+                                                                              remap);
+     current_pressure_correlation = stokes_block.pressure_correlation (distributed_stokes_solution,
+                                                                              remap);
+
 
     // distribute hanging node and
     // other constraints
@@ -502,7 +690,15 @@ namespace aspect
 
     computing_timer.exit_section();
 
-    return initial_residual;
+    pcout << "Aspect residual = " << initial_residual << " Normalized residual = " << norm_residual;
+    pcout << " Velocity norm = " << previous_velocity_norm << " Pressure norm = " << previous_pressure_norm;
+    pcout << " Velocity correlation = " << current_velocity_correlation;
+    pcout << " Pressure correlation = " << current_pressure_correlation;
+    pcout <<  std::endl; //ACG
+//    return initial_residual;
+//
+//    TODO how to make_tuple??
+    return  std_cxx1x::tuple(norm_residual,current_velocity_correlation,current_pressure_correlation);     
   }
 
 }
@@ -516,7 +712,7 @@ namespace aspect
 {
 #define INSTANTIATE(dim) \
   template double Simulator<dim>::solve_advection (const TemperatureOrComposition &); \
-  template double Simulator<dim>::solve_stokes ();
+  template std_cxx1x::tuple<double,double,double> Simulator<dim>::solve_stokes ();
 
   ASPECT_INSTANTIATE(INSTANTIATE)
 }
