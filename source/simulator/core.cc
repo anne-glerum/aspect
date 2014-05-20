@@ -1138,10 +1138,10 @@ namespace aspect
               const std_cxx1x::tuple<double,double,double> stokes_stopping_criteria = solve_stokes();
               current_linearization_point = solution;
 
-              pcout << "      Nonlinear Stokes residual: " << stokes_stopping_criteria[0] << std::endl;
+/*              pcout << "      Nonlinear Stokes residual: " << stokes_stopping_criteria[0] << std::endl;
               if (stokes_stopping_criteria[0] < 1e-8)
                 break;
-
+*/
               ++iteration;
             }
           while (iteration < parameters.max_nonlinear_iterations);
@@ -1199,7 +1199,7 @@ namespace aspect
 
               current_linearization_point = solution;
 
-              pcout << "      Nonlinear residuals: " << temperature_residual
+/*              pcout << "      Nonlinear residuals: " << temperature_residual
                     << ", " << stokes_residual;
 
               for (unsigned int c=0; c<parameters.n_compositional_fields; ++c)
@@ -1226,7 +1226,7 @@ namespace aspect
                   if (max < parameters.nonlinear_tolerance)
                     break;
                 }
-
+*/
               ++iteration;
 //TODO: terminate here if the number of iterations is too large and we see no convergence
             }
@@ -1261,7 +1261,7 @@ namespace aspect
           LinearAlgebra::Vector tmp (introspection.index_sets.system_partitioning[0], mpi_communicator);
 
           // ...and then iterate the solution of the Stokes system
-          double initial_stokes_residual = 0;
+          double initial_stokes_normalized_residual = 0;
           for (unsigned int i=0; i< parameters.max_nonlinear_iterations; ++i)
             {
               // rebuild the matrix if it actually depends on the solution
@@ -1274,16 +1274,21 @@ namespace aspect
               assemble_stokes_system();
               build_stokes_preconditioner();
 //              const double stokes_residual = solve_stokes();
-              const std_cxx1x::tuple<double,double,double> stokes_residual = solve_stokes();
+              const std_cxx1x::tuple<double,double,double> stokes_stopping_criteria = solve_stokes();
 
               if (i==0)
-                initial_stokes_residual = stokes_residual;
+                initial_stokes_normalized_residual = stokes_stopping_criteria.get<0>();
               else
                 {
-                  pcout << "      residual: " << stokes_residual/initial_stokes_residual << std::endl;
-                  if (stokes_residual/initial_stokes_residual < parameters.nonlinear_tolerance)
+                  pcout << " normalized residual: "  << stokes_stopping_criteria.get<0>() << std::endl;
+                  pcout << " velocity correlation: " << stokes_stopping_criteria.get<1>() << std::endl;
+                  pcout << " pressure correlation: " << stokes_stopping_criteria.get<2>() << std::endl;
+//                  if (stokes_residual/initial_stokes_residual < parameters.nonlinear_tolerance)
+                  if (stokes_stopping_criteria.get<0>() < 1e-6 &&
+                      stokes_stopping_criteria.get<1>() < 1e-6 &&
+                      stokes_stopping_criteria.get<2>() < 1e-6)
                     {
-                      break; // convergence reached, exist nonlinear iteration.
+                      break; // convergence reached, exit nonlinear iteration.
                     }
                 }
 
@@ -1291,7 +1296,6 @@ namespace aspect
                 = solution.block(introspection.block_indices.velocities);
               current_linearization_point.block(introspection.block_indices.pressure)
                 = solution.block(introspection.block_indices.pressure);
-
 
               pcout << std::endl;
             }
