@@ -152,7 +152,31 @@ namespace aspect
                        "A relative tolerance up to which the nonlinear solver "
                        "will iterate. This parameter is only relevant if "
                        "Nonlinear solver scheme is set to 'iterated Stokes' or "
-                       "'iterated IMPES'.");
+                       "'iterated IMPES' or 'Stokes only'.");
+
+    prm.declare_entry ("Normalized nonlinear residual tolerance", "1e-6",
+                       Patterns::Double(0,1),
+                       "A tolerance for the residual normalized by the rhs "
+                       "up to which the nonlinear solver "
+                       "will iterate. This parameter is only relevant if "
+                       "Nonlinear solver scheme is set to 'iterated Stokes' or "
+                       "'iterated IMPES' or 'Stokes only'.");
+
+    prm.declare_entry ("Velocity correlation tolerance", "1e-6",
+                       Patterns::Double(0,1),
+                       "A tolerance for the correlation of velocity "
+                       "up to which the nonlinear solver "
+                       "will iterate. This parameter is only relevant if "
+                       "Nonlinear solver scheme is set to 'iterated Stokes' or "
+                       "'iterated IMPES' or 'Stokes only'.");
+
+    prm.declare_entry ("Pressure correlation tolerance", "1e-6",
+                       Patterns::Double(0,1),
+                       "A tolerance for the correlation of pressure "
+                       "up to which the nonlinear solver "
+                       "will iterate. This parameter is only relevant if "
+                       "Nonlinear solver scheme is set to 'iterated Stokes' or "
+                       "'iterated IMPES' or 'Stokes only'.");
 
     prm.declare_entry ("Pressure normalization", "surface",
                        Patterns::Selection ("surface|volume|no"),
