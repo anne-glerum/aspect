@@ -1108,9 +1108,8 @@ namespace aspect
         }
         case NonlinearSolver::Stokes_only:
         {
-          unsigned int iteration = 0;
 
-          do
+          for(unsigned int i=0; i < parameters.max_nonlinear_iterations; ++i)
             {
               // the Stokes matrix depends on the viscosity. if the viscosity
               // depends on other solution variables, then we need to
@@ -1138,13 +1137,29 @@ namespace aspect
               const std_cxx1x::tuple<double,double,double> stokes_stopping_criteria = solve_stokes();
               current_linearization_point = solution;
 
+              if (i==0)
+                {
+                 pcout << " normalized residual: "  << stokes_stopping_criteria.get<0>() << std::endl;
+                }
+              else
+                {
+                  pcout << " normalized residual: "  << stokes_stopping_criteria.get<0>() << std::endl;
+                  pcout << " velocity correlation: " << stokes_stopping_criteria.get<1>() << std::endl;
+                  pcout << " pressure correlation: " << stokes_stopping_criteria.get<2>() << std::endl;
+//                  if (stokes_residual/initial_stokes_residual < parameters.nonlinear_tolerance)
+                  if (stokes_stopping_criteria.get<0>() < parameters.residual_tolerance &&
+                      stokes_stopping_criteria.get<1>() < parameters.velocity_correlation_tolerance &&
+                      stokes_stopping_criteria.get<2>() < parameters.pressure_correlation_tolerance)
+                    {
+                      statistics.add_value("Nr. of nonlinear iterations", i);
+                      break; // convergence reached, exit nonlinear iteration.
+                    }
+                }
 /*              pcout << "      Nonlinear Stokes residual: " << stokes_stopping_criteria[0] << std::endl;
               if (stokes_stopping_criteria[0] < 1e-8)
                 break;
 */
-              ++iteration;
             }
-          while (iteration < parameters.max_nonlinear_iterations);
           break;
         }
 
@@ -1261,9 +1276,9 @@ namespace aspect
           LinearAlgebra::Vector tmp (introspection.index_sets.system_partitioning[0], mpi_communicator);
 
           // ...and then iterate the solution of the Stokes system
-          double initial_stokes_normalized_residual = 0;
           for (unsigned int i=0; i< parameters.max_nonlinear_iterations; ++i)
             {
+              pcout << "Iteration number: " << i << std::endl;
               // rebuild the matrix if it actually depends on the solution
               // of the previous iteration.
               if ((stokes_matrix_depends_on_solution() == true)
@@ -1277,17 +1292,20 @@ namespace aspect
               const std_cxx1x::tuple<double,double,double> stokes_stopping_criteria = solve_stokes();
 
               if (i==0)
-                initial_stokes_normalized_residual = stokes_stopping_criteria.get<0>();
+                {
+                 pcout << " normalized residual: "  << stokes_stopping_criteria.get<0>() << std::endl;
+                }
               else
                 {
                   pcout << " normalized residual: "  << stokes_stopping_criteria.get<0>() << std::endl;
                   pcout << " velocity correlation: " << stokes_stopping_criteria.get<1>() << std::endl;
                   pcout << " pressure correlation: " << stokes_stopping_criteria.get<2>() << std::endl;
 //                  if (stokes_residual/initial_stokes_residual < parameters.nonlinear_tolerance)
-                  if (stokes_stopping_criteria.get<0>() < 1e-6 &&
-                      stokes_stopping_criteria.get<1>() < 1e-6 &&
-                      stokes_stopping_criteria.get<2>() < 1e-6)
+                  if (stokes_stopping_criteria.get<0>() < parameters.residual_tolerance &&
+                      stokes_stopping_criteria.get<1>() < parameters.velocity_correlation_tolerance &&
+                      stokes_stopping_criteria.get<2>() < parameters.pressure_correlation_tolerance)
                     {
+                      statistics.add_value("Nr. of nonlinear iterations", i);
                       break; // convergence reached, exit nonlinear iteration.
                     }
                 }

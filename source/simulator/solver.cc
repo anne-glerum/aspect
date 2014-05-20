@@ -285,12 +285,12 @@ namespace aspect
       LinearAlgebra::BlockVector current_solution = curr;
       LinearAlgebra::BlockVector previous_solution = prev;
 
-      // compute the number of nodes in the
+      // compute the number of nodes in the velocity block
       const double np_curr = curr.block(0).size();
       const double np_prev = prev.block(0).size();
       Assert (np_curr == np_prev, ExcInternalError());
 
-      //compute the average of the present and previous velocity
+      //compute the average of the current and previous velocity
       const double mean_vel_current = current_solution.block(0).mean_value();
       const double mean_vel_previous = previous_solution.block(0).mean_value();
 
@@ -322,19 +322,19 @@ namespace aspect
       LinearAlgebra::BlockVector current_solution = curr;
       LinearAlgebra::BlockVector previous_solution = prev;
 
-      // compute the number of nodes in the
+      // compute the number of nodes in the pressure block
       const double np_curr = curr.block(1).size();
       const double np_prev = prev.block(1).size();
       Assert (np_curr == np_prev, ExcInternalError());
 
-      //compute the average of the present and previous pressure
+      //compute the average of the current and previous pressure
       const double mean_p_current = current_solution.block(1).mean_value();
       const double mean_p_previous = previous_solution.block(1).mean_value();
 
       // subtract mean values
       current_solution.block(1).add(-mean_p_current);
       previous_solution.block(1).add(-mean_p_previous);
-      cout << previous_solution.block(1).l2_norm();
+//      cout << previous_solution.block(1).l2_norm();
       
       // normalize these vectors
       current_solution.block(1) /= current_solution.block(1).l2_norm();
@@ -658,7 +658,6 @@ namespace aspect
                                                                               remap);
      current_pressure_correlation = stokes_block.pressure_correlation (distributed_stokes_solution,
                                                                               remap);
-//     std_cxx1x::tuple<double,double,double> stokes_stopping_criteria;
 
     // distribute hanging node and
     // other constraints
@@ -694,10 +693,8 @@ namespace aspect
     pcout << " Velocity norm = " << previous_velocity_norm << " Pressure norm = " << previous_pressure_norm;
     pcout << " Velocity correlation = " << current_velocity_correlation;
     pcout << " Pressure correlation = " << current_pressure_correlation;
-    pcout <<  std::endl; //ACG
+    pcout <<  std::endl; 
 //    return initial_residual;
-//
-//    TODO how to make_tuple??
     return  std_cxx1x::tuple<double,double,double>(norm_residual,current_velocity_correlation,current_pressure_correlation);     
   }
 

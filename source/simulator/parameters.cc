@@ -569,7 +569,10 @@ namespace aspect
     else
       AssertThrow (false, ExcNotImplemented());
 
-    nonlinear_tolerance = prm.get_double("Nonlinear solver tolerance");
+//    nonlinear_tolerance = prm.get_double("Nonlinear solver tolerance");
+    residual_tolerance = prm.get_double("Normalized nonlinear residual tolerance");
+    velocity_correlation_tolerance = prm.get_double("Velocity correlation tolerance");
+    pressure_correlation_tolerance = prm.get_double("Pressure correlation tolerance");
 
     max_nonlinear_iterations = prm.get_integer ("Max nonlinear iterations");
     start_time              = prm.get_double ("Start time");
