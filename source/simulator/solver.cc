@@ -658,7 +658,7 @@ namespace aspect
                                                                               remap);
      current_pressure_correlation = stokes_block.pressure_correlation (distributed_stokes_solution,
                                                                               remap);
-
+//     std_cxx1x::tuple<double,double,double> stokes_stopping_criteria;
 
     // distribute hanging node and
     // other constraints
@@ -698,7 +698,7 @@ namespace aspect
 //    return initial_residual;
 //
 //    TODO how to make_tuple??
-    return  std_cxx1x::tuple(norm_residual,current_velocity_correlation,current_pressure_correlation);     
+    return  std_cxx1x::tuple<double,double,double>(norm_residual,current_velocity_correlation,current_pressure_correlation);     
   }
 
 }
