@@ -41,6 +41,152 @@ namespace aspect
   {
     using namespace dealii;
 
+        /**
+        * Compute the infinite norm of the difference between the old and the new
+        * velocity solution, normalized by the norm of the old solution:
+        * norm(new-old)/norm(old).
+        */ 
+        double velocity_norm (const LinearAlgebra::BlockVector &curr,
+                              const LinearAlgebra::BlockVector &prev); //ACG
+
+        /**
+        * Compute the infinite norm of the difference between the old and the new
+        * pressure solution, normalized by the norm of the old solution:
+        * norm(new-old)/norm(old).
+        */ 
+        double pressure_norm (const LinearAlgebra::BlockVector &curr,
+                              const LinearAlgebra::BlockVector &prev); //ACG
+
+        /**
+        * Compute the correlation of the old and the new
+        * velocity solution. A value between 0 and 1 is returned; 0 being completely
+        * the same.
+        */ 
+        double velocity_correlation (const LinearAlgebra::BlockVector &curr,
+                                     const LinearAlgebra::BlockVector &prev); //ACG
+
+        /**
+        * Compute the correlation of the old and the new
+        * pressure solution. A value between 0 and 1 is returned; 0 indicating the solutions
+        * are the same.
+        */ 
+        double pressure_correlation (const LinearAlgebra::BlockVector &curr,
+                                     const LinearAlgebra::BlockVector &prev); //ACG
+
+     double velocity_norm (const LinearAlgebra::BlockVector       &curr,
+                                        const LinearAlgebra::BlockVector &prev)//ACG
+     {
+      Assert (curr.n_blocks() == 2, ExcInternalError());
+      Assert (prev.n_blocks() == 2, ExcInternalError());
+ 
+      // copy the block vectors
+      // TODO No need to copy both, only 1 is changed
+      LinearAlgebra::BlockVector current_solution = curr;
+      LinearAlgebra::BlockVector previous_solution = prev;
+ 
+      //compute linfty norm of previous solution
+      const double pnorm = previous_solution.block(0).linfty_norm();
+ 
+      //compute diff vector current - previous solution
+      previous_solution.block(0).sadd (-1,1,current_solution.block(0));
+ 
+      // return ||current - previous||/||previous||
+      return previous_solution.block(0).linfty_norm()/pnorm;
+     }
+
+    //TODO this does almost the same thing as funtion above!!
+     double pressure_norm (const LinearAlgebra::BlockVector &curr,
+                                        const LinearAlgebra::BlockVector &prev)//ACG
+     {
+      Assert (curr.n_blocks() == 2, ExcInternalError());
+      Assert (prev.n_blocks() == 2, ExcInternalError());
+ 
+      // copy the block vectors
+      // TODO No need to copy both, only 1 is changed
+      LinearAlgebra::BlockVector current_solution = curr;
+      LinearAlgebra::BlockVector previous_solution = prev;
+
+      //compute linfty norm of previous solution
+      const double pnorm = previous_solution.block(1).linfty_norm();
+ 
+      //compute diff vector current - previous solution
+      previous_solution.block(1).sadd (-1,1,current_solution.block(1));
+ 
+      return previous_solution.block(1).linfty_norm()/pnorm;
+     }
+     double velocity_correlation (const LinearAlgebra::BlockVector &curr,
+                                               const LinearAlgebra::BlockVector &prev)//ACG
+     {
+      Assert (curr.n_blocks() == 2, ExcInternalError());
+      Assert (prev.n_blocks() == 2, ExcInternalError());
+
+      // copy the block vectors
+      LinearAlgebra::BlockVector current_solution = curr;
+      LinearAlgebra::BlockVector previous_solution = prev;
+
+      // compute the number of nodes in the velocity block
+      const double np_curr = curr.block(0).size();
+      const double np_prev = prev.block(0).size();
+      Assert (np_curr == np_prev, ExcInternalError());
+
+      //compute the average of the current and previous velocity
+      const double mean_vel_current = current_solution.block(0).mean_value();
+      const double mean_vel_previous = previous_solution.block(0).mean_value();
+
+      // subtract mean values
+      current_solution.block(0).add(-mean_vel_current);
+      previous_solution.block(0).add(-mean_vel_previous);
+
+      // normalize these vectors
+      if(previous_solution.block(0).l2_norm()==0 || current_solution.block(0).l2_norm()==0)
+      {
+       //TODO Some assertion about when this can happen?
+       cout << "Solution norm = 0 " << std::endl;
+       return 1;
+      }
+      current_solution.block(0) /= current_solution.block(0).l2_norm();
+      previous_solution.block(0) /= previous_solution.block(0).l2_norm();
+
+      return 1.0 - current_solution.block(0) * previous_solution.block(0);
+     }
+     
+    //TODO this does almost the same thing as funtion above!!
+     double pressure_correlation (const LinearAlgebra::BlockVector &curr,
+                                               const LinearAlgebra::BlockVector &prev)//ACG
+     {
+      Assert (curr.n_blocks() == 2, ExcInternalError());
+      Assert (prev.n_blocks() == 2, ExcInternalError());
+
+      // copy the block vectors
+      LinearAlgebra::BlockVector current_solution = curr;
+      LinearAlgebra::BlockVector previous_solution = prev;
+
+      // compute the number of nodes in the pressure block
+      const double np_curr = curr.block(1).size();
+      const double np_prev = prev.block(1).size();
+      Assert (np_curr == np_prev, ExcInternalError());
+
+      //compute the average of the current and previous pressure
+      const double mean_p_current = current_solution.block(1).mean_value();
+      const double mean_p_previous = previous_solution.block(1).mean_value();
+
+      // subtract mean values
+      current_solution.block(1).add(-mean_p_current);
+      previous_solution.block(1).add(-mean_p_previous);
+//      cout << previous_solution.block(1).l2_norm();
+      
+      // normalize these vectors
+      if(previous_solution.block(1).l2_norm()==0 || current_solution.block(1).l2_norm()==0)
+      {
+       //TODO some assertion that it only happens during the first iteration of the first timestep
+       cout << "Solution norm = 0 " << std::endl;
+       return 1;
+      }
+      current_solution.block(1) /= current_solution.block(1).l2_norm();
+      previous_solution.block(1) /= previous_solution.block(1).l2_norm();
+
+      return 1.0 - current_solution.block(1) * previous_solution.block(1);
+     }
     /**
      * Implement multiplication with Stokes part of system matrix. In essence, this
      * object represents a 2x2 block matrix that corresponds to the top left
@@ -86,37 +232,6 @@ namespace aspect
                                     const LinearAlgebra::BlockVector &x,
                                     const LinearAlgebra::BlockVector &b) const;
        
-        /**
-        * Compute the infinite norm of the difference between the old and the new
-        * velocity solution, normalized by the norm of the old solution:
-        * norm(new-old)/norm(old).
-        */ 
-        double velocity_norm (const LinearAlgebra::BlockVector &curr,
-                              const LinearAlgebra::BlockVector &prev) const; //ACG
-
-        /**
-        * Compute the infinite norm of the difference between the old and the new
-        * pressure solution, normalized by the norm of the old solution:
-        * norm(new-old)/norm(old).
-        */ 
-        double pressure_norm (const LinearAlgebra::BlockVector &curr,
-                              const LinearAlgebra::BlockVector &prev) const; //ACG
-
-        /**
-        * Compute the correlation of the old and the new
-        * velocity solution. A value between 0 and 1 is returned; 0 being completely
-        * the same.
-        */ 
-        double velocity_correlation (const LinearAlgebra::BlockVector &curr,
-                                     const LinearAlgebra::BlockVector &prev) const; //ACG
-
-        /**
-        * Compute the correlation of the old and the new
-        * pressure solution. A value between 0 and 1 is returned; 0 indicating the solutions
-        * are the same.
-        */ 
-        double pressure_correlation (const LinearAlgebra::BlockVector &curr,
-                                     const LinearAlgebra::BlockVector &prev) const; //ACG
 
       private:
 
@@ -233,115 +348,9 @@ namespace aspect
       return destination.l2_norm() / rhs_norm;
      }
 
-     double StokesBlock::velocity_norm (const LinearAlgebra::BlockVector       &curr,
-                                        const LinearAlgebra::BlockVector &prev) const//ACG
-     {
-      Assert (curr.n_blocks() == 2, ExcInternalError());
-      Assert (prev.n_blocks() == 2, ExcInternalError());
- 
-      // copy the block vectors
-      // TODO No need to copy both, only 1 is changed
-      LinearAlgebra::BlockVector current_solution = curr;
-      LinearAlgebra::BlockVector previous_solution = prev;
- 
-      //compute linfty norm of previous solution
-      const double pnorm = previous_solution.block(0).linfty_norm();
- 
-      //compute diff vector current - previous solution
-      previous_solution.block(0).sadd (-1,1,current_solution.block(0));
- 
-      // return ||current - previous||/||previous||
-      return previous_solution.block(0).linfty_norm()/pnorm;
-     }
-
-    //TODO this does almost the same thing as funtion above!!
-     double StokesBlock::pressure_norm (const LinearAlgebra::BlockVector &curr,
-                                        const LinearAlgebra::BlockVector &prev) const//ACG
-     {
-      Assert (curr.n_blocks() == 2, ExcInternalError());
-      Assert (prev.n_blocks() == 2, ExcInternalError());
- 
-      // copy the block vectors
-      // TODO No need to copy both, only 1 is changed
-      LinearAlgebra::BlockVector current_solution = curr;
-      LinearAlgebra::BlockVector previous_solution = prev;
-
-      //compute linfty norm of previous solution
-      const double pnorm = previous_solution.block(1).linfty_norm();
- 
-      //compute diff vector current - previous solution
-      previous_solution.block(1).sadd (-1,1,current_solution.block(1));
- 
-      return previous_solution.block(1).linfty_norm()/pnorm;
-     }
      
-     double StokesBlock::velocity_correlation (const LinearAlgebra::BlockVector &curr,
-                                               const LinearAlgebra::BlockVector &prev) const//ACG
-     {
-      Assert (curr.n_blocks() == 2, ExcInternalError());
-      Assert (prev.n_blocks() == 2, ExcInternalError());
-
-      // copy the block vectors
-      LinearAlgebra::BlockVector current_solution = curr;
-      LinearAlgebra::BlockVector previous_solution = prev;
-
-      // compute the number of nodes in the velocity block
-      const double np_curr = curr.block(0).size();
-      const double np_prev = prev.block(0).size();
-      Assert (np_curr == np_prev, ExcInternalError());
-
-      //compute the average of the current and previous velocity
-      const double mean_vel_current = current_solution.block(0).mean_value();
-      const double mean_vel_previous = previous_solution.block(0).mean_value();
-
-      // subtract mean values
-      current_solution.block(0).add(-mean_vel_current);
-      previous_solution.block(0).add(-mean_vel_previous);
-
-      // normalize these vectors
-      current_solution.block(0) /= current_solution.block(0).l2_norm();
-      if(previous_solution.block(0).l2_norm()==0)
-      {
-       cout << "Previous solution norm = 0 " << std::endl;
-       return 1;
-      }
  
-      previous_solution.block(0) /= previous_solution.block(0).l2_norm();
 
-      return 1.0 - current_solution.block(0) * previous_solution.block(0);
-     }
-
-    //TODO this does almost the same thing as funtion above!!
-     double StokesBlock::pressure_correlation (const LinearAlgebra::BlockVector &curr,
-                                               const LinearAlgebra::BlockVector &prev) const//ACG
-     {
-      Assert (curr.n_blocks() == 2, ExcInternalError());
-      Assert (prev.n_blocks() == 2, ExcInternalError());
-
-      // copy the block vectors
-      LinearAlgebra::BlockVector current_solution = curr;
-      LinearAlgebra::BlockVector previous_solution = prev;
-
-      // compute the number of nodes in the pressure block
-      const double np_curr = curr.block(1).size();
-      const double np_prev = prev.block(1).size();
-      Assert (np_curr == np_prev, ExcInternalError());
-
-      //compute the average of the current and previous pressure
-      const double mean_p_current = current_solution.block(1).mean_value();
-      const double mean_p_previous = previous_solution.block(1).mean_value();
-
-      // subtract mean values
-      current_solution.block(1).add(-mean_p_current);
-      previous_solution.block(1).add(-mean_p_previous);
-//      cout << previous_solution.block(1).l2_norm();
-      
-      // normalize these vectors
-      current_solution.block(1) /= current_solution.block(1).l2_norm();
-      previous_solution.block(1) /= previous_solution.block(1).l2_norm();
-
-      return 1.0 - current_solution.block(1) * previous_solution.block(1);
-     }
 
     /**
      * Implement the block Schur preconditioner for the Stokes system.
@@ -546,7 +555,7 @@ namespace aspect
 
 
   template <int dim>
-  std_cxx1x::tuple<double,double,double> Simulator<dim>::solve_stokes ()
+  std_cxx1x::tuple<double,double,double,int> Simulator<dim>::solve_stokes ()
   {
     computing_timer.enter_section ("   Solve Stokes system");
 
@@ -647,17 +656,16 @@ namespace aspect
         solver.solve(stokes_block, distributed_stokes_solution,
                      distributed_stokes_rhs, preconditioner);
       }
-     // calculate the different stopping criteria
-     double previous_velocity_norm, previous_pressure_norm,current_velocity_correlation,current_pressure_correlation;
 
-     previous_velocity_norm = stokes_block.velocity_norm (distributed_stokes_solution,
-                                                                              remap); 
-     previous_pressure_norm = stokes_block.pressure_norm (distributed_stokes_solution,
-                                                                              remap);
-     current_velocity_correlation = stokes_block.velocity_correlation (distributed_stokes_solution,
-                                                                              remap);
-     current_pressure_correlation = stokes_block.pressure_correlation (distributed_stokes_solution,
-                                                                              remap);
+     // calculate the different stopping criteria
+     const double previous_velocity_norm = internal::velocity_norm (distributed_stokes_solution,
+                                                                    remap); 
+     const double previous_pressure_norm = internal::pressure_norm (distributed_stokes_solution,
+                                                                    remap);
+     const double current_velocity_correlation = internal::velocity_correlation (distributed_stokes_solution,
+                                                                                 remap);
+     const double current_pressure_correlation = internal::pressure_correlation (distributed_stokes_solution,
+                                                                                 remap);
 
     // distribute hanging node and
     // other constraints
@@ -682,20 +690,23 @@ namespace aspect
     else
       pcout << solver_control_cheap.last_step() << '+'
             << solver_control_expensive.last_step() << " iterations.";
-    pcout << std::endl;
+      pcout << std::endl;
+
+    const int iterations = solver_control_cheap.last_step() + solver_control_expensive.last_step();
 
     statistics.add_value("Iterations for Stokes solver",
-                         solver_control_cheap.last_step() + solver_control_expensive.last_step());
+                          iterations);
 
     computing_timer.exit_section();
 
+    // TODO this output is just for testing
     pcout << "Aspect residual = " << initial_residual << " Normalized residual = " << norm_residual;
     pcout << " Velocity norm = " << previous_velocity_norm << " Pressure norm = " << previous_pressure_norm;
     pcout << " Velocity correlation = " << current_velocity_correlation;
     pcout << " Pressure correlation = " << current_pressure_correlation;
     pcout <<  std::endl; 
-//    return initial_residual;
-    return  std_cxx1x::tuple<double,double,double>(norm_residual,current_velocity_correlation,current_pressure_correlation);     
+
+    return  std_cxx1x::tuple<double,double,double,int>(norm_residual,current_velocity_correlation,current_pressure_correlation,iterations);     
   }
 
 }
@@ -709,7 +720,7 @@ namespace aspect
 {
 #define INSTANTIATE(dim) \
   template double Simulator<dim>::solve_advection (const TemperatureOrComposition &); \
-  template std_cxx1x::tuple<double,double,double> Simulator<dim>::solve_stokes ();
+  template std_cxx1x::tuple<double,double,double,int> Simulator<dim>::solve_stokes ();
 
   ASPECT_INSTANTIATE(INSTANTIATE)
 }

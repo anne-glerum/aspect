@@ -117,6 +117,7 @@ namespace aspect
     time_step (0),
     old_time_step (0),
     timestep_number (0),
+    nonlinear_iteration_number (0),
 
     triangulation (mpi_communicator,
                    typename Triangulation<dim>::MeshSmoothing
@@ -1108,9 +1109,11 @@ namespace aspect
         }
         case NonlinearSolver::Stokes_only:
         {
-
-          for(unsigned int i=0; i < parameters.max_nonlinear_iterations; ++i)
+          nonlinear_iteration_number = 0;
+          for (unsigned int i=0; i < parameters.max_nonlinear_iterations; ++i)
             {
+              pcout << "Iteration number: " << i << std::endl;
+              nonlinear_iteration_number = i;
               // the Stokes matrix depends on the viscosity. if the viscosity
               // depends on other solution variables, then we need to
               // update the Stokes matrix in every iteration and so need to set
@@ -1134,19 +1137,18 @@ namespace aspect
 
               assemble_stokes_system();
               build_stokes_preconditioner();
-              const std_cxx1x::tuple<double,double,double> stokes_stopping_criteria = solve_stokes();
+              const std_cxx1x::tuple<double,double,double,int> stokes_stopping_criteria = solve_stokes();
               current_linearization_point = solution;
 
               if (i==0)
                 {
-                 pcout << " normalized residual: "  << stokes_stopping_criteria.get<0>() << std::endl;
+                  pcout << " normalized residual: "  << stokes_stopping_criteria.get<0>() << std::endl;
                 }
               else
                 {
                   pcout << " normalized residual: "  << stokes_stopping_criteria.get<0>() << std::endl;
                   pcout << " velocity correlation: " << stokes_stopping_criteria.get<1>() << std::endl;
                   pcout << " pressure correlation: " << stokes_stopping_criteria.get<2>() << std::endl;
-//                  if (stokes_residual/initial_stokes_residual < parameters.nonlinear_tolerance)
                   if (stokes_stopping_criteria.get<0>() < parameters.residual_tolerance &&
                       stokes_stopping_criteria.get<1>() < parameters.velocity_correlation_tolerance &&
                       stokes_stopping_criteria.get<2>() < parameters.pressure_correlation_tolerance)
@@ -1155,10 +1157,8 @@ namespace aspect
                       break; // convergence reached, exit nonlinear iteration.
                     }
                 }
-/*              pcout << "      Nonlinear Stokes residual: " << stokes_stopping_criteria[0] << std::endl;
-              if (stokes_stopping_criteria[0] < 1e-8)
-                break;
-*/
+
+              pcout << std::endl;
             }
           break;
         }
@@ -1210,38 +1210,38 @@ namespace aspect
               if (iteration == 0)
                 build_stokes_preconditioner();
 
-              const std_cxx1x::tuple<double,double,double> stokes_stopping_criteria = solve_stokes();
+              const std_cxx1x::tuple<double,double,double,int> stokes_stopping_criteria = solve_stokes();
 
               current_linearization_point = solution;
 
-/*              pcout << "      Nonlinear residuals: " << temperature_residual
-                    << ", " << stokes_residual;
+              /*              pcout << "      Nonlinear residuals: " << temperature_residual
+                                  << ", " << stokes_residual;
 
-              for (unsigned int c=0; c<parameters.n_compositional_fields; ++c)
-                pcout << ", " << composition_residual[c];
+                            for (unsigned int c=0; c<parameters.n_compositional_fields; ++c)
+                              pcout << ", " << composition_residual[c];
 
-              pcout << std::endl
-                    << std::endl;
+                            pcout << std::endl
+                                  << std::endl;
 
-              if (iteration == 0)
-                {
-                  initial_temperature_residual = temperature_residual;
-                  for (unsigned int c=0; c<parameters.n_compositional_fields; ++c)
-                    initial_composition_residual[c] = composition_residual[c];
-                  initial_stokes_residual      = stokes_residual;
-                }
-              else
-                {
-                  double max = 0.0;
-                  for (unsigned int c=0; c<parameters.n_compositional_fields; ++c)
-                    max = std::max(composition_residual[c]/initial_composition_residual[c],max);
-                  max = std::max(stokes_residual/initial_stokes_residual, max);
-                  max = std::max(temperature_residual/initial_temperature_residual, max);
-                  pcout << "      residual: " << max << std::endl;
-                  if (max < parameters.nonlinear_tolerance)
-                    break;
-                }
-*/
+                            if (iteration == 0)
+                              {
+                                initial_temperature_residual = temperature_residual;
+                                for (unsigned int c=0; c<parameters.n_compositional_fields; ++c)
+                                  initial_composition_residual[c] = composition_residual[c];
+                                initial_stokes_residual      = stokes_residual;
+                              }
+                            else
+                              {
+                                double max = 0.0;
+                                for (unsigned int c=0; c<parameters.n_compositional_fields; ++c)
+                                  max = std::max(composition_residual[c]/initial_composition_residual[c],max);
+                                max = std::max(stokes_residual/initial_stokes_residual, max);
+                                max = std::max(temperature_residual/initial_temperature_residual, max);
+                                pcout << "      residual: " << max << std::endl;
+                                if (max < parameters.nonlinear_tolerance)
+                                  break;
+                              }
+              */
               ++iteration;
 //TODO: terminate here if the number of iterations is too large and we see no convergence
             }
@@ -1270,15 +1270,17 @@ namespace aspect
                 = solution.block(introspection.block_indices.compositional_fields[c]);
             }
 
-
+          // TODO why do we need this?
           // residual vector (only for the velocity)
           LinearAlgebra::Vector residual (introspection.index_sets.system_partitioning[0], mpi_communicator);
           LinearAlgebra::Vector tmp (introspection.index_sets.system_partitioning[0], mpi_communicator);
 
+          nonlinear_iteration_number = 0;
           // ...and then iterate the solution of the Stokes system
           for (unsigned int i=0; i< parameters.max_nonlinear_iterations; ++i)
             {
               pcout << "Iteration number: " << i << std::endl;
+              nonlinear_iteration_number = i;
               // rebuild the matrix if it actually depends on the solution
               // of the previous iteration.
               if ((stokes_matrix_depends_on_solution() == true)
@@ -1288,18 +1290,26 @@ namespace aspect
 
               assemble_stokes_system();
               build_stokes_preconditioner();
-//              const double stokes_residual = solve_stokes();
-              const std_cxx1x::tuple<double,double,double> stokes_stopping_criteria = solve_stokes();
+
+              const std_cxx1x::tuple<double,double,double,int> stokes_stopping_criteria = solve_stokes();
+
+              // Make sure that if the correlation is 1, this is only so for the very first
+              // nonlinear iterations of the first timestep
+              if (stokes_stopping_criteria.get<0>() == 1 || stokes_stopping_criteria.get<1>() == 1)
+                Assert (i == 0 && timestep_number == 0, ExcMss("Norm of solution is zero"));
 
               if (i==0)
                 {
-                 pcout << " normalized residual: "  << stokes_stopping_criteria.get<0>() << std::endl;
+                  pcout << "   normalized residual: "  << stokes_stopping_criteria.get<0>() << std::endl;
                 }
               else
                 {
-                  pcout << " normalized residual: "  << stokes_stopping_criteria.get<0>() << std::endl;
-                  pcout << " velocity correlation: " << stokes_stopping_criteria.get<1>() << std::endl;
-                  pcout << " pressure correlation: " << stokes_stopping_criteria.get<2>() << std::endl;
+                  pcout << "   normalized residual: "  << stokes_stopping_criteria.get<0>()
+                        << " tolerance: "              << parameters.residual_tolerance << std::endl;
+                  pcout << "   velocity correlation: " << stokes_stopping_criteria.get<1>()
+                        << " tolerance: "              << parameters.velocity_correlation_tolerance << std::endl;
+                  pcout << "   pressure correlation: " << stokes_stopping_criteria.get<2>()
+                        << " tolerance: "              << parameters.pressure_correlation_tolerance << std::endl;
 //                  if (stokes_residual/initial_stokes_residual < parameters.nonlinear_tolerance)
                   if (stokes_stopping_criteria.get<0>() < parameters.residual_tolerance &&
                       stokes_stopping_criteria.get<1>() < parameters.velocity_correlation_tolerance &&
@@ -1444,14 +1454,14 @@ namespace aspect
           // see if this is a time step where regular refinement is necessary, but only
           // if the previous rule wasn't triggered
           if (
-              (timestep_number > 0
-              &&
-              (parameters.adaptive_refinement_interval > 0)
-              &&
-              (timestep_number % parameters.adaptive_refinement_interval == 0))
-              ||
-              (timestep_number==0 && parameters.adaptive_refinement_interval == 1)
-              )
+            (timestep_number > 0
+             &&
+             (parameters.adaptive_refinement_interval > 0)
+             &&
+             (timestep_number % parameters.adaptive_refinement_interval == 0))
+            ||
+            (timestep_number==0 && parameters.adaptive_refinement_interval == 1)
+          )
             refine_mesh (max_refinement_level);
 
         // every n time steps output a summary of the current

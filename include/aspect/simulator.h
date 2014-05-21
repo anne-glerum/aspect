@@ -555,7 +555,7 @@ namespace aspect
        * <code>source/simulator/solver.cc</code>.
        */
 //      double solve_stokes ();
-      std_cxx1x::tuple<double,double,double> solve_stokes ();
+      std_cxx1x::tuple<double,double,double,int> solve_stokes ();
 
       /**
        * This function is called at the end of every time step. It runs all
@@ -1201,7 +1201,13 @@ namespace aspect
       /**
        * @}
        */
-
+      
+      /**
+       * @name Variable that describes the nonlinear iteration process   
+       * @{
+       */
+      unsigned int                                              nonlinear_iteration_number; 
+      
       /**
        * @name Variables related to simulation termination
        * @{

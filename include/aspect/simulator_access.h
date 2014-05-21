@@ -140,6 +140,12 @@ namespace aspect
       unsigned int
       get_timestep_number () const;
 
+      /** 
+       * Return the current number of the nonlinear iteration step.
+       */
+      unsigned int
+      get_nonlinear_iteration_number () const;
+  
       /**
        * Return a reference to the triangulation in use by the simulator
        * object.
