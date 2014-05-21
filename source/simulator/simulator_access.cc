@@ -82,7 +82,11 @@ namespace aspect
     return simulator->timestep_number;
   }
 
-
+  template <int dim>
+  unsigned int SimulatorAccess<dim>::get_nonlinear_iteration_number () const
+  {
+    return simulator->nonlinear_iteration_number;
+  }
 
   template <int dim>
   const parallel::distributed::Triangulation<dim> &
