@@ -280,10 +280,12 @@ namespace aspect
 
     TimerOutput::Scope timer (sim.computing_timer, "Free surface");
 
-    // Make the constraints for the elliptic problem.  On the free surface, we
-    // constrain mesh velocity to be v.n, on free slip it is constrained to
-    // be tangential, and on no slip boundaries it is zero.
-    make_constraints();
+    //Make the constraints for the elliptic problem.  On the free surface, we
+    //constrain mesh velocity to be v.n, on free slip it is constrainted to
+    //be tangential, and on no slip boundaries it is zero.
+    std::cout<<"Entered execute()\n";
+		make_constraints();
+		std::cout<<"make_constraints complete\n";
 
     // Assemble and solve the vector Laplace problem which determines
     // the mesh displacements in the interior of the domain
@@ -376,8 +378,7 @@ namespace aspect
     LinearAlgebra::Vector boundary_velocity;
     boundary_velocity.reinit(mesh_locally_owned, mesh_locally_relevant, sim.mpi_communicator);
     
-		//Instead of projecting Stokes vel to surface, we could just apply diffusion
-		
+		//Apply hillslope diffusion
 		diffuse_surface(boundary_velocity);
 		//project_velocity_onto_boundary( boundary_velocity );
 
@@ -403,46 +404,32 @@ namespace aspect
 	template <int dim>
   void FreeSurfaceHandler<dim>::diffuse_surface(LinearAlgebra::Vector &output)
 	{
-		// //================SETUP FROM INITIAL TOPOGRAPHY======================
-		// //Interpolate the mesh vertex velocity onto the Stokes velocity system for use in ALE corrections
-		// LinearAlgebra::Vector distributed_initial_displacements;
-		// distributed_initial_displacements.reinit(mesh_locally_owned, sim.mpi_communicator);
-
-		// const std::vector<Point<dim> > support_points
-			// = free_surface_fe.get_unit_support_points();
-
-		// Quadrature<dim> quad(support_points);
-		// UpdateFlags update_flags = UpdateFlags(update_quadrature_points);
-		// FEValues<dim> fe_values (free_surface_fe, quad, update_flags);
-		// const unsigned int n_q_points = fe_values.n_quadrature_points,
-											 // dofs_per_cell = fe_values.dofs_per_cell;
-
-		// std::vector<types::global_dof_index> cell_dof_indices (dofs_per_cell);
-		// FEValuesExtractors::Vector extract_displacement(0);
-		// std::vector<Tensor<1,dim> > displacement_values(n_q_points);
-
-		// typename DoFHandler<dim>::active_cell_iterator
-		// cell = free_surface_dof_handler.begin_active(), 	endc= free_surface_dof_handler.end();
-		// //================END SETUP FROM INITIAL TOPOGRAPHY================
-		// //FEFaceValues<dim> fs_fe_face_values (*sim.mapping, free_surface_fe, face_quadrature, update_flags);
+		std::cout<<"entered diffuse_surface\n";
 		
-		//SparsityPattern      sparsity_pattern;
-		//SparseMatrix<double> system_matrix;
 		LinearAlgebra::SparseMatrix system_matrix;
-		//Vector<double>       solution;
-		//Vector<double>       system_rhs;		
 		LinearAlgebra::Vector system_rhs, solution;
+    system_rhs.reinit(mesh_locally_owned, sim.mpi_communicator);
+    solution.reinit(mesh_locally_owned, sim.mpi_communicator);		
 		
 		
 		//set up constraints
     ConstraintMatrix mass_matrix_constraints(mesh_locally_relevant);
-    DoFTools::make_hanging_node_constraints(sim.dof_handler, mass_matrix_constraints);
+    DoFTools::make_hanging_node_constraints(free_surface_dof_handler, mass_matrix_constraints);
 
-    typedef std::set< std::pair< std::pair<types::boundary_id, types::boundary_id>, unsigned int> > periodic_boundary_pairs;
-    periodic_boundary_pairs pbp = sim.geometry_model->get_periodic_boundary_pairs();
-    for (periodic_boundary_pairs::iterator p = pbp.begin(); p != pbp.end(); ++p)
-      DoFTools::make_periodicity_constraints(sim.dof_handler,
-                                             (*p).first.first, (*p).first.second, (*p).second, mass_matrix_constraints);
+    // typedef std::set< std::pair< std::pair<types::boundary_id, types::boundary_id>, unsigned int> > periodic_boundary_pairs;
+    // periodic_boundary_pairs pbp = sim.geometry_model->get_periodic_boundary_pairs();
+    // for (periodic_boundary_pairs::iterator p = pbp.begin(); p != pbp.end(); ++p)
+      // DoFTools::make_periodicity_constraints(free_surface_dof_handler,
+                                             // (*p).first.first, (*p).first.second, (*p).second, mass_matrix_constraints);
+    
+		//Zero out the displacement for the zero-velocity boundary indicators
+    VectorTools::interpolate_boundary_values (free_surface_dof_handler, 0,
+                                                ZeroFunction<dim>(dim), mass_matrix_constraints);		
+    VectorTools::interpolate_boundary_values (free_surface_dof_handler, 1,
+                                                ZeroFunction<dim>(dim), mass_matrix_constraints);																									
+		
+		
+		std::cout<<"completed periodic boundaries loop\n";
     mass_matrix_constraints.close();
 		
 #ifdef ASPECT_USE_PETSC
@@ -453,11 +440,11 @@ namespace aspect
                                           mesh_locally_relevant,
                                           sim.mpi_communicator);
 #endif
-    DoFTools::make_sparsity_pattern (sim.dof_handler, sparsity_pattern, mass_matrix_constraints, false,
+    DoFTools::make_sparsity_pattern (free_surface_dof_handler, sparsity_pattern, mass_matrix_constraints, false,
                                      Utilities::MPI::this_mpi_process(sim.mpi_communicator));
 #ifdef ASPECT_USE_PETSC
     SparsityTools::distribute_sparsity_pattern(sparsity_pattern,
-                                               sim.dof_handler.n_locally_owned_dofs_per_processor(),
+                                               free_surface_dof_handler.n_locally_owned_dofs_per_processor(),
                                                sim.mpi_communicator, mesh_locally_relevant);
 
     sparsity_pattern.compress();
@@ -472,21 +459,14 @@ namespace aspect
 		
 		
 		const double diffusivity = 1e-3;		
-		QGauss<dim-1>  quadrature_formula(2);
-		//FEValues<2> fe_values (fe, quadrature_formula,
-		//									 update_values | update_gradients | update_JxW_values);
-		FEFaceValues<dim> fe_face_values (*sim.mapping, sim.finite_element, quadrature_formula, update_values | update_gradients | update_JxW_values);											 
-											 
-
-// FEFaceValues< dim, spacedim >::FEFaceValues	(	const hp::MappingCollection< dim, spacedim > & 	mapping_collection,
-// const hp::FECollection< dim, spacedim > & 	fe_collection,
-// const hp::QCollection< dim-1 > & 	q_collection,
-// const UpdateFlags 	update_flags 											 
-
+		QGauss<dim-1>  face_quadrature(free_surface_fe.degree+1);
+    UpdateFlags update_flags = UpdateFlags(update_values | update_gradients | update_JxW_values | update_quadrature_points);
+    FEFaceValues<dim> fs_fe_face_values (*sim.mapping, free_surface_fe, face_quadrature, update_flags);
+		FEFaceValues<dim> fe_face_values (*sim.mapping, sim.finite_element, face_quadrature, update_flags);		
 
 		//Shortcuts
-		const unsigned int   dofs_per_cell = sim.finite_element.dofs_per_cell;
-		const unsigned int   n_q_points    = quadrature_formula.size()/dim;
+		const unsigned int   dofs_per_cell = free_surface_fe.dofs_per_cell;
+		const unsigned int n_q_points = fe_face_values.n_quadrature_points;
 		//Create local matrices
 		FullMatrix<double>   cell_matrix (dofs_per_cell, dofs_per_cell);
 		Vector<double>       cell_rhs (dofs_per_cell);
@@ -498,11 +478,16 @@ namespace aspect
 		typename DoFHandler<dim>::active_cell_iterator
 		cell = sim.dof_handler.begin_active(),
 		endc = sim.dof_handler.end();
+		typename DoFHandler<dim>::active_cell_iterator
+    fscell = free_surface_dof_handler.begin_active();
+		
+		std::cout<<"Reached loop over cells\n";
+		
 		//Loop over cells
-		for (; cell!=endc; ++cell)
+		for (; cell!=endc; ++cell, ++fscell)
 		{
 			//We're only interested in boundary cells
-			if (cell->at_boundary())// && cell->is_locally_owned())
+			if (cell->at_boundary() && cell->is_locally_owned())
 				for (unsigned int face_no=0; face_no<GeometryInfo<dim>::faces_per_cell; ++face_no)
 					//...and specifially, in faces lying on the boundary
 					if (cell->face(face_no)->at_boundary())
@@ -510,6 +495,7 @@ namespace aspect
 		
 						//recompute values, gradients of the shape functions and determinants of the Jacobian matrices for the current cell
 						fe_face_values.reinit (cell, face_no);
+						fs_fe_face_values.reinit (fscell, face_no);
 						//Reset the local cell's contributions to global matrix
 						cell_matrix = 0;
 						cell_rhs = 0;
@@ -531,38 +517,54 @@ namespace aspect
 										* fe_face_values.JxW (q_index);
 							}		
 						}
-						
 						//Fill global numbers of local DOFs for current cell
-						cell->get_dof_indices (local_dof_indices);
+						fscell->get_dof_indices (local_dof_indices);
+						mass_matrix_constraints.distribute_local_to_global (cell_matrix, cell_rhs,
+                                                                  local_dof_indices, system_matrix, system_rhs, false);
+																																	
+																																
 						
-						for (unsigned int i=0; i<dofs_per_cell; ++i)
-						{
-							//transfer the local rhs to the global matrix
-							system_rhs(local_dof_indices[i]) += cell_rhs(i);
-							for (unsigned int j=0; j<dofs_per_cell; ++j)
-								//transfer the local matrix elements to the global matrix
-								system_matrix.add (local_dof_indices[i],
-																	 local_dof_indices[j],
-																	 cell_matrix(i,j));						
-						}
+						//std::cout<<"system_matrix.m()="<<system_matrix.m()<<"\n";
+						//std::cout<<"system_matrix.n()="<<system_matrix.n()<<"\n";
+						// for (unsigned int i=0; i<dofs_per_cell; ++i)
+						// {
+							// //transfer the local rhs to the global matrix
+							
+							// system_rhs(local_dof_indices[i]) += cell_rhs(i);
+							// for (unsigned int j=0; j<dofs_per_cell; ++j)
+							// {
+								// //transfer the local matrix elements to the global matrix
+								// std::cout<<"i="<<i<<"\n";
+								// std::cout<<"j="<<j<<"\n";
+								// std::cout<<"local_dof_indices[i]="<<local_dof_indices[i]<<"\n";
+								// std::cout<<"local_dof_indices[j]="<<local_dof_indices[j]<<"\n";
+								// system_matrix.add (local_dof_indices[i],
+																	 // local_dof_indices[j],
+																	 // cell_matrix(i,j));						
+							// }
+						// }
 					}
 		}
 		//Generate a list of pairs of global degree of freedom numbers (on the boundary) 
 		//and their boundary values (which are zero here for all entries)
-		std::map<types::global_dof_index, double> boundary_values;
 		
+		/*
+		std::map<types::global_dof_index, double> boundary_values;
 		switch (dim)
 		{
 			case 2:
 			{
-				VectorTools::interpolate_boundary_values (sim.dof_handler,
+				
+				VectorTools::interpolate_boundary_values (*sim.mapping,
+																									free_surface_dof_handler,
 																									3,
-																									ZeroFunction<dim>(),
+																									ZeroFunction<dim>(2),
 																									boundary_values);				
 			}
 			case 3:
 			{
-				VectorTools::interpolate_boundary_values (sim.dof_handler,
+				VectorTools::interpolate_boundary_values (*sim.mapping,
+																									free_surface_dof_handler,//sim.dof_handler,
 																									5,
 																									ZeroFunction<dim>(),
 																									boundary_values);				
@@ -573,6 +575,9 @@ namespace aspect
 																				system_matrix,
 																				solution,
 																				system_rhs);		
+		*/
+		system_rhs.compress (VectorOperation::add);
+    system_matrix.compress(VectorOperation::add);	
 		
 		//Set parameters for the solver: (max_iterations, tolerance); 
 		SolverControl solver_control (1000, 1e-12);
@@ -582,8 +587,8 @@ namespace aspect
 		//Solve
 		solver.solve (system_matrix, solution, system_rhs,
 									PreconditionIdentity());
-		
-    output = solution;
+    mass_matrix_constraints.distribute (solution);
+    output = solution;									
 	}
 	
 
@@ -939,13 +944,17 @@ namespace aspect
 				distributed_initial_displacements.reinit(mesh_locally_owned, sim.mpi_communicator);
 
 				const std::vector<Point<dim> > support_points
-					= free_surface_fe.get_unit_support_points();
+					= free_surface_fe.base_element(0).get_unit_support_points();
 
 				Quadrature<dim> quad(support_points);
 				UpdateFlags update_flags = UpdateFlags(update_quadrature_points);
 				FEValues<dim> fe_values (free_surface_fe, quad, update_flags);
+				//FEFaceValues<dim> fe_face_values (*sim.mapping, sim.finite_element, quadrature_formula, update_values | update_gradients | update_JxW_values)
 				const unsigned int n_q_points = fe_values.n_quadrature_points,
 													 dofs_per_cell = fe_values.dofs_per_cell;
+				std::cout<<"n_q_points="<<n_q_points<<"\n";
+				std::cout<<"dim="<<dim<<"\n";
+				std::cout<<"length of support_points="<<support_points.size()<<"\n";
 
 				std::vector<types::global_dof_index> cell_dof_indices (dofs_per_cell);
 				FEValuesExtractors::Vector extract_displacement(0);
@@ -965,7 +974,7 @@ namespace aspect
 									const Point<dim> p = fe_values.quadrature_point(j);
 									Point<dim> displacement;
 									displacement[0] = 0.;
-									displacement[1] = p[1]*0.05*std::sin(1.5*p[0]*M_PI);
+									displacement[1] = p[1]*0.05*std::sin(2*p[0]*M_PI);
 								  for (unsigned int dir=0; dir<dim; ++dir)
 									{
 										unsigned int support_point_index
@@ -979,7 +988,7 @@ namespace aspect
 				distributed_initial_displacements.compress(VectorOperation::insert);
 				mesh_displacements = distributed_initial_displacements;
 				
-				
+				std::cout<<"Setup_DOFs complete\n";
 			}
 
     // We would like to make sure that the mesh stays conforming upon
