@@ -126,7 +126,12 @@ namespace aspect
        * free surface. Called by make_constraints()
        */
       void project_velocity_onto_boundary (LinearAlgebra::Vector &output);
-
+			
+			/**
+       * Solve diffusion equation for the surface nodes.
+       * Called by make_constraints()
+       */
+			void diffuse_surface(LinearAlgebra::Vector &output);
       /**
        * Solve vector Laplacian equation for internal mesh displacements.
        */

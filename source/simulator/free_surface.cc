@@ -36,6 +36,7 @@
 #include <deal.II/lac/sparsity_tools.h>
 
 #include <deal.II/numerics/vector_tools.h>
+#include <deal.II/numerics/matrix_tools.h>
 
 
 
@@ -374,7 +375,11 @@ namespace aspect
     // For the free surface indicators we constrain the displacement to be v.n
     LinearAlgebra::Vector boundary_velocity;
     boundary_velocity.reinit(mesh_locally_owned, mesh_locally_relevant, sim.mpi_communicator);
-    project_velocity_onto_boundary( boundary_velocity );
+    
+		//Instead of projecting Stokes vel to surface, we could just apply diffusion
+		
+		diffuse_surface(boundary_velocity);
+		//project_velocity_onto_boundary( boundary_velocity );
 
     // now insert the relevant part of the solution into the mesh constraints
     IndexSet constrained_dofs;
@@ -394,6 +399,193 @@ namespace aspect
     mesh_displacement_constraints.close();
   }
 
+	
+	template <int dim>
+  void FreeSurfaceHandler<dim>::diffuse_surface(LinearAlgebra::Vector &output)
+	{
+		// //================SETUP FROM INITIAL TOPOGRAPHY======================
+		// //Interpolate the mesh vertex velocity onto the Stokes velocity system for use in ALE corrections
+		// LinearAlgebra::Vector distributed_initial_displacements;
+		// distributed_initial_displacements.reinit(mesh_locally_owned, sim.mpi_communicator);
+
+		// const std::vector<Point<dim> > support_points
+			// = free_surface_fe.get_unit_support_points();
+
+		// Quadrature<dim> quad(support_points);
+		// UpdateFlags update_flags = UpdateFlags(update_quadrature_points);
+		// FEValues<dim> fe_values (free_surface_fe, quad, update_flags);
+		// const unsigned int n_q_points = fe_values.n_quadrature_points,
+											 // dofs_per_cell = fe_values.dofs_per_cell;
+
+		// std::vector<types::global_dof_index> cell_dof_indices (dofs_per_cell);
+		// FEValuesExtractors::Vector extract_displacement(0);
+		// std::vector<Tensor<1,dim> > displacement_values(n_q_points);
+
+		// typename DoFHandler<dim>::active_cell_iterator
+		// cell = free_surface_dof_handler.begin_active(), 	endc= free_surface_dof_handler.end();
+		// //================END SETUP FROM INITIAL TOPOGRAPHY================
+		// //FEFaceValues<dim> fs_fe_face_values (*sim.mapping, free_surface_fe, face_quadrature, update_flags);
+		
+		//SparsityPattern      sparsity_pattern;
+		//SparseMatrix<double> system_matrix;
+		LinearAlgebra::SparseMatrix system_matrix;
+		//Vector<double>       solution;
+		//Vector<double>       system_rhs;		
+		LinearAlgebra::Vector system_rhs, solution;
+		
+		
+		//set up constraints
+    ConstraintMatrix mass_matrix_constraints(mesh_locally_relevant);
+    DoFTools::make_hanging_node_constraints(sim.dof_handler, mass_matrix_constraints);
+
+    typedef std::set< std::pair< std::pair<types::boundary_id, types::boundary_id>, unsigned int> > periodic_boundary_pairs;
+    periodic_boundary_pairs pbp = sim.geometry_model->get_periodic_boundary_pairs();
+    for (periodic_boundary_pairs::iterator p = pbp.begin(); p != pbp.end(); ++p)
+      DoFTools::make_periodicity_constraints(sim.dof_handler,
+                                             (*p).first.first, (*p).first.second, (*p).second, mass_matrix_constraints);
+    mass_matrix_constraints.close();
+		
+#ifdef ASPECT_USE_PETSC
+    LinearAlgebra::DynamicSparsityPattern sparsity_pattern(mesh_locally_relevant);
+#else
+    TrilinosWrappers::SparsityPattern sparsity_pattern (mesh_locally_owned,
+                                          mesh_locally_owned,
+                                          mesh_locally_relevant,
+                                          sim.mpi_communicator);
+#endif
+    DoFTools::make_sparsity_pattern (sim.dof_handler, sparsity_pattern, mass_matrix_constraints, false,
+                                     Utilities::MPI::this_mpi_process(sim.mpi_communicator));
+#ifdef ASPECT_USE_PETSC
+    SparsityTools::distribute_sparsity_pattern(sparsity_pattern,
+                                               sim.dof_handler.n_locally_owned_dofs_per_processor(),
+                                               sim.mpi_communicator, mesh_locally_relevant);
+
+    sparsity_pattern.compress();
+    system_matrix.reinit (mesh_locally_owned, mesh_locally_owned, sparsity_pattern, sim.mpi_communicator);
+#else
+    sparsity_pattern.compress();
+    system_matrix.reinit (sparsity_pattern);
+#endif
+		
+		
+		
+		
+		
+		const double diffusivity = 1e-3;		
+		QGauss<dim-1>  quadrature_formula(2);
+		//FEValues<2> fe_values (fe, quadrature_formula,
+		//									 update_values | update_gradients | update_JxW_values);
+		FEFaceValues<dim> fe_face_values (*sim.mapping, sim.finite_element, quadrature_formula, update_values | update_gradients | update_JxW_values);											 
+											 
+
+// FEFaceValues< dim, spacedim >::FEFaceValues	(	const hp::MappingCollection< dim, spacedim > & 	mapping_collection,
+// const hp::FECollection< dim, spacedim > & 	fe_collection,
+// const hp::QCollection< dim-1 > & 	q_collection,
+// const UpdateFlags 	update_flags 											 
+
+
+		//Shortcuts
+		const unsigned int   dofs_per_cell = sim.finite_element.dofs_per_cell;
+		const unsigned int   n_q_points    = quadrature_formula.size()/dim;
+		//Create local matrices
+		FullMatrix<double>   cell_matrix (dofs_per_cell, dofs_per_cell);
+		Vector<double>       cell_rhs (dofs_per_cell);
+		//Vector to store global numbers of local DOFs
+		std::vector<types::global_dof_index> local_dof_indices (dofs_per_cell);
+		
+		
+		//Create cell iterator
+		typename DoFHandler<dim>::active_cell_iterator
+		cell = sim.dof_handler.begin_active(),
+		endc = sim.dof_handler.end();
+		//Loop over cells
+		for (; cell!=endc; ++cell)
+		{
+			//We're only interested in boundary cells
+			if (cell->at_boundary())// && cell->is_locally_owned())
+				for (unsigned int face_no=0; face_no<GeometryInfo<dim>::faces_per_cell; ++face_no)
+					//...and specifially, in faces lying on the boundary
+					if (cell->face(face_no)->at_boundary())
+					{
+		
+						//recompute values, gradients of the shape functions and determinants of the Jacobian matrices for the current cell
+						fe_face_values.reinit (cell, face_no);
+						//Reset the local cell's contributions to global matrix
+						cell_matrix = 0;
+						cell_rhs = 0;
+			
+						//Integrate over the cell by looping over quadrature points
+						for (unsigned int q_index=0; q_index<n_q_points; ++q_index)
+						{
+							for (unsigned int i=0; i<dofs_per_cell; ++i)
+							{
+								//Set right hand side
+								cell_rhs(i) += (fe_face_values.shape_value (i, q_index) *
+													1 *
+													fe_face_values.JxW (q_index));
+								//Set local matrix elements					
+								for (unsigned int j=0; j<dofs_per_cell; ++j)
+									/*fe_face_values.shape_grad (i|j, q_index) - gradients of test functions*/
+									cell_matrix(i,j) += (sim.time_step * diffusivity * (fe_face_values.shape_grad (i, q_index) * fe_face_values.shape_grad (j, q_index))
+										+ (fe_face_values.shape_grad (i, q_index) * fe_face_values.shape_grad (j, q_index)))
+										* fe_face_values.JxW (q_index);
+							}		
+						}
+						
+						//Fill global numbers of local DOFs for current cell
+						cell->get_dof_indices (local_dof_indices);
+						
+						for (unsigned int i=0; i<dofs_per_cell; ++i)
+						{
+							//transfer the local rhs to the global matrix
+							system_rhs(local_dof_indices[i]) += cell_rhs(i);
+							for (unsigned int j=0; j<dofs_per_cell; ++j)
+								//transfer the local matrix elements to the global matrix
+								system_matrix.add (local_dof_indices[i],
+																	 local_dof_indices[j],
+																	 cell_matrix(i,j));						
+						}
+					}
+		}
+		//Generate a list of pairs of global degree of freedom numbers (on the boundary) 
+		//and their boundary values (which are zero here for all entries)
+		std::map<types::global_dof_index, double> boundary_values;
+		
+		switch (dim)
+		{
+			case 2:
+			{
+				VectorTools::interpolate_boundary_values (sim.dof_handler,
+																									3,
+																									ZeroFunction<dim>(),
+																									boundary_values);				
+			}
+			case 3:
+			{
+				VectorTools::interpolate_boundary_values (sim.dof_handler,
+																									5,
+																									ZeroFunction<dim>(),
+																									boundary_values);				
+			}
+		}
+		// Apply b.c. to the system of equations
+		MatrixTools::apply_boundary_values (boundary_values,
+																				system_matrix,
+																				solution,
+																				system_rhs);		
+		
+		//Set parameters for the solver: (max_iterations, tolerance); 
+		SolverControl solver_control (1000, 1e-12);
+		//SolverControl solver_control (5*system_rhs.size(), sim.parameters.linear_stokes_solver_tolerance*system_rhs.l2_norm());
+		//Create solver itself
+		SolverCG<LinearAlgebra::Vector> solver (solver_control);
+		//Solve
+		solver.solve (system_matrix, solution, system_rhs,
+									PreconditionIdentity());
+		
+    output = solution;
+	}
+	
 
   template <int dim>
   void FreeSurfaceHandler<dim>::project_velocity_onto_boundary(LinearAlgebra::Vector &output)
@@ -650,6 +842,7 @@ namespace aspect
     LinearAlgebra::Vector distributed_mesh_displacements(mesh_locally_owned, sim.mpi_communicator);
     distributed_mesh_displacements = mesh_displacements;
     distributed_mesh_displacements.add(sim.time_step, velocity_solution);
+		
     mesh_displacements = distributed_mesh_displacements;
 
   }
@@ -703,9 +896,9 @@ namespace aspect
     mesh_velocity = distributed_mesh_velocity;
   }
 
-
+	
   template <int dim>
-  void FreeSurfaceHandler<dim>::setup_dofs()
+  void FreeSurfaceHandler<dim>::setup_dofs() //called from core every mesh repartitioning
   {
     if (!sim.parameters.free_surface_enabled)
       return;
@@ -735,9 +928,59 @@ namespace aspect
     mesh_displacements.reinit(mesh_locally_owned, mesh_locally_relevant, sim.mpi_communicator);
     fs_mesh_velocity.reinit(mesh_locally_owned, mesh_locally_relevant, sim.mpi_communicator);
 
-    // if we are just starting, we need to initialize the mesh displacement vector.
-    if (sim.timestep_number == 0)
-      mesh_displacements = 0.;
+    //if we are just starting, we need to initialize the mesh displacement vector.
+    
+		//Here we can set up initial topography
+		if (sim.timestep_number == 0)
+      //mesh_displacements = 0.;
+			{
+				//Interpolate the mesh vertex velocity onto the Stokes velocity system for use in ALE corrections
+				LinearAlgebra::Vector distributed_initial_displacements;
+				distributed_initial_displacements.reinit(mesh_locally_owned, sim.mpi_communicator);
+
+				const std::vector<Point<dim> > support_points
+					= free_surface_fe.get_unit_support_points();
+
+				Quadrature<dim> quad(support_points);
+				UpdateFlags update_flags = UpdateFlags(update_quadrature_points);
+				FEValues<dim> fe_values (free_surface_fe, quad, update_flags);
+				const unsigned int n_q_points = fe_values.n_quadrature_points,
+													 dofs_per_cell = fe_values.dofs_per_cell;
+
+				std::vector<types::global_dof_index> cell_dof_indices (dofs_per_cell);
+				FEValuesExtractors::Vector extract_displacement(0);
+				std::vector<Tensor<1,dim> > displacement_values(n_q_points);
+				
+				typename DoFHandler<dim>::active_cell_iterator
+				cell = free_surface_dof_handler.begin_active(), 	endc= free_surface_dof_handler.end();
+				
+				for (; cell!=endc; ++cell)
+					if (cell->is_locally_owned())
+						{
+							cell->get_dof_indices (cell_dof_indices);
+
+							fe_values.reinit (cell);
+							for (unsigned int j=0; j<n_q_points; ++j)
+							  {
+									const Point<dim> p = fe_values.quadrature_point(j);
+									Point<dim> displacement;
+									displacement[0] = 0.;
+									displacement[1] = p[1]*0.05*std::sin(1.5*p[0]*M_PI);
+								  for (unsigned int dir=0; dir<dim; ++dir)
+									{
+										unsigned int support_point_index
+											= free_surface_fe.component_to_system_index(/*velocity component=*/ dir,
+																																	/*dof index within component=*/ j);
+										distributed_initial_displacements[cell_dof_indices[support_point_index]] = displacement[dir];
+									}
+								}
+						}
+
+				distributed_initial_displacements.compress(VectorOperation::insert);
+				mesh_displacements = distributed_initial_displacements;
+				
+				
+			}
 
     // We would like to make sure that the mesh stays conforming upon
     // redistribution, so we construct mesh_vertex_constraints, which
@@ -765,6 +1008,24 @@ namespace aspect
   {
     return free_surface_theta;
   }
+
+	/*
+  template <int dim>
+  void
+  FreeSurfaceHandler<dim>::detach_manifolds()
+  {
+    //remove manifold ids for all cells
+    for (typename Triangulation<dim>::active_cell_iterator
+         cell = sim.triangulation.begin_active();
+         cell != sim.triangulation.end(); ++cell)
+      cell->set_all_manifold_ids (numbers::invalid_manifold_id);
+
+    //also remove boundary description for the free surface indicators
+    std::set<types::boundary_id>::iterator id = sim.parameters.free_surface_boundary_indicators.begin();
+    for (; id != sim.parameters.free_surface_boundary_indicators.end(); ++id)
+      sim.triangulation.set_boundary( *id );
+  }
+	*/
 }
 
 
