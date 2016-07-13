@@ -37,6 +37,12 @@ namespace aspect
   namespace GeometryModel
   {
     template <int dim>
+    Chunk<dim>::ChunkGeometry::ChunkGeometry()
+      :
+      point1_lon(0.0)
+    {}
+
+    template <int dim>
     Point<dim>
     Chunk<dim>::ChunkGeometry::
     push_forward(const Point<dim> &input_vertex) const
@@ -75,6 +81,16 @@ namespace aspect
           {
             output_vertex[1] = std::atan2(v[1], v[0]);
             output_vertex[0] = v.norm();
+
+            // We must garantee that all points have a longitude coordinate
+            // VALUE that is larger than the longitude of point1: in other words,
+            // if the domain runs from longitude -10 to 200 degrees, atan2 will return
+            // a negative value (-160 to -180) for the points with longitude
+            // 180 to 200. These points must be corrected so that they are larger
+            // than the minimum longitude value of -10, or the model will crash.
+            if (output_vertex[1] < 0.0)
+              if (output_vertex[1] < point1_lon - std::abs(point1_lon)*std::numeric_limits<double>::epsilon())
+                output_vertex[1] += 2.0 * numbers::PI;
             break;
           }
           case 3:
@@ -82,6 +98,10 @@ namespace aspect
             const double radius=v.norm();
             output_vertex[0] = radius;
             output_vertex[1] = std::atan2(v[1], v[0]);
+            // See 2D case
+            if (output_vertex[1] < 0.0)
+              if (output_vertex[1] < point1_lon - std::abs(point1_lon)*std::numeric_limits<double>::epsilon())
+                output_vertex[1] += 2.0 * numbers::PI;
             output_vertex[2] = std::asin(v[2]/radius);
             break;
           }
@@ -90,6 +110,16 @@ namespace aspect
         }
       return output_vertex;
     }
+
+
+    template <int dim>
+    void
+    Chunk<dim>::ChunkGeometry::
+    set_min_longitude(const double p1_lon)
+    {
+      point1_lon = p1_lon;
+    }
+
 
     template <int dim>
     void
@@ -465,22 +495,23 @@ namespace aspect
           Assert (dim >= 2, ExcInternalError());
           Assert (dim <= 3, ExcInternalError());
 
-          if (dim >= 2)
-            {
-              point1[0] = prm.get_double ("Chunk inner radius");
-              point2[0] = prm.get_double ("Chunk outer radius");
-              repetitions[0] = prm.get_integer ("Radius repetitions");
-              point1[1] = prm.get_double ("Chunk minimum longitude") * degtorad;
-              point2[1] = prm.get_double ("Chunk maximum longitude") * degtorad;
-              repetitions[1] = prm.get_integer ("Longitude repetitions");
+          point1[0] = prm.get_double ("Chunk inner radius");
+          point2[0] = prm.get_double ("Chunk outer radius");
+          repetitions[0] = prm.get_integer ("Radius repetitions");
+          point1[1] = prm.get_double ("Chunk minimum longitude") * degtorad;
+          point2[1] = prm.get_double ("Chunk maximum longitude") * degtorad;
+          repetitions[1] = prm.get_integer ("Longitude repetitions");
 
-              AssertThrow (point1[0] < point2[0],
-                           ExcMessage ("Inner radius must be less than outer radius."));
-              AssertThrow (point1[1] < point2[1],
-                           ExcMessage ("Minimum longitude must be less than maximum longitude."));
-              AssertThrow (point2[1] - point1[1] < 2.*numbers::PI,
-                           ExcMessage ("Maximum - minimum longitude should be less than 360 degrees."));
-            }
+          AssertThrow (point1[0] < point2[0],
+                       ExcMessage ("Inner radius must be less than outer radius."));
+          AssertThrow (point1[1] < point2[1],
+                       ExcMessage ("Minimum longitude must be less than maximum longitude."));
+          AssertThrow (point2[1] - point1[1] < 2.*numbers::PI,
+                       ExcMessage ("Maximum - minimum longitude should be less than 360 degrees."));
+
+          // Inform the manifold about the minimum longitude
+          manifold.set_min_longitude(point1[1]);
+
 
           if (dim == 3)
             {
@@ -491,6 +522,7 @@ namespace aspect
               AssertThrow (point1[2] < point2[2],
                            ExcMessage ("Minimum latitude must be less than maximum latitude."));
             }
+
 
         }
         prm.leave_subsection();
