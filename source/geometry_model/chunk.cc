@@ -108,7 +108,7 @@ namespace aspect
       // faces to be curved as well, so we set the edge boundary indicators
       // to the same boundary indicators as their faces.
       for (typename Triangulation<dim>::active_cell_iterator
-             cell = coarse_grid.begin_active();
+           cell = coarse_grid.begin_active();
            cell != coarse_grid.end(); ++cell)
         for (unsigned int f=0; f<GeometryInfo<dim>::faces_per_cell; ++f)
           if (cell->face(f)->at_boundary())
@@ -121,7 +121,7 @@ namespace aspect
               cell->face(f)->set_all_boundary_ids(cell->face(f)->boundary_id());
 
       for (typename Triangulation<dim>::active_cell_iterator
-             cell = coarse_grid.begin_active();
+           cell = coarse_grid.begin_active();
            cell != coarse_grid.end(); ++cell)
         for (unsigned int f=0; f<GeometryInfo<dim>::faces_per_cell; ++f)
           if (cell->face(f)->at_boundary())
@@ -150,59 +150,50 @@ namespace aspect
       clear_manifold_ids(coarse_grid);
 
       // On the boundary faces, set boundary objects.
-      // The east and west boundaries are straight, the north
-      // and south boundaries are part of a cone with the tip
-      // at origin. The inner and outer boundary are part of
-      // a sphere.
+      // The east and west boundaries are straight,
+      // the inner and outer boundary are part of
+      // a spherical shell. In 3D, the north and south boundaries
+      // are part of a cone with the tip at the origin.
       static const StraightBoundary<dim> boundary_straight;
 
-      // Define the center point of the greater radius end of the
- 	  // north and south boundary cones.
-      // These lie along the z-axis.
-       Point<dim> center;
-       Point<dim> north, south;
-       const double outer_radius = point2[0];
-       north[dim-1] = outer_radius * std::sin(point2[2]);
-       south[dim-1] = outer_radius * std::sin(point1[2]);
-       // Define the radius of the cones
-       const double north_radius = std::sqrt(outer_radius*outer_radius-north[dim-1]*north[dim-1]);
-       const double south_radius = std::sqrt(outer_radius*outer_radius-south[dim-1]*south[dim-1]);
-       static const ConeBoundary<dim> boundary_cone_north(0,north_radius,center,north);
-       static const ConeBoundary<dim> boundary_cone_south(0,south_radius,center,south);
+      // Attach boundary objects to the straight east and west boundaries
+      coarse_grid.set_boundary(2, boundary_straight);
+      coarse_grid.set_boundary(3, boundary_straight);
 
-       if (dim == 2)
-       {
-           // Attach boundary objects to the straight east and west boundaries
-     	  coarse_grid.set_boundary(2, boundary_straight);
-     	 coarse_grid.set_boundary(3, boundary_straight);
-       }
-     	  else
-         {
-           // Attach boundary objects to the straight east and west boundaries
-     		 coarse_grid.set_boundary (2, boundary_straight);
-     		coarse_grid.set_boundary (3, boundary_straight);
+      if (dim == 3)
+        {
+          // Define the center point of the greater radius end of the
+          // north and south boundary cones.
+          // These lie along the z-axis.
+          Point<dim> center;
+          Point<dim> north, south;
+          const double outer_radius = point2[0];
+          north[dim-1] = outer_radius * std::sin(point2[2]);
+          south[dim-1] = outer_radius * std::sin(point1[2]);
+          // Define the radius of the cones
+          const double north_radius = std::sqrt(outer_radius*outer_radius-north[dim-1]*north[dim-1]);
+          const double south_radius = std::sqrt(outer_radius*outer_radius-south[dim-1]*south[dim-1]);
+          static const ConeBoundary<dim> boundary_cone_north(0,north_radius,center,north);
+          static const ConeBoundary<dim> boundary_cone_south(0,south_radius,center,south);
 
-           // Attach boundary objects to the conical north and south boundaries
-           // If one of the boundaries lies at the equator,
-           // just use the default straight boundary.
-           if (point2[2] != 0.0)
-        	   coarse_grid.set_boundary (5, boundary_cone_north);
-           else
-        	   coarse_grid.set_boundary (5, boundary_straight);
+          // Attach boundary objects to the conical north and south boundaries
+          // If one of the boundaries lies at the equator,
+          // just use the straight boundary.
+          if (point2[2] != 0.0)
+            coarse_grid.set_boundary (5, boundary_cone_north);
+          else
+            coarse_grid.set_boundary (5, boundary_straight);
 
-           if (point1[2] != 0.0)
-        	   coarse_grid.set_boundary (4, boundary_cone_south);
-           else
-           {
-        	   coarse_grid.set_boundary (4, boundary_straight);
-        	   std::cout << "Boundary on equator " << point1[2] << std::endl;
-           }
-         }
+          if (point1[2] != 0.0)
+            coarse_grid.set_boundary (4, boundary_cone_south);
+          else
+            coarse_grid.set_boundary (4, boundary_straight);
+        }
 
-       // attach boundary objects to the curved boundaries
-       static const HyperShellBoundary<dim> boundary_shell;
-       coarse_grid.set_boundary (0, boundary_shell);
-       coarse_grid.set_boundary (1, boundary_shell);
+      // Attach boundary objects to the curved boundaries
+      static const HyperShellBoundary<dim> boundary_shell;
+      coarse_grid.set_boundary (0, boundary_shell);
+      coarse_grid.set_boundary (1, boundary_shell);
 
       coarse_grid.signals.pre_refinement.connect (std_cxx11::bind (&set_manifold_ids,
                                                                    std_cxx11::ref(coarse_grid)));
@@ -404,9 +395,9 @@ namespace aspect
     {
       for (typename Triangulation<dim>::active_cell_iterator cell =
              triangulation.begin_active(); cell != triangulation.end(); ++cell)
-      for (unsigned int f=0; f<GeometryInfo<dim>::faces_per_cell; ++f)
-        if (cell->face(f)->at_boundary())
-          cell->face(f)->set_all_manifold_ids (numbers::invalid_manifold_id);
+        for (unsigned int f=0; f<GeometryInfo<dim>::faces_per_cell; ++f)
+          if (cell->face(f)->at_boundary())
+            cell->face(f)->set_all_manifold_ids (numbers::invalid_manifold_id);
     }
 
     template <int dim>
