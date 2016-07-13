@@ -27,6 +27,9 @@
 #include <deal.II/grid/grid_tools.h>
 #include <deal.II/grid/tria_boundary_lib.h>
 #include <deal.II/grid/manifold_lib.h>
+#include <deal.II/grid/grid_out.h>
+#include <iostream>
+#include <fstream>
 
 
 namespace aspect
@@ -100,6 +103,34 @@ namespace aspect
                                                  point2,
                                                  true);
 
+      // At this point, all boundary faces have their correct boundary
+      // indicators, but the edges do not. We want the edges of curved
+      // faces to be curved as well, so we set the edge boundary indicators
+      // to the same boundary indicators as their faces.
+      for (typename Triangulation<dim>::active_cell_iterator
+             cell = coarse_grid.begin_active();
+           cell != coarse_grid.end(); ++cell)
+        for (unsigned int f=0; f<GeometryInfo<dim>::faces_per_cell; ++f)
+          if (cell->face(f)->at_boundary())
+            // Set edges on the radial faces; both adjacent faces
+            // should agree on where new points along the boundary lie
+            // for these edges, so the order of the boundaries does not matter
+            if ((cell->face(f)->boundary_id() != 0)
+                &&
+                (cell->face(f)->boundary_id() != 1))
+              cell->face(f)->set_all_boundary_ids(cell->face(f)->boundary_id());
+
+      for (typename Triangulation<dim>::active_cell_iterator
+             cell = coarse_grid.begin_active();
+           cell != coarse_grid.end(); ++cell)
+        for (unsigned int f=0; f<GeometryInfo<dim>::faces_per_cell; ++f)
+          if (cell->face(f)->at_boundary())
+            // (Re-)Set edges on the spherical shells to ensure that
+            // they are all curved as expected
+            if ((cell->face(f)->boundary_id() == 0)
+                ||
+                (cell->face(f)->boundary_id() == 1))
+              cell->face(f)->set_all_boundary_ids(cell->face(f)->boundary_id());
 
       // Transform box into spherical chunk
       GridTools::transform (std_cxx11::bind(&ChunkGeometry::push_forward,
@@ -107,12 +138,71 @@ namespace aspect
                                             std_cxx11::_1),
                             coarse_grid);
 
-      // Deal with a curved mesh
-      // Attach the real manifold to slot 15. we won't use it
+      // Deal with a curved mesh:
+      // Attach the real manifold to slot 15. We won't use it
       // during regular operation, but we set manifold_ids for all
       // cells, faces and edges immediately before refinement and
-      // clear it again afterwards
+      // clear it from the boundaries again afterwards. To calculate
+      // normals on the boundaries, the boundary objects attached below
+      // are thus used.
       coarse_grid.set_manifold (15, manifold);
+      set_manifold_ids(coarse_grid);
+      clear_manifold_ids(coarse_grid);
+
+      // On the boundary faces, set boundary objects.
+      // The east and west boundaries are straight, the north
+      // and south boundaries are part of a cone with the tip
+      // at origin. The inner and outer boundary are part of
+      // a sphere.
+      static const StraightBoundary<dim> boundary_straight;
+
+      // Define the center point of the greater radius end of the
+ 	  // north and south boundary cones.
+      // These lie along the z-axis.
+       Point<dim> center;
+       Point<dim> north, south;
+       const double outer_radius = point2[0];
+       north[dim-1] = outer_radius * std::sin(point2[2]);
+       south[dim-1] = outer_radius * std::sin(point1[2]);
+       // Define the radius of the cones
+       const double north_radius = std::sqrt(outer_radius*outer_radius-north[dim-1]*north[dim-1]);
+       const double south_radius = std::sqrt(outer_radius*outer_radius-south[dim-1]*south[dim-1]);
+       static const ConeBoundary<dim> boundary_cone_north(0,north_radius,center,north);
+       static const ConeBoundary<dim> boundary_cone_south(0,south_radius,center,south);
+
+       if (dim == 2)
+       {
+           // Attach boundary objects to the straight east and west boundaries
+     	  coarse_grid.set_boundary(2, boundary_straight);
+     	 coarse_grid.set_boundary(3, boundary_straight);
+       }
+     	  else
+         {
+           // Attach boundary objects to the straight east and west boundaries
+     		 coarse_grid.set_boundary (2, boundary_straight);
+     		coarse_grid.set_boundary (3, boundary_straight);
+
+           // Attach boundary objects to the conical north and south boundaries
+           // If one of the boundaries lies at the equator,
+           // just use the default straight boundary.
+           if (point2[2] != 0.0)
+        	   coarse_grid.set_boundary (5, boundary_cone_north);
+           else
+        	   coarse_grid.set_boundary (5, boundary_straight);
+
+           if (point1[2] != 0.0)
+        	   coarse_grid.set_boundary (4, boundary_cone_south);
+           else
+           {
+        	   coarse_grid.set_boundary (4, boundary_straight);
+        	   std::cout << "Boundary on equator " << point1[2] << std::endl;
+           }
+         }
+
+       // attach boundary objects to the curved boundaries
+       static const HyperShellBoundary<dim> boundary_shell;
+       coarse_grid.set_boundary (0, boundary_shell);
+       coarse_grid.set_boundary (1, boundary_shell);
 
       coarse_grid.signals.pre_refinement.connect (std_cxx11::bind (&set_manifold_ids,
                                                                    std_cxx11::ref(coarse_grid)));
@@ -314,7 +404,9 @@ namespace aspect
     {
       for (typename Triangulation<dim>::active_cell_iterator cell =
              triangulation.begin_active(); cell != triangulation.end(); ++cell)
-        cell->set_all_manifold_ids (numbers::invalid_manifold_id);
+      for (unsigned int f=0; f<GeometryInfo<dim>::faces_per_cell; ++f)
+        if (cell->face(f)->at_boundary())
+          cell->face(f)->set_all_manifold_ids (numbers::invalid_manifold_id);
     }
 
     template <int dim>
