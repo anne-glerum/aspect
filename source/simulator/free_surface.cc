@@ -37,6 +37,9 @@
 
 #include <deal.II/numerics/vector_tools.h>
 #include <deal.II/numerics/matrix_tools.h>
+#include <deal.II/numerics/data_out.h>
+
+#include <fstream>
 
 
 
@@ -415,7 +418,7 @@ namespace aspect
 		//set up constraints
     ConstraintMatrix mass_matrix_constraints(mesh_locally_relevant);
     DoFTools::make_hanging_node_constraints(free_surface_dof_handler, mass_matrix_constraints);
-
+		
     // typedef std::set< std::pair< std::pair<types::boundary_id, types::boundary_id>, unsigned int> > periodic_boundary_pairs;
     // periodic_boundary_pairs pbp = sim.geometry_model->get_periodic_boundary_pairs();
     // for (periodic_boundary_pairs::iterator p = pbp.begin(); p != pbp.end(); ++p)
@@ -462,11 +465,12 @@ namespace aspect
 		QGauss<dim-1>  face_quadrature(free_surface_fe.degree+1);
     UpdateFlags update_flags = UpdateFlags(update_values | update_gradients | update_JxW_values | update_quadrature_points);
     FEFaceValues<dim> fs_fe_face_values (*sim.mapping, free_surface_fe, face_quadrature, update_flags);
-		FEFaceValues<dim> fe_face_values (*sim.mapping, sim.finite_element, face_quadrature, update_flags);		
+		LinearAlgebra::Vector displacements = this->mesh_displacements;//free_surface_dof_handler.mesh_displacements;
 
 		//Shortcuts
 		const unsigned int   dofs_per_cell = free_surface_fe.dofs_per_cell;
-		const unsigned int n_q_points = fe_face_values.n_quadrature_points;
+		
+		const unsigned int n_q_points = fs_fe_face_values.n_quadrature_points;
 		//Create local matrices
 		FullMatrix<double>   cell_matrix (dofs_per_cell, dofs_per_cell);
 		Vector<double>       cell_rhs (dofs_per_cell);
@@ -481,44 +485,51 @@ namespace aspect
 		typename DoFHandler<dim>::active_cell_iterator
     fscell = free_surface_dof_handler.begin_active();
 		
+		FEValuesExtractors::Scalar  vertical_displacement(dim-1);
+		std::vector<double> local_displacements (n_q_points);
+		
 		std::cout<<"Reached loop over cells\n";
 		
 		//Loop over cells
 		for (; cell!=endc; ++cell, ++fscell)
 		{
 			//We're only interested in boundary cells
-			if (cell->at_boundary() && cell->is_locally_owned())
+			if (cell->at_boundary() /* && cell->boundary_id()==dim-1 */ && cell->is_locally_owned())
 				for (unsigned int face_no=0; face_no<GeometryInfo<dim>::faces_per_cell; ++face_no)
 					//...and specifially, in faces lying on the boundary
-					if (cell->face(face_no)->at_boundary())
+					if (cell->face(face_no)->at_boundary() && cell->face(face_no)->boundary_id()==dim*2-1)
 					{
-		
 						//recompute values, gradients of the shape functions and determinants of the Jacobian matrices for the current cell
-						fe_face_values.reinit (cell, face_no);
 						fs_fe_face_values.reinit (fscell, face_no);
 						//Reset the local cell's contributions to global matrix
 						cell_matrix = 0;
 						cell_rhs = 0;
-			
+						//Fill global numbers of local DOFs for current cell
+						fscell->get_dof_indices (local_dof_indices);
+						
+						fs_fe_face_values[vertical_displacement].get_function_values (displacements,
+																						local_displacements);
+						
 						//Integrate over the cell by looping over quadrature points
 						for (unsigned int q_index=0; q_index<n_q_points; ++q_index)
 						{
 							for (unsigned int i=0; i<dofs_per_cell; ++i)
 							{
+								double displacement = local_displacements[q_index];
+								
 								//Set right hand side
-								cell_rhs(i) += (fe_face_values.shape_value (i, q_index) *
-													1 *
-													fe_face_values.JxW (q_index));
+								cell_rhs(i) += (fs_fe_face_values.shape_value (i, q_index) 
+													* displacement
+													* fs_fe_face_values.JxW (q_index));
 								//Set local matrix elements					
 								for (unsigned int j=0; j<dofs_per_cell; ++j)
-									/*fe_face_values.shape_grad (i|j, q_index) - gradients of test functions*/
-									cell_matrix(i,j) += (sim.time_step * diffusivity * (fe_face_values.shape_grad (i, q_index) * fe_face_values.shape_grad (j, q_index))
-										+ (fe_face_values.shape_grad (i, q_index) * fe_face_values.shape_grad (j, q_index)))
-										* fe_face_values.JxW (q_index);
+									/*fs_fe_face_values.shape_grad (i|j, q_index) - gradients of test functions*/
+									cell_matrix(i,j) += (sim.time_step * diffusivity * (fs_fe_face_values.shape_grad (i, q_index) * fs_fe_face_values.shape_grad (j, q_index))
+										+ (fs_fe_face_values.shape_value (i, q_index) * fs_fe_face_values.shape_value (j, q_index)))
+										* fs_fe_face_values.JxW (q_index);            // need SURFACE gradient
 							}		
 						}
-						//Fill global numbers of local DOFs for current cell
-						fscell->get_dof_indices (local_dof_indices);
+
 						mass_matrix_constraints.distribute_local_to_global (cell_matrix, cell_rhs,
                                                                   local_dof_indices, system_matrix, system_rhs, false);
 																																	
@@ -588,7 +599,29 @@ namespace aspect
 		solver.solve (system_matrix, solution, system_rhs,
 									PreconditionIdentity());
     mass_matrix_constraints.distribute (solution);
-    output = solution;									
+		
+		for (unsigned int i = 0; i < solution.size(); i++)
+		{
+			output[i] = solution[i] - displacements[i];
+			if (sim.time_step)
+				output[i] = output[i]/sim.time_step;
+		}
+		//std::cout<<"sim.time_step = "<<sim.time_step<<"\n";
+		Vector<double> diff;
+		diff = solution;
+		diff -= displacements;
+		
+		{
+			DataOut<dim> data_out;
+			data_out.attach_dof_handler (free_surface_dof_handler);
+			data_out.add_data_vector (solution, "solution");
+			data_out.add_data_vector (diff, "diff");
+			data_out.add_data_vector (displacements, "displacements");
+			data_out.build_patches ();
+			
+			std::ofstream out ("solutions.gpl");
+			data_out.write_gnuplot (out);
+		}
 	}
 	
 
