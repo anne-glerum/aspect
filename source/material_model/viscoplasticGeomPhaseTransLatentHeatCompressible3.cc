@@ -232,7 +232,7 @@ namespace aspect
       double viscosity = 0.0;
 
       /****************************************FIRSTITERATION*******************************************/
-      if (this->get_nonlinear_iteration_number() == 0 && this->get_timestep_number() == 0 && this->get_initial_amr_number() < initial_adaptive_refinement)
+      if (/*this->get_nonlinear_iteration_number() == 0*/ strain_rate.norm() == 0 && this->get_timestep_number() == 0 /*&& this->get_initial_amr_number() < initial_adaptive_refinement*/)
         {
           // Multiple compositions
           if (n_compositional_fields>0)
