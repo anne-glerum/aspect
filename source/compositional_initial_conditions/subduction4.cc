@@ -99,11 +99,26 @@ namespace aspect
 	if(n_comp==3){
 	composition = 1;
 	}
-      }else if((z<=Height_to_surface||b_Use_sticky_air==false)&&(z>=(slab_lower_crust_elevation)&&x<Initial_subduction_point||(z<upper_slab_cutoff&&z>=lower_slab_cutoff&&z<crust_thinning_in_mantle&&x>=lower_crust_rotation_point&&z>=right_slab_cutoff)||(z>=slab_lower_crust_elevation-Radius_smoothing_cricle+Radius_smoothing_cricle*cos(Slab_dip_rad)&&z<slab_lower_crust_elevation&&x>=circle_common_part&&x<circle_common_part+Radius_smoothing_cricle*sin(Slab_dip_rad)&&(pow(x-(circle_common_part),2)+pow((z-(slab_lower_crust_elevation-Radius_smoothing_cricle)),2)>=pow(Radius_smoothing_cricle,2))&&(z<upper_slab_cutoff)))){ // slab plate crust
+//      }else if((z<=Height_to_surface||b_Use_sticky_air==false)&&
+//    		  (z>=(slab_lower_crust_elevation)&&
+//    				  x<circle_common_part||
+//    				  (z<upper_slab_cutoff&&z>=lower_slab_cutoff&&z<crust_thinning_in_mantle&&x>=lower_crust_rotation_point&&z>=right_slab_cutoff&&z<slab_lower_crust_elevation)|| //this one
+//    				  (z>=slab_lower_crust_elevation-Radius_smoothing_cricle+Radius_smoothing_cricle*cos(Slab_dip_rad)&&
+//    						  z<slab_lower_crust_elevation&&
+//    						  x>=circle_common_part&&
+//    						  x<circle_common_part+Radius_smoothing_cricle*sin(Slab_dip_rad)&&
+//    						  (pow(x-(circle_common_part),2)+pow((z-(slab_lower_crust_elevation-Radius_smoothing_cricle)),2)>=pow(Radius_smoothing_cricle,2))&&
+//    						  (z<upper_slab_cutoff))||
+//    	    		  ((z>=Height_to_surface-Radius_smoothing_cricle+Radius_smoothing_cricle*cos(Slab_dip_rad)&&
+//    	    						  z>slab_lower_crust_elevation&&
+//    	    						  (pow(x-(Initial_subduction_point-Radius_smoothing_cricle/2),2)+pow((z-(Height_to_surface-Radius_smoothing_cricle)),2)<=pow(Radius_smoothing_cricle,2)))||
+//    	    						  (z>slab_lower_crust_elevation&&z<Height_to_surface-Radius_smoothing_cricle+Radius_smoothing_cricle*cos(Slab_dip_rad)&&x>=circle_common_part&&z<upper_slab_cutoff))//&&
+//    						  )){ // slab plate crust
+	}else if((z<=Height_to_surface||b_Use_sticky_air==false)&&(z>=(slab_lower_crust_elevation)&&x<Initial_subduction_point||(z<upper_slab_cutoff&&z>=lower_slab_cutoff&&z<crust_thinning_in_mantle&&x>=lower_crust_rotation_point&&z>=right_slab_cutoff)||(z>=slab_lower_crust_elevation-Radius_smoothing_cricle+Radius_smoothing_cricle*cos(Slab_dip_rad)&&z<slab_lower_crust_elevation&&x>=circle_common_part&&x<circle_common_part+Radius_smoothing_cricle*sin(Slab_dip_rad)&&(pow(x-(circle_common_part),2)+pow((z-(slab_lower_crust_elevation-Radius_smoothing_cricle)),2)>=pow(Radius_smoothing_cricle,2))&&(z<upper_slab_cutoff)))){ // slab plate crust
 	if(n_comp==1){ // Oceanic crust
 	composition = 1;
 	}
-      }else if(z>=upper_slab_cutoff&&z>=Height_to_surface-Crustal_thickness_overriding_plate){ // overriding plate crust
+      }else if(z>=upper_slab_cutoff&&z>Height_to_surface-Crustal_thickness_overriding_plate){ // overriding plate crust
 	if(n_comp==2){ // Continental crust
 	composition = 1;
 	}

@@ -232,51 +232,51 @@ namespace aspect
       double viscosity = 0.0;
 
       /****************************************FIRSTITERATION*******************************************/
-      if (/*this->get_nonlinear_iteration_number() == 0*/ strain_rate.norm() == 0 && this->get_timestep_number() == 0 /*&& this->get_initial_amr_number() < initial_adaptive_refinement*/)
-        {
-          // Multiple compositions
-          if (n_compositional_fields>0)
-            {
-              if (viscosity_averaging=="Max")
-                {
-                  int max_comp = maximum_composition(composition);
-                  viscosity = init_eta_fields[max_comp];
-                }
-              else if (viscosity_averaging=="Harmonic")
-                {
-                  viscosity = harmonic_average(composition, init_eta_fields);
-                }
-              else
-                {
-                  viscosity = geometric_average(composition, init_eta_fields);
-                }
-            }
-          // No additional compositional fields
-          else
-            {
-              viscosity = initial_eta;
-            }
-          if (weak_zone)
-            {
-              viscosity /= weak_zone_function.value(position);
-            }
-          if (harmonic_max)
-            {
-              viscosity = 1.0 / ((1.0 / viscosity) + (1.0 / maximum_eta));
-              viscosity += minimum_eta;
-            }
-          else
-            {
-              viscosity = std::max(std::min(viscosity,maximum_eta),minimum_eta);
-            }
-
-          return viscosity;
-        }
+//      if (/*this->get_nonlinear_iteration_number() == 0*/ strain_rate.norm() == 0 && this->get_timestep_number() == 0 /*&& this->get_initial_amr_number() < initial_adaptive_refinement*/)
+//        {
+//          // Multiple compositions
+//          if (n_compositional_fields>0)
+//            {
+//              if (viscosity_averaging=="Max")
+//                {
+//                  int max_comp = maximum_composition(composition);
+//                  viscosity = init_eta_fields[max_comp];
+//                }
+//              else if (viscosity_averaging=="Harmonic")
+//                {
+//                  viscosity = harmonic_average(composition, init_eta_fields);
+//                }
+//              else
+//                {
+//                  viscosity = geometric_average(composition, init_eta_fields);
+//                }
+//            }
+//          // No additional compositional fields
+//          else
+//            {
+//              viscosity = initial_eta;
+//            }
+//          if (weak_zone)
+//            {
+//              viscosity /= weak_zone_function.value(position);
+//            }
+//          if (harmonic_max)
+//            {
+//              viscosity = 1.0 / ((1.0 / viscosity) + (1.0 / maximum_eta));
+//              viscosity += minimum_eta;
+//            }
+//          else
+//            {
+//              viscosity = std::max(std::min(viscosity,maximum_eta),minimum_eta);
+//            }
+//
+//          return viscosity;
+//        }
 
       /**************************STRAINRATE****************************************************************************/
       // Calculate the second invariant of the deviatoric strain rate tensor
       const SymmetricTensor<2,dim> strain_rate_dev = deviator(strain_rate);
-      const double strain_rate_dev_inv = std::sqrt(0.5) * strain_rate_dev.norm();
+      const double strain_rate_dev_inv = (this->get_timestep_number() == 0 && this->get_pre_refinement_step() == 0 && strain_rate.norm() == 0) ? 1e-18 : std::sqrt(0.5) * strain_rate_dev.norm();
 
       /************************VISCOPLASTIC****************************************************************************/
       // Multiple compositional fields
@@ -317,19 +317,20 @@ namespace aspect
                                            pressure,
                                            strain_rate_dev_inv);
 
-              if (strain_rate_weakening)
-                {
-                  viscosity_plastic *= (std::max(1.0-(strain_rate_dev_inv/ref_strain_rate),0.1));
-                }
-
-              if (harmonic_plastic_viscous)
-                {
-                  viscosity = 1.0 / ((1.0/viscosity_viscous) + (1.0/viscosity_plastic));
-                }
-              else
-                {
-                  viscosity = std::min(viscosity_viscous,viscosity_plastic);
-                }
+//              if (strain_rate_weakening)
+//                {
+//                  viscosity_plastic *= (std::max(1.0-(strain_rate_dev_inv/ref_strain_rate),0.1));
+//                }
+//
+//              if (harmonic_plastic_viscous)
+//                {
+//                  viscosity = 1.0 / ((1.0/viscosity_viscous) + (1.0/viscosity_plastic));
+//                }
+//              else
+//                {
+//                  viscosity = std::min(viscosity_viscous,viscosity_plastic);
+//                }
+              viscosity = viscosity_viscous;
 
               if (weak_zone)
                 {
@@ -381,19 +382,20 @@ namespace aspect
                                              pressure,
                                              strain_rate_dev_inv);
 
-                  if (strain_rate_weakening)
-                    {
-                      visc_plastic[n] *= (std::max(1.0-(strain_rate_dev_inv/ref_strain_rate),0.1));
-                    }
-
-                  if (harmonic_plastic_viscous)
-                    {
-                      visc_effective[n] = 1.0 / ((1.0/visc_plastic[n]) + (1.0/visc_viscous[n]));
-                    }
-                  else
-                    {
-                      visc_effective[n] = std::min(visc_viscous[n],visc_plastic[n]);
-                    }
+//                  if (strain_rate_weakening)
+//                    {
+//                      visc_plastic[n] *= (std::max(1.0-(strain_rate_dev_inv/ref_strain_rate),0.1));
+//                    }
+//
+//                  if (harmonic_plastic_viscous)
+//                    {
+//                      visc_effective[n] = 1.0 / ((1.0/visc_plastic[n]) + (1.0/visc_viscous[n]));
+//                    }
+//                  else
+//                    {
+//                      visc_effective[n] = std::min(visc_viscous[n],visc_plastic[n]);
+//                    }
+                  visc_effective[n] = visc_viscous[n];
                 }
 
               //Harmonic averaging of the viscosities of each composition
@@ -525,15 +527,21 @@ namespace aspect
               ratio_composite = visc_dislocation / visc_diffusion;
               ratio_plastic = (1.0 / ((1.0/visc_dislocation) + (1.0/visc_diffusion))) / visc_plastic;
 
-              if (ratio_plastic <= 1.0 && ratio_composite <= 1.0)
-                {
-                  ratio = 0.0; //dislocation = 0
-                }
-              else if (ratio_plastic <= 1.0 && ratio_composite > 1.0)
-                {
-                  ratio = -1.0; //diffusion = -1
-                }
-              else ratio = 1.0; //plasticity = 1
+//              if (ratio_plastic <= 1.0 && ratio_composite <= 1.0)
+//                {
+//                  ratio = 0.0; //dislocation = 0
+//                }
+//              else if (ratio_plastic <= 1.0 && ratio_composite > 1.0)
+//                {
+//                  ratio = -1.0; //diffusion = -1
+//                }
+//              else ratio = 1.0; //plasticity = 1
+              if (visc_dislocation > maximum_eta && visc_diffusion > maximum_eta)
+            	  ratio = 1; // max visc
+              else if (ratio_composite <= 1.0)
+            	  ratio = 0.0; //dislocation = 0
+              else
+            	  ratio = -1.0; //diffusion = -1
             }
           // Harmonic and geometric averaging
           else
@@ -587,15 +595,22 @@ namespace aspect
 
               ratio_plastic = viscosity_viscous / viscosity_plastic;
               ratio_composite = viscosity_dislocation / viscosity_diffusion;
-              if (ratio_plastic <= 1.0 && ratio_composite <= 1.0)
-                {
-                  ratio = 0.0; //dislocation = 0
-                }
-              else if (ratio <= 1.0 && ratio_composite > 1.0)
-                {
-                  ratio = -1.0; //diffusion = -1
-                }
-              else ratio = 1.0; //plasticity = 1
+//              if (ratio_plastic <= 1.0 && ratio_composite <= 1.0)
+//                {
+//                  ratio = 0.0; //dislocation = 0
+//                }
+//              else if (ratio <= 1.0 && ratio_composite > 1.0)
+//                {
+//                  ratio = -1.0; //diffusion = -1
+//                }
+//              else ratio = 1.0; //plasticity = 1
+
+              if (viscosity_dislocation > maximum_eta && viscosity_diffusion > maximum_eta)
+            	  ratio = 1; // max visc = 1
+              else if (ratio_composite <= 1.0)
+            	  ratio = 0.0; //dislocation = 0
+              else
+            	  ratio = -1.0; //diffusion = -1
             }
         }
 
@@ -1378,7 +1393,7 @@ namespace aspect
             //correction of pure shear measurements for uniaxiality
             for (unsigned int i=0; i<n_compositional_fields; i++)
               {
-                prefactors_dislocation_fields.push_back(n_prefactordisl_fields[i]*std::pow(3,(n_stressexponent_fields[i]+1.0)/2.0)*0.5);
+                prefactors_dislocation_fields.push_back(n_prefactordisl_fields[i]/**std::pow(3,(n_stressexponent_fields[i]+1.0)/2.0)*0.5*/);
               }
             AssertThrow (prefactors_dislocation_fields.size() == n_compositional_fields,
                          ExcMessage("Invalid input parameter file: Wrong number of entries in List of prefactors dislocation of fields"));
@@ -1412,7 +1427,7 @@ namespace aspect
             //correction for uniaxial measurements
             for (unsigned int i=0; i<n_compositional_fields; i++)
               {
-                prefactors_diffusion_fields.push_back(n_prefactordiff_fields[i]*3.0*0.5);
+                prefactors_diffusion_fields.push_back(n_prefactordiff_fields[i]/**3.0*0.5*/);
               }
             AssertThrow (prefactors_diffusion_fields.size() == n_compositional_fields,
                          ExcMessage("Invalid input parameter file: Wrong number of entries in List of prefactors diffusion of fields"));
