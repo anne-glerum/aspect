@@ -463,7 +463,7 @@ namespace aspect
 		
 		const double diffusivity = 1e-3;		
 		QGauss<dim-1>  face_quadrature(free_surface_fe.degree+1);
-    UpdateFlags update_flags = UpdateFlags(update_values | update_gradients | update_JxW_values | update_quadrature_points);
+    UpdateFlags update_flags = UpdateFlags(update_values | update_gradients | update_JxW_values | update_quadrature_points | update_normal_vectors);
     FEFaceValues<dim> fs_fe_face_values (*sim.mapping, free_surface_fe, face_quadrature, update_flags);
 		LinearAlgebra::Vector displacements = this->mesh_displacements;//free_surface_dof_handler.mesh_displacements;
 
@@ -487,6 +487,8 @@ namespace aspect
 		
 		FEValuesExtractors::Scalar  vertical_displacement(dim-1);
 		std::vector<double> local_displacements (n_q_points);
+		
+		
 		
 		std::cout<<"Reached loop over cells\n";
 		
@@ -518,15 +520,17 @@ namespace aspect
 								double displacement = local_displacements[q_index];
 								
 								//Set right hand side
-								cell_rhs(i) += (fs_fe_face_values.shape_value (i, q_index) 
+								cell_rhs(i) += fs_fe_face_values.shape_value (i, q_index) 
 													* displacement
-													* fs_fe_face_values.JxW (q_index));
+													* fs_fe_face_values.JxW (q_index);
 								//Set local matrix elements					
 								for (unsigned int j=0; j<dofs_per_cell; ++j)
+									
 									/*fs_fe_face_values.shape_grad (i|j, q_index) - gradients of test functions*/
-									cell_matrix(i,j) += (sim.time_step * diffusivity * (fs_fe_face_values.shape_grad (i, q_index) * fs_fe_face_values.shape_grad (j, q_index))
+									cell_matrix(i,j) += (sim.time_step * diffusivity * (fs_fe_face_values.shape_grad (i, q_index)  * fs_fe_face_values.shape_grad (j, q_index)) 
 										+ (fs_fe_face_values.shape_value (i, q_index) * fs_fe_face_values.shape_value (j, q_index)))
 										* fs_fe_face_values.JxW (q_index);            // need SURFACE gradient
+										
 							}		
 						}
 
@@ -556,6 +560,7 @@ namespace aspect
 						// }
 					}
 		}
+		std::cout<<"Exit loop over cells\n";
 		//Generate a list of pairs of global degree of freedom numbers (on the boundary) 
 		//and their boundary values (which are zero here for all entries)
 		
@@ -596,32 +601,71 @@ namespace aspect
 		//Create solver itself
 		SolverCG<LinearAlgebra::Vector> solver (solver_control);
 		//Solve
+		
 		solver.solve (system_matrix, solution, system_rhs,
 									PreconditionIdentity());
     mass_matrix_constraints.distribute (solution);
 		
-		for (unsigned int i = 0; i < solution.size(); i++)
-		{
-			output[i] = solution[i] - displacements[i];
-			if (sim.time_step)
-				output[i] = output[i]/sim.time_step;
-		}
-		//std::cout<<"sim.time_step = "<<sim.time_step<<"\n";
-		Vector<double> diff;
-		diff = solution;
-		diff -= displacements;
+		LinearAlgebra::Vector output_temp(mesh_locally_owned, mesh_locally_relevant, sim.mpi_communicator);
+		std::cout<<"output_temp size:" <<output_temp.size()<<"\n";
+		std::cout<<"solution size:" <<solution.size()<<"\n";
+		std::cout<<"output size:" <<output.size()<<"\n";
+		std::cout<<"displacements size:" <<displacements.size()<<"\n";
+		output_temp = solution;
 		
-		{
-			DataOut<dim> data_out;
-			data_out.attach_dof_handler (free_surface_dof_handler);
-			data_out.add_data_vector (solution, "solution");
-			data_out.add_data_vector (diff, "diff");
-			data_out.add_data_vector (displacements, "displacements");
-			data_out.build_patches ();
+		output_temp -= displacements;
+		//UNCOMMENT//output_temp.sadd(1,displacements);
+		//output_temp.sadd(1/sim.time_step,);
+		
+		
+		std::cout<<"Reached last for loop\n";
+		//for (unsigned int i = 0; i < solution.size(); i++)
+		//{
+			//output_temp[i] = solution[i];// - displacements[i];
+			if (sim.time_step)
+				output_temp /= sim.time_step;
+		//}
+		std::cout<<"Exit last for loop\n";
+		output=output_temp;
+		
+
+/*  cg.solve (mesh_matrix, velocity_solution, rhs, preconditioner_stiffness);
+    sim.pcout << "   Solving mesh velocity system... " << solver_control.last_step() <<" iterations."<< std::endl;
+
+    mass_matrix_constraints.distribute (solution);
+
+    //Update the free surface mesh velocity vector
+    fs_mesh_velocity = velocity_solution;
+
+    //Update the mesh displacement vector
+    LinearAlgebra::Vector distributed_mesh_displacements(mesh_locally_owned, sim.mpi_communicator);
+    distributed_mesh_displacements = mesh_displacements;
+    distributed_mesh_displacements.add(sim.time_step, velocity_solution);
+		
+    mesh_displacements = distributed_mesh_displacements; */		
+		
+		
+		std::cout<<"Reached end of important part\n";
+		
+		
+		
+		//Visual output
+		// //std::cout<<"sim.time_step = "<<sim.time_step<<"\n";
+		// Vector<double> diff;
+		// diff = solution;
+		// diff -= displacements;
+		
+		// {
+			// DataOut<dim> data_out;
+			// data_out.attach_dof_handler (free_surface_dof_handler);
+			// data_out.add_data_vector (solution, "solution");
+			// data_out.add_data_vector (diff, "diff");
+			// data_out.add_data_vector (displacements, "displacements");
+			// data_out.build_patches ();
 			
-			std::ofstream out ("solutions.gpl");
-			data_out.write_gnuplot (out);
-		}
+			// std::ofstream out ("solutions.gpl");
+			// data_out.write_gnuplot (out);
+		// }
 	}
 	
 
