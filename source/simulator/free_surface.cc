@@ -286,9 +286,9 @@ namespace aspect
     //Make the constraints for the elliptic problem.  On the free surface, we
     //constrain mesh velocity to be v.n, on free slip it is constrainted to
     //be tangential, and on no slip boundaries it is zero.
-    std::cout<<"Entered execute()\n";
+    //std::cout<<"Entered execute()\n";
 		make_constraints();
-		std::cout<<"make_constraints complete\n";
+		//std::cout<<"make_constraints complete\n";
 
     // Assemble and solve the vector Laplace problem which determines
     // the mesh displacements in the interior of the domain
@@ -407,7 +407,7 @@ namespace aspect
 	template <int dim>
   void FreeSurfaceHandler<dim>::diffuse_surface(LinearAlgebra::Vector &output)
 	{
-		std::cout<<"entered diffuse_surface\n";
+		//std::cout<<"entered diffuse_surface\n";
 		
 		LinearAlgebra::SparseMatrix system_matrix;
 		LinearAlgebra::Vector system_rhs, solution;
@@ -432,7 +432,7 @@ namespace aspect
                                                 // ZeroFunction<dim>(dim), mass_matrix_constraints);																									
 		
 		
-		std::cout<<"completed periodic boundaries loop\n";
+		//std::cout<<"completed periodic boundaries loop\n";
     mass_matrix_constraints.close();
 		
 #ifdef ASPECT_USE_PETSC
@@ -490,7 +490,7 @@ namespace aspect
 		
 		
 		
-		std::cout<<"Reached loop over cells\n";
+		//std::cout<<"Reached loop over cells\n";
 		
 		//Loop over cells
 		for (; cell!=endc; ++cell, ++fscell)
@@ -524,10 +524,19 @@ namespace aspect
 													* displacement
 													* fs_fe_face_values.JxW (q_index);
 								//Set local matrix elements					
+								Tensor<2, dim, double> rot;
+								outer_product(rot, fs_fe_face_values.normal_vector(q_index), fs_fe_face_values.normal_vector(q_index));
+								Tensor<2, dim, double> I;
+								for (int k = 0; k<dim; k++)
+									I[k][k]=1;
+								
+								//rot =  dealii::identity_tensor<dim> () - rot;
+								rot =  I - rot;
+								
 								for (unsigned int j=0; j<dofs_per_cell; ++j)
 									
 									/*fs_fe_face_values.shape_grad (i|j, q_index) - gradients of test functions*/
-									cell_matrix(i,j) += (sim.time_step * diffusivity * (fs_fe_face_values.shape_grad (i, q_index)  * fs_fe_face_values.shape_grad (j, q_index)) 
+									cell_matrix(i,j) += (sim.time_step * diffusivity * (rot*fs_fe_face_values.shape_grad (i, q_index)  * rot*fs_fe_face_values.shape_grad (j, q_index)) 
 										+ (fs_fe_face_values.shape_value (i, q_index) * fs_fe_face_values.shape_value (j, q_index)))
 										* fs_fe_face_values.JxW (q_index);            // need SURFACE gradient
 										
@@ -560,7 +569,7 @@ namespace aspect
 						// }
 					}
 		}
-		std::cout<<"Exit loop over cells\n";
+		//std::cout<<"Exit loop over cells\n";
 		//Generate a list of pairs of global degree of freedom numbers (on the boundary) 
 		//and their boundary values (which are zero here for all entries)
 		
@@ -596,7 +605,8 @@ namespace aspect
     system_matrix.compress(VectorOperation::add);	
 		
 		//Set parameters for the solver: (max_iterations, tolerance); 
-		SolverControl solver_control (1000, 1e-12);
+		//std::cout<<"rhs size="<<system_rhs.size()<<"\n";
+		SolverControl solver_control (10000, 1e-10);
 		//SolverControl solver_control (5*system_rhs.size(), sim.parameters.linear_stokes_solver_tolerance*system_rhs.l2_norm());
 		//Create solver itself
 		SolverCG<LinearAlgebra::Vector> solver (solver_control);
@@ -618,14 +628,14 @@ namespace aspect
 		//output_temp.sadd(1/sim.time_step,);
 		
 		
-		std::cout<<"Reached last for loop\n";
+		//std::cout<<"Reached last for loop\n";
 		//for (unsigned int i = 0; i < solution.size(); i++)
 		//{
 			//output_temp[i] = solution[i];// - displacements[i];
 			if (sim.time_step)
 				output_temp /= sim.time_step;
 		//}
-		std::cout<<"Exit last for loop\n";
+		//std::cout<<"Exit last for loop\n";
 		output=output_temp;
 		
 
@@ -645,7 +655,7 @@ namespace aspect
     mesh_displacements = distributed_mesh_displacements; */		
 		
 		
-		std::cout<<"Reached end of important part\n";
+		//std::cout<<"Reached end of important part\n";
 		
 		
 		
@@ -1029,9 +1039,9 @@ namespace aspect
 				//FEFaceValues<dim> fe_face_values (*sim.mapping, sim.finite_element, quadrature_formula, update_values | update_gradients | update_JxW_values)
 				const unsigned int n_q_points = fe_values.n_quadrature_points,
 													 dofs_per_cell = fe_values.dofs_per_cell;
-				std::cout<<"n_q_points="<<n_q_points<<"\n";
-				std::cout<<"dim="<<dim<<"\n";
-				std::cout<<"length of support_points="<<support_points.size()<<"\n";
+				// std::cout<<"n_q_points="<<n_q_points<<"\n";
+				// std::cout<<"dim="<<dim<<"\n";
+				// std::cout<<"length of support_points="<<support_points.size()<<"\n";
 
 				std::vector<types::global_dof_index> cell_dof_indices (dofs_per_cell);
 				FEValuesExtractors::Vector extract_displacement(0);
@@ -1066,7 +1076,7 @@ namespace aspect
 				distributed_initial_displacements.compress(VectorOperation::insert);
 				mesh_displacements = distributed_initial_displacements;
 				
-				std::cout<<"Setup_DOFs complete\n";
+				//std::cout<<"Setup_DOFs complete\n";
 			}
 
     // We would like to make sure that the mesh stays conforming upon
