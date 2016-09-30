@@ -425,11 +425,11 @@ namespace aspect
       // DoFTools::make_periodicity_constraints(free_surface_dof_handler,
                                              // (*p).first.first, (*p).first.second, (*p).second, mass_matrix_constraints);
     
-		//Zero out the displacement for the zero-velocity boundary indicators
-    VectorTools::interpolate_boundary_values (free_surface_dof_handler, 0,
-                                                ZeroFunction<dim>(dim), mass_matrix_constraints);		
-    VectorTools::interpolate_boundary_values (free_surface_dof_handler, 1,
-                                                ZeroFunction<dim>(dim), mass_matrix_constraints);																									
+		// //Zero out the displacement for the zero-velocity boundary indicators
+    // VectorTools::interpolate_boundary_values (free_surface_dof_handler, 0,
+                                                // ZeroFunction<dim>(dim), mass_matrix_constraints);		
+    // VectorTools::interpolate_boundary_values (free_surface_dof_handler, 1,
+                                                // ZeroFunction<dim>(dim), mass_matrix_constraints);																									
 		
 		
 		std::cout<<"completed periodic boundaries loop\n";
@@ -607,10 +607,10 @@ namespace aspect
     mass_matrix_constraints.distribute (solution);
 		
 		LinearAlgebra::Vector output_temp(mesh_locally_owned, mesh_locally_relevant, sim.mpi_communicator);
-		std::cout<<"output_temp size:" <<output_temp.size()<<"\n";
-		std::cout<<"solution size:" <<solution.size()<<"\n";
-		std::cout<<"output size:" <<output.size()<<"\n";
-		std::cout<<"displacements size:" <<displacements.size()<<"\n";
+		// std::cout<<"output_temp size:" <<output_temp.size()<<"\n";
+		// std::cout<<"solution size:" <<solution.size()<<"\n";
+		// std::cout<<"output size:" <<output.size()<<"\n";
+		// std::cout<<"displacements size:" <<displacements.size()<<"\n";
 		output_temp = solution;
 		
 		output_temp -= displacements;
@@ -1051,7 +1051,8 @@ namespace aspect
 									const Point<dim> p = fe_values.quadrature_point(j);
 									Point<dim> displacement;
 									displacement[0] = 0.;
-									displacement[1] = p[1]*0.05*std::sin(2*p[0]*M_PI);
+									displacement[1] = 0.;
+									displacement[dim-1] = p[dim-1]*0.05*std::sin(2*p[0]*M_PI);
 								  for (unsigned int dir=0; dir<dim; ++dir)
 									{
 										unsigned int support_point_index
