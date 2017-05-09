@@ -47,6 +47,13 @@ namespace aspect
         /**
          * Constructor.
          */
+        Rift ();
+
+        /**
+         * Initialization function.
+         */
+        void
+        initialize ();
 
         /**
          * Return the initial composition as a function of position and number
@@ -80,6 +87,23 @@ namespace aspect
          * A function object representing the compositional fields.
          */
         std_cxx11::unique_ptr<Functions::ParsedFunction<dim> > function;
+
+       /**
+        * The x location of the mean of the Gaussian amplitude of the noise.
+        */
+        double x_mean;
+        double A;
+        double sigma;
+   
+
+       /**
+        * A table with random noise for the 
+        * second invariant of the strain.
+        */
+        std_cxx1x::array<unsigned int,dim> grid_intervals;
+        Functions::InterpolatedUniformGridData<dim> *interpolate_noise;
+            
+
     };
   }
 }
