@@ -23,6 +23,7 @@
 #include <aspect/postprocess/interface.h>
 #include <aspect/geometry_model/box.h>
 #include <aspect/material_model/visco_plastic.h>
+#include <aspect/utilities.h>
 
 namespace aspect
 {
@@ -36,8 +37,8 @@ namespace aspect
     void
     Rift<dim>::initialize ()
     {
-          AssertThrow(dynamic_cast<const MaterialModel::ViscoPlastic<dim> *>(&this->get_material_model()) != NULL,
-                      ExcMessage("This initial condition only makes sense in combination with the visco_plastic material model."));
+      AssertThrow(dynamic_cast<const MaterialModel::ViscoPlastic<dim> *>(&this->get_material_model()) != NULL,
+                  ExcMessage("This initial condition only makes sense in combination with the visco_plastic material model."));
 
       // From shear_bands.cc
       Point<dim> extents;
@@ -94,12 +95,18 @@ namespace aspect
     Rift<dim>::
     initial_composition (const Point<dim> &position, const unsigned int n_comp) const
     {
-      const double noise_amplitude = A * std::exp((-std::pow(position[0]-x_mean,2)/(2.0*std::pow(sigma,2))));
+      // For a box it is easy, just drop last coordinate
+      if (dim == 3)
+        const Point<2> surface_position = Point<2>(position[0],position[1]);
+
+      const double distance_to_rift_axis = (dim == 2) ? (position[0]-point_list[0][0]) : 10000; //std::abs(signed_distance_to_polygon(polygon, surface_position));
+
+      const double noise_amplitude = A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2))));
 
       if (n_comp == 0)
         return noise_amplitude * interpolate_noise->value(position);
-      else 
-        return function->value(position,n_comp);
+      else
+        return 0.0;
     }
 
     template <int dim>
@@ -110,10 +117,6 @@ namespace aspect
       {
         prm.enter_subsection("Rift");
         {
-          prm.declare_entry ("Horizontal coordinate of Gaussian mean", "200000",
-                             Patterns::Double (0),
-                             "The x coordinate of the Gaussian mean of the amplitude of the strain noise. "
-                             "Units: $m$.");
           prm.declare_entry ("Standard deviation of Gaussian noise amplitude distribution", "20000",
                              Patterns::Double (0),
                              "The standard deviation of the Gaussian distribution of the amplitude of the strain noise. "
@@ -134,7 +137,16 @@ namespace aspect
                              "the initial background porosity that will then be interpolated "
                              "to the model grid. "
                              "Units: none.");
-          Functions::ParsedFunction<dim>::declare_parameters (prm, 1);
+          prm.declare_entry("Rift axis polygon",
+                            "",
+                            Patterns::Anything(),
+                            "Set the polygon that represents the rift axis. The polygon is made up of "
+                            "a list of points that represent horizontal coordinates (x,y). "
+                            "The exact format for the point list describing the polygon is "
+                            "\"x1,y1;x2,y2\". The units of the coordinates are "
+                            "dependent on the geometry model. In the box model they are in meters, in the "
+                            "chunks they are in degrees, etc. Please refer to the manual of the individual "
+                            "geometry model to so see how the topography is implemented.");
         }
         prm.leave_subsection();
       }
@@ -158,26 +170,31 @@ namespace aspect
       prm.enter_subsection("Initial composition model");
       {
         prm.enter_subsection("Rift");
-          x_mean              = prm.get_double ("Horizontal coordinate of Gaussian mean");
-          sigma              = prm.get_double ("Standard deviation of Gaussian noise amplitude distribution");
-          A              = prm.get_double ("Maximum amplitude of Gaussian noise amplitude distribution");
-          grid_intervals[0]    = prm.get_integer ("Grid intervals for noise X");
-          grid_intervals[1]    = prm.get_integer ("Grid intervals for noise Y");
-        try
+        sigma              = prm.get_double ("Standard deviation of Gaussian noise amplitude distribution");
+        A              = prm.get_double ("Maximum amplitude of Gaussian noise amplitude distribution");
+        grid_intervals[0]    = prm.get_integer ("Grid intervals for noise X");
+        grid_intervals[1]    = prm.get_integer ("Grid intervals for noise Y");
+
+        // Read in the polygon string
+        const std::string temp_polygon = prm.get("Rift axis polygon");
+        // Split the string into point strings
+        const std::vector<std::string> temp_coordinates = Utilities::split_string_list(temp_polygon,';');
+        const unsigned int n_temp_coordinates = temp_coordinates.size();
+        point_list.resize(n_temp_coordinates);
+        for (unsigned int i_coord = 0; i_coord < n_temp_coordinates; i_coord++)
           {
-            function.reset (new Functions::ParsedFunction<dim>(n_compositional_fields));
-            function->parse_parameters (prm);
+            const std::vector<double> temp_point = Utilities::string_to_double(Utilities::split_string_list(temp_coordinates[i_coord],','));
+            Assert(temp_point.size() == 2,ExcMessage ("The given coordinate '" + temp_coordinates[i_coord] + "' is not correct. "
+                                                      "It should only contain 2 parts: "
+                                                      "the two coordinates of the polygon point, separated by a ','."));
+
+            point_list[i_coord] = Point<2>(temp_point[0], temp_point[1]);
           }
-        catch (...)
-          {
-            std::cerr << "ERROR: FunctionParser failed to parse\n"
-                      << "\t'Initial composition model.Function'\n"
-                      << "with expression\n"
-                      << "\t'" << prm.get("Function expression") << "'\n"
-                      << "More information about the cause of the parse error \n"
-                      << "is shown below.\n";
-            throw;
-          }
+
+        if (dim == 3)
+        AssertThrow(point_list.size() >= 3, ExcMessage("A polygon should consist of at least 3 points."));
+        if (dim == 2)
+          AssertThrow(point_list.size() == 1, ExcMessage("In 2D, only one point is needed to specify the rift axis position. "));
 
         prm.leave_subsection();
       }
