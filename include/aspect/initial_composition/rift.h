@@ -88,21 +88,29 @@ namespace aspect
          */
         std_cxx11::unique_ptr<Functions::ParsedFunction<dim> > function;
 
-       /**
-        * The x location of the mean of the Gaussian amplitude of the noise.
-        */
-        double x_mean;
+        /**
+         * The maximum amplitude of the Gaussian amplitude of the noise.
+         */
         double A;
-        double sigma;
-   
 
-       /**
-        * A table with random noise for the 
-        * second invariant of the strain.
-        */
+        /**
+         * The standard deviation of the Gaussian amplitude of the noise.
+         */
+        double sigma;
+ 
+        /**
+         * The list of 2D coordinates of the polygon that represents the rift axis.
+         */
+        std::vector<Point<2> > point_list;
+
+
+        /**
+         * A table with random noise for the
+         * second invariant of the strain.
+         */
         std_cxx1x::array<unsigned int,dim> grid_intervals;
         Functions::InterpolatedUniformGridData<dim> *interpolate_noise;
-            
+
 
     };
   }
