@@ -25,7 +25,7 @@
 #include <aspect/initial_composition/interface.h>
 #include <aspect/simulator_access.h>
 
-#include <deal.II/base/parsed_function.h>
+#include <deal.II/base/function_lib.h>
 
 namespace aspect
 {
