@@ -83,10 +83,6 @@ namespace aspect
         parse_parameters (ParameterHandler &prm);
 
       private:
-        /**
-         * A function object representing the compositional fields.
-         */
-        std_cxx11::unique_ptr<Functions::ParsedFunction<dim> > function;
 
         /**
          * The maximum amplitude of the Gaussian amplitude of the noise.
@@ -97,7 +93,12 @@ namespace aspect
          * The standard deviation of the Gaussian amplitude of the noise.
          */
         double sigma;
- 
+
+        /**
+         * The depth around which the noise is smoothed out.
+         */
+        double strain_depth;
+
         /**
          * The list of 2D coordinates of the polygon that represents the rift axis.
          */

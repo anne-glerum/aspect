@@ -82,7 +82,17 @@ namespace aspect
           for (unsigned int j=0; j<white_noise.size()[1]; ++j)
             {
               idx[1] = j;
-              white_noise(idx) = ((std::rand() % 10000) / 5000.0 - 1.0);
+              if (dim == 3)
+                {
+                  for (unsigned int k=0; k<white_noise.size()[dim-1]; ++k)
+                    {
+                      idx[dim-1] = k;
+                      white_noise(idx) = ((std::rand() % 10000) / 5000.0 - 1.0);
+                    }
+                }
+              else
+                white_noise(idx) = ((std::rand() % 10000) / 5000.0 - 1.0);
+
             }
         }
 
@@ -96,12 +106,13 @@ namespace aspect
     initial_composition (const Point<dim> &position, const unsigned int n_comp) const
     {
       // For a box it is easy, just drop last coordinate
-      if (dim == 3)
-        const Point<2> surface_position = Point<2>(position[0],position[1]);
+      const Point<2> surface_position = Point<2>(position[0],position[1]);
 
-      const double distance_to_rift_axis = (dim == 2) ? (position[0]-point_list[0][0]) : 10000; //std::abs(signed_distance_to_polygon(polygon, surface_position));
+      const double distance_to_rift_axis = (dim == 2) ? (position[0]-point_list[0][0]) : std::abs(Utilities::signed_distance_to_polygon<dim>(point_list, surface_position));
 
-      const double noise_amplitude = A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2))));
+      const double depth_smoothing = 0.5 * (1.0 + std::tanh((position[dim-1] - strain_depth) / sigma));
+
+      const double noise_amplitude = A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))) * depth_smoothing;
 
       if (n_comp == 0)
         return noise_amplitude * interpolate_noise->value(position);
@@ -125,7 +136,11 @@ namespace aspect
                              Patterns::Double (0),
                              "The amplitude of the Gaussian distribution of the amplitude of the strain noise. "
                              "Units: $m$.");
-          prm.declare_entry ("Grid intervals for noise X", "100",
+          prm.declare_entry ("Depth around which Gaussian noise is smoothed out", "40000",
+                             Patterns::Double (0),
+                             "The depth around which smoothing out of the strain noise starts with a hyperbolic tangent. "
+                             "Units: $m$.");
+          prm.declare_entry ("Grid intervals for noise X", "25",
                              Patterns::Integer (0),
                              "Grid intervals in X directions for the white noise added to "
                              "the initial background porosity that will then be interpolated "
@@ -134,6 +149,12 @@ namespace aspect
           prm.declare_entry ("Grid intervals for noise Y", "25",
                              Patterns::Integer (0),
                              "Grid intervals in Y directions for the white noise added to "
+                             "the initial background porosity that will then be interpolated "
+                             "to the model grid. "
+                             "Units: none.");
+          prm.declare_entry ("Grid intervals for noise Z", "25",
+                             Patterns::Integer (0),
+                             "Grid intervals in Z directions for the white noise added to "
                              "the initial background porosity that will then be interpolated "
                              "to the model grid. "
                              "Units: none.");
@@ -170,10 +191,13 @@ namespace aspect
       prm.enter_subsection("Initial composition model");
       {
         prm.enter_subsection("Rift");
-        sigma              = prm.get_double ("Standard deviation of Gaussian noise amplitude distribution");
-        A              = prm.get_double ("Maximum amplitude of Gaussian noise amplitude distribution");
+        sigma                = prm.get_double ("Standard deviation of Gaussian noise amplitude distribution");
+        A                    = prm.get_double ("Maximum amplitude of Gaussian noise amplitude distribution");
+        strain_depth         = prm.get_double ("Depth around which Gaussian noise is smoothed out");
         grid_intervals[0]    = prm.get_integer ("Grid intervals for noise X");
         grid_intervals[1]    = prm.get_integer ("Grid intervals for noise Y");
+        if (dim == 3)
+          grid_intervals[2]    = prm.get_integer ("Grid intervals for noise Z");
 
         // Read in the polygon string
         const std::string temp_polygon = prm.get("Rift axis polygon");
@@ -192,7 +216,7 @@ namespace aspect
           }
 
         if (dim == 3)
-        AssertThrow(point_list.size() >= 3, ExcMessage("A polygon should consist of at least 3 points."));
+          AssertThrow(point_list.size() >= 3, ExcMessage("A polygon should consist of at least 3 points."));
         if (dim == 2)
           AssertThrow(point_list.size() == 1, ExcMessage("In 2D, only one point is needed to specify the rift axis position. "));
 
