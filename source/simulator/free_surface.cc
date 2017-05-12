@@ -713,8 +713,10 @@ namespace aspect
                 const Tensor<1,dim> n_hat = scratch.face_finite_element_values.normal_vector(q_point);
                 const Tensor<1,dim> g_hat = (g_norm == 0.0 ? Tensor<1,dim>() : gravity/g_norm);
 
+                //compute the pressure perturbation and add the user-set surface pressure
                 double pressure_perturbation = scratch.face_material_model_outputs.densities[q_point] *
-                                               sim.time_step * free_surface_theta * g_norm;
+                                               sim.time_step * free_surface_theta * g_norm +
+                                               this->get_surface_pressure();
 
                 //see Kaus et al 2010 for details of the stabilization term
                 for (unsigned int i=0; i< stokes_dofs_per_cell; ++i)
