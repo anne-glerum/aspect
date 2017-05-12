@@ -658,7 +658,7 @@ namespace aspect
   template <int dim>
   void
   FreeSurfaceHandler<dim>::
-  apply_stabilization (const typename DoFHandler<dim>::active_cell_iterator &cell,
+  apply_pressure (const typename DoFHandler<dim>::active_cell_iterator &cell,
                        internal::Assembly::Scratch::StokesSystem<dim>       &scratch,
                        internal::Assembly::CopyData::StokesSystem<dim>      &data)
   {

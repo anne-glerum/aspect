@@ -65,8 +65,9 @@ namespace aspect
        * stabilization is only added to cells on a free surface.  The
        * scheme is based on that of Kaus et. al., 2010.  Called during
        * assemly of the system matrix.
+       * Also, the surface pressure is added to the pressure perturbation.
        */
-      void apply_stabilization (const typename DoFHandler<dim>::active_cell_iterator &cell,
+      void apply_pressure (const typename DoFHandler<dim>::active_cell_iterator &cell,
                                 internal::Assembly::Scratch::StokesSystem<dim>       &scratch,
                                 internal::Assembly::CopyData::StokesSystem<dim>      &data);
 
