@@ -19,7 +19,8 @@
 */
 
 
-#include "aspect/initial_temperature/slab_surface.h"
+#include <aspect/initial_temperature/slab_surface.h>
+#include <aspect/initial_temperature/adiabatic.h>
 #include <aspect/utilities.h>
 #include <aspect/simulator_access.h>
 #include <fstream>
@@ -48,6 +49,7 @@ namespace aspect
         n_slabs(n_slab),
         n_hor_points(n_hor),
         n_ver_points(n_ver),
+        max_arc_length(n_slab),
         grid_coord(n_slab,dealii::Table<2, Point<dim> > (0,0)),
         arc_length(n_slab,dealii::Table<2, double > (0,0))
 
@@ -109,6 +111,7 @@ namespace aspect
                     else
                       {
                         arc_length[n][i][j] = arc_length[n][i][j-1] + grid_coord[n][i][j].distance(grid_coord[n][i][j-1]);
+                        max_arc_length[n] = std::max(max_arc_length[n], arc_length[n][i][j]);
                       }
                   }
               }
@@ -155,6 +158,14 @@ namespace aspect
 
       }
 
+      template <int dim>
+      double
+      SlabGridLookup<dim>::get_max_arc_length(const unsigned int slab_nr) const
+      {
+        Assert(slab_nr < n_slabs, ExcMessage("Slab number larger than the number of slabs. "));
+        return max_arc_length[slab_nr];
+
+      }
 
     }
 
@@ -179,46 +190,24 @@ namespace aspect
     initial_temperature (const Point<dim> &pos) const
     {
       //////////////////////////////////////////////////////////////////////////////////////////
-      // There are five options for the temperature:                                          //
+      // There are two options for the temperature:                                           //
       // 1) point lies in slab: temperature will be described as in McKenzie 1970             //
-      // 2) point lies in one of the other oceanic plates: plate cooling model                //
-      // 3) point lies in one of the other continental plates: linear gradient                //
-      // 4) point is neither slab nor plate, but mantle: adiabatic T                          //
-      //    with/without T perturbation from tomography                                       //
-      // 5) point lies in the air or ocean: T_top                                             //
-      // We first create a background temperature field considering option 3 and 4 and then   //
-      // check if we are in the plates/slabs and adjust the temperature accordingly.          //
+      // 2) point lies outside the slab and temperature will be adiabatic with thermal        //
+      //    boundary layers at the top or bottom                                              //
       //////////////////////////////////////////////////////////////////////////////////////////
 
       // Depth of current point
       const double depth = this->get_geometry_model().depth(pos);
-      // The temperature at the base of the adiabatic mantle
-      Point<dim> spherical_coord;
-      // TODO: adjust 500!
-      // TODO: set lat and lon in adiab plugin because T_a is position dependent?
-      spherical_coord[dim-1] = R_earth - max_lithosphere_depth;
-      // TODO: get right point
-      const Point<dim> cartesian_coord; // = polygon_lookup->spherical_to_cart(spherical_coord);
-      T_a = this->get_adiabatic_conditions().temperature(cartesian_coord);
-
-      double temperature = T_a;
 
       // Get the background temperature:
-      // The adiabatic temperature at the bottom of the deepest plate
-      // is uniformly set up to the depth of the deepest plate
-      // Below that an adiabat with/without thermal anomalies from tomography
-      // is prescribed.
-
-//    else if (depth < Continental_Plate.get_depth_top()+Continental_Plate.get_thickness())
-//      temperature = std::max(T_top,continental_plate_temperature(depth));
-//      if (depth > max_lithosphere_depth)
-//        temperature = ascii_model->initial_temperature(pos);
+      double temperature = Adiabatic<dim>::initial_temperature(pos);
 
       // if deeper than slab_depth, return temperature right away
       if (depth > max_slab_depth)
         return std::max(T_top,std::min(temperature, T_bottom));
 
-      temperature = std::max(T_top, slab_temperature(0, pos));
+      // else, look up the slab temperature and take the minimum
+      //temperature = std::max(T_top, std::min(slab_temperature(0, pos),temperature));
 
       return std::max(T_top,std::min(temperature, T_bottom));
 
@@ -284,15 +273,13 @@ namespace aspect
     AsciiPip<dim>::
     slab_temperature (const unsigned int field_nr, const Point<dim> coord) const
     {
-      Assert(slab_nr_per_volume[field_nr] != 10, ExcMessage("This field does not represent a slab. "));
-
       double temp = 0;
 
       // We use the adaptation of McKenzie 1970 by Pranger 2014, page 8.
 
       // The Reynolds number: reynolds = rho_0 * c_P * v * d / (2 * k) = v * d / (2 * kappa)
       // TODO: Are the reference values representative?
-      const double reynolds = subduction_vel[slab_nr_per_volume[field_nr]] * slab_thickness[slab_nr_per_volume[field_nr]] / (2.0 * 1e-6);
+      const double reynolds = subduction_vel[field_nr] * slab_thickness[field_nr] / (2.0 * 1e-6);
 
       // The adiabatic term.
       // Because we set the temperature to T_a up to max_lithosphere_depth,
@@ -310,20 +297,23 @@ namespace aspect
       // The local coordinates along the local system parallel to
       // the down-dip direction (0) of the slab and the perpendicular
       // axis facing inwards (1).
-      Tensor<1,2> local_coord = slab_length_and_depth(slab_nr_per_volume[field_nr],coord);
+      Tensor<1,2> local_coord = slab_length_and_depth(field_nr,coord);
 
+      // If we're outside the slab region, return a high nonsense temperature
+      if(local_coord[0]<0.0 || local_coord[0]>grid_lookup->get_max_arc_length(field_nr) || local_coord[1]>0.0 || std::abs(local_coord[1])>slab_thickness[field_nr])
+        return 6000.;
       // Sometimes the in-slab depth is slightly larger than the thickness
       // and sometimes the initial nearest_triangle_distance of 1e23
       // is not overwritten, so cap here.
-      local_coord[1] = std::min(slab_thickness[slab_nr_per_volume[field_nr]],std::max(0.0,local_coord[1]));
+      local_coord[1] = std::min(slab_thickness[field_nr],std::max(0.0,std::abs(local_coord[1])));
 
       // The summation
       for (unsigned int n = 1; n <= n_max; ++n)
         {
           sum += std::pow(-1.0,n) *
                  (1.0 / (n * numbers::PI)) *
-                 std::exp((reynolds - std::sqrt(reynolds * reynolds + (n * n * numbers::PI * numbers::PI))) * local_coord[0] / slab_thickness[slab_nr_per_volume[field_nr]] ) *
-                 std::sin(n * numbers::PI * (1.0 - local_coord[1] / slab_thickness[slab_nr_per_volume[field_nr]]));
+                 std::exp((reynolds - std::sqrt(reynolds * reynolds + (n * n * numbers::PI * numbers::PI))) * local_coord[0] / slab_thickness[field_nr] ) *
+                 std::sin(n * numbers::PI * (1.0 - local_coord[1] / slab_thickness[field_nr]));
         }
 
       // The total temperature
@@ -333,7 +323,7 @@ namespace aspect
       // but with the overriding plate, we should consider prescribing just an
       // oceanic plate temperature distribution (so no heating from the slab's
       // surface by the mantle.
-      const double oceanic_temp = oceanic_plate_temperature(field_nr,local_coord[1],slab_thickness[slab_nr_per_volume[field_nr]], 0.0, 200e6*year_in_seconds);
+      const double oceanic_temp = oceanic_plate_temperature(field_nr,local_coord[1],slab_thickness[field_nr], 0.0, 200e6*year_in_seconds);
       // TODO: think about this
       // TODO: up to what depth should we do this? Overriding plate depth preferably.
       if (real_depth <= 120000.0 /*max_lithosphere_depth*/ && compensate_trench_temp)
@@ -475,7 +465,7 @@ namespace aspect
               point_to_plane(pos,plane,normal_distance,point_in_plane,in_triangle);
 
 //            if (normal_distance < nearest_triangle_distance)
-              if ((normal_distance < nearest_triangle_distance && in_triangle) || count == 1)
+              if ((std::abs(normal_distance) < std::abs(nearest_triangle_distance) && in_triangle) || count == 1)
                 {
                   nearest_triangle_distance = normal_distance;
                   nearest_triangle_indices = current_triangle_indices;
@@ -487,6 +477,13 @@ namespace aspect
             }
         }
 
+      if(!in_triangle)
+      {
+      length_and_depth[0] = 1e8;
+      length_and_depth[1] = 1e8;
+      
+      return length_and_depth;
+      }
 
       // Interpolate the arc lengths of each vertex of the nearest triangle
       // to the projected point
@@ -501,7 +498,7 @@ namespace aspect
       arc_length = triangle_basis_function_interpolation(plane, triangle_arc_lengths, nearest_point_in_plane);
 
       // Yeey we made it
-      length_and_depth[0] = std::max(arc_length, 0.0);
+      length_and_depth[0] = arc_length; //std::max(arc_length, 0.0);
       length_and_depth[1] = nearest_triangle_distance;
 
       return length_and_depth;
@@ -540,7 +537,8 @@ namespace aspect
       if (norm_vec_plane_position > epsilon && norm_normal > epsilon)
         {
           cos_angle = (vec_plane_position/norm_vec_plane_position) * (normal/norm_normal);
-          distance  = std::abs(norm_vec_plane_position * cos_angle);
+          //distance  = std::abs(norm_vec_plane_position * cos_angle);
+          distance  = norm_vec_plane_position * cos_angle;
           projection = coord - norm_vec_plane_position * cos_angle * normal/norm_normal;
 
           triangle_coord(projection, plane, local_coord);
@@ -656,7 +654,7 @@ namespace aspect
 
       prm.enter_subsection ("Initial temperature model");
       {
-        prm.enter_subsection("Pip");
+        prm.enter_subsection("Slab surface");
         {
           prm.declare_entry("Base model","adiabatic profile with ascii perturbations",
                             Patterns::Selection("adiabatic profile with ascii perturbations"),
@@ -727,14 +725,13 @@ namespace aspect
     void
     AsciiPip<dim>::parse_parameters (ParameterHandler &prm)
     {
+      // We use the adiabatic plugin for the background temperature
       Adiabatic<dim>::parse_parameters(prm);
 
       prm.enter_subsection ("Initial temperature model");
       {
         prm.enter_subsection("Slab surface");
         {
-          // We use the adiabatic plugin for the background temperature
-          Adiabatic->parse_parameters(prm);
 
           // Where we get our slab data file(s)
           datadirectory           = prm.get ("Data directory");
@@ -749,7 +746,10 @@ namespace aspect
           slab_grid_file_name = prm.get ("Slab grid file name");
 
           // Slab information
+          // The number of slabs for which we include points in the slab grid file
           n_slab_fields       = prm.get_integer ("Number of slabs");
+ 
+          // The maximum depth to which the slabs extend
           max_slab_depth      = prm.get_double("Slab max depth");
 
           const std::vector<int> n_hor = dealii::Utilities::string_to_int
@@ -766,7 +766,6 @@ namespace aspect
           n_ver_grid_points = std::vector<unsigned int> (n_ver.begin(),
                                                          n_ver.end());
 
-          // TODO: get from plate type
           slab_thickness = dealii::Utilities::string_to_double
                            (dealii::Utilities::split_string_list(prm.get("Slab thickness per slab")));
           AssertThrow (slab_thickness.size() == n_slab_fields, ExcMessage("The number of slabs for which a thickness is specified "
@@ -778,6 +777,7 @@ namespace aspect
                                                                           "does not correspond to the number of slabs. "));
 
 
+          // Whether or not to adjust the temperature of the trench to the overriding plate
           compensate_trench_temp = prm.get_bool("Adjust trench temperature");
         }
         prm.leave_subsection ();
@@ -788,7 +788,6 @@ namespace aspect
 
       // TODO: read these in from somewhere!
 //    T_top = 285.0;
-      T_a   = 1650.0;
 //    T_bottom = 3590.0;
       prm.enter_subsection("Boundary temperature model");
       {

@@ -19,10 +19,11 @@
 */
 
 
-#ifndef __aspect__initial_temperature_slab_surface_h
-#define __aspect__initial_temperature_slab_surface_h
+#ifndef _aspect_initial_temperature_slab_surface_h
+#define _aspect_initial_temperature_slab_surface_h
 
 #include <aspect/initial_temperature/interface.h>
+#include <aspect/initial_temperature/adiabatic.h>
 #include <aspect/simulator_access.h>
 //#include <deal.II/base/std_cxx1x/array.h>
 
@@ -48,11 +49,14 @@ namespace aspect
 
           double get_arc_length(const unsigned int slab_nr, const unsigned int i_hor, const unsigned int j_ver) const;
 
+          double get_max_arc_length(const unsigned int slab_nr) const;
+
         private:
 
 
 //         unsigned int n_grid_coord;
           unsigned int n_slabs;
+          std::vector<double> max_arc_length;
 
           std::vector<unsigned int> n_hor_points, n_ver_points;
 
@@ -73,7 +77,7 @@ namespace aspect
      */
 
     template <int dim>
-    class AsciiPip : public Interface<dim>, public ::aspect::SimulatorAccess<dim>, public ::aspect::InitialTemperature::Adiabatic<dim>
+    class AsciiPip :  public InitialTemperature::Adiabatic<dim>
     {
       public:
         /**
