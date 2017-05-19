@@ -23,6 +23,7 @@
 #include <aspect/free_surface.h>
 #include <aspect/global.h>
 #include <aspect/assembly.h>
+#include <aspect/melt.h>
 
 #include <deal.II/dofs/dof_renumbering.h>
 #include <deal.II/dofs/dof_accessor.h>
@@ -666,6 +667,15 @@ namespace aspect
   {
     if (!sim.parameters.free_surface_enabled)
       return;
+
+    if (sim.parameters.include_melt_transport)
+      {
+        sim.melt_handler->apply_free_surface_stabilization_with_melt (free_surface_theta,
+                                                                      cell,
+                                                                      scratch,
+                                                                      data);
+        return;
+      }
 
     const Introspection<dim> &introspection = sim.introspection;
     const FiniteElement<dim> &fe = sim.finite_element;
