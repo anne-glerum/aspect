@@ -110,7 +110,7 @@ namespace aspect
 
       const double distance_to_rift_axis = (dim == 2) ? (position[0]-point_list[0][0]) : std::abs(Utilities::signed_distance_to_polygon<dim>(point_list, surface_position));
 
-      const double depth_smoothing = 0.5 * (1.0 + std::tanh((position[dim-1] - strain_depth) / sigma));
+      const double depth_smoothing = 0.5 * (1.0 - std::tanh((this->get_geometry_model().depth(position) - strain_depth) / sigma));
 
       const double noise_amplitude = A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))) * depth_smoothing;
 
