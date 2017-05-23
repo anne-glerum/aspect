@@ -87,11 +87,17 @@ namespace aspect
                   for (unsigned int k=0; k<white_noise.size()[dim-1]; ++k)
                     {
                       idx[dim-1] = k;
-                      white_noise(idx) = ((std::rand() % 10000) / 5000.0 - 1.0);
+                      // std::rand will give a value between zero and RAND_MAX (usually INT_MAX).
+                      // The modulus of this value and 10000, gives a value between 0 and 10000-1.
+                      // Subsequently dividing by 5000.0 wil give value between 0 and 2 (excluding 2).
+                      // Subtracting 1 will give a range [-1,1)
+                      // Because we want values [0,1), we change our white noise computation to:
+                      white_noise(idx) = ((std::rand() % 10000) / 10000.0);
+                      std::cout << white_noise(idx) << std::endl;
                     }
                 }
               else
-                white_noise(idx) = ((std::rand() % 10000) / 5000.0 - 1.0);
+                white_noise(idx) = ((std::rand() % 10000) / 10000.0);
 
             }
         }
