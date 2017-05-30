@@ -22,6 +22,7 @@
 #include <aspect/initial_composition/rift.h>
 #include <aspect/postprocess/interface.h>
 #include <aspect/geometry_model/box.h>
+#include <aspect/geometry_model/chunk.h>
 #include <aspect/material_model/visco_plastic.h>
 #include <aspect/utilities.h>
 
@@ -41,7 +42,7 @@ namespace aspect
                   ExcMessage("This initial condition only makes sense in combination with the visco_plastic material model."));
 
       // From shear_bands.cc
-      Point<dim> extents;
+      Point<dim> extents_min, extents_max;
       TableIndices<dim> size_idx;
       for (unsigned int d=0; d<dim; ++d)
         size_idx[d] = grid_intervals[d]+1;
@@ -50,24 +51,42 @@ namespace aspect
       white_noise.TableBase<dim,double>::reinit(size_idx);
       std_cxx1x::array<std::pair<double,double>,dim> grid_extents;
 
+      // TODO get pointer to geometry model in if statement
       if (dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) != NULL)
         {
           const GeometryModel::Box<dim> *
           geometry_model
             = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model());
 
-          extents = geometry_model->get_extents();
+          extents_max = geometry_model->get_extents();
+        }
+      else if (dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) != NULL)
+        {
+          const GeometryModel::Chunk<dim> *
+          geometry_model
+            = dynamic_cast<const GeometryModel::Chunk<dim> *>(&this->get_geometry_model());
+
+          extents_min[0] = geometry_model->inner_radius();
+          extents_max[0] = geometry_model->outer_radius();
+          extents_min[1] = geometry_model->east_longitude();
+          extents_max[1] = geometry_model->west_longitude();
+          if (dim == 3)
+          {
+          extents_min[dim-1] = geometry_model->south_latitude();
+          extents_max[dim-1] = geometry_model->north_latitude();
+          }
+
         }
       else
         {
           AssertThrow(false,
-                      ExcMessage("This initial condition only works with the box geometry model."));
+                      ExcMessage("This initial condition only works with the box or chunk geometry model."));
         }
 
       for (unsigned int d=0; d<dim; ++d)
         {
-          grid_extents[d].first=0;
-          grid_extents[d].second=extents[d];
+          grid_extents[d].first=extents_min[d];
+          grid_extents[d].second=extents_max[d];
         }
 
       // use a fixed number as seed for random generator
@@ -93,7 +112,6 @@ namespace aspect
                       // Subtracting 1 will give a range [-1,1)
                       // Because we want values [0,1), we change our white noise computation to:
                       white_noise(idx) = ((std::rand() % 10000) / 10000.0);
-                      std::cout << white_noise(idx) << std::endl;
                     }
                 }
               else
@@ -111,10 +129,31 @@ namespace aspect
     Rift<dim>::
     initial_composition (const Point<dim> &position, const unsigned int n_comp) const
     {
-      // For a box it is easy, just drop last coordinate
-      const Point<2> surface_position = Point<2>(position[0],position[1]);
-
-      const double distance_to_rift_axis = (dim == 2) ? (position[0]-point_list[0][0]) : std::abs(Utilities::signed_distance_to_polygon<dim>(point_list, surface_position));
+    	// Get the distance to the polygon along a path parallel to the surface
+    	double distance_to_rift_axis;
+    	if (dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) != NULL)
+    	{
+    		if (dim == 2)
+    			distance_to_rift_axis = (position[0]-point_list[0][0]);
+    		else
+    		{
+        	// Get the surface coordinates by dropping the last coordinate
+        	const Point<2> surface_position = Point<2>(position[0],position[1]);
+    		distance_to_rift_axis = std::abs(Utilities::signed_distance_to_polygon<dim>(point_list, surface_position));
+    		}
+    	}
+    	// we already checked that if it's not a box, it's a chunk
+    	else
+    	{
+    		// spherical coordinates in radius, lon, lat format
+    		const std_cxx11::array<double,dim> spherical_point = Utilities::Coordinates::cartesian_to_spherical_coordinates(position);
+    		Point<2> surface_position;
+    		for (unsigned int d=0; d<dim-1; ++d)
+    			surface_position[d] = spherical_point[d+1];
+    		// TODO not sure if this works correctly when far away from the equator
+    		// as were calculating distances in degrees
+    		distance_to_rift_axis = (dim == 2) ? (surface_position[0]-point_list[0][0]) : std::abs(Utilities::signed_distance_to_polygon<dim>(point_list, surface_position));
+    	}
 
       const double depth_smoothing = 0.5 * (1.0 - std::tanh((this->get_geometry_model().depth(position) - strain_depth) / sigma));
 
@@ -137,11 +176,11 @@ namespace aspect
           prm.declare_entry ("Standard deviation of Gaussian noise amplitude distribution", "20000",
                              Patterns::Double (0),
                              "The standard deviation of the Gaussian distribution of the amplitude of the strain noise. "
-                             "Units: $m$.");
+                             "Units: $m$ or degrees.");
           prm.declare_entry ("Maximum amplitude of Gaussian noise amplitude distribution", "0.2",
                              Patterns::Double (0),
                              "The amplitude of the Gaussian distribution of the amplitude of the strain noise. "
-                             "Units: $m$.");
+                             "Units: none.");
           prm.declare_entry ("Depth around which Gaussian noise is smoothed out", "40000",
                              Patterns::Double (0),
                              "The depth around which smoothing out of the strain noise starts with a hyperbolic tangent. "
@@ -168,12 +207,11 @@ namespace aspect
                             "",
                             Patterns::Anything(),
                             "Set the polygon that represents the rift axis. The polygon is made up of "
-                            "a list of points that represent horizontal coordinates (x,y). "
+                            "a list of points that represent horizontal coordinates (x,y) or (lon,lat). "
                             "The exact format for the point list describing the polygon is "
                             "\"x1,y1;x2,y2\". The units of the coordinates are "
                             "dependent on the geometry model. In the box model they are in meters, in the "
-                            "chunks they are in degrees, etc. Please refer to the manual of the individual "
-                            "geometry model to so see how the topography is implemented.");
+                            "chunks they are in degrees.");
         }
         prm.leave_subsection();
       }
@@ -233,8 +271,7 @@ namespace aspect
   {
     ASPECT_REGISTER_INITIAL_COMPOSITION_MODEL(Rift,
                                               "rift",
-                                              "Specify the composition in terms of an explicit formula. The format of these "
-                                              "functions follows the syntax understood by the "
-                                              "muparser library, see Section~\\ref{sec:muparser-format}.")
+                                              "Specify the first compositional field value based on the distance to a certain polygon "
+                                              "and the user-defined Gaussian distribution around this polygon.")
   }
 }
