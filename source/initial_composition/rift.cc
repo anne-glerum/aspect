@@ -51,7 +51,6 @@ namespace aspect
       white_noise.TableBase<dim,double>::reinit(size_idx);
       std_cxx1x::array<std::pair<double,double>,dim> grid_extents;
 
-      // TODO get pointer to geometry model in if statement
       if (dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) != NULL)
         {
           const GeometryModel::Box<dim> *
@@ -137,7 +136,7 @@ namespace aspect
     			distance_to_rift_axis = (position[0]-point_list[0][0]);
     		else
     		{
-        	// Get the surface coordinates by dropping the last coordinate
+              	// Get the surface coordinates by dropping the last coordinate
         	const Point<2> surface_position = Point<2>(position[0],position[1]);
     		distance_to_rift_axis = std::abs(Utilities::signed_distance_to_polygon<dim>(point_list, surface_position));
     		}
@@ -150,7 +149,7 @@ namespace aspect
     		Point<2> surface_position;
     		for (unsigned int d=0; d<dim-1; ++d)
     			surface_position[d] = spherical_point[d+1];
-    		// TODO not sure if this works correctly when far away from the equator
+    		// TODO check if this works correctly when far away from the equator
     		// as were calculating distances in degrees
     		distance_to_rift_axis = (dim == 2) ? (surface_position[0]-point_list[0][0]) : std::abs(Utilities::signed_distance_to_polygon<dim>(point_list, surface_position));
     	}
