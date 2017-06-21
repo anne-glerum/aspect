@@ -107,7 +107,7 @@ namespace aspect
                       idx[dim-1] = k;
                       // std::rand will give a value between zero and RAND_MAX (usually INT_MAX).
                       // The modulus of this value and 10000, gives a value between 0 and 10000-1.
-                      // Subsequently dividing by 5000.0 wil give value between 0 and 2 (excluding 2).
+                      // Subsequently dividing by 5000.0 will give value between 0 and 2 (excluding 2).
                       // Subtracting 1 will give a range [-1,1)
                       // Because we want values [0,1), we change our white noise computation to:
                       white_noise(idx) = ((std::rand() % 10000) / 10000.0);
@@ -202,13 +202,14 @@ namespace aspect
                              "the initial background porosity that will then be interpolated "
                              "to the model grid. "
                              "Units: none.");
-          prm.declare_entry("Rift axis polygon",
+          prm.declare_entry("Rift axis line segments",
                             "",
                             Patterns::Anything(),
-                            "Set the polygon that represents the rift axis. The polygon is made up of "
-                            "a list of points that represent horizontal coordinates (x,y) or (lon,lat). "
-                            "The exact format for the point list describing the polygon is "
-                            "\"x1,y1;x2,y2\". The units of the coordinates are "
+                            "Set the line segments that represent the rift axis. Each segment is made up of "
+                            "two points that represent horizontal coordinates (x,y) or (lon,lat). "
+                            "The exact format for the point list describing the segments is "
+                            "\"x1,y1>x2,y2;x2,y2>x3,y3;x4,y4>x5,y5\". Note that the segments can be connected "
+							"or isolated. The units of the coordinates are "
                             "dependent on the geometry model. In the box model they are in meters, in the "
                             "chunks they are in degrees.");
         }
@@ -234,27 +235,38 @@ namespace aspect
         if (dim == 3)
           grid_intervals[2]    = prm.get_integer ("Grid intervals for noise Z");
 
-        // Read in the polygon string
-        const std::string temp_polygon = prm.get("Rift axis polygon");
-        // Split the string into point strings
-        const std::vector<std::string> temp_coordinates = Utilities::split_string_list(temp_polygon,';');
-        const unsigned int n_temp_coordinates = temp_coordinates.size();
-        point_list.resize(n_temp_coordinates);
-        for (unsigned int i_coord = 0; i_coord < n_temp_coordinates; i_coord++)
+        // Read in the string of segments
+        const std::string temp_all_segments = prm.get("Rift axis line segments");
+        // Split the string into segment strings
+        const std::vector<std::string> temp_segments = Utilities::split_string_list(temp_all_segments,';');
+        const unsigned int n_temp_segments = temp_segments.size();
+        point_list.resize(n_temp_segments);
+        // Loop over the segments to extract the points
+        for (unsigned int i_segment = 0; i_segment < n_temp_segments; i_segment++)
           {
-            const std::vector<double> temp_point = Utilities::string_to_double(Utilities::split_string_list(temp_coordinates[i_coord],','));
-            Assert(temp_point.size() == 2,ExcMessage ("The given coordinate '" + temp_coordinates[i_coord] + "' is not correct. "
+        	// TODO what happens if there is no >?
+            const std::vector<std::string> temp_segment = Utilities::split_string_list(temp_segments[i_segment],'>');
+
+            if (dim == 3)
+            Assert(temp_segment.size() == 2,ExcMessage ("The given coordinate '" + temp_segment[i_segment + "' is not correct. "
                                                       "It should only contain 2 parts: "
-                                                      "the two coordinates of the polygon point, separated by a ','."));
+                                                      "the two points of the segment, separated by a '>'."));
+            else
+                Assert(temp_segment.size() == 1,ExcMessage ("The given coordinate '" + temp_segment[i_segment + "' is not correct. "
+                                                          "In 2d it should only contain only 1 part: "));
 
-            point_list[i_coord] = Point<2>(temp_point[0], temp_point[1]);
+            // Loop over the dim-1 points of each segment (i.e. in 2d only 1 point is required for a 'segment')
+            for (unsigned int i_points = 0; i_points < dim-1; i_points++)
+                      {
+            const std::vector<double> temp_point = Utilities::string_to_double(Utilities::split_string_list(temp_segment[i_points],','));
+            Assert(temp_point.size() == 2,ExcMessage ("The given coordinate '" + temp_point[i_points] + "' is not correct. "
+                                                      "It should only contain 2 parts: "
+                                                      "the two coordinates of the segment end point, separated by a ','."));
+
+            // Add the point to the list of points for this segment
+            point_list[i_segment].push_back(Point<2>(temp_point[0], temp_point[1]));
+                      }
           }
-
-        if (dim == 3)
-          AssertThrow(point_list.size() >= 3, ExcMessage("A polygon should consist of at least 3 points."));
-        if (dim == 2)
-          AssertThrow(point_list.size() == 1, ExcMessage("In 2D, only one point is needed to specify the rift axis position. "));
-
         prm.leave_subsection();
       }
       prm.leave_subsection();
@@ -270,7 +282,7 @@ namespace aspect
   {
     ASPECT_REGISTER_INITIAL_COMPOSITION_MODEL(Rift,
                                               "rift",
-                                              "Specify the first compositional field value based on the distance to a certain polygon "
-                                              "and the user-defined Gaussian distribution around this polygon.")
+                                              "Specify the first compositional field value based on the distance to a list of line segments "
+                                              "and the user-defined Gaussian distribution around these segments.")
   }
 }
