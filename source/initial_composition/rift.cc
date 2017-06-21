@@ -128,40 +128,57 @@ namespace aspect
     Rift<dim>::
     initial_composition (const Point<dim> &position, const unsigned int n_comp) const
     {
-    	// Get the distance to the polygon along a path parallel to the surface
-    	double distance_to_rift_axis;
-    	if (dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) != NULL)
+    	// If n_comp does not represent the strain field, which is reserved for the first field,
+    	// return 0 right away.
+        if (n_comp != 0)
+        	return 0.0;
+
+    	// If we are looking for the initial value of the strain field,
+        // get the distance to the line segments along a path parallel to the surface
+
+    	// Determine coordinate system
+    	bool cartesian_geometry = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) != NULL ? true : false;
+
+    	// Initiate distance with large value
+    	double distance_to_rift_axis = 1e23;
+    	double temp_distance = 0;
+
+    	// Loop over all line segments
+    	for (unsigned int i_segments = 0; i_segments < point_list.size(); ++i_segments)
+    	{
+    	if (cartesian_geometry)
     	{
     		if (dim == 2)
-    			distance_to_rift_axis = (position[0]-point_list[0][0]);
+    			temp_distance = std::abs(position[0]-point_list[i_segments][0][0]);
     		else
     		{
               	// Get the surface coordinates by dropping the last coordinate
         	const Point<2> surface_position = Point<2>(position[0],position[1]);
-    		distance_to_rift_axis = std::abs(Utilities::signed_distance_to_polygon<dim>(point_list, surface_position));
+    		temp_distance = std::abs(Utilities::distance_to_line<dim>(point_list[i_segments], surface_position));
     		}
     	}
-    	// we already checked that if it's not a box, it's a chunk
+    	// chunk (spherical) geometries
     	else
     	{
-    		// spherical coordinates in radius, lon, lat format
+    		// spherical coordinates in radius [m], lon [rad], lat [rad] format
     		const std_cxx11::array<double,dim> spherical_point = Utilities::Coordinates::cartesian_to_spherical_coordinates(position);
     		Point<2> surface_position;
     		for (unsigned int d=0; d<dim-1; ++d)
     			surface_position[d] = spherical_point[d+1];
-    		// TODO check if this works correctly when far away from the equator
-    		// as were calculating distances in degrees
-    		distance_to_rift_axis = (dim == 2) ? (surface_position[0]-point_list[0][0]) : std::abs(Utilities::signed_distance_to_polygon<dim>(point_list, surface_position));
+    		// TODO check if this works correctly
+    		// as we're calculating distances in radians
+    		temp_distance = (dim == 2) ? std::abs(surface_position[0]-point_list[i_segments][0][0]) : std::abs(Utilities::distance_to_line<dim>(point_list[i_segments], surface_position));
+    	}
+
+    	// Get the minimum distance
+    	distance_to_rift_axis = std::min(distance_to_rift_axis, temp_distance);
     	}
 
       const double depth_smoothing = 0.5 * (1.0 - std::tanh((this->get_geometry_model().depth(position) - strain_depth) / sigma));
 
       const double noise_amplitude = A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))) * depth_smoothing;
 
-      if (n_comp == 0)
         return noise_amplitude * interpolate_noise->value(position);
-      else
-        return 0.0;
     }
 
     template <int dim>
@@ -175,14 +192,17 @@ namespace aspect
           prm.declare_entry ("Standard deviation of Gaussian noise amplitude distribution", "20000",
                              Patterns::Double (0),
                              "The standard deviation of the Gaussian distribution of the amplitude of the strain noise. "
+							 "Note that this parameter is taken to be the same for all rift segments. "
                              "Units: $m$ or degrees.");
           prm.declare_entry ("Maximum amplitude of Gaussian noise amplitude distribution", "0.2",
                              Patterns::Double (0),
                              "The amplitude of the Gaussian distribution of the amplitude of the strain noise. "
+							 "Note that this parameter is taken to be the same for all rift segments. "
                              "Units: none.");
           prm.declare_entry ("Depth around which Gaussian noise is smoothed out", "40000",
                              Patterns::Double (0),
                              "The depth around which smoothing out of the strain noise starts with a hyperbolic tangent. "
+							 "Note that this parameter is taken to be the same for all rift segments. "
                              "Units: $m$.");
           prm.declare_entry ("Grid intervals for noise X", "25",
                              Patterns::Integer (0),
@@ -211,7 +231,7 @@ namespace aspect
                             "\"x1,y1>x2,y2;x2,y2>x3,y3;x4,y4>x5,y5\". Note that the segments can be connected "
 							"or isolated. The units of the coordinates are "
                             "dependent on the geometry model. In the box model they are in meters, in the "
-                            "chunks they are in degrees.");
+                            "chunks they are in radians.");
         }
         prm.leave_subsection();
       }
