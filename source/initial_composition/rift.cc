@@ -16,7 +16,7 @@
   You should have received a copy of the GNU General Public License
   along with ASPECT; see the file doc/COPYING.  If not see
   <http://www.gnu.org/licenses/>.
-*/
+ */
 
 
 #include <aspect/initial_composition/rift.h>
@@ -55,7 +55,7 @@ namespace aspect
         {
           const GeometryModel::Box<dim> *
           geometry_model
-            = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model());
+          = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model());
 
           extents_max = geometry_model->get_extents();
         }
@@ -63,17 +63,17 @@ namespace aspect
         {
           const GeometryModel::Chunk<dim> *
           geometry_model
-            = dynamic_cast<const GeometryModel::Chunk<dim> *>(&this->get_geometry_model());
+          = dynamic_cast<const GeometryModel::Chunk<dim> *>(&this->get_geometry_model());
 
           extents_min[0] = geometry_model->inner_radius();
           extents_max[0] = geometry_model->outer_radius();
           extents_min[1] = geometry_model->east_longitude();
           extents_max[1] = geometry_model->west_longitude();
           if (dim == 3)
-          {
-          extents_min[dim-1] = geometry_model->south_latitude();
-          extents_max[dim-1] = geometry_model->north_latitude();
-          }
+            {
+              extents_min[dim-1] = geometry_model->south_latitude();
+              extents_max[dim-1] = geometry_model->north_latitude();
+            }
 
         }
       else
@@ -123,62 +123,63 @@ namespace aspect
                                                                            grid_intervals,
                                                                            white_noise);
     }
+
     template <int dim>
     double
     Rift<dim>::
     initial_composition (const Point<dim> &position, const unsigned int n_comp) const
     {
-    	// If n_comp does not represent the strain field, which is reserved for the first field,
-    	// return 0 right away.
-        if (n_comp != 0)
-        	return 0.0;
+      // If n_comp does not represent the strain field, which is reserved for the first field,
+      // return 0 right away.
+      if (n_comp != 0)
+        return 0.0;
 
-    	// If we are looking for the initial value of the strain field,
-        // get the distance to the line segments along a path parallel to the surface
+      // If we are looking for the initial value of the strain field,
+      // get the distance to the line segments along a path parallel to the surface
 
-    	// Determine coordinate system
-    	bool cartesian_geometry = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) != NULL ? true : false;
+      // Determine coordinate system
+      bool cartesian_geometry = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) != NULL ? true : false;
 
-    	// Initiate distance with large value
-    	double distance_to_rift_axis = 1e23;
-    	double temp_distance = 0;
+      // Initiate distance with large value
+      double distance_to_rift_axis = 1e23;
+      double temp_distance = 0;
 
-    	// Loop over all line segments
-    	for (unsigned int i_segments = 0; i_segments < point_list.size(); ++i_segments)
-    	{
-    	if (cartesian_geometry)
-    	{
-    		if (dim == 2)
-    			temp_distance = std::abs(position[0]-point_list[i_segments][0][0]);
-    		else
-    		{
-              	// Get the surface coordinates by dropping the last coordinate
-        	const Point<2> surface_position = Point<2>(position[0],position[1]);
-    		temp_distance = std::abs(Utilities::distance_to_line<dim>(point_list[i_segments], surface_position));
-    		}
-    	}
-    	// chunk (spherical) geometries
-    	else
-    	{
-    		// spherical coordinates in radius [m], lon [rad], lat [rad] format
-    		const std_cxx11::array<double,dim> spherical_point = Utilities::Coordinates::cartesian_to_spherical_coordinates(position);
-    		Point<2> surface_position;
-    		for (unsigned int d=0; d<dim-1; ++d)
-    			surface_position[d] = spherical_point[d+1];
-    		// TODO check if this works correctly
-    		// as we're calculating distances in radians
-    		temp_distance = (dim == 2) ? std::abs(surface_position[0]-point_list[i_segments][0][0]) : std::abs(Utilities::distance_to_line<dim>(point_list[i_segments], surface_position));
-    	}
+      // Loop over all line segments
+      for (unsigned int i_segments = 0; i_segments < point_list.size(); ++i_segments)
+        {
+          if (cartesian_geometry)
+            {
+              if (dim == 2)
+                temp_distance = std::abs(position[0]-point_list[i_segments][0][0]);
+              else
+                {
+                  // Get the surface coordinates by dropping the last coordinate
+                  const Point<2> surface_position = Point<2>(position[0],position[1]);
+                  temp_distance = std::abs(Utilities::distance_to_line<dim>(point_list[i_segments], surface_position));
+                }
+            }
+          // chunk (spherical) geometries
+          else
+            {
+              // spherical coordinates in radius [m], lon [rad], lat [rad] format
+              const std_cxx11::array<double,dim> spherical_point = Utilities::Coordinates::cartesian_to_spherical_coordinates(position);
+              Point<2> surface_position;
+              for (unsigned int d=0; d<dim-1; ++d)
+                surface_position[d] = spherical_point[d+1];
+              // TODO check if this works correctly
+              // as we're calculating distances in radians
+              temp_distance = (dim == 2) ? std::abs(surface_position[0]-point_list[i_segments][0][0]) : Utilities::distance_to_line<dim>(point_list[i_segments], surface_position);
+            }
 
-    	// Get the minimum distance
-    	distance_to_rift_axis = std::min(distance_to_rift_axis, temp_distance);
-    	}
+          // Get the minimum distance
+          distance_to_rift_axis = std::min(distance_to_rift_axis, temp_distance);
+        }
 
       const double depth_smoothing = 0.5 * (1.0 - std::tanh((this->get_geometry_model().depth(position) - strain_depth) / sigma));
 
       const double noise_amplitude = A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))) * depth_smoothing;
 
-        return noise_amplitude * interpolate_noise->value(position);
+      return noise_amplitude * interpolate_noise->value(position);
     }
 
     template <int dim>
@@ -192,17 +193,17 @@ namespace aspect
           prm.declare_entry ("Standard deviation of Gaussian noise amplitude distribution", "20000",
                              Patterns::Double (0),
                              "The standard deviation of the Gaussian distribution of the amplitude of the strain noise. "
-							 "Note that this parameter is taken to be the same for all rift segments. "
+                             "Note that this parameter is taken to be the same for all rift segments. "
                              "Units: $m$ or degrees.");
           prm.declare_entry ("Maximum amplitude of Gaussian noise amplitude distribution", "0.2",
                              Patterns::Double (0),
                              "The amplitude of the Gaussian distribution of the amplitude of the strain noise. "
-							 "Note that this parameter is taken to be the same for all rift segments. "
+                             "Note that this parameter is taken to be the same for all rift segments. "
                              "Units: none.");
           prm.declare_entry ("Depth around which Gaussian noise is smoothed out", "40000",
                              Patterns::Double (0),
                              "The depth around which smoothing out of the strain noise starts with a hyperbolic tangent. "
-							 "Note that this parameter is taken to be the same for all rift segments. "
+                             "Note that this parameter is taken to be the same for all rift segments. "
                              "Units: $m$.");
           prm.declare_entry ("Grid intervals for noise X", "25",
                              Patterns::Integer (0),
@@ -229,7 +230,7 @@ namespace aspect
                             "two points that represent horizontal coordinates (x,y) or (lon,lat). "
                             "The exact format for the point list describing the segments is "
                             "\"x1,y1>x2,y2;x2,y2>x3,y3;x4,y4>x5,y5\". Note that the segments can be connected "
-							"or isolated. The units of the coordinates are "
+                            "or isolated. The units of the coordinates are "
                             "dependent on the geometry model. In the box model they are in meters, in the "
                             "chunks they are in radians.");
         }
@@ -264,28 +265,37 @@ namespace aspect
         // Loop over the segments to extract the points
         for (unsigned int i_segment = 0; i_segment < n_temp_segments; i_segment++)
           {
-        	// TODO what happens if there is no >?
+            // In 3d a line segment consists of 2 points,
+            // in 2d only 1 (ridge axis orthogonal two x and y)
+            point_list[i_segment].resize(dim-1);
+
+
+            // TODO what happens if there is no >?
             const std::vector<std::string> temp_segment = Utilities::split_string_list(temp_segments[i_segment],'>');
 
             if (dim == 3)
-            Assert(temp_segment.size() == 2,ExcMessage ("The given coordinate '" + temp_segment[i_segment + "' is not correct. "
-                                                      "It should only contain 2 parts: "
-                                                      "the two points of the segment, separated by a '>'."));
+              {
+                Assert(temp_segment.size() == 2,ExcMessage ("The given coordinate '" + temp_segment[i_segment] + "' is not correct. "
+                                                            "It should only contain 2 parts: "
+                                                            "the two points of the segment, separated by a '>'."));
+              }
             else
-                Assert(temp_segment.size() == 1,ExcMessage ("The given coordinate '" + temp_segment[i_segment + "' is not correct. "
-                                                          "In 2d it should only contain only 1 part: "));
+              {
+                Assert(temp_segment.size() == 1,ExcMessage ("The given coordinate '" + temp_segment[i_segment] + "' is not correct. "
+                                                            "In 2d it should only contain only 1 part: "));
+              }
 
             // Loop over the dim-1 points of each segment (i.e. in 2d only 1 point is required for a 'segment')
             for (unsigned int i_points = 0; i_points < dim-1; i_points++)
-                      {
-            const std::vector<double> temp_point = Utilities::string_to_double(Utilities::split_string_list(temp_segment[i_points],','));
-            Assert(temp_point.size() == 2,ExcMessage ("The given coordinate '" + temp_point[i_points] + "' is not correct. "
-                                                      "It should only contain 2 parts: "
-                                                      "the two coordinates of the segment end point, separated by a ','."));
+              {
+                const std::vector<double> temp_point = Utilities::string_to_double(Utilities::split_string_list(temp_segment[i_points],','));
+                Assert(temp_point.size() == 2,ExcMessage ("The given coordinates of segment '" + temp_segment[i_points] + "' are not correct. "
+                                                          "It should only contain 2 parts: "
+                                                          "the two coordinates of the segment end point, separated by a ','."));
 
-            // Add the point to the list of points for this segment
-            point_list[i_segment].push_back(Point<2>(temp_point[0], temp_point[1]));
-                      }
+                // Add the point to the list of points for this segment
+                point_list[i_segment][i_points] = (Point<2>(temp_point[0], temp_point[1]));
+              }
           }
         prm.leave_subsection();
       }

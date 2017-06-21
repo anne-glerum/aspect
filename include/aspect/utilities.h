@@ -217,7 +217,7 @@ namespace aspect
      */
     template <int dim>
     double
-    distance_to_line(const std::vector<Point<2> > &point_list,
+    distance_to_line(const std::vector<dealii::Point<2> > &point_list,
                      const dealii::Point<2> &point);
 
     /**
