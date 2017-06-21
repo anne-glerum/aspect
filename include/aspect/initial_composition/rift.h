@@ -100,9 +100,10 @@ namespace aspect
         double strain_depth;
 
         /**
-         * The list of 2D coordinates of the polygon that represents the rift axis.
+         * The list of line segments consisting of two 2D coordinates per segment.
+         * The segments represent the rift axis.
          */
-        std::vector<Point<2> > point_list;
+        std::vector<std::vector<Point<2> > > point_list;
 
 
         /**
