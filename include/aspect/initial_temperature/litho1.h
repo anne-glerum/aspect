@@ -101,6 +101,11 @@ namespace aspect
        double T0;
 
        /*
+        * The temperature at the model's bottom boundary.
+        */
+       double T1;
+
+       /*
         * The depth to which the LAB isotherm temperature is
         * prescribed below the LAB depth.
         */
