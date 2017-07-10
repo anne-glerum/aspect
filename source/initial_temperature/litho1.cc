@@ -66,7 +66,7 @@ namespace aspect
       else if (depth < compensation_depth)
          return LAB_isotherm;
       else
-         return (1700.0 - 1600.0)/(this->get_geometry_model().maximal_depth()-compensation_depth) * (depth - compensation_depth) + LAB_isotherm; 
+         return (1700.0 - LAB_isotherm)/(this->get_geometry_model().maximal_depth()-compensation_depth) * (depth - compensation_depth) + LAB_isotherm; 
     }
 
 
@@ -88,6 +88,9 @@ namespace aspect
           prm.declare_entry ("Surface temperature", "273.15",
                              Patterns::Double (0),
                              "The value of the surface temperature. Units: Kelvin.");
+          prm.declare_entry ("Bottom temperature", "1700.15",
+                             Patterns::Double (0),
+                             "The value of the temperature at the bottom of the domain. Units: Kelvin.");
           prm.declare_entry ("Temperature compensation depth", "200000.",
                              Patterns::Double (0),
                              "The depth to which the LAB isotherm is prescribed in case "
@@ -110,6 +113,7 @@ namespace aspect
         {
           LAB_isotherm = prm.get_double ("LAB isotherm temperature");
           T0 = prm.get_double ("Surface temperature");
+          T1 = prm.get_double ("Bottom temperature");
           compensation_depth = prm.get_double ("Temperature compensation depth");
         }
         prm.leave_subsection();
