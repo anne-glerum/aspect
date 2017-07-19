@@ -59,16 +59,18 @@ namespace aspect
                                                                                      position,
                                                                                      0);
       // The LAB depth is the second component
-      const double LAB_depth = Utilities::AsciiDataBoundary<dim>::get_data_component(surface_boundary_id,
-                                                                                     position,
-                                                                                     1);
+      const double LAB_depth = std::max(Moho_depth, Utilities::AsciiDataBoundary<dim>::get_data_component(surface_boundary_id,
+                                                                                                          position,
+                                                                                                          1));
 
       const double depth = this->get_geometry_model().depth(position);
 
       // Crustal composition
-      if (depth < Moho_depth && n_comp == 0)
+      if (depth < Moho_depth*upper_crust_fraction && n_comp == 0)
          return 1.;
-      else if (depth >= Moho_depth && depth < LAB_depth && n_comp == 1)
+      if (depth >= Moho_depth*upper_crust_fraction && depth < Moho_depth && n_comp == lower_crust_id)
+         return 1.;
+      else if (depth >= Moho_depth && depth < LAB_depth && n_comp == lower_crust_id+1)
          return 1.;
       else
          return 0.;
@@ -84,6 +86,18 @@ namespace aspect
         Utilities::AsciiDataBase<dim>::declare_parameters(prm,
                                                           "$ASPECT_SOURCE_DIR/data/initial-composition/ascii-data/test/",
                                                           "box_2d.txt");
+        prm.enter_subsection("LITHO1.0");
+        {
+          prm.declare_entry ("Upper crust fraction", "0.66",
+                             Patterns::Double (0,1),
+                             "A number that specifies the fraction of the Moho depth "
+                             "that will be used to set the thickness of the upper crust "
+                             "instead of reading its thickness from the ascii table. " 
+                             "For a fraction of 0, no compositional field is set for the "
+                             "upper crust. "
+                             "Unit: -.");
+        }
+        prm.leave_subsection();
       }
       prm.leave_subsection();
     }
@@ -96,6 +110,18 @@ namespace aspect
       prm.enter_subsection("Initial composition model");
       {
         Utilities::AsciiDataBase<dim>::parse_parameters(prm);
+        prm.enter_subsection("LITHO1.0");
+        {
+          upper_crust_fraction = prm.get_double ("Upper crust fraction");
+
+          // If there is no upper crust, the compositional field number
+          // of the lower crust is the same as that of the upper crust (i.e. they are the same field)
+          if (upper_crust_fraction == 0)
+             lower_crust_id = 0;
+          else
+             lower_crust_id = 1;
+        }
+        prm.leave_subsection();
       }
       prm.leave_subsection();
     }
