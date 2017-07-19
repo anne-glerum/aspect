@@ -81,12 +81,26 @@ namespace aspect
         parse_parameters (ParameterHandler &prm);
  
       private:
-        /*
+        /**
          * The boundary indicartor that represents
          * the surface of the domain.
          */
         types::boundary_id surface_boundary_id;
   
+        /**
+         * The fraction of the crust that will be
+         * designated as upper crust.
+         */
+         double upper_crust_fraction;
+
+        /**
+         * The compositional field number of the crust.
+         * For an upper and lower crust, the upper crust
+         * will be field 0, the lower crust field 1 and
+         * the lithospheric mantle field 2.
+         */
+         unsigned int lower_crust_id;
+    
     };
   }
 }
