@@ -116,7 +116,7 @@ namespace aspect
 
           // If there is no upper crust, the compositional field number
           // of the lower crust is the same as that of the upper crust (i.e. they are the same field)
-          if (upper_crust_fraction == 0)
+          if (upper_crust_fraction == 0 && !this->introspection().compositional_name_exists("upper"))
              lower_crust_id = 0;
           else
              lower_crust_id = 1;
