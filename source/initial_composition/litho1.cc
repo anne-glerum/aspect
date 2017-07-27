@@ -56,24 +56,28 @@ namespace aspect
     {
       // The Moho depth is the first component
       const double Moho_depth = Utilities::AsciiDataBoundary<dim>::get_data_component(surface_boundary_id,
-                                                                                     position,
-                                                                                     0);
+                                                                                      position,
+                                                                                      0);
       // The LAB depth is the second component
       const double LAB_depth = std::max(Moho_depth, Utilities::AsciiDataBoundary<dim>::get_data_component(surface_boundary_id,
-                                                                                                          position,
-                                                                                                          1));
+                                        position,
+                                        1));
 
+      // The depth of the point under investigation
       const double depth = this->get_geometry_model().depth(position);
 
-      // Crustal composition
+      // The upper crustal field (with field id 0)
       if (depth < Moho_depth*upper_crust_fraction && n_comp == 0)
-         return 1.;
+        return 1.;
+      // The lower crustal field (with field id 1 (or 0))
       if (depth >= Moho_depth*upper_crust_fraction && depth < Moho_depth && n_comp == lower_crust_id)
-         return 1.;
+        return 1.;
+      // The lithospheric mantle
       else if (depth >= Moho_depth && depth < LAB_depth && n_comp == lower_crust_id+1)
-         return 1.;
+        return 1.;
+      // Everything else, which is not represented by a compositional field.
       else
-         return 0.;
+        return 0.;
     }
 
 
@@ -92,7 +96,7 @@ namespace aspect
                              Patterns::Double (0,1),
                              "A number that specifies the fraction of the Moho depth "
                              "that will be used to set the thickness of the upper crust "
-                             "instead of reading its thickness from the ascii table. " 
+                             "instead of reading its thickness from the ascii table. "
                              "For a fraction of 0, no compositional field is set for the "
                              "upper crust. "
                              "Unit: -.");
@@ -117,9 +121,9 @@ namespace aspect
           // If there is no upper crust, the compositional field number
           // of the lower crust is the same as that of the upper crust (i.e. they are the same field)
           if (upper_crust_fraction == 0 && !this->introspection().compositional_name_exists("upper"))
-             lower_crust_id = 0;
+            lower_crust_id = 0;
           else
-             lower_crust_id = 1;
+            lower_crust_id = 1;
         }
         prm.leave_subsection();
       }
@@ -138,7 +142,14 @@ namespace aspect
                                               "Implementation of a model in which the initial "
                                               "composition is derived from files containing data "
                                               "about the depth of the Moho and LAB "
-                                              "in ascii format. Note the required format of the "
+                                              "in ascii format. "
+                                              "Either one compositional field is used to represent "
+                                              "the total crust up to Moho depth, "
+                                              "or an upper crust composition is "
+                                              "specified with the upper\_crust\_fraction parameter that"
+                                              "sets an upper crustal field from 0 to "
+                                              "upper\_crust\_fraction*Moho\_depth. "
+                                              "Note the required format of the "
                                               "input data: The first lines may contain any number of comments "
                                               "if they begin with '#', but one of these lines needs to "
                                               "contain the number of grid points in each dimension as "

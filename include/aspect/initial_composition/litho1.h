@@ -79,28 +79,32 @@ namespace aspect
          */
         void
         parse_parameters (ParameterHandler &prm);
- 
+
       private:
         /**
-         * The boundary indicartor that represents
+         * The boundary indicator that represents
          * the surface of the domain.
          */
         types::boundary_id surface_boundary_id;
-  
-        /**
-         * The fraction of the crust that will be
-         * designated as upper crust.
-         */
-         double upper_crust_fraction;
 
         /**
-         * The compositional field number of the crust.
+         * The fraction of the crust that will be
+         * designated as upper crust instead of reading
+         * it's thickness from the ascii data file.
+         */
+        double upper_crust_fraction;
+
+        /**
+         * The compositional field number of the lower crust.
          * For an upper and lower crust, the upper crust
          * will be field 0, the lower crust field 1 and
-         * the lithospheric mantle field 2.
+         * the lithospheric mantle field 2. When the upper
+         * crust fraction is set to zero and no compositional
+         * field called "upper" is present, the crust field
+         * will be field 0 and the lithospheric mantle field 1.
          */
-         unsigned int lower_crust_id;
-    
+        unsigned int lower_crust_id;
+
     };
   }
 }
