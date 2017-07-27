@@ -66,6 +66,8 @@ namespace aspect
         double
         initial_temperature (const Point<dim> &position) const;
 
+
+
         /**
          * Declare the parameters this class takes through input files.
          */
@@ -80,6 +82,11 @@ namespace aspect
         parse_parameters (ParameterHandler &prm);
 
       private:
+
+        double L_temperature (const double depth,
+                            const std::vector<double> thicknesses) const;
+
+
         /*
          * The boundary indicartor that represents
          * the surface of the domain.
@@ -88,7 +95,7 @@ namespace aspect
   
         /*
          * The isotherm that is to represent the LAB.
-         * Below this isotherm an continental temperature
+         * Above this isotherm an continental temperature
          * profile is prescribed, below an adiabatic profile.
          * TODO: when using other plugins, how to match the 
          * temperatures at the LAB?
@@ -96,20 +103,37 @@ namespace aspect
         double LAB_isotherm;
 
        /*
-        * The temperature at the model's surface.
+        * The temperature at the model's top boundary.
         */
        double T0;
 
-       /*
-        * The temperature at the model's bottom boundary.
+       /**
+        * The fraction of the crust that will be
+        * designated as upper crust.
         */
-       double T1;
+        double upper_crust_fraction;
 
        /*
         * The depth to which the LAB isotherm temperature is
         * prescribed below the LAB depth.
         */
        double compensation_depth;
+
+       /**
+        * Vector for field heat production rates, read from parameter file .
+        */
+       std::vector<double> heat_productivities;
+
+       /**
+        * Vector for thermal conductivities, read from parameter file .
+        */
+       std::vector<double> conductivities;
+
+       /**
+        * Vector for field densities, read from parameter file .
+        */
+       std::vector<double> densities;
+
     };
   }
 }
