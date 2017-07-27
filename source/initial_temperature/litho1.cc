@@ -68,36 +68,37 @@ namespace aspect
     {
       // We want to get at the Moho depth, which is the first component
       const double Moho_depth = Utilities::AsciiDataBoundary<dim>::get_data_component(surface_boundary_id,
-                                                                                     position,
-                                                                                     0);
+                                                                                      position,
+                                                                                      0);
       // We want to get at the LAB depth, which is the second component
       const double LAB_depth = Utilities::AsciiDataBoundary<dim>::get_data_component(surface_boundary_id,
                                                                                      position,
                                                                                      1);
 
+      // The depth of the point under investigation
       const double depth = this->get_geometry_model().depth(position);
 
-      const std::vector<double> thicknesses = {Moho_depth*upper_crust_fraction, Moho_depth*(1.-upper_crust_fraction), LAB_depth-Moho_depth};
+      const std::vector<double> thicknesses = {Moho_depth*upper_crust_fraction, Moho_depth *(1.-upper_crust_fraction), LAB_depth-Moho_depth};
 
       // In the lithosphere, return a continental geotherm
       // that incorporates radioactive heating.
       if (depth < LAB_depth)
-         return L_temperature(depth, thicknesses);
+        return continental_geotherm(depth, thicknesses);
       // Up to a compensation depth, return the LAB temperature
       // This ensures there are no lateral temperature gradients
       // in the mantle
       else if (depth < compensation_depth)
-         return LAB_isotherm;
+        return LAB_isotherm;
       // Return the adiabatic temperature computed in the adiabatic conditions plugin
       else
-         return  this->get_adiabatic_conditions().temperature(position);
+        return  this->get_adiabatic_conditions().temperature(position);
     }
 
     template <int dim>
     double
     Litho1<dim>::
-    L_temperature (const double depth,
-                 const std::vector<double> layer_thicknesses) const
+    continental_geotherm (const double depth,
+                          const std::vector<double> layer_thicknesses) const
     {
       // Compute some constants
       const double a = 0.5*densities[0]*heat_productivities[0]*layer_thicknesses[0] + 0.5*densities[1]*heat_productivities[1]*layer_thicknesses[1] + conductivities[0]/layer_thicknesses[0]*T0;
@@ -111,14 +112,14 @@ namespace aspect
       const double T2 = (c + conductivities[1]/layer_thicknesses[1]*T1) * d;
 
       // Temperature in layer 1
-      if(depth < layer_thicknesses[0])
-          return -0.5*densities[0]*heat_productivities[0]/conductivities[0]*std::pow(depth,2) + (0.5*densities[0]*heat_productivities[0]*layer_thicknesses[0]/conductivities[0] + (T1-T0)/layer_thicknesses[0])*depth + T0;
+      if (depth < layer_thicknesses[0])
+        return -0.5*densities[0]*heat_productivities[0]/conductivities[0]*std::pow(depth,2) + (0.5*densities[0]*heat_productivities[0]*layer_thicknesses[0]/conductivities[0] + (T1-T0)/layer_thicknesses[0])*depth + T0;
       // Temperature in layer 2
       else if (depth < layer_thicknesses[0]+layer_thicknesses[1])
-          return -0.5*densities[1]*heat_productivities[1]/conductivities[1]*std::pow(depth-layer_thicknesses[0],2.) + (0.5*densities[1]*heat_productivities[1]*layer_thicknesses[1]/conductivities[1] + (T2-T1)/layer_thicknesses[1])*(depth-layer_thicknesses[0]) + T1;
+        return -0.5*densities[1]*heat_productivities[1]/conductivities[1]*std::pow(depth-layer_thicknesses[0],2.) + (0.5*densities[1]*heat_productivities[1]*layer_thicknesses[1]/conductivities[1] + (T2-T1)/layer_thicknesses[1])*(depth-layer_thicknesses[0]) + T1;
       // Temperature in layer 3
       else if (depth <= layer_thicknesses[0]+layer_thicknesses[1]+layer_thicknesses[2])
-          return (LAB_isotherm-T2)/layer_thicknesses[2] *(depth-layer_thicknesses[0]-layer_thicknesses[1]) + T2;
+        return (LAB_isotherm-T2)/layer_thicknesses[2] *(depth-layer_thicknesses[0]-layer_thicknesses[1]) + T2;
       // Return a constant sublithospheric temperature of 10*LAB_isotherm just in case
       else
         return 10.*LAB_isotherm;
@@ -161,7 +162,7 @@ namespace aspect
       unsigned int n_fields = 0;
       prm.enter_subsection ("Compositional fields");
       {
-       n_fields = prm.get_integer ("Number of fields");
+        n_fields = prm.get_integer ("Number of fields");
       }
       prm.leave_subsection();
 
@@ -178,78 +179,78 @@ namespace aspect
       }
       prm.leave_subsection();
       // Retrieve the indices of the fields that represent the lithospheric layers.
-        AssertThrow(this->introspection().compositional_name_exists("upper"),ExcMessage("We need a compositional field called 'upper' representing the upper crust."));
-        AssertThrow(this->introspection().compositional_name_exists("lower"),ExcMessage("We need a compositional field called 'lower' representing the lower crust."));
-        AssertThrow(this->introspection().compositional_name_exists("mantle_L"),ExcMessage("We need a compositional field called 'mantle_L' representing the lithospheric part of the mantle."));
+      AssertThrow(this->introspection().compositional_name_exists("upper"),ExcMessage("We need a compositional field called 'upper' representing the upper crust."));
+      AssertThrow(this->introspection().compositional_name_exists("lower"),ExcMessage("We need a compositional field called 'lower' representing the lower crust."));
+      AssertThrow(this->introspection().compositional_name_exists("mantle_L"),ExcMessage("We need a compositional field called 'mantle_L' representing the lithospheric part of the mantle."));
 
-        // For now, we assume a 3-layer system with an upper crust, lower crust and lithospheric mantle
-        const unsigned int id_upper = this->introspection().compositional_index_for_name("upper");
-        const unsigned int id_lower = this->introspection().compositional_index_for_name("lower");
-        const unsigned int id_mantle_L = this->introspection().compositional_index_for_name("mantle_L");
+      // For now, we assume a 3-layer system with an upper crust, lower crust and lithospheric mantle
+      const unsigned int id_upper = this->introspection().compositional_index_for_name("upper");
+      const unsigned int id_lower = this->introspection().compositional_index_for_name("lower");
+      const unsigned int id_mantle_L = this->introspection().compositional_index_for_name("mantle_L");
 
-              // Retrieve other material properties set in different sections such that there
-              // is no need to set them twice.
+      // Retrieve other material properties set in different sections such that there
+      // is no need to set them twice.
 
-        prm.enter_subsection("Heating model");
+      prm.enter_subsection("Heating model");
+      {
+        prm.enter_subsection("Compositional heating");
         {
-          prm.enter_subsection("Compositional heating");
-          {
-            // The heating model compositional heating prefixes an entry for the background material
-            const std::vector<double> temp_heat_productivities = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Compositional heating values"))),
-                                                                     n_fields+1,
-                                                                     "Compositional heating values");
-            // This sets the heat productivity in W/m3 units
-            heat_productivities.push_back(temp_heat_productivities[id_upper+1]);
-            heat_productivities.push_back(temp_heat_productivities[id_lower+1]);
-            heat_productivities.push_back(temp_heat_productivities[id_mantle_L+1]);
-          }
-          prm.leave_subsection();
+          // The heating model compositional heating prefixes an entry for the background material
+          const std::vector<double> temp_heat_productivities = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Compositional heating values"))),
+                                                               n_fields+1,
+                                                               "Compositional heating values");
+          // This sets the heat productivity in W/m3 units
+          heat_productivities.push_back(temp_heat_productivities[id_upper+1]);
+          heat_productivities.push_back(temp_heat_productivities[id_lower+1]);
+          heat_productivities.push_back(temp_heat_productivities[id_mantle_L+1]);
         }
         prm.leave_subsection();
+      }
+      prm.leave_subsection();
 
-        prm.enter_subsection("Material model");
+      prm.enter_subsection("Material model");
+      {
+        prm.enter_subsection("Visco Plastic");
         {
-          prm.enter_subsection("Visco Plastic");
-          {
-            // The material model viscoplastic prefixes an entry for the background material
-            const std::vector<double> temp_densities = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Densities"))),
-                                                                     n_fields+1,
-                                                                     "Densities");
-            const std::vector<double> temp_thermal_diffusivities = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Thermal diffusivities"))),
-                                                                                    n_fields+1,
-                                                                           "Thermal diffusivities");
-            const std::vector<double> temp_heat_capacities = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Heat capacities"))),
-                                                                             n_fields+1,
-                                                                          "Heat capacities");
+          // The material model viscoplastic prefixes an entry for the background material
+          const std::vector<double> temp_densities = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Densities"))),
+                                                     n_fields+1,
+                                                     "Densities");
+          const std::vector<double> temp_thermal_diffusivities = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Thermal diffusivities"))),
+                                                                 n_fields+1,
+                                                                 "Thermal diffusivities");
+          const std::vector<double> temp_heat_capacities = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Heat capacities"))),
+                                                           n_fields+1,
+                                                           "Heat capacities");
 
-            densities.push_back(temp_densities[id_upper+1]);
-            densities.push_back(temp_densities[id_lower+1]);
-            densities.push_back(temp_densities[id_mantle_L+1]);
+          densities.push_back(temp_densities[id_upper+1]);
+          densities.push_back(temp_densities[id_lower+1]);
+          densities.push_back(temp_densities[id_mantle_L+1]);
 
-            // Thermal diffusivity kappa = k/(rho*cp), so thermal conducitivity k = kappa*rho*cp
-            conductivities.push_back(temp_thermal_diffusivities[id_upper+1] * densities[0] * temp_heat_capacities[id_upper+1]);
-            conductivities.push_back(temp_thermal_diffusivities[id_lower+1] * densities[0] * temp_heat_capacities[id_lower+1]);
-            conductivities.push_back(temp_thermal_diffusivities[id_mantle_L+1] * densities[0] * temp_heat_capacities[id_mantle_L+1]);
+          // Thermal diffusivity kappa = k/(rho*cp), so thermal conducitivity k = kappa*rho*cp
+          conductivities.push_back(temp_thermal_diffusivities[id_upper+1] * densities[0] * temp_heat_capacities[id_upper+1]);
+          conductivities.push_back(temp_thermal_diffusivities[id_lower+1] * densities[0] * temp_heat_capacities[id_lower+1]);
+          conductivities.push_back(temp_thermal_diffusivities[id_mantle_L+1] * densities[0] * temp_heat_capacities[id_mantle_L+1]);
 
-            // To obtain the radioactive heating rate in W/kg, we divide the volumetric heating rate by density
-            AssertThrow(heat_productivities.size() == 3 && densities.size() == 3 && conductivities.size() == 3,
-                        ExcMessage("The entries for density, conductivity and heat production do not match with the expected number of layers (3)."))
+          // To obtain the radioactive heating rate in W/kg, we divide the volumetric heating rate by density
+          AssertThrow(heat_productivities.size() == 3 && densities.size() == 3 && conductivities.size() == 3,
+                      ExcMessage("The entries for density, conductivity and heat production do not match with the expected number of layers (3)."))
 
-            for (unsigned int i = 0; i<3; ++i)
+          for (unsigned int i = 0; i<3; ++i)
             heat_productivities[i] /= densities[i];
-          }
-          prm.leave_subsection();
         }
         prm.leave_subsection();
-        prm.enter_subsection("Initial composition model");
+      }
+      prm.leave_subsection();
+      prm.enter_subsection("Initial composition model");
+      {
+        prm.enter_subsection("LITHO1.0");
         {
-          prm.enter_subsection("LITHO1.0");
-          {
-            upper_crust_fraction = prm.get_double ("Upper crust fraction");
-          }
-          prm.leave_subsection();
+          upper_crust_fraction = prm.get_double ("Upper crust fraction");
         }
         prm.leave_subsection();
+      }
+      prm.leave_subsection();
     }
   }
 }
@@ -265,8 +266,14 @@ namespace aspect
                                               "temperature is derived from files containing data "
                                               "in ascii format that specify the depth of the Moho and LAB. "
                                               "If a point lies above the LAB depth, it is given a continental geotherm, "
-                                              "otherwise an adiabatic temperature profile. "
-                                              " Note the required format of the "
+                                              "computed as a steady-state temperature profile including radioactive "
+                                              "heating as set in the 'compositional_heating' plugin. "
+                                              "Below the LAB, the LAB isotherm is prescribed up to the compensation "
+                                              "depht. Below that an adiabatic temperature profile, "
+                                              "as retrieved from the plugin set for the adiabatic conditions. "
+                                              "The user has to make sure the temperatures at the compensation depth "
+                                              "(i.e. the LAB isotherm and the adiabatic temperature) match. "
+                                              "Note the required format of the "
                                               "input data: The first lines may contain any number of comments "
                                               "if they begin with '#', but one of these lines needs to "
                                               "contain the number of grid points in each dimension as "

@@ -22,7 +22,6 @@
 #ifndef _aspect_initial_temperature_litho1_h
 #define _aspect_initial_temperature_litho1_h
 
-//#include <aspect/initial_temperature/adiabatic.h>
 #include <aspect/initial_temperature/interface.h>
 #include <aspect/simulator_access.h>
 #include <aspect/utilities.h>
@@ -66,8 +65,6 @@ namespace aspect
         double
         initial_temperature (const Point<dim> &position) const;
 
-
-
         /**
          * Declare the parameters this class takes through input files.
          */
@@ -83,56 +80,59 @@ namespace aspect
 
       private:
 
-        double L_temperature (const double depth,
-                            const std::vector<double> thicknesses) const;
-
+        /**
+         * The function that computes a steady-state temperature profile
+         * in the lithosphere including the user-specified radioactive heating.
+         */
+        double continental_geotherm (const double depth,
+                                     const std::vector<double> thicknesses) const;
 
         /*
          * The boundary indicartor that represents
          * the surface of the domain.
          */
         types::boundary_id surface_boundary_id;
-  
+
         /*
          * The isotherm that is to represent the LAB.
          * Above this isotherm an continental temperature
          * profile is prescribed, below an adiabatic profile.
-         * TODO: when using other plugins, how to match the 
+         * TODO: when using other plugins, how to match the
          * temperatures at the LAB?
          */
         double LAB_isotherm;
 
-       /*
-        * The temperature at the model's top boundary.
-        */
-       double T0;
+        /*
+         * The temperature at the model's top boundary.
+         */
+        double T0;
 
-       /**
-        * The fraction of the crust that will be
-        * designated as upper crust.
-        */
+        /**
+         * The fraction of the crust that will be
+         * designated as upper crust.
+         */
         double upper_crust_fraction;
 
-       /*
-        * The depth to which the LAB isotherm temperature is
-        * prescribed below the LAB depth.
-        */
-       double compensation_depth;
+        /*
+         * The depth to which the LAB isotherm temperature is
+         * prescribed below the LAB depth.
+         */
+        double compensation_depth;
 
-       /**
-        * Vector for field heat production rates, read from parameter file .
-        */
-       std::vector<double> heat_productivities;
+        /**
+         * Vector for field heat production rates, read from parameter file .
+         */
+        std::vector<double> heat_productivities;
 
-       /**
-        * Vector for thermal conductivities, read from parameter file .
-        */
-       std::vector<double> conductivities;
+        /**
+         * Vector for thermal conductivities, read from parameter file .
+         */
+        std::vector<double> conductivities;
 
-       /**
-        * Vector for field densities, read from parameter file .
-        */
-       std::vector<double> densities;
+        /**
+         * Vector for field densities, read from parameter file .
+         */
+        std::vector<double> densities;
 
     };
   }
