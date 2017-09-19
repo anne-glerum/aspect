@@ -24,7 +24,6 @@
 
 #include <aspect/initial_composition/interface.h>
 #include <aspect/simulator_access.h>
-#include <aspect/utilities.h>
 
 namespace aspect
 {
@@ -33,7 +32,9 @@ namespace aspect
     using namespace dealii;
 
     /**
-     * A class that implements initial conditions for the
+     * A class that implements initial conditions for the composition
+     * considering a lithosphere consisting of an upper crust,
+     * lower crust and mantle part.
      *
      * @ingroup InitialCompositionModels
      */
@@ -78,9 +79,17 @@ namespace aspect
       private:
 
         /**
-         * The standard deviation of the Gaussian amplitude of the lithospheric thicknesses.
+         * The standard deviation of the Gaussian amplitude of the lithospheric thicknesses
+         * with distance from the rift axis.
          */
         double sigma;
+
+        /**
+         * The maximum amplitude of the Gaussian distribution of the lithospheric thicknesses
+         * with distance from the rift axis. It should have a value between -1 and 1, where positive
+         * numbers represent a reduction in thickness and negative numbers an increase.
+         */
+        double A;
 
         /**
          * The list of line segments consisting of two 2D coordinates per segment.
@@ -89,7 +98,7 @@ namespace aspect
         std::vector<std::vector<Point<2> > > point_list;
 
         /**
-         * Vector for field thicknesses.
+         * Vector for the reference field thicknesses away from the rift.
          */
         std::vector<double> thicknesses;
 

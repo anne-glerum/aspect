@@ -22,6 +22,7 @@
 #include <aspect/initial_composition/lithosphere_rift.h>
 #include <aspect/initial_temperature/lithosphere_rift.h>
 #include <aspect/geometry_model/box.h>
+#include <aspect/utilities.h>
 
 
 namespace aspect
@@ -34,7 +35,8 @@ namespace aspect
     initialize ()
     {
       // Check that the required initial composition model is used
-      AssertThrow((dynamic_cast<InitialTemperature::LithosphereRift<dim> *> (const_cast<InitialTemperature::Interface<dim> *>(&this->get_initial_temperature()))) != 0,
+      const std::vector<std::string> active_initial_temperature_models = this->get_initial_temperature_manager().get_active_initial_temperature_names();
+      AssertThrow(find(active_initial_temperature_models.begin(),active_initial_temperature_models.end(), "lithosphere with rift") != active_initial_temperature_models.end(),
                   ExcMessage("The lithosphere with rift initial composition plugin requires the lithosphere with rift initial temperature plugin."));
     }
 
@@ -58,9 +60,9 @@ namespace aspect
 
       // Compute the local thickness of the upper crust, lower crust and mantle part of the lithosphere
       // (in this exact order) based on the distance from the rift axis.
-      const double local_upper_crust_thickness = thicknesses[0] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2))));
-      const double local_lower_crust_thickness = thicknesses[1] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2))));
-      const double local_mantle_lithosphere_thickness = thicknesses[2] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2))));
+      const double local_upper_crust_thickness = thicknesses[0] * (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+      const double local_lower_crust_thickness = thicknesses[1] * (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+      const double local_mantle_lithosphere_thickness = thicknesses[2] * (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
 
       // Compute depth
       const double depth = this->get_geometry_model().depth(position);
@@ -97,8 +99,7 @@ namespace aspect
                 {
                   // Get the surface coordinates by dropping the last coordinate
                   const Point<2> surface_position = Point<2>(position[0],position[1]);
-                  //temp_distance = std::abs(Utilities::distance_to_line<dim>(point_list[i_segments], surface_position));
-                  temp_distance = 300;
+                  temp_distance = std::abs(Utilities::distance_to_line<dim>(point_list[i_segments], surface_position));
                 }
             }
           // chunk (spherical) geometries
@@ -111,8 +112,7 @@ namespace aspect
                 surface_position[d] = spherical_point[d+1];
               // TODO check if this works correctly
               // as we're calculating distances in radians
-              //temp_distance = (dim == 2) ? std::abs(surface_position[0]-point_list[i_segments][0][0]) : Utilities::distance_to_line<dim>(point_list[i_segments], surface_position);
-              temp_distance = 300;
+              temp_distance = (dim == 2) ? std::abs(surface_position[0]-point_list[i_segments][0][0]) : Utilities::distance_to_line<dim>(point_list[i_segments], surface_position);
             }
 
           // Get the minimum distance
@@ -135,6 +135,11 @@ namespace aspect
                              "The standard deviation of the Gaussian distribution of the amplitude of the strain noise. "
                              "Note that this parameter is taken to be the same for all rift segments. "
                              "Units: $m$ or degrees.");
+          prm.declare_entry ("Maximum amplitude of Gaussian noise amplitude distribution", "0.2",
+                             Patterns::Double (0),
+                             "The amplitude of the Gaussian distribution of the amplitude of the strain noise. "
+                             "Note that this parameter is taken to be the same for all rift segments. "
+                             "Units: none.");
           prm.declare_entry ("Rift axis line segments",
                              "",
                              Patterns::Anything(),
@@ -177,6 +182,7 @@ namespace aspect
         prm.enter_subsection("Lithosphere with rift");
         {
           sigma                = prm.get_double ("Standard deviation of Gaussian noise amplitude distribution");
+          A                    = prm.get_double ("Maximum amplitude of Gaussian noise amplitude distribution");
           // Read in the string of segments
           const std::string temp_all_segments = prm.get("Rift axis line segments");
           // Split the string into segment strings
