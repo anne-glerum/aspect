@@ -44,7 +44,8 @@ namespace aspect
     initialize ()
     {
       // Check that the required initial composition model is used
-      AssertThrow((dynamic_cast<InitialComposition::LithosphereRift<dim> *> (const_cast<InitialComposition::Interface<dim> *>(&this->get_initial_composition()))) != 0,
+      const std::vector<std::string> active_initial_composition_models = this->get_initial_composition_manager().get_active_initial_composition_names();
+      AssertThrow(std::find(active_initial_composition_models.begin(),active_initial_composition_models.end(), "lithosphere with rift") != active_initial_composition_models.end(),
                   ExcMessage("The lithosphere with rift initial temperature plugin requires the lithosphere with rift initial composition plugin."));
 
       // Check that the required radioactive heating model ("compositional heating") is used
@@ -67,15 +68,23 @@ namespace aspect
       const bool cartesian_geometry = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) != NULL ? true : false;
 
       // Get the distance to the line segments along a path parallel to the surface
-      InitialComposition::LithosphereRift<dim> *ic = dynamic_cast<InitialComposition::LithosphereRift<dim> *> (const_cast<InitialComposition::Interface<dim> *>(&this->get_initial_composition()));
-      const double distance_to_rift_axis = ic->distance_to_rift(position, cartesian_geometry);
+      //InitialComposition::LithosphereRift<dim> *ic = dynamic_cast<InitialComposition::LithosphereRift<dim> *> (const_cast<InitialComposition::Interface<dim> *>(&this->get_initial_composition()));
+
+      double distance_to_rift_axis = 1e23;
+      const std::list<std_cxx11::shared_ptr<InitialComposition::Interface<dim> > > initial_composition_objects = this->get_initial_composition_manager().get_active_initial_composition_conditions();
+      for (typename std::list<std_cxx11::shared_ptr<InitialComposition::Interface<dim> > >::const_iterator it = initial_composition_objects.begin(); it != initial_composition_objects.end(); ++it)
+        if( InitialComposition::LithosphereRift<dim> *ic = dynamic_cast<InitialComposition::LithosphereRift<dim> *> ((*it).get()))
+         distance_to_rift_axis = ic->distance_to_rift(position, cartesian_geometry);
+
+      //const InitialComposition::LithosphereRift<dim> *ic = initial_composition_objects[std::find(initial_composition_objects.begin(), initial_composition_objects.end(), InitialComposition::LithosphereRift<dim>)];
+      //const double distance_to_rift_axis = ic->distance_to_rift(position, cartesian_geometry);
 
       // Compute the local thickness of the upper crust, lower crust and mantle part of the lithosphere
       // based on the distance from the rift axis.
       std::vector<double> local_thicknesses(3);
-      local_thicknesses[0] = thicknesses[0] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2))));
-      local_thicknesses[1] = thicknesses[1] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2))));
-      local_thicknesses[2] = thicknesses[2] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2))));
+      local_thicknesses[0] = thicknesses[0] * (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+      local_thicknesses[1] = thicknesses[1] * (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+      local_thicknesses[2] = thicknesses[2] * (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
 
       const double depth = this->get_geometry_model().depth(position);
       
@@ -157,6 +166,16 @@ namespace aspect
       }
       prm.leave_subsection();
 
+      prm.enter_subsection ("Initial composition model");
+      {
+        prm.enter_subsection("Lithosphere with rift");
+        {
+          sigma                = prm.get_double ("Standard deviation of Gaussian noise amplitude distribution");
+          A                    = prm.get_double ("Maximum amplitude of Gaussian noise amplitude distribution");
+        }
+        prm.leave_subsection();
+      }
+      prm.leave_subsection();
 
       prm.enter_subsection ("Initial temperature model");
       {
