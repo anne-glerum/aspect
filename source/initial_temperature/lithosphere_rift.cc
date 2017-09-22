@@ -43,10 +43,6 @@ namespace aspect
     LithosphereRift<dim>::
     initialize ()
     {
-      // Check that the required initial composition model is used
-      const std::vector<std::string> active_initial_composition_models = this->get_initial_composition_manager().get_active_initial_composition_names();
-      AssertThrow(std::find(active_initial_composition_models.begin(),active_initial_composition_models.end(), "lithosphere with rift") != active_initial_composition_models.end(),
-                  ExcMessage("The lithosphere with rift initial temperature plugin requires the lithosphere with rift initial composition plugin."));
 
       // Check that the required radioactive heating model ("compositional heating") is used
       const std::vector<std::string> &heating_models = this->get_heating_model_manager().get_active_heating_model_names();
@@ -88,7 +84,7 @@ namespace aspect
 
       const double depth = this->get_geometry_model().depth(position);
       
-      return temperature(depth, thicknesses);
+      return temperature(depth, local_thicknesses);
     }
 
 
@@ -123,6 +119,7 @@ namespace aspect
       // using the "minimum" operator on the "List of initial temperature models"
       else
         return 10.*LAB_isotherm;
+      // TODO have a compensation depth?
 
     }
 
@@ -133,7 +130,7 @@ namespace aspect
     {
       prm.enter_subsection ("Initial temperature model");
       {
-        prm.enter_subsection("Continental geotherm");
+        prm.enter_subsection("Lithosphere with rift");
         {
           prm.declare_entry ("Layer thicknesses", "30000.",
                              Patterns::List(Patterns::Double(0)),
@@ -179,7 +176,7 @@ namespace aspect
 
       prm.enter_subsection ("Initial temperature model");
       {
-        prm.enter_subsection("Continental geotherm");
+        prm.enter_subsection("Lithosphere with rift");
         {
           LAB_isotherm = prm.get_double ("LAB isotherm temperature");
           T0 = prm.get_double ("Surface temperature");
