@@ -25,6 +25,7 @@
 #include <aspect/geometry_model/box.h>
 #include <aspect/geometry_model/spherical_shell.h>
 #include <aspect/geometry_model/chunk.h>
+#include <aspect/geometry_model/ellipsoidal_chunk.h>
 
 #include <cmath>
 
@@ -178,6 +179,13 @@ namespace aspect
               for (unsigned int i=0; i<dim-1; ++i)
                 mid_point(i) += 0.5 * box_geometry_model->get_extents()[i];
             }
+          else if (const GeometryModel::EllipsoidalChunk<dim> *
+                   ell_chunk_geometry_model = dynamic_cast <const GeometryModel::EllipsoidalChunk<dim>*> (&this->get_geometry_model()))
+          {
+           AssertThrow(amplitude == 0., 
+                         ExcMessage ("Not a valid geometry model for the initial conditions model"
+                                     "adiabatic."));
+          }
           else
             AssertThrow (false,
                          ExcMessage ("Not a valid geometry model for the initial temperature model"
