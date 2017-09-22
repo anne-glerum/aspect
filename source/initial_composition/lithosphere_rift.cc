@@ -72,7 +72,7 @@ namespace aspect
         return 1.;
       else if (depth > local_upper_crust_thickness && depth <= local_upper_crust_thickness+local_lower_crust_thickness && compositional_index == id_lower)
         return 1.;
-      else if (depth > local_upper_crust_thickness+local_lower_crust_thickness && depth <= local_mantle_lithosphere_thickness && compositional_index == id_mantle_L)
+      else if (depth > local_upper_crust_thickness+local_lower_crust_thickness && depth <= local_upper_crust_thickness+local_lower_crust_thickness+local_mantle_lithosphere_thickness && compositional_index == id_mantle_L)
         return 1.;
       else
         return 0.;
@@ -136,7 +136,7 @@ namespace aspect
                              "Note that this parameter is taken to be the same for all rift segments. "
                              "Units: $m$ or degrees.");
           prm.declare_entry ("Maximum amplitude of Gaussian noise amplitude distribution", "0.2",
-                             Patterns::Double (0),
+                             Patterns::Double (-1,1),
                              "The amplitude of the Gaussian distribution of the amplitude of the strain noise. "
                              "Note that this parameter is taken to be the same for all rift segments. "
                              "Units: none.");
@@ -144,7 +144,7 @@ namespace aspect
                              "",
                              Patterns::Anything(),
                              "Set the line segments that represent the rift axis. Each segment is made up of "
-                             "two points that represent horizontal coordinates (x,y) or (lon,lat). "
+                             "two points that represent horizontal coordinates (x,y) or (lon,colat). "
                              "The exact format for the point list describing the segments is "
                              "\"x1,y1>x2,y2;x2,y2>x3,y3;x4,y4>x5,y5\". Note that the segments can be connected "
                              "or isolated. The units of the coordinates are "
