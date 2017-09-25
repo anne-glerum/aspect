@@ -59,7 +59,12 @@ namespace aspect
         double initial_composition (const Point<dim> &position,
                                     const unsigned int compositional_index) const;
 
-        double distance_to_rift (const Point<dim> &position,
+        double distance_to_rift (const Point<2> &position,
+                                 const bool cartesian_geometry) const;
+
+        double distance_to_polygon (const Point<2> &position) const;
+
+        Point<2> surface_position (const Point<dim> &position,
                                  const bool cartesian_geometry) const;
 
         /**
@@ -98,9 +103,20 @@ namespace aspect
         std::vector<std::vector<Point<2> > > point_list;
 
         /**
+         * The list of polygon points.
+         * The polygon represent an area of different lithospheric thicknesses.
+         */
+        std::vector<Point<2> > polygon_point_list;
+
+        /**
          * Vector for the reference field thicknesses away from the rift.
          */
         std::vector<double> thicknesses;
+
+        /**
+         * Vector for the reference field thicknesses away from the rift.
+         */
+        std::vector<double> polygon_thicknesses;
 
     };
   }
