@@ -67,10 +67,16 @@ namespace aspect
       //InitialComposition::LithosphereRift<dim> *ic = dynamic_cast<InitialComposition::LithosphereRift<dim> *> (const_cast<InitialComposition::Interface<dim> *>(&this->get_initial_composition()));
 
       double distance_to_rift_axis = 1e23;
+      Point<2> surface_position;
+      double distance_to_L_polygon = 1e23;
       const std::list<std_cxx11::shared_ptr<InitialComposition::Interface<dim> > > initial_composition_objects = this->get_initial_composition_manager().get_active_initial_composition_conditions();
       for (typename std::list<std_cxx11::shared_ptr<InitialComposition::Interface<dim> > >::const_iterator it = initial_composition_objects.begin(); it != initial_composition_objects.end(); ++it)
         if( InitialComposition::LithosphereRift<dim> *ic = dynamic_cast<InitialComposition::LithosphereRift<dim> *> ((*it).get()))
-         distance_to_rift_axis = ic->distance_to_rift(position, cartesian_geometry);
+          {
+            surface_position = ic->surface_position(position, cartesian_geometry);
+            distance_to_rift_axis = ic->distance_to_rift(surface_position, cartesian_geometry);
+            distance_to_L_polygon = ic->distance_to_polygon(surface_position);
+          }
 
       //const InitialComposition::LithosphereRift<dim> *ic = initial_composition_objects[std::find(initial_composition_objects.begin(), initial_composition_objects.end(), InitialComposition::LithosphereRift<dim>)];
       //const double distance_to_rift_axis = ic->distance_to_rift(position, cartesian_geometry);
@@ -78,9 +84,18 @@ namespace aspect
       // Compute the local thickness of the upper crust, lower crust and mantle part of the lithosphere
       // based on the distance from the rift axis.
       std::vector<double> local_thicknesses(3);
-      local_thicknesses[0] = thicknesses[0] * (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
-      local_thicknesses[1] = thicknesses[1] * (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
-      local_thicknesses[2] = thicknesses[2] * (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+//      local_thicknesses[0] = std::min((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[0]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[0],
+//                                      thicknesses[0] * (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2))))));
+//      local_thicknesses[1] = std::min((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[1]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[1],
+//                                      thicknesses[1] * (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2))))));
+//      local_thicknesses[2] = std::min((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[2]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[2],
+//                                      thicknesses[2] * (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2))))));
+      local_thicknesses[0] = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[0]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[0])*
+                                      (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+      local_thicknesses[1] = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[1]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[1])*
+                                      (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+      local_thicknesses[2] = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[2]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[2])*
+                                      (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
 
       const double depth = this->get_geometry_model().depth(position);
       
@@ -132,11 +147,7 @@ namespace aspect
       {
         prm.enter_subsection("Lithosphere with rift");
         {
-          prm.declare_entry ("Layer thicknesses", "30000.",
-                             Patterns::List(Patterns::Double(0)),
-                             "List of thicknesses for the bottom of the lithospheric layers,"
-                             "for a total of N+1 values, where N is the number of compositional fields."
-                             "If only one value is given, then all use the same value.  Units: $kg / m^3$");
+
           prm.declare_entry ("Surface temperature", "273.15",
                              Patterns::Double (0),
                              "The value of the surface temperature. Units: Kelvin.");
@@ -169,6 +180,12 @@ namespace aspect
         {
           sigma                = prm.get_double ("Standard deviation of Gaussian noise amplitude distribution");
           A                    = prm.get_double ("Maximum amplitude of Gaussian noise amplitude distribution");
+          thicknesses = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Layer thicknesses"))),
+                                                              3,
+                                                              "Layer thicknesses");
+          polygon_thicknesses = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Lithospheric polygon layer thicknesses"))),
+                                                              3,
+                                                              "Lithospheric polygon layer thicknesses");
         }
         prm.leave_subsection();
       }
@@ -180,9 +197,7 @@ namespace aspect
         {
           LAB_isotherm = prm.get_double ("LAB isotherm temperature");
           T0 = prm.get_double ("Surface temperature");
-          thicknesses = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Layer thicknesses"))),
-                                                              3,
-                                                              "Layer thicknesses");
+
         }
         prm.leave_subsection();
       }

@@ -73,10 +73,14 @@ namespace aspect
                   // Determine coordinate system
                   const bool cartesian_geometry = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) != NULL ? true : false;
                   double distance_to_rift_axis = 1e23;
+                  Point<2> surface_position;
                   const std::list<std_cxx11::shared_ptr<InitialComposition::Interface<dim> > > initial_composition_objects = this->get_initial_composition_manager().get_active_initial_composition_conditions();
                   for (typename std::list<std_cxx11::shared_ptr<InitialComposition::Interface<dim> > >::const_iterator it = initial_composition_objects.begin(); it != initial_composition_objects.end(); ++it)
                     if( InitialComposition::LithosphereRift<dim> *ic = dynamic_cast<InitialComposition::LithosphereRift<dim> *> ((*it).get()))
-                     distance_to_rift_axis = ic->distance_to_rift(vertex, cartesian_geometry);
+                      {
+                        surface_position = ic->surface_position(vertex, cartesian_geometry);
+                        distance_to_rift_axis = ic->distance_to_rift(surface_position, cartesian_geometry);
+                      }
 
                   if(depth <= reference_crustal_thickness && std::abs(distance_to_rift_axis)<=3.*sigma)
                     {
@@ -118,26 +122,17 @@ namespace aspect
       }
       prm.leave_subsection();
 
-      // get reference crustal thickness
-      prm.enter_subsection ("Initial temperature model");
-      {
-        prm.enter_subsection("Lithosphere with rift");
-        {
-          std::vector<double> thicknesses = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Layer thicknesses"))),
-                                                                                    3,
-                                                                                    "Layer thicknesses");
-          reference_crustal_thickness = thicknesses[0]+thicknesses[1]+thicknesses[2];
-        }
-        prm.leave_subsection();
-      }
-      prm.leave_subsection();
 
-      // get sigma
+      // get sigma and reference crustal thickness
       prm.enter_subsection ("Initial composition model");
       {
         prm.enter_subsection("Lithosphere with rift");
         {
           sigma                = prm.get_double ("Standard deviation of Gaussian noise amplitude distribution");
+          std::vector<double> thicknesses = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Layer thicknesses"))),
+                                                                                    3,
+                                                                                    "Layer thicknesses");
+          reference_crustal_thickness = thicknesses[0]+thicknesses[1]+thicknesses[2];
         }
         prm.leave_subsection();
       }
