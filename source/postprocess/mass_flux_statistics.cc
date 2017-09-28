@@ -59,6 +59,7 @@ namespace aspect
       std::vector<std::vector<double> > composition_values (this->n_compositional_fields(),std::vector<double> (quadrature_formula.size()));
 
       std::map<types::boundary_id, double> local_boundary_fluxes;
+      std::map<types::boundary_id, double> local_areas;
 
       typename DoFHandler<dim>::active_cell_iterator
       cell = this->get_dof_handler().begin_active(),
@@ -89,6 +90,7 @@ namespace aspect
 
 
                 double local_normal_flux = 0;
+                double local_area=0;
                 for (unsigned int q=0; q<fe_face_values.n_quadrature_points; ++q)
                   {
                     local_normal_flux
@@ -96,15 +98,18 @@ namespace aspect
                       out.densities[q]
                       * (in.velocity[q] * fe_face_values.normal_vector(q))
                       * fe_face_values.JxW(q);
+                    local_area += fe_face_values.JxW(q);
                   }
 
                 const types::boundary_id boundary_indicator
                   = cell->face(f)->boundary_id();
                 local_boundary_fluxes[boundary_indicator] += local_normal_flux * in_years;
+                local_areas[boundary_indicator] += local_area;
               }
 
       // now communicate to get the global values
       std::map<types::boundary_id, double> global_boundary_fluxes;
+      std::map<types::boundary_id, double> global_areas;
       {
         // first collect local values in the same order in which they are listed
         // in the set of boundary indicators
@@ -112,21 +117,29 @@ namespace aspect
         boundary_indicators
           = this->get_geometry_model().get_used_boundary_indicators ();
         std::vector<double> local_values;
+        std::vector<double> local_area_values;
         for (std::set<types::boundary_id>::const_iterator
              p = boundary_indicators.begin();
              p != boundary_indicators.end(); ++p)
+          {
           local_values.push_back (local_boundary_fluxes[*p]);
-
+          local_area_values.push_back (local_areas[*p]);
+          }
         // then collect contributions from all processors
         std::vector<double> global_values (local_values.size());
+        std::vector<double> global_area_values (local_area_values.size());
         Utilities::MPI::sum (local_values, this->get_mpi_communicator(), global_values);
+        Utilities::MPI::sum (local_area_values, this->get_mpi_communicator(), global_area_values);
 
         // and now take them apart into the global map again
         unsigned int index = 0;
         for (std::set<types::boundary_id>::const_iterator
              p = boundary_indicators.begin();
              p != boundary_indicators.end(); ++p, ++index)
+         {
           global_boundary_fluxes[*p] = global_values[index];
+          global_areas[*p] = global_area_values[index];
+         }
       }
 
       // now add all of the computed heat fluxes to the statistics object
@@ -152,10 +165,35 @@ namespace aspect
           // finally have something for the screen
           screen_text.precision(4);
           screen_text << p->second << " " << unit
-                      << (index == global_boundary_fluxes.size()-1 ? "" : ", ");
+                      << (", ");
         }
 
-      return std::pair<std::string, std::string> ("Mass fluxes through boundary parts:",
+      // Now at the areas
+      index=0;
+
+      for (std::map<types::boundary_id, double>::const_iterator
+           p = global_areas.begin();
+           p != global_areas.end(); ++p, ++index)
+        {
+          const std::string name = "Area of boundary with indicator "
+                                   + Utilities::int_to_string(p->first)
+                                   + aspect::Utilities::parenthesize_if_nonempty(this->get_geometry_model()
+                                                                                 .translate_id_to_symbol_name (p->first))
+                                   + " ( m2 )";
+          statistics.add_value (name, p->second);
+
+          // also make sure that the other columns filled by this object
+          // all show up with sufficient accuracy and in scientific notation
+          statistics.set_precision (name, 8);
+          statistics.set_scientific (name, true);
+
+          // finally have something for the screen
+          screen_text.precision(4);
+          screen_text << p->second << " " << "m2"
+                      << (index == global_areas.size()-1 ? "" : ", ");
+        }
+
+      return std::pair<std::string, std::string> ("Mass fluxes through and area of boundary parts:",
                                                   screen_text.str());
     }
   }
