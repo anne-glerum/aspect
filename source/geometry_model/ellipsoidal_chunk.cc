@@ -189,6 +189,7 @@ namespace aspect
     EllipsoidalChunk<dim>::initialize()
     {
       manifold.initialize(&(this->get_initial_topography_model()));
+      this->get_pcout() << "Corner points of domain in lon, lat [degrees]: " << corners[0][0] << ", " << corners[0][1] << "; " << corners[1][0] << ", " << corners[1][1] << "; " << corners[2][0] << ", " << corners[2][1] << "; " << corners[3][0] << ", " << corners[3][1] << std::endl;
     }
 
     template <int dim>
