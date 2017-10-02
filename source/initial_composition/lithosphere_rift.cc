@@ -65,12 +65,6 @@ namespace aspect
 
       // Compute the local thickness of the upper crust, lower crust and mantle part of the lithosphere
       // (in this exact order) based on the distance from the rift axis.
-//      const double local_upper_crust_thickness = std::min((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[0]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[0],
-//                                                          thicknesses[0]*(1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2))))));
-//      const double local_lower_crust_thickness = std::min((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[1]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[1],
-//                                                          thicknesses[1] * (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2))))));
-//      const double local_mantle_lithosphere_thickness = std::min((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[2]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[2],
-//                                                                 thicknesses[2] * (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2))))));
       const double local_upper_crust_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[0]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[0])*
                                                           (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
       const double local_lower_crust_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[1]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[1])*
@@ -103,7 +97,7 @@ namespace aspect
       double temp_distance = 0;
 
       // Loop over all line segments
-      // TODO fix stupid dim of surface_position
+      // TODO: fix stupid dim of surface_position
       for (unsigned int i_segments = 0; i_segments < point_list.size(); ++i_segments)
         {
           if (cartesian_geometry)
@@ -246,7 +240,6 @@ namespace aspect
               point_list[i_segment].resize(dim-1);
 
 
-              // TODO what happens if there is no >?
               const std::vector<std::string> temp_segment = Utilities::split_string_list(temp_segments[i_segment],'>');
 
               if (dim == 3)
