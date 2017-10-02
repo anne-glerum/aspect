@@ -314,8 +314,11 @@ namespace aspect
          * in the whole lithosphere. At every side boundary point with a depth
          * smaller than this value (and thus being located in the lithosphere),
          * the surface velocity will be described.
+         * Around the lithosphere bottom depth, the velocity is faded out to zero
+         * with a hyperbolic tangent with a user-defined reference half width.
          */
         double lithosphere_thickness;
+        double htan_halfwidth;
 
         /**
          * Pointer to an object that reads and processes data we get from
