@@ -45,12 +45,9 @@ namespace aspect
 
       // The reference column
       double ref_rgh = 0;
-      // Assume constant gravity magnitude
-      // TODO read from input
-      const double gravity = 9.81; //this->get_gravity_model().gravity_vector(this->get_geometry_model().representative_point(0)).norm();
-      std::cout << densities.size() << " " << thicknesses.size() << std::endl;
+      // Assume constant gravity magnitude, so ignore
       for (unsigned int l=0; l<3; ++l)
-        ref_rgh += densities[l+1] * thicknesses[l] * gravity;
+        ref_rgh += densities[l+1] * thicknesses[l];
 
       // The total lithosphere thickness
       const double sum_thicknesses = std::accumulate(thicknesses.begin(), thicknesses.end(),0);
@@ -65,7 +62,7 @@ namespace aspect
         rift_thicknesses[l] *= A;
 
        for (unsigned int l=0; l<3; ++l)
-         rift_rgh += densities[l+1] * rift_thicknesses[l] * gravity;
+         rift_rgh += densities[l+1] * rift_thicknesses[l];
 
        // The total lithosphere thickness at the rift
        const double sum_rift_thicknesses = sum_thicknesses * A;
@@ -77,7 +74,7 @@ namespace aspect
       // Compute the maximum topography based on mass surplus/deficit
       topo_amplitude = (ref_rgh-rift_rgh) / densities[0];
 
-      this->get_pcout() << "Maximum topography " << topo_amplitude << std::endl;
+      this->get_pcout() << "   Maximum initial topography of rift: " << topo_amplitude << " m" << std::endl;
     }
 
 
@@ -92,8 +89,10 @@ namespace aspect
       // Get the distance to the line segments along a path parallel to the surface
       double distance_to_rift_axis = 1e23;
       Point<2> surface_position;
+      // Convert to radians and colat
       for (unsigned int d=0; d<dim-1; ++d)
-        surface_position[d] = position[d];
+        surface_position[d] = position[d]*numbers::PI/180.;
+      surface_position[1] = 0.5*numbers::PI - surface_position[1];
       double distance_to_L_polygon = 1e23;
       const std::list<std_cxx11::shared_ptr<InitialComposition::Interface<dim> > > initial_composition_objects = this->get_initial_composition_manager().get_active_initial_composition_conditions();
       for (typename std::list<std_cxx11::shared_ptr<InitialComposition::Interface<dim> > >::const_iterator it = initial_composition_objects.begin(); it != initial_composition_objects.end(); ++it)
