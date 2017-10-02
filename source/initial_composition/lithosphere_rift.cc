@@ -140,7 +140,7 @@ namespace aspect
       // chunk (spherical) geometries
       else
         {
-          // spherical coordinates in radius [m], lon [rad], lat [rad] format
+          // spherical coordinates in radius [m], lon [rad], colat [rad] format
           const std_cxx11::array<double,dim> spherical_point = Utilities::Coordinates::cartesian_to_spherical_coordinates(position);
           for (unsigned int d=0; d<dim-1; ++d)
             surface_point[d] = spherical_point[d+1];
