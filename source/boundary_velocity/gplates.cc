@@ -33,6 +33,7 @@
 
 #include <aspect/geometry_model/spherical_shell.h>
 #include <aspect/geometry_model/chunk.h>
+#include <aspect/geometry_model/ellipsoidal_chunk.h>
 
 
 namespace aspect
@@ -167,7 +168,8 @@ namespace aspect
         const unsigned int n_phi = static_cast<unsigned int> (2 * (dn_theta - 1));
 
         AssertThrow(dn_theta - n_theta <= 1e-5,
-                    ExcMessage("The velocity file has a grid structure that is not readable. Please refer to the manual for a proper grid structure."));
+                    ExcMessage("The velocity file has a grid structure that is not readable. Please refer to the manual for a proper grid structure. n_points, n_theta, n_phi: "
+                               + Utilities::int_to_string(n_points) + ", " + Utilities::int_to_string(n_theta) + ", " + Utilities::int_to_string(n_phi)));
 
         delta_theta =   numbers::PI / (n_theta-1);
         delta_phi   = 2*numbers::PI / n_phi;
@@ -569,14 +571,16 @@ namespace aspect
                             "may not be equal."));
 
       if (((dynamic_cast<const GeometryModel::SphericalShell<dim>*> (&this->get_geometry_model())) != nullptr)
-          || ((dynamic_cast<const GeometryModel::Chunk<dim>*> (&this->get_geometry_model())) != nullptr))
+          || ((dynamic_cast<const GeometryModel::Chunk<dim>*> (&this->get_geometry_model())) != nullptr)
+      // TODO: add Assert for ellipticity = 0
+          || ((dynamic_cast<const GeometryModel::EllipsoidalChunk<dim>*> (&this->get_geometry_model())) != nullptr ))
         {
           lookup = std_cxx14::make_unique<internal::GPlatesLookup<dim>>(pointone, pointtwo);
           old_lookup = std_cxx14::make_unique<internal::GPlatesLookup<dim>>(pointone, pointtwo);
         }
       else
         AssertThrow (false,ExcMessage ("This gplates plugin can only be used when using "
-                                       "a spherical shell or chunk geometry."));
+                                       "a spherical shell or (ellipsoidal) chunk geometry."));
 
       // display the GPlates module information at model start.
       this->get_pcout() << lookup->screen_output(pointone, pointtwo);
@@ -765,16 +769,18 @@ namespace aspect
       // model will have more than 1e7 quadrature points in depth direction.
       // Without the magic number it may unintentionally happen that the GPlates
       // velocities are not prescribed at every point on the surface.
-      const double magic_number = 1e-7 * this->get_geometry_model().maximal_depth();
+      // TODO: this assumes the boundaries are not deformed due to the free surface.
+      // const double magic_number = 1e-7 * this->get_geometry_model().maximal_depth();
 
-      if ((this->get_time() - first_data_file_model_time >= 0.0) && (this->get_geometry_model().depth(position) <= lithosphere_thickness + magic_number))
+      if ((this->get_time() - first_data_file_model_time >= 0.0)) // && (this->get_geometry_model().depth(position) <= lithosphere_thickness + magic_number))
         {
-          const Tensor<1,dim> data = lookup->surface_velocity(position);
+          const double depth = this->get_geometry_model().depth(position); 
+          const Tensor<1,dim> data = (0.5-0.5*std::tanh((depth - lithosphere_thickness)/htan_halfwidth)) * lookup->surface_velocity(position);
 
           if (!time_dependent)
             return data;
 
-          const Tensor<1,dim> old_data = old_lookup->surface_velocity(position);
+          const Tensor<1,dim> old_data = (0.5+0.5*std::tanh((depth - lithosphere_thickness)/htan_halfwidth)) * old_lookup->surface_velocity(position);
 
           return time_weight * data + (1 - time_weight) * old_data;
         }
@@ -836,6 +842,10 @@ namespace aspect
                              "You might want to use this to scale the velocities to a "
                              "reference model (e.g. with free-slip boundary) or another "
                              "plate reconstruction.");
+          prm.declare_entry ("Fade out velocity half width", "6271000",
+                             Patterns::Double (0),
+                             "The halfwidth of the hyperbolic tangent with which the velocity is faded out with depth. "
+                             "Unit: m.");
           prm.declare_entry ("Point one", "1.570796,0.0",
                              Patterns::Anything (),
                              "Point that determines the plane in which a 2D model lies in. Has to be in the format `a,b' where a and b are theta (polar angle)  and phi in radians.");
@@ -872,6 +882,7 @@ namespace aspect
           point1                     = prm.get        ("Point one");
           point2                     = prm.get        ("Point two");
           lithosphere_thickness      = prm.get_double ("Lithosphere thickness");
+          htan_halfwidth        = prm.get_double ("Fade out velocity half width");
 
           if (this->convert_output_to_years())
             {
