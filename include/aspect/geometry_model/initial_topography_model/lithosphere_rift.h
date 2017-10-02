@@ -84,9 +84,22 @@ namespace aspect
         double A;
 
         /**
-         * The maximum amplitude of the Gaussian distribution of the topography.
+         * The maximum amplitude of the Gaussian distribution of the topography around the rift.
          */
-        double topo_amplitude;
+        double topo_rift_amplitude;
+
+        /**
+         * The reference lithospheric column used in computing the topography based on isostasy
+         * and the thickness of this column.
+         */
+        double ref_rgh;
+        double compensation_depth;
+
+
+        /**
+         * The maximum amplitude of the topography of the polygon area.
+         */
+        double topo_polygon_amplitude;
 
         /**
          * Vector for field densities.
@@ -102,6 +115,11 @@ namespace aspect
          * Vector for the rift  thicknesses at the center.
          */
         std::vector<double> rift_thicknesses;
+
+        /**
+         * Vector for the polygon thicknesses at the center.
+         */
+        std::vector<double> polygon_thicknesses;
 
     };
   }
