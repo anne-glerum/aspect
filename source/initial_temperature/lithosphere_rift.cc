@@ -132,10 +132,10 @@ namespace aspect
       // Return a constant sublithospheric temperature of 10*LAB_isotherm.
       // This way we can combine the continental geotherm with an adiabatic profile from the input file
       // using the "minimum" operator on the "List of initial temperature models"
+      else if (use_compensation_depth && depth < compensation_depth)
+        return LAB_isotherm;
       else
         return 10.*LAB_isotherm;
-      // TODO have a compensation depth?
-
     }
 
 
@@ -155,6 +155,15 @@ namespace aspect
                              Patterns::Double (0),
                              "The value of the isothermal boundary temperature assumed at the LAB "
                              "and up to the reference depth . Units: Kelvin.");
+          prm.declare_entry ("Use temperature compensation depth", "false",
+                             Patterns::Bool (),
+                             "Whether or not to use a compensation depth to which the LAB isotherm temperature "
+                             "is prescribed when no lithosphere is present. Below this depth, 10 times the isotherm "
+                             "is prescribed . Units: -.");
+          prm.declare_entry ("Temperature compensation depth", "100e3",
+                             Patterns::Double (0),
+                             "The depth of the temperature compensation depth, "
+                             "i.e. the depth up to which the LAB isotherm is prescribed when not in the lithosphere. Units: Kelvin.");
         }
         prm.leave_subsection();
       }
@@ -197,7 +206,8 @@ namespace aspect
         {
           LAB_isotherm = prm.get_double ("LAB isotherm temperature");
           T0 = prm.get_double ("Surface temperature");
-
+          use_compensation_depth = prm.get_bool ("Use temperature compensation depth");
+          compensation_depth = prm.get_double ("Temperature compensation depth");
         }
         prm.leave_subsection();
       }

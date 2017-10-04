@@ -128,6 +128,15 @@ namespace aspect
          * numbers represent a reduction in thickness and negative numbers an increase.
          */
         double A;
+
+       /**
+        * Whether or not to use a compensation depth for the temperature
+        * up to which the LAB isotherm is prescribed. If yes, temperatures
+        * in the sub-lithospheric mantle are set to the LAB isotherm up
+        * to the depth held by the parameter compensation_depth.
+        */
+        bool use_compensation_depth;
+        double compensation_depth;
     };
   }
 }
