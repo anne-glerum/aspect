@@ -208,6 +208,7 @@ namespace aspect
           pressure[i] = sum + delta_z * 0.5 * density * gravity;
           sum += delta_z * density * gravity;
         }
+      this->get_pcout() << "Bottom lithostatic pressure: " << pressure[n_points-1] << std::endl;
 
       Assert (*std::min_element (pressure.begin(), pressure.end()) >=
               -std::numeric_limits<double>::epsilon() * pressure.size(),
