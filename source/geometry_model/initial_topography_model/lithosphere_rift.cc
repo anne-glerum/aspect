@@ -59,13 +59,13 @@ namespace aspect
       double rift_rgh = 0;
       rift_thicknesses = thicknesses;
       for (unsigned int l=0; l<rift_thicknesses.size(); ++l)
-        rift_thicknesses[l] *= A;
+        rift_thicknesses[l] *= (1.-A);
 
        for (unsigned int l=0; l<3; ++l)
          rift_rgh += densities[l+1] * rift_thicknesses[l];
 
        // The total lithosphere thickness at the rift
-       const double sum_rift_thicknesses = sum_thicknesses * A;
+       const double sum_rift_thicknesses = sum_thicknesses * (1.-A);
 
        // The column at the polygon center
        double polygon_rgh = 0;
