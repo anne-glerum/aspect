@@ -22,6 +22,11 @@
 #include <aspect/simulator.h>
 #include <aspect/global.h>
 
+#include <aspect/geometry_model/box.h>
+#include <aspect/geometry_model/spherical_shell.h>
+#include <aspect/geometry_model/chunk.h>
+#include <aspect/geometry_model/ellipsoidal_chunk.h>
+
 #include <deal.II/lac/solver_gmres.h>
 #include <deal.II/lac/constraint_matrix.h>
 
@@ -73,6 +78,43 @@ namespace aspect
             return cross_product_2d(p);
           else
             return cross_product_3d(axis, p);
+        }
+    };
+
+
+    /**
+     * A class we use when setting up the data structures for nullspace removal
+     * of the rotations in spherical or annular shells.
+     */
+    template <int dim>
+    class Radial : public TensorFunction<1,dim>
+    {
+      private:
+        const double v_magnitude;
+        const double outer_radius;
+
+      public:
+        // Constructor for TensorFunction that takes cartesian direction (1,2, or 3)
+        // and creates a solid body rotation around that axis.
+        Radial(const double v_magnitude,
+               const double R1)
+          :
+          v_magnitude(v_magnitude),
+          outer_radius(R1)
+        {}
+
+        virtual Tensor<1,dim> value (const Point<dim> &p) const
+        {
+          // radial vector with magnitude scaled with radius
+          // The surface area of a sphere scales with R*R,
+          // so the same integrated velocity is spread over a greater
+          // area when the radius increases. Or, vice versa, towards the
+          // bottom of the model, velocities increase because the
+          // area decreases.
+          const double radial_scale_factor = 1.; //outer_radius * outer_radius / (p.norm() * p.norm());
+
+          const Tensor<1,dim> correction = p / p.norm() * v_magnitude * radial_scale_factor;
+          return correction;
         }
     };
 
@@ -232,6 +274,14 @@ namespace aspect
       {
         // use_constant_density = true, remove net translation
         remove_net_linear_momentum( true, relevant_dst, tmp_distributed_stokes);
+      }
+    if (parameters.nullspace_removal & NullspaceRemoval::radial)
+      {
+        // use_constant_density = false, TODO really?
+        // remove a radial component based on the average radial velocity
+        // and the radius
+        remove_radial( true, relevant_dst, tmp_distributed_stokes);
+        pcout << "   Removing radial translation" << std::endl;
       }
   }
 
@@ -464,6 +514,126 @@ namespace aspect
         interpolate_onto_velocity_system(rot, correction);
         tmp_distributed_stokes.block(introspection.block_indices.velocities).add(1.0,correction);
       }
+
+    // copy into the locally relevant vector
+    relevant_dst.block(introspection.block_indices.velocities) =
+      tmp_distributed_stokes.block(introspection.block_indices.velocities);
+  }
+
+  // TODO find more descriptive name
+  template <int dim>
+  void Simulator<dim>::remove_radial( const bool use_constant_density,
+                                      LinearAlgebra::BlockVector &relevant_dst,
+                                      LinearAlgebra::BlockVector &tmp_distributed_stokes )
+  {
+    Assert(introspection.block_indices.velocities != introspection.block_indices.pressure,
+           ExcNotImplemented());
+
+    // TODO move this check to parameters.cc
+    AssertThrow((dynamic_cast<const GeometryModel::Box<dim>*> (geometry_model.get())==0),
+                ExcMessage("You can only use the radial translation nullspace removal for spherical models."));
+
+    // TODO?
+    // compute and remove the radial component from velocity field, by computing
+    // \int \rho (v + v_(R) = 0
+
+    QGauss<dim> quadrature(parameters.stokes_velocity_degree+1);
+    const unsigned int n_q_points = quadrature.size();
+    FEValues<dim> fe(*mapping, finite_element, quadrature,
+                     UpdateFlags(update_quadrature_points | update_JxW_values | update_values | update_gradients));
+
+    // TODO keep mass?
+    double local_radial_vel = 0.0;
+    double local_mass = 0.0;
+
+    // Vectors for evaluating the finite element solution
+    std::vector<std::vector<double> > composition_values (introspection.n_compositional_fields,
+                                                          std::vector<double> (n_q_points));
+    std::vector< Tensor<1,dim> > velocities( n_q_points );
+
+    typename DoFHandler<dim>::active_cell_iterator cell;
+    // loop over all local cells
+    for (cell = dof_handler.begin_active(); cell != dof_handler.end(); ++cell)
+      if (cell->is_locally_owned())
+        {
+          fe.reinit (cell);
+
+          // get the velocity at each quadrature point
+          fe[introspection.extractors.velocities].get_function_values (relevant_dst, velocities);
+
+          // get the density at each quadrature point if necessary
+          MaterialModel::MaterialModelInputs<dim> in(n_q_points,
+                                                     introspection.n_compositional_fields);
+          MaterialModel::MaterialModelOutputs<dim> out(n_q_points,
+                                                       introspection.n_compositional_fields);
+          if ( ! use_constant_density)
+            {
+              fe[introspection.extractors.pressure].get_function_values (relevant_dst, in.pressure);
+              fe[introspection.extractors.temperature].get_function_values (relevant_dst, in.temperature);
+              in.velocity = velocities;
+              fe[introspection.extractors.pressure].get_function_gradients (relevant_dst, in.pressure_gradient);
+              for (unsigned int c=0; c<introspection.n_compositional_fields; ++c)
+                fe[introspection.extractors.compositional_fields[c]].get_function_values(relevant_dst,
+                                                                                         composition_values[c]);
+
+              for (unsigned int i=0; i<n_q_points; ++i)
+                {
+                  in.position[i] = fe.quadrature_point(i);
+                  for (unsigned int c=0; c<introspection.n_compositional_fields; ++c)
+                    in.composition[i][c] = composition_values[c][i];
+                }
+              material_model->evaluate(in, out);
+            }
+
+          // actually compute the momentum and mass
+          for (unsigned int k=0; k<n_q_points; ++k)
+            {
+              // get the density at this quadrature point
+              const double rho = (use_constant_density ? 1.0 : out.densities[k]);
+
+              // radial component of velocity
+              local_radial_vel += velocities[k] * fe.quadrature_point(k) / fe.quadrature_point(k).norm() * rho * fe.JxW(k);
+              local_mass += rho * fe.JxW(k);
+            }
+        }
+
+    // Calculate the total mass and velocity correction
+    const double mass = Utilities::MPI::sum( local_mass, mpi_communicator);
+    const double velocity_correction = Utilities::MPI::sum(local_radial_vel, mpi_communicator)/mass;
+
+    if(use_constant_density)
+      pcout << "   Total domain volume " << mass << std::endl;
+    else
+      pcout << "   Total domain mass " << mass << std::endl;
+    pcout << "   Average radial velocity correction " << local_radial_vel << " " << velocity_correction << std::endl;
+
+    // vector for storing the correction to the velocity field
+    LinearAlgebra::Vector correction(tmp_distributed_stokes.block(introspection.block_indices.velocities));
+
+    double outer_radius = 0;
+    // Now construct tensor function to subtract radial velocity
+    if (const GeometryModel::SphericalShell<dim> *gm = dynamic_cast<const GeometryModel::SphericalShell<dim>*> (geometry_model.get()))
+      // set outer radius
+      outer_radius = gm->outer_radius();
+    else if (const GeometryModel::Chunk<dim> *gm = dynamic_cast<const GeometryModel::Chunk<dim>*> (geometry_model.get()))
+      // set outer radius
+      outer_radius = gm->outer_radius();
+    else if (const GeometryModel::EllipsoidalChunk<dim> *gm = dynamic_cast<const GeometryModel::EllipsoidalChunk<dim>*> (geometry_model.get()))
+      {
+        // TODO
+        // If the eccentricity of the EllipsoidalChunk is non-zero, the radius can vary along a boundary,
+        // but the maximal depth is the same everywhere and we could calculate a representative pressure
+        // profile. However, it requires some extra logic with ellipsoidal
+        // coordinates, so for now we only allow eccentricity zero.
+        // Using the EllipsoidalChunk with eccentricity zero can still be useful,
+        // because the domain can be non-coordinate parallel.
+        AssertThrow(gm->get_eccentricity() == 0.0, ExcMessage("The radial null space removal cannot be used with a non-zero eccentricity. "));
+
+        outer_radius = gm->get_semi_major_axis_a();
+      }
+    internal::Radial<dim> radial_translation( velocity_correction, outer_radius );
+    interpolate_onto_velocity_system(radial_translation, correction);
+    tmp_distributed_stokes.block(introspection.block_indices.velocities).add(-1.0,correction);
 
     // copy into the locally relevant vector
     relevant_dst.block(introspection.block_indices.velocities) =

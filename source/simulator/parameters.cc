@@ -636,7 +636,8 @@ namespace aspect
                          Patterns::MultipleSelection("net rotation|angular momentum|"
                                                      "net translation|linear momentum|"
                                                      "net x translation|net y translation|net z translation|"
-                                                     "linear x momentum|linear y momentum|linear z momentum"),
+                                                     "linear x momentum|linear y momentum|linear z momentum|"
+                                                     "radial"),
                          "Choose none, one or several from "
                          "\n\n"
                          "\\begin{itemize} \\item net rotation \\item angular momentum \\item net translation "
@@ -1276,6 +1277,9 @@ namespace aspect
                                     nullspace_removal | NullspaceRemoval::linear_momentum_x |
                                     NullspaceRemoval::linear_momentum_y | ( dim == 3 ?
                                                                             NullspaceRemoval::linear_momentum_z : 0) );
+            else if (nullspace_names[i]=="radial")
+              nullspace_removal = typename NullspaceRemoval::Kind(
+                                    nullspace_removal | NullspaceRemoval::radial);
             else
               AssertThrow(false, ExcInternalError());
           }

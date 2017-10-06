@@ -1029,6 +1029,10 @@ namespace aspect
                                        LinearAlgebra::BlockVector &relevant_dst,
                                        LinearAlgebra::BlockVector &tmp_distributed_stokes);
 
+      void remove_radial( const bool use_constant_density,
+                          LinearAlgebra::BlockVector &relevant_dst,
+                          LinearAlgebra::BlockVector &tmp_distributed_stokes );
+
       /**
        * Compute the maximal velocity throughout the domain. This is needed to
        * compute the size of the time step.
