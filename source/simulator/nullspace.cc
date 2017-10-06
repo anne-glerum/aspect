@@ -91,16 +91,16 @@ namespace aspect
     {
       private:
         const double v_magnitude;
-        const double outer_radius;
+        const double reference_radius;
 
       public:
         // Constructor for TensorFunction that takes cartesian direction (1,2, or 3)
         // and creates a solid body rotation around that axis.
-        Radial(const double v_magnitude,
-               const double R1)
+        Radial(const double v_mag,
+               const double Rref)
           :
-          v_magnitude(v_magnitude),
-          outer_radius(R1)
+          v_magnitude(v_mag),
+          reference_radius(Rref)
         {}
 
         virtual Tensor<1,dim> value (const Point<dim> &p) const
@@ -111,9 +111,10 @@ namespace aspect
           // area when the radius increases. Or, vice versa, towards the
           // bottom of the model, velocities increase because the
           // area decreases.
-          const double radial_scale_factor = 1.; //outer_radius * outer_radius / (p.norm() * p.norm());
+          const double radial_scale_factor = reference_radius * reference_radius / (p.norm() * p.norm());
 
           const Tensor<1,dim> correction = p / p.norm() * v_magnitude * radial_scale_factor;
+
           return correction;
         }
     };
@@ -605,19 +606,26 @@ namespace aspect
       pcout << "   Total domain volume " << mass << std::endl;
     else
       pcout << "   Total domain mass " << mass << std::endl;
-    pcout << "   Average radial velocity correction " << local_radial_vel << " " << velocity_correction << std::endl;
+    pcout << "   Average radial velocity correction " << velocity_correction << std::endl;
 
     // vector for storing the correction to the velocity field
     LinearAlgebra::Vector correction(tmp_distributed_stokes.block(introspection.block_indices.velocities));
 
     double outer_radius = 0;
+    double inner_radius = 0;
     // Now construct tensor function to subtract radial velocity
     if (const GeometryModel::SphericalShell<dim> *gm = dynamic_cast<const GeometryModel::SphericalShell<dim>*> (geometry_model.get()))
-      // set outer radius
-      outer_radius = gm->outer_radius();
+      {
+        // set outer radius
+        outer_radius = gm->outer_radius();
+        inner_radius = gm->inner_radius();
+      }
     else if (const GeometryModel::Chunk<dim> *gm = dynamic_cast<const GeometryModel::Chunk<dim>*> (geometry_model.get()))
-      // set outer radius
-      outer_radius = gm->outer_radius();
+      {
+        // set outer radius
+        outer_radius = gm->outer_radius();
+        inner_radius = gm->inner_radius();
+      }
     else if (const GeometryModel::EllipsoidalChunk<dim> *gm = dynamic_cast<const GeometryModel::EllipsoidalChunk<dim>*> (geometry_model.get()))
       {
         // TODO
@@ -630,8 +638,11 @@ namespace aspect
         AssertThrow(gm->get_eccentricity() == 0.0, ExcMessage("The radial null space removal cannot be used with a non-zero eccentricity. "));
 
         outer_radius = gm->get_semi_major_axis_a();
+        inner_radius = outer_radius-gm->maximal_depth();
       }
-    internal::Radial<dim> radial_translation( velocity_correction, outer_radius );
+
+    const double reference_radius = (outer_radius-inner_radius)*0.5+inner_radius;
+    internal::Radial<dim> radial_translation( velocity_correction, reference_radius );
     interpolate_onto_velocity_system(radial_translation, correction);
     tmp_distributed_stokes.block(introspection.block_indices.velocities).add(-1.0,correction);
 
