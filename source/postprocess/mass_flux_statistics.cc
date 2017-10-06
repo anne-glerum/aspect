@@ -40,6 +40,12 @@ namespace aspect
                                "kg/yr"
                                :
                                "kg/s";
+      
+      const std::string flux_unit = (this->convert_output_to_years())
+                               ?
+                               "m/yr"
+                               :
+                               "m/s";
       const double in_years = (this->convert_output_to_years())
                               ?
                               year_in_seconds
@@ -167,7 +173,7 @@ namespace aspect
                                    + Utilities::int_to_string(p->first)
                                    + aspect::Utilities::parenthesize_if_nonempty(this->get_geometry_model()
                                                                                  .translate_id_to_symbol_name (p->first))
-                                   + " ( m/yr )";
+                                   + " (" + flux_unit + ")";
           statistics.add_value (name, p->second);
 
           // also make sure that the other columns filled by this object
@@ -177,7 +183,7 @@ namespace aspect
 
           // finally have something for the screen
           screen_text.precision(4);
-          screen_text << p->second << " m/yr" 
+          screen_text << p->second << " " << flux_unit
                       << (", ");
         }
       index=0;
