@@ -263,7 +263,10 @@ namespace aspect
                                                             "the two coordinates of the segment end point, separated by a ','."));
 
                   // Add the point to the list of points for this segment
-                  point_list[i_segment][i_points] = (Point<2>(temp_point[0]/180.*numbers::PI, 0.5*numbers::PI-temp_point[1]/180.*numbers::PI));
+                  if (dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) == NULL)
+                     point_list[i_segment][i_points] = (Point<2>(temp_point[0]/180.*numbers::PI, 0.5*numbers::PI-temp_point[1]/180.*numbers::PI));
+                  else
+                     point_list[i_segment][i_points] = (Point<2>(temp_point[0], temp_point[1]));
                 }
             }
           // Read in the string of polygon points
@@ -284,7 +287,10 @@ namespace aspect
                                                                 "the longitude and latitude, separated by a ','."));
 
                   // Add the point to the list of points for this segment
-                  polygon_point_list[i_points] = (Point<2>(temp_point[0]/180.*numbers::PI, 0.5*numbers::PI-temp_point[1]/180.*numbers::PI));
+                  if (dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) == NULL)
+                     polygon_point_list[i_points] = (Point<2>(temp_point[0]/180.*numbers::PI, 0.5*numbers::PI-temp_point[1]/180.*numbers::PI));
+                  else
+                     polygon_point_list[i_points] = (Point<2>(temp_point[0], temp_point[1]));
                 }
             }
 
