@@ -265,8 +265,8 @@ namespace aspect
 
           // Thermal diffusivity kappa = k/(rho*cp), so thermal conducitivity k = kappa*rho*cp
           conductivities.push_back(temp_thermal_diffusivities[id_upper+1] * densities[0] * temp_heat_capacities[id_upper+1]);
-          conductivities.push_back(temp_thermal_diffusivities[id_lower+1] * densities[0] * temp_heat_capacities[id_lower+1]);
-          conductivities.push_back(temp_thermal_diffusivities[id_mantle_L+1] * densities[0] * temp_heat_capacities[id_mantle_L+1]);
+          conductivities.push_back(temp_thermal_diffusivities[id_lower+1] * densities[1] * temp_heat_capacities[id_lower+1]);
+          conductivities.push_back(temp_thermal_diffusivities[id_mantle_L+1] * densities[2] * temp_heat_capacities[id_mantle_L+1]);
 
           // To obtain the radioactive heating rate in W/kg, we divide the volumetric heating rate by density
           AssertThrow(heat_productivities.size() == 3 && densities.size() == 3 && conductivities.size() == 3,
