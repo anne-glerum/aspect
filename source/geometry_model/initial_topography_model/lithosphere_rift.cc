@@ -43,6 +43,16 @@ namespace aspect
       // Compute the maximum topography amplitude based on isostasy.
       // Assume the reference density is representative for each layer (despite temperature dependence)
 
+      // For now, we assume a 3-layer system with an upper crust, lower crust and lithospheric mantle
+      const unsigned int id_upper = this->introspection().compositional_index_for_name("upper");
+      const unsigned int id_lower = this->introspection().compositional_index_for_name("lower");
+      const unsigned int id_mantle_L = this->introspection().compositional_index_for_name("mantle_L");
+
+      densities.push_back(temp_densities[0]);
+      densities.push_back(temp_densities[id_upper+1]);
+      densities.push_back(temp_densities[id_lower+1]);
+      densities.push_back(temp_densities[id_mantle_L+1]);
+
       // The reference column
       ref_rgh = 0;
       // Assume constant gravity magnitude, so ignore
@@ -174,12 +184,13 @@ namespace aspect
       }
       prm.leave_subsection();
 
+
       prm.enter_subsection("Material model");
       {
         prm.enter_subsection("Visco Plastic");
         {
           // The material model viscoplastic prefixes an entry for the background material
-         densities = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Densities"))),
+         temp_densities = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Densities"))),
                                                              n_fields+1,
                                                              "Densities");
         }

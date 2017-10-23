@@ -105,6 +105,7 @@ namespace aspect
          * Vector for field densities.
          */
         std::vector<double> densities;
+        std::vector<double> temp_densities;
 
         /**
          * Vector for the reference field thicknesses away from the rift.
