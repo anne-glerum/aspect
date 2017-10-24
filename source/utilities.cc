@@ -539,14 +539,16 @@ namespace aspect
           // Point P's perpendicular base line lies outside segment, before P0.
           // Return distance between points P and P0.
           if (c1 <= 0.0)
-            return (Tensor<1,2> (point_list[0] - point)).norm();
+            //return (Tensor<1,2> (point_list[0] - point)).norm();
+            return 1e23;
 
           const double c2 = vector_segment * vector_segment;
 
           // Point P's perpendicular base line lies outside segment, after P1.
           // Return distance between points P and P1.
           if (c2 <= c1)
-            return (Tensor<1,2> (point_list[1] - point)).norm();
+            //return (Tensor<1,2> (point_list[1] - point)).norm();
+            return 1e23;
 
           // Point P's perpendicular base line lies on the line segment.
           // Return distance between point P and the base point.
