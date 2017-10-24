@@ -216,6 +216,7 @@ namespace aspect
       const double topo = topo_model->value(surface_point);
 
       const double d = extents[dim-1] + topo - (position(dim-1)-box_origin[dim-1]);
+
       return std::min (std::max (d, 0.), maximal_depth());
     }
 
@@ -259,8 +260,8 @@ namespace aspect
                   this->get_timestep_number() == 0,
                   ExcMessage("After displacement of the free surface, this function can no longer be used to determine whether a point lies in the domain or not."));
 
-      AssertThrow(dynamic_cast<const InitialTopographyModel::ZeroTopography<dim>*>(&this->get_initial_topography_model()) != 0,
-                  ExcMessage("After adding topography, this function can no longer be used to determine whether a point lies in the domain or not."));
+//      AssertThrow(dynamic_cast<const InitialTopographyModel::ZeroTopography<dim>*>(&this->get_initial_topography_model()) != 0,
+//                  ExcMessage("After adding topography, this function can no longer be used to determine whether a point lies in the domain or not."));
 
       for (unsigned int d = 0; d < dim; d++)
         if (point[d] > extents[d]+box_origin[d]+std::numeric_limits<double>::epsilon()*extents[d] ||
