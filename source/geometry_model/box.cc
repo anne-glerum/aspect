@@ -221,6 +221,7 @@ namespace aspect
       const double topo = topo_model->value(surface_point);
 
       const double d = extents[dim-1] + topo - (position(dim-1)-box_origin[dim-1]);
+
       return std::min (std::max (d, 0.), maximal_depth());
     }
 
