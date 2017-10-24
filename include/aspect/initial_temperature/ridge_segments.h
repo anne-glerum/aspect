@@ -42,8 +42,18 @@ namespace aspect
     class RidgeSegments : public Interface<dim>, public ::aspect::SimulatorAccess<dim>
     {
       public:
-        virtual
+        /**
+         * Constructor.
+         */
         RidgeSegments ();
+
+        /**
+         * Initialization function. This function is called once at the
+         * beginning of the program. Checks preconditions.
+         */
+        void
+        initialize ();
+
         /**
          * Return the initial temperature as a function of position.
          */

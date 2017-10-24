@@ -69,21 +69,17 @@ namespace aspect
         if ( InitialComposition::RidgeSegments<dim> *ic = dynamic_cast<InitialComposition::RidgeSegments<dim> *> ((*it).get()))
           {
             surface_position = ic->surface_position(position, cartesian_geometry);
-            distance_to_ridge = ic->distance_to_rift(surface_position, cartesian_geometry);
+            distance_to_ridge = ic->distance_to_ridge(surface_position, cartesian_geometry);
           }
 
       const double depth = this->get_geometry_model().depth(position);
 
       // Get the (adiabatic) temperature at the top and bottom boundary of the model
-      const double Ts = this->get_boundary_temperature_manager().minimal_temperature(this->get_fixed_temperature_boundary_indicators();
-                                                                                     const double Tb = this->get_boundary_temperature_manager().maximal_temperature(this->get_fixed_temperature_boundary_indicators();
+      const double Ts = this->get_boundary_temperature_manager().minimal_temperature(this->get_fixed_temperature_boundary_indicators());
+                                                                                     const double Tb = this->get_boundary_temperature_manager().maximal_temperature(this->get_fixed_temperature_boundary_indicators());
 
                                                                                          // Determine plate age based on distance to the ridge
                                                                                          const double plate_age = 0.5 * spreading_velocity * distance_to_ridge;
-
-                                                                                         // The height of the domain and of the maximum plate thickness
-                                                                                         const double domain_height = geometry->get_extents()[dim-1];
-                                                                                         const double z_max = domain_height-max_plate_thickness;
 
                                                                                          // The parameters needed for the plate cooling temperature calculation
                                                                                          const int n_sum = 100;
@@ -136,13 +132,13 @@ namespace aspect
     RidgeSegments<dim>::parse_parameters (ParameterHandler &prm)
     {
       prm.enter_subsection ("Compositional fields");
-      const unsigned int n_compositional_fields = prm.get_integer ("Number of fields");
+      const unsigned int n_fields = prm.get_integer ("Number of fields");
       prm.leave_subsection ();
       prm.enter_subsection("Initial temperature model");
       {
         prm.enter_subsection("Plate cooling");
         {
-          spreading_velocity = prm.get_double ("Spreading velocity overriding plate");
+          spreading_velocity = prm.get_double ("Spreading velocity");
           max_plate_thickness = prm.get_double ("Maximum oceanic plate thickness");
           Tm = prm.get_double ("Maximum oceanic plate temperature");
         }
@@ -178,7 +174,7 @@ namespace aspect
 // explicit instantiations
 namespace aspect
 {
-  namespace InitialConditions
+  namespace InitialTemperature
   {
     ASPECT_REGISTER_INITIAL_TEMPERATURE_MODEL(RidgeSegments,
                                               "ridge segments",

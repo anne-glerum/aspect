@@ -43,11 +43,35 @@ namespace aspect
     {
       public:
         /**
+         * Constructor.
+         */
+        RidgeSegments ();
+
+        /**
+         * Initialization function. This function is called once at the
+         * beginning of the program. Checks preconditions.
+         */
+        void
+        initialize ();
+
+        /**
          * Return the initial composition as a function of position.
          */
         virtual
         double initial_composition (const Point<dim> &position,
                                     const unsigned int n_comp) const;
+
+       /**
+        * Compute the distance to the ridge.
+        */
+        double distance_to_ridge (const Point<2> &position,
+                                 const bool cartesian_geometry) const;
+
+       /**
+        * Return the surface coordinate.
+        */
+        Point<2> surface_position (const Point<dim> &position,
+                                   const bool cartesian_geometry) const;
 
         /**
          * Declare the parameters this class takes through input files.

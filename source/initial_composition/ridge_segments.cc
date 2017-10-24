@@ -59,17 +59,17 @@ namespace aspect
       const bool cartesian_geometry = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) != NULL ? true : false;
 
       // Get the surface position and the distance to the ridge
-      Point<2> surface_position = surface_position(position, cartesian_geometry);
-      const double distance_to_ridge = distance_to_ridge(surface_position, cartesian_geometry);
+      Point<2> surface_coordinate = surface_position(position, cartesian_geometry);
+      const double distance_to_MOR = distance_to_ridge(surface_coordinate, cartesian_geometry);
 
       // The depth with respect to the initial model surface
       const double depth = this->get_geometry_model().depth(position);
 
       // Determine plate age based on distance from domain boundary
-      const double plate_age = 0.5 * spreading_velocity * distance_to_ridge;
+      const double plate_age = 0.5 * spreading_velocity * distance_to_MOR;
 
       // The plate thickness
-      const double plate_thickness = 2.32*std::sqrt(thermal_diffusivity*plate_age));
+      const double plate_thickness = 2.32*std::sqrt(thermal_diffusivity*plate_age);
 
       // The crust is of uniform thickness, but take the temperature discontinuity
       // at the mid oceanic ridge into account.
@@ -177,7 +177,7 @@ namespace aspect
       // current point the SimulatorAccess hasn't been initialized
       // yet. so get it from the parameter file directly.
       prm.enter_subsection ("Compositional fields");
-      const unsigned int n_compositional_fields = prm.get_integer ("Number of fields");
+      const unsigned int n_fields = prm.get_integer ("Number of fields");
       prm.leave_subsection ();
 
       prm.enter_subsection("Initial temperature model");
@@ -271,7 +271,7 @@ namespace aspect
 // explicit instantiations
 namespace aspect
 {
-  namespace CompositionalInitialConditions
+  namespace InitialComposition
   {
     ASPECT_REGISTER_INITIAL_COMPOSITION_MODEL(RidgeSegments,
                                               "ridge segments",
