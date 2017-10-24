@@ -22,6 +22,7 @@
 #include <aspect/initial_composition/ridge_segments.h>
 #include <aspect/postprocess/interface.h>
 #include <aspect/geometry_model/box.h>
+#include <aspect/material_model/visco_plastic.h>
 
 namespace aspect
 {
@@ -36,6 +37,15 @@ namespace aspect
     RidgeSegments<dim>::
     initialize ()
     {
+      // Check that the required initial temperature model is used
+      const std::vector<std::string> active_initial_temperature_models = this->get_initial_temperature_manager().get_active_initial_temperature_names();
+      AssertThrow(find(active_initial_temperature_models.begin(),active_initial_temperature_models.end(), "ridge segments") != active_initial_temperature_models.end(),
+                  ExcMessage("The ridge segments initial composition plugin requires the lithosphere with ridge initial temperature plugin."));
+
+      // Check that the required material model ("visco plastic") is used
+      AssertThrow((dynamic_cast<MaterialModel::ViscoPlastic<dim> *> (const_cast<MaterialModel::Interface<dim> *>(&this->get_material_model()))) != 0,
+                  ExcMessage("The lithosphere with rift initial temperature plugin requires the viscoplastic material model plugin."));
+
       if (this->convert_output_to_years())
         spreading_velocity /= year_in_seconds;
     }
@@ -48,39 +58,35 @@ namespace aspect
       // Determine coordinate system
       const bool cartesian_geometry = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) != NULL ? true : false;
 
-      double distance_to_ridge = 1e23;
-      Point<2> surface_position;
-      const std::list<std_cxx11::shared_ptr<InitialComposition::Interface<dim> > > initial_composition_objects = this->get_initial_composition_manager().get_active_initial_composition_conditions();
-      for (typename std::list<std_cxx11::shared_ptr<InitialComposition::Interface<dim> > >::const_iterator it = initial_composition_objects.begin(); it != initial_composition_objects.end(); ++it)
-        if( InitialComposition::RidgeSegments<dim> *ic = dynamic_cast<InitialComposition::RidgeSegments<dim> *> ((*it).get()))
-          {
-            surface_position = ic->surface_position(position, cartesian_geometry);
-            distance_to_ridge = ic->distance_to_rift(surface_position, cartesian_geometry);
-          }
+      // Get the surface position and the distance to the ridge
+      Point<2> surface_position = surface_position(position, cartesian_geometry);
+      const double distance_to_ridge = distance_to_ridge(surface_position, cartesian_geometry);
 
+      // The depth with respect to the initial model surface
       const double depth = this->get_geometry_model().depth(position);
 
-      //Determine plate age based on distance from domain boundary
+      // Determine plate age based on distance from domain boundary
       const double plate_age = 0.5 * spreading_velocity * distance_to_ridge;
 
+      // The plate thickness
       const double plate_thickness = 2.32*std::sqrt(thermal_diffusivity*plate_age));
 
       // The crust is of uniform thickness, but take the temperature discontinuity
       // at the mid oceanic ridge into account.
       if (depth <= std::min(crustal_thickness, plate_thickness) && n_comp == id_crust)
         return 1.;
-      else if (depth <= plate_thickness && n_comp == id_mantle_L)
+        else if (depth <= plate_thickness && n_comp == id_mantle_L)
         return 1.;
-      else
-        return 0.;
-    }
+        else
+          return 0.;
+        }
 
-    template <int dim>
-    double
-    RidgeSegments<dim>::
-    distance_to_ridge (const Point<2> &surface_position,
-                       const bool cartesian_geometry) const
-                       {
+  template <int dim>
+  double
+  RidgeSegments<dim>::
+  distance_to_ridge (const Point<2> &surface_position,
+                     const bool cartesian_geometry) const
+    {
       // Initiate distance with large value
       double distance_to_rift_axis = 1e23;
       double temp_distance = 0;
@@ -105,19 +111,19 @@ namespace aspect
         }
 
       return distance_to_rift_axis;
-                       }
+    }
 
     template <int dim>
     Point<2>
     RidgeSegments<dim>::
     surface_position (const Point<dim> &position,
                       const bool cartesian_geometry) const
-                      {
+    {
       // When in 2d, the second coordinate is zero
       Point<2> surface_point;
       if (cartesian_geometry)
         {
-          for(unsigned int d=0; d<dim-1; ++d)
+          for (unsigned int d=0; d<dim-1; ++d)
             surface_point[d]=position[d];
         }
       // chunk (spherical) geometries
@@ -130,7 +136,7 @@ namespace aspect
         }
 
       return surface_point;
-                      }
+    }
 
     template <int dim>
     void
@@ -248,8 +254,8 @@ namespace aspect
         prm.enter_subsection("Visco Plastic");
         {
           const std::vector<double> temp_thermal_diffusivities = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Thermal diffusivities"))),
-                                                                                                         n_fields+1,
-                                                                                                         "Thermal diffusivities");
+                                                                 n_fields+1,
+                                                                 "Thermal diffusivities");
 
           // Assume the mantle lithosphere diffusivity is representative for whole plate
           thermal_diffusivity = temp_thermal_diffusivities[id_mantle_L+1];

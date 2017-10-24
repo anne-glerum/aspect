@@ -67,12 +67,12 @@ namespace aspect
       private:
         /**
          *The parameters needed for the plate cooling model
-         */ 
+         */
 
         /**
-         * The spreading velocity of the plates to calculate their age 
+         * The spreading velocity of the plates to calculate their age
          * with distance from the trench
-         */   
+         */
         double spreading_velocity;
 
         /**
@@ -83,9 +83,13 @@ namespace aspect
         /**
          * The maximum thickness of an oceanic plate
          * when time goes to infinity
-         */   
+         */
         double max_plate_thickness;
 
+       /**
+        * The thermal diffusivity used in the computation
+        * of the plate cooling model
+        */
         double thermal_diffusivity;
 
         /**
