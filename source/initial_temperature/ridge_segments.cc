@@ -41,15 +41,7 @@ namespace aspect
       AssertThrow((dynamic_cast<MaterialModel::ViscoPlastic<dim> *> (const_cast<MaterialModel::Interface<dim> *>(&this->get_material_model()))) != 0,
                   ExcMessage("The lithosphere with rift initial temperature plugin requires the viscoplastic material model plugin."));
 
-      // Check that there are temperatues set at the top and bottom boundaries
-      AssertThrow ((this->get_fixed_temperature_boundary_indicators().size() > 0)
-                   &&
-                   (this->get_boundary_temperature_manager().maximal_temperature(this->get_fixed_temperature_boundary_indicators())
-                    !=
-                    this->get_boundary_temperature_manager().minimal_temperature(this->get_fixed_temperature_boundary_indicators())),
-                   ExcMessage("This plugin requires fixed top and bottom boundary temperatures."));
-
-      // Convert spreading velocity in m/yr to m/s if needed
+      // If necessary, convert the spreading velocity from m/yr to m/s.
       if (this->convert_output_to_years())
         spreading_velocity /= year_in_seconds;
     }
@@ -62,6 +54,7 @@ namespace aspect
       // Determine coordinate system
       const bool cartesian_geometry = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) != NULL ? true : false;
 
+      // Get the distance to the ridge axis
       double distance_to_ridge = 1e23;
       Point<2> surface_position;
       const std::list<std_cxx11::shared_ptr<InitialComposition::Interface<dim> > > initial_composition_objects = this->get_initial_composition_manager().get_active_initial_composition_conditions();
@@ -72,26 +65,27 @@ namespace aspect
             distance_to_ridge = ic->distance_to_ridge(surface_position, cartesian_geometry);
           }
 
+      // The depth with respect to the surface
       const double depth = this->get_geometry_model().depth(position);
 
-
-                                                                                         // Determine plate age based on distance to the ridge
+      // Determine plate age based on distance to the ridge and half the spreading velocity
       const double plate_age = 0.5 * distance_to_ridge / spreading_velocity;
 
-                                                                                         // The parameters needed for the plate cooling temperature calculation
-                                                                                         const int n_sum = 100;
-                                                                                         double sum = 0.0;
+      // The parameters needed for the plate cooling temperature calculation
+      // See for example page 139 of Schubert, Turcotte and Olson - Mantle convection in the Earth and planets
+      const int n_sum = 100;
+      double sum = 0.0;
 
-                                                                                         for (int i=1; i<=n_sum; i++)
-      {
-        sum += (1./i) *
-                 (exp((-thermal_diffusivity*i*i*numbers::PI*numbers::PI*plate_age)/(max_plate_thickness*max_plate_thickness)))*
-                 (sin(i*numbers::PI*depth/max_plate_thickness));
+      for (int i=1; i<=n_sum; i++)
+        {
+          sum += (1./i) *
+              (exp((-thermal_diffusivity*i*i*numbers::PI*numbers::PI*plate_age)/(max_plate_thickness*max_plate_thickness)))*
+              (sin(i*numbers::PI*depth/max_plate_thickness));
         }
 
-      const double temperature = std::min(Tm,Ts + (Tm - Ts) * ((depth / max_plate_thickness) + (2.0 / numbers::PI) * sum));
+      const double temperature = Ts + (Tm - Ts) * ((depth / max_plate_thickness) + (2.0 / numbers::PI) * sum);
 
-                                 return temperature;
+      return temperature;
     }
 
 
@@ -105,7 +99,7 @@ namespace aspect
         {
           prm.declare_entry ("Spreading velocity", "0.0407653503",
                              Patterns::Double (0),
-                             "The spreading velocity of the MOR, used for the calculation "
+                             "The total spreading velocity of the MOR, used for the calculation "
                              "of the plate cooling model temperature. Units: m/years if the "
                              "'Use years in output instead of seconds' parameter is set; "
                              "m/seconds otherwise.");
@@ -135,6 +129,7 @@ namespace aspect
       prm.enter_subsection ("Compositional fields");
       const unsigned int n_fields = prm.get_integer ("Number of fields");
       prm.leave_subsection ();
+
       prm.enter_subsection("Initial temperature model");
       {
         prm.enter_subsection("Plate cooling");
@@ -148,6 +143,9 @@ namespace aspect
       }
       prm.leave_subsection ();
 
+      // Make sure that there are two fields to represent the oceanic lithosphere
+      // called 'crust' and 'mantle_L' such that we can use their id numbers to
+      // retrieve certain material parameters and set their initial value.
       AssertThrow(this->introspection().compositional_name_exists("crust"),
                   ExcMessage("We need a compositional field called 'crust' representing the oceanic crust."));
       AssertThrow(this->introspection().compositional_name_exists("mantle_L"),
@@ -159,10 +157,10 @@ namespace aspect
         prm.enter_subsection("Visco Plastic");
         {
           const std::vector<double> temp_thermal_diffusivities = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Thermal diffusivities"))),
-                                                                 n_fields+1,
-                                                                 "Thermal diffusivities");
+                                                                                                         n_fields+1,
+                                                                                                         "Thermal diffusivities");
 
-          // Assume the mantle lithosphere diffusivity is representative for whole plate
+          // Assume the mantle lithosphere diffusivity is representative for the whole plate
           thermal_diffusivity = temp_thermal_diffusivities[id_mantle_L+1];
         }
         prm.leave_subsection();
@@ -181,6 +179,8 @@ namespace aspect
     ASPECT_REGISTER_INITIAL_TEMPERATURE_MODEL(RidgeSegments,
                                               "ridge segments",
                                               "An initial temperature field determined from the plate"
-                                              "cooling model and mid ocean ridge segments. ")
+                                              "cooling model. The plate age used in the model varies "
+                                              "with distance to user-specified mid ocean ridge segments. "
+                                              "based on the user-specified spreading rate. ")
   }
 }

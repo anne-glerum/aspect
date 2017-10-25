@@ -25,7 +25,6 @@
 #include <aspect/initial_temperature/interface.h>
 #include <aspect/simulator.h>
 #include <aspect/simulator_access.h>
-#include <deal.II/base/parsed_function.h>
 
 namespace aspect
 {
@@ -95,6 +94,9 @@ namespace aspect
         double max_plate_thickness;
         double Tm;
 
+        /**
+         * The temperature at the top boundary of the domain
+         */
         double Ts;
 
         /**

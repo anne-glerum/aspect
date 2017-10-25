@@ -37,7 +37,7 @@ namespace aspect
     RidgeSegments<dim>::
     initialize ()
     {
-      // Check that the required initial temperature model is used
+      // Check that the required initial temperature model ("ridge segments") is used
       const std::vector<std::string> active_initial_temperature_models = this->get_initial_temperature_manager().get_active_initial_temperature_names();
       AssertThrow(find(active_initial_temperature_models.begin(),active_initial_temperature_models.end(), "ridge segments") != active_initial_temperature_models.end(),
                   ExcMessage("The ridge segments initial composition plugin requires the lithosphere with ridge initial temperature plugin."));
@@ -46,6 +46,7 @@ namespace aspect
       AssertThrow((dynamic_cast<MaterialModel::ViscoPlastic<dim> *> (const_cast<MaterialModel::Interface<dim> *>(&this->get_material_model()))) != 0,
                   ExcMessage("The lithosphere with rift initial temperature plugin requires the viscoplastic material model plugin."));
 
+      // If necessary, convert the spreading velocity from m/yr to m/s.
       if (this->convert_output_to_years())
         spreading_velocity /= year_in_seconds;
     }
@@ -62,35 +63,36 @@ namespace aspect
       const double T = this->get_initial_temperature_manager().initial_temperature(position);
 
       // if (T1-T)/(T1-T0) > 0.1, we're in the oceanic plate
+      // See for example page 135 of Schubert, Turcotte and Olson - Mantle convection in the Earth and planets,
+      // although there it says (T1-T)/(T1-T0) > 0.9.
       const double T_fraction = (Tm-T)/(Tm-Ts);
 
-      // The crust is of uniform thickness, but take the temperature discontinuity
-      // at the mid oceanic ridge into account.
+      // The crust is of uniform thickness, but we take the temperature discontinuity
+      // at the mid oceanic ridge into account (i.e. there it goes to zero).
       if (T_fraction >= 0.1)
-      {
-         if (depth <= crustal_thickness && n_comp == id_crust)
+        {
+          if (depth <= crustal_thickness && n_comp == id_crust)
             return 1.;
-         else if (depth > crustal_thickness && n_comp == id_mantle_L)
+          else if (depth > crustal_thickness && n_comp == id_mantle_L)
             return 1.;
-         else
+          else
             return 0.;
-      }
-
-        return 0.;
         }
 
-  template <int dim>
-  double
-  RidgeSegments<dim>::
-  distance_to_ridge (const Point<2> &surface_position,
-                     const bool cartesian_geometry) const
-    {
+      return 0.;
+    }
+
+    template <int dim>
+    double
+    RidgeSegments<dim>::
+    distance_to_ridge (const Point<2> &surface_position,
+                       const bool cartesian_geometry) const
+                       {
       // Initiate distance with large value
       double distance_to_rift_axis = 1e23;
       double temp_distance = 0;
 
       // Loop over all line segments
-      // TODO: fix stupid dim of surface_position
       for (unsigned int i_segments = 0; i_segments < point_list.size(); ++i_segments)
         {
           if (cartesian_geometry)
@@ -109,14 +111,14 @@ namespace aspect
         }
 
       return distance_to_rift_axis;
-    }
+                       }
 
     template <int dim>
     Point<2>
     RidgeSegments<dim>::
     surface_position (const Point<dim> &position,
                       const bool cartesian_geometry) const
-    {
+                      {
       // When in 2d, the second coordinate is zero
       Point<2> surface_point;
       if (cartesian_geometry)
@@ -134,7 +136,7 @@ namespace aspect
         }
 
       return surface_point;
-    }
+                      }
 
     template <int dim>
     void
@@ -151,11 +153,12 @@ namespace aspect
           prm.declare_entry ("Ridge line segments",
                              "",
                              Patterns::Anything(),
-                             "Set the line segments that represent the rift axis. Each segment is made up of "
+                             "Set the line segments that represent the ridge axis. Each segment is made up of "
                              "two points that represent horizontal coordinates (x,y) or (lon,lat). "
                              "The exact format for the point list describing the segments is "
-                             "\"x1,y1>x2,y2;x2,y2>x3,y3;x4,y4>x5,y5\". Note that the segments can be connected "
-                             "or isolated. The units of the coordinates are "
+                             "\"x1,y1>x2,y2;x2,y2>x3,y3;x4,y4>x5,y5\". Note that the segments need to have the "
+                             "same angle to the domain boundaries. "
+                             "The units of the coordinates are "
                              "dependent on the geometry model. In the box model they are in meters, in the "
                              "chunks they are in degrees.");
         }
@@ -190,6 +193,7 @@ namespace aspect
         prm.leave_subsection ();
       }
       prm.leave_subsection ();
+
       prm.enter_subsection("Initial composition model");
       {
         prm.enter_subsection("Plate cooling");
@@ -207,7 +211,6 @@ namespace aspect
               // In 3d a line segment consists of 2 points,
               // in 2d only 1 (ridge axis orthogonal two x and y)
               point_list[i_segment].resize(dim-1);
-
 
               const std::vector<std::string> temp_segment = Utilities::split_string_list(temp_segments[i_segment],'>');
 
@@ -242,6 +245,10 @@ namespace aspect
         prm.leave_subsection ();
       }
       prm.leave_subsection ();
+
+      // Make sure that there are two fields to represent the oceanic lithosphere
+      // called 'crust' and 'mantle_L' such that we can use their id numbers to
+      // retrieve certain material parameters and set their initial value.
       AssertThrow(this->introspection().compositional_name_exists("crust"),
                   ExcMessage("We need a compositional field called 'crust' representing the oceanic crust."));
       AssertThrow(this->introspection().compositional_name_exists("mantle_L"),
@@ -254,8 +261,8 @@ namespace aspect
         prm.enter_subsection("Visco Plastic");
         {
           const std::vector<double> temp_thermal_diffusivities = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Thermal diffusivities"))),
-                                                                 n_fields+1,
-                                                                 "Thermal diffusivities");
+                                                                                                         n_fields+1,
+                                                                                                         "Thermal diffusivities");
 
           // Assume the mantle lithosphere diffusivity is representative for whole plate
           thermal_diffusivity = temp_thermal_diffusivities[id_mantle_L+1];

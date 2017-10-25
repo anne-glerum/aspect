@@ -537,18 +537,14 @@ namespace aspect
       const double c1 = vector_point_segment * vector_segment;
 
       // Point P's perpendicular base line lies outside segment, before P0.
-      // Return distance between points P and P0.
-      //if (c1 <= 0.0)
-        //return (Tensor<1,2> (point_list[0] - point)).norm();
+      // Return an insane distance.
       if (c1 < 0.0)
         return 1e23;
 
       const double c2 = vector_segment * vector_segment;
 
       // Point P's perpendicular base line lies outside segment, after P1.
-      // Return distance between points P and P1.
-      //if (c2 <= c1)
-        //return (Tensor<1,2> (point_list[1] - point)).norm();
+      // Return an insane distance.
       if (c2 < c1)
         return 1e23;
 
@@ -556,7 +552,6 @@ namespace aspect
       // Return distance between point P and the base point.
       const Point<2> point_on_segment = point_list[0] + (c1/c2) * vector_segment;
       return (Tensor<1,2> (point - point_on_segment)).norm();
-
     }
 
     template <int dim>
