@@ -95,6 +95,8 @@ namespace aspect
         double max_plate_thickness;
         double Tm;
 
+        double Ts;
+
         /**
          * The thermal diffusivity used in the computation
          * of the plate cooling model

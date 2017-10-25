@@ -55,30 +55,28 @@ namespace aspect
     RidgeSegments<dim>::
     initial_composition (const Point<dim> &position, const unsigned int n_comp) const
     {
-      // Determine coordinate system
-      const bool cartesian_geometry = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) != NULL ? true : false;
-
-      // Get the surface position and the distance to the ridge
-      Point<2> surface_coordinate = surface_position(position, cartesian_geometry);
-      const double distance_to_MOR = distance_to_ridge(surface_coordinate, cartesian_geometry);
-
       // The depth with respect to the initial model surface
       const double depth = this->get_geometry_model().depth(position);
 
-      // Determine plate age based on distance from domain boundary
-      const double plate_age = 0.5 * spreading_velocity * distance_to_MOR;
+      // The temperature at this depth
+      const double T = this->get_initial_temperature_manager().initial_temperature(position);
 
-      // The plate thickness
-      const double plate_thickness = 2.32*std::sqrt(thermal_diffusivity*plate_age);
+      // if (T1-T)/(T1-T0) > 0.1, we're in the oceanic plate
+      const double T_fraction = (Tm-T)/(Tm-Ts);
 
       // The crust is of uniform thickness, but take the temperature discontinuity
       // at the mid oceanic ridge into account.
-      if (depth <= std::min(crustal_thickness, plate_thickness) && n_comp == id_crust)
-        return 1.;
-        else if (depth <= plate_thickness && n_comp == id_mantle_L)
-        return 1.;
-        else
-          return 0.;
+      if (T_fraction >= 0.1)
+      {
+         if (depth <= crustal_thickness && n_comp == id_crust)
+            return 1.;
+         else if (depth > crustal_thickness && n_comp == id_mantle_L)
+            return 1.;
+         else
+            return 0.;
+      }
+
+        return 0.;
         }
 
   template <int dim>
@@ -186,6 +184,8 @@ namespace aspect
         {
           spreading_velocity = prm.get_double ("Spreading velocity");
           max_plate_thickness = prm.get_double ("Maximum oceanic plate thickness");
+          Tm = prm.get_double ("Maximum oceanic plate temperature");
+          Ts = prm.get_double ("Surface temperature");
         }
         prm.leave_subsection ();
       }
@@ -196,7 +196,7 @@ namespace aspect
         {
           crustal_thickness = prm.get_double ("Crustal thickness");
           // Read in the string of segments
-          const std::string temp_all_segments = prm.get("Rift axis line segments");
+          const std::string temp_all_segments = prm.get("Ridge line segments");
           // Split the string into segment strings
           const std::vector<std::string> temp_segments = Utilities::split_string_list(temp_all_segments,';');
           const unsigned int n_temp_segments = temp_segments.size();

@@ -109,6 +109,9 @@ namespace aspect
          * when time goes to infinity
          */
         double max_plate_thickness;
+        double Tm;
+
+        double Ts;
 
        /**
         * The thermal diffusivity used in the computation

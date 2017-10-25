@@ -74,12 +74,9 @@ namespace aspect
 
       const double depth = this->get_geometry_model().depth(position);
 
-      // Get the (adiabatic) temperature at the top and bottom boundary of the model
-      const double Ts = this->get_boundary_temperature_manager().minimal_temperature(this->get_fixed_temperature_boundary_indicators());
-                                                                                     const double Tb = this->get_boundary_temperature_manager().maximal_temperature(this->get_fixed_temperature_boundary_indicators());
 
                                                                                          // Determine plate age based on distance to the ridge
-                                                                                         const double plate_age = 0.5 * spreading_velocity * distance_to_ridge;
+      const double plate_age = 0.5 * distance_to_ridge / spreading_velocity;
 
                                                                                          // The parameters needed for the plate cooling temperature calculation
                                                                                          const int n_sum = 100;
@@ -120,6 +117,10 @@ namespace aspect
                              Patterns::Double (0),
                              "The maximum temperature of an oceanic plate in the plate cooling model "
                              "for when time goes to infinity. Units: K. " );
+          prm.declare_entry ("Surface temperature", "273.00",
+                             Patterns::Double (0),
+                             "The fixed temperature at the top boundary of the model. "
+                             "Units: K. " );
         }
         prm.leave_subsection ();
       }
@@ -141,6 +142,7 @@ namespace aspect
           spreading_velocity = prm.get_double ("Spreading velocity");
           max_plate_thickness = prm.get_double ("Maximum oceanic plate thickness");
           Tm = prm.get_double ("Maximum oceanic plate temperature");
+          Ts = prm.get_double ("Surface temperature");
         }
         prm.leave_subsection ();
       }
