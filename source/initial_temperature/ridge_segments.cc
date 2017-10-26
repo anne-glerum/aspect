@@ -85,7 +85,7 @@ namespace aspect
 
       const double temperature = Ts + (Tm - Ts) * ((depth / max_plate_thickness) + (2.0 / numbers::PI) * sum);
 
-      return temperature;
+      return std::min(Tm, std::max(Ts, temperature));
     }
 
 
@@ -107,7 +107,7 @@ namespace aspect
                              Patterns::Double (0),
                              "The maximum thickness of an oceanic plate in the plate cooling model "
                              "for when time goes to infinity. Units: m. " );
-          prm.declare_entry ("Maximum oceanic plate temperature", "1593.00",
+          prm.declare_entry ("Maximum oceanic plate temperature", "1573.00",
                              Patterns::Double (0),
                              "The maximum temperature of an oceanic plate in the plate cooling model "
                              "for when time goes to infinity. Units: K. " );
