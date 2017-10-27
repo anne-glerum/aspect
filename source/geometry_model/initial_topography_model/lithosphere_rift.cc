@@ -35,11 +35,6 @@ namespace aspect
     LithosphereRift<dim>::
     initialize ()
     {
-      // Check that the required initial composition model is used
-//      const std::vector<std::string> active_initial_composition_models = this->get_initial_composition_manager().get_active_initial_composition_names();
-//      AssertThrow(find(active_initial_composition_models.begin(),active_initial_composition_models.end(), "lithosphere with rift") != active_initial_composition_models.end(),
-//                  ExcMessage("The lithosphere with rift initial topography plugin requires the lithosphere with rift initial composition plugin."));
-
       // Compute the maximum topography amplitude based on isostasy.
       // Assume the reference density is representative for each layer (despite temperature dependence)
 

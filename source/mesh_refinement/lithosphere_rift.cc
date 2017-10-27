@@ -128,7 +128,7 @@ namespace aspect
       {
         prm.enter_subsection("Lithosphere with rift");
         {
-          sigma                = prm.get_double ("Standard deviation of Gaussian noise amplitude distribution");
+          sigma                = prm.get_double ("Standard deviation of Gaussian rift geometry");
           std::vector<double> thicknesses = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Layer thicknesses"))),
                                                                                     3,
                                                                                     "Layer thicknesses");
