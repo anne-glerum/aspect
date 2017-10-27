@@ -75,7 +75,7 @@ namespace aspect
         if( InitialComposition::LithosphereRift<dim> *ic = dynamic_cast<InitialComposition::LithosphereRift<dim> *> ((*it).get()))
           {
             surface_position = ic->surface_position(position, cartesian_geometry);
-            distance_to_rift_axis = ic->distance_to_rift(surface_position, cartesian_geometry);
+            distance_to_rift_axis = ic->distance_to_rift(surface_position);
             distance_to_L_polygon = ic->distance_to_polygon(surface_position);
           }
 

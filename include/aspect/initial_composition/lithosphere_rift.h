@@ -59,8 +59,7 @@ namespace aspect
         double initial_composition (const Point<dim> &position,
                                     const unsigned int compositional_index) const;
 
-        double distance_to_rift (const Point<2> &position,
-                                 const bool cartesian_geometry) const;
+        double distance_to_rift (const Point<2> &position) const;
 
         double distance_to_polygon (const Point<2> &position) const;
 

@@ -104,23 +104,22 @@ namespace aspect
     LithosphereRift<dim>::
     value (const Point<dim-1> &position) const
     {
-      // Determine coordinate system
-      const bool cartesian_geometry = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) != NULL ? true : false;
+      // When cartesian, position contains x(,y); when spherical, position contains lon(,lat) (in degrees);
+      // Turn into a Point<2>
+      Point<2> surface_position;
+      for (unsigned int d=0; d<dim-1; ++d)
+        surface_position[d] = position[d];
 
       // Get the distance to the line segments along a path parallel to the surface
       double distance_to_rift_axis = 1e23;
-      Point<2> surface_position;
       double distance_to_L_polygon = 1e23;
       const std::list<std_cxx11::shared_ptr<InitialComposition::Interface<dim> > > initial_composition_objects = this->get_initial_composition_manager().get_active_initial_composition_conditions();
       for (typename std::list<std_cxx11::shared_ptr<InitialComposition::Interface<dim> > >::const_iterator it = initial_composition_objects.begin(); it != initial_composition_objects.end(); ++it)
         if( InitialComposition::LithosphereRift<dim> *ic = dynamic_cast<InitialComposition::LithosphereRift<dim> *> ((*it).get()))
           {
-            distance_to_rift_axis = ic->distance_to_rift(surface_position, cartesian_geometry);
+            distance_to_rift_axis = ic->distance_to_rift(surface_position);
             distance_to_L_polygon = ic->distance_to_polygon(surface_position);
           }
-
-      // Compute the topography based on distance to the rift
-      //return topo_rift_amplitude * std::exp(-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)));
 
       // Compute the topography based on distance to the rift and distance to the polygon
       std::vector<double> local_thicknesses(3);
