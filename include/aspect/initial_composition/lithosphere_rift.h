@@ -59,10 +59,20 @@ namespace aspect
         double initial_composition (const Point<dim> &position,
                                     const unsigned int compositional_index) const;
 
+        /**
+         * Return the overall shortest distance to the rift segments
+         */
         double distance_to_rift (const Point<2> &position) const;
 
+        /*
+         * Return the overall shortest distance to the polygon segments
+         */
         double distance_to_polygon (const Point<2> &position) const;
 
+        /*
+         * Return the position of the point in surface coordinates
+         * i.e. x(,y) in meters or lon(,lat) in degrees.
+         */
         Point<2> surface_position (const Point<dim> &position,
                                  const bool cartesian_geometry) const;
 
@@ -90,7 +100,7 @@ namespace aspect
 
         /**
          * The maximum amplitude of the Gaussian distribution of the lithospheric thicknesses
-         * with distance from the rift axis. It should have a value between -1 and 1, where positive
+         * with distance from the rift axis. It should have values between -1 and 1, where positive
          * numbers represent a reduction in thickness and negative numbers an increase.
          */
         std::vector<double> A;

@@ -79,18 +79,9 @@ namespace aspect
             distance_to_L_polygon = ic->distance_to_polygon(surface_position);
           }
 
-      //const InitialComposition::LithosphereRift<dim> *ic = initial_composition_objects[std::find(initial_composition_objects.begin(), initial_composition_objects.end(), InitialComposition::LithosphereRift<dim>)];
-      //const double distance_to_rift_axis = ic->distance_to_rift(position, cartesian_geometry);
-
       // Compute the local thickness of the upper crust, lower crust and mantle part of the lithosphere
       // based on the distance from the rift axis.
       std::vector<double> local_thicknesses(3);
-//      local_thicknesses[0] = std::min((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[0]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[0],
-//                                      thicknesses[0] * (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2))))));
-//      local_thicknesses[1] = std::min((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[1]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[1],
-//                                      thicknesses[1] * (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2))))));
-//      local_thicknesses[2] = std::min((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[2]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[2],
-//                                      thicknesses[2] * (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2))))));
       local_thicknesses[0] = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[0]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[0])*
                                       (1.0 - A[0] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
       local_thicknesses[1] = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[1]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[1])*

@@ -124,7 +124,7 @@ namespace aspect
 
         /**
          * The maximum amplitude of the Gaussian distribution of the lithospheric thicknesses
-         * with distance from the rift axis. It should have a value between -1 and 1, where positive
+         * with distance from the rift axis. It should have values between -1 and 1, where positive
          * numbers represent a reduction in thickness and negative numbers an increase.
          */
         std::vector<double> A;

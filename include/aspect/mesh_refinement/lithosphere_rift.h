@@ -82,6 +82,10 @@ namespace aspect
          */
          unsigned int rift_refinement_level;
 
+         /**
+          * A reference value for the overall thickness of the crust
+          * up to which depth the mesh will be refined.
+          */
          double reference_crustal_thickness;
 
          double sigma;
