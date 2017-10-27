@@ -25,6 +25,7 @@
 #include <aspect/geometry_model/box.h>
 #include <aspect/boundary_temperature/interface.h>
 #include <aspect/material_model/visco_plastic.h>
+#include "/gfs1/work/bbpanneg/software/aspect/aspect/lib_plastic_strain/visco_plastic_strain.h"
 #include <aspect/heating_model/interface.h>
 
 #include <cmath>
@@ -50,7 +51,7 @@ namespace aspect
                   ExcMessage("The lithosphere with rift initial temperature plugin requires the compositional heating plugin."));
 
       // Check that the required material model ("visco plastic") is used
-      AssertThrow((dynamic_cast<MaterialModel::ViscoPlastic<dim> *> (const_cast<MaterialModel::Interface<dim> *>(&this->get_material_model()))) != 0,
+      AssertThrow((dynamic_cast<MaterialModel::ViscoPlasticStrain<dim> *> (const_cast<MaterialModel::Interface<dim> *>(&this->get_material_model()))) != 0,
                   ExcMessage("The lithosphere with rift initial temperature plugin requires the viscoplastic material model plugin."));
     }
 
@@ -91,11 +92,11 @@ namespace aspect
 //      local_thicknesses[2] = std::min((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[2]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[2],
 //                                      thicknesses[2] * (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2))))));
       local_thicknesses[0] = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[0]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[0])*
-                                      (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+                                      (1.0 - A[0] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
       local_thicknesses[1] = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[1]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[1])*
-                                      (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+                                      (1.0 - A[1] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
       local_thicknesses[2] = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[2]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[2])*
-                                      (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+                                      (1.0 - A[2] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
 
       const double depth = this->get_geometry_model().depth(position);
       
@@ -187,8 +188,10 @@ namespace aspect
       {
         prm.enter_subsection("Lithosphere with rift");
         {
-          sigma                = prm.get_double ("Standard deviation of Gaussian noise amplitude distribution");
-          A                    = prm.get_double ("Maximum amplitude of Gaussian noise amplitude distribution");
+          sigma                = prm.get_double ("Standard deviation of Gaussian rift geometry");
+          A                    = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Amplitude of Gaussian rift geometry"))),
+                                                                         3,
+                                                                         "Amplitude of Gaussian rift geometry");
           thicknesses = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Layer thicknesses"))),
                                                               3,
                                                               "Layer thicknesses");

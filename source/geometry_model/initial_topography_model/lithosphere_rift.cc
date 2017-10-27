@@ -69,13 +69,13 @@ namespace aspect
       double rift_rgh = 0;
       rift_thicknesses = thicknesses;
       for (unsigned int l=0; l<rift_thicknesses.size(); ++l)
-        rift_thicknesses[l] *= (1.-A);
+        rift_thicknesses[l] *= (1.-A[l]);
 
        for (unsigned int l=0; l<3; ++l)
          rift_rgh += densities[l+1] * rift_thicknesses[l];
 
        // The total lithosphere thickness at the rift
-       const double sum_rift_thicknesses = sum_thicknesses * (1.-A);
+       const double sum_rift_thicknesses = std::accumulate(rift_thicknesses.begin(), rift_thicknesses.end(),0);
 
        // The column at the polygon center
        double polygon_rgh = 0;
@@ -110,10 +110,6 @@ namespace aspect
       // Get the distance to the line segments along a path parallel to the surface
       double distance_to_rift_axis = 1e23;
       Point<2> surface_position;
-      // Convert to radians and colat
-      for (unsigned int d=0; d<dim-1; ++d)
-        surface_position[d] = position[d]*numbers::PI/180.;
-      surface_position[1] = 0.5*numbers::PI - surface_position[1];
       double distance_to_L_polygon = 1e23;
       const std::list<std_cxx11::shared_ptr<InitialComposition::Interface<dim> > > initial_composition_objects = this->get_initial_composition_manager().get_active_initial_composition_conditions();
       for (typename std::list<std_cxx11::shared_ptr<InitialComposition::Interface<dim> > >::const_iterator it = initial_composition_objects.begin(); it != initial_composition_objects.end(); ++it)
@@ -129,11 +125,11 @@ namespace aspect
       // Compute the topography based on distance to the rift and distance to the polygon
       std::vector<double> local_thicknesses(3);
       local_thicknesses[0] = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[0]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[0])*
-          (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
-      local_thicknesses[0] = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[1]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[1])*
-          (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
-      local_thicknesses[0] = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[2]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[2])*
-          (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+          (1.0 - A[0] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+      local_thicknesses[1] = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[1]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[1])*
+          (1.0 - A[1] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+      local_thicknesses[2] = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[2]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[2])*
+          (1.0 - A[2] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
 
       // The local lithospheric column
       double local_rgh = 0;
@@ -171,8 +167,10 @@ namespace aspect
       {
         prm.enter_subsection("Lithosphere with rift");
         {
-          sigma                = prm.get_double ("Standard deviation of Gaussian noise amplitude distribution");
-          A                    = prm.get_double ("Maximum amplitude of Gaussian noise amplitude distribution");
+          sigma                = prm.get_double ("Standard deviation of Gaussian rift geometry");
+          A                    = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Amplitude of Gaussian rift geometry"))),
+                                                                         3,
+                                                                         "Amplitude of Gaussian rift geometry");
           thicknesses = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Layer thicknesses"))),
                                                                 3,
                                                                 "Layer thicknesses");

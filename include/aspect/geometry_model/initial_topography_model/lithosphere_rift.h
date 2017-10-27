@@ -81,7 +81,7 @@ namespace aspect
          * with distance from the rift axis. It should have a value between -1 and 1, where positive
          * numbers represent a reduction in thickness and negative numbers an increase.
          */
-        double A;
+        std::vector<double> A;
 
         /**
          * The maximum amplitude of the Gaussian distribution of the topography around the rift.

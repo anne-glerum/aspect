@@ -66,11 +66,11 @@ namespace aspect
       // Compute the local thickness of the upper crust, lower crust and mantle part of the lithosphere
       // (in this exact order) based on the distance from the rift axis.
       const double local_upper_crust_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[0]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[0])*
-                                                          (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+                                                          (1.0 - A[0] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
       const double local_lower_crust_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[1]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[1])*
-                                                          (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+                                                          (1.0 - A[1] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
       const double local_mantle_lithosphere_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[2]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[2])*
-                                                                 (1.0 - A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+                                                                 (1.0 - A[2] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
 
       // Compute depth
       const double depth = this->get_geometry_model().depth(position);
@@ -98,6 +98,7 @@ namespace aspect
 
       // Loop over all line segments
       // TODO: fix stupid dim of surface_position
+      // TODO: remove cartesian condition
       for (unsigned int i_segments = 0; i_segments < point_list.size(); ++i_segments)
         {
           if (cartesian_geometry)
@@ -136,8 +137,9 @@ namespace aspect
         {
           // spherical coordinates in radius [m], lon [rad], colat [rad] format
           const std_cxx11::array<double,dim> spherical_point = Utilities::Coordinates::cartesian_to_spherical_coordinates(position);
+          // return lon [degrees], lat [degrees]
           for (unsigned int d=0; d<dim-1; ++d)
-            surface_point[d] = spherical_point[d+1];
+            surface_point[d] = spherical_point[d+1]*180./numbers::PI;
         }
 
       return surface_point;
@@ -159,15 +161,16 @@ namespace aspect
       {
         prm.enter_subsection("Lithosphere with rift");
         {
-          prm.declare_entry ("Standard deviation of Gaussian noise amplitude distribution", "20000",
+          prm.declare_entry ("Standard deviation of Gaussian rift geometry", "20000",
                              Patterns::Double (0),
                              "The standard deviation of the Gaussian distribution of the amplitude of the strain noise. "
                              "Note that this parameter is taken to be the same for all rift segments. "
                              "Units: $m$ or degrees.");
-          prm.declare_entry ("Maximum amplitude of Gaussian noise amplitude distribution", "0.2",
-                             Patterns::Double (-1,1),
+          prm.declare_entry ("Amplitude of Gaussian rift geometry", "0.2",
+                             Patterns::List(Patterns::Double (-1,1)),
                              "The amplitude of the Gaussian distribution of the amplitude of the strain noise. "
-                             "Note that this parameter is taken to be the same for all rift segments. "
+                             "Note that this parameter is taken to be the same for all rift segments, but can "
+                             "vary per lithosphere layer. "
                              "Units: none.");
           prm.declare_entry ("Layer thicknesses", "30000.",
                              Patterns::List(Patterns::Double(0)),
@@ -221,8 +224,10 @@ namespace aspect
       {
         prm.enter_subsection("Lithosphere with rift");
         {
-          sigma                = prm.get_double ("Standard deviation of Gaussian noise amplitude distribution");
-          A                    = prm.get_double ("Maximum amplitude of Gaussian noise amplitude distribution");
+          sigma                = prm.get_double ("Standard deviation of Gaussian rift geometry");
+          A                    = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Amplitude of Gaussian rift geometry"))),
+                                                                         3,
+                                                                         "Amplitude of Gaussian rift geometry");
           thicknesses = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Layer thicknesses"))),
                                                               3,
                                                               "Layer thicknesses");
@@ -263,9 +268,9 @@ namespace aspect
                                                             "the two coordinates of the segment end point, separated by a ','."));
 
                   // Add the point to the list of points for this segment
-                  if (dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) == NULL)
-                     point_list[i_segment][i_points] = (Point<2>(temp_point[0]/180.*numbers::PI, 0.5*numbers::PI-temp_point[1]/180.*numbers::PI));
-                  else
+                  //if (dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) == NULL)
+                  //   point_list[i_segment][i_points] = (Point<2>(temp_point[0]/180.*numbers::PI, 0.5*numbers::PI-temp_point[1]/180.*numbers::PI));
+                  //else
                      point_list[i_segment][i_points] = (Point<2>(temp_point[0], temp_point[1]));
                 }
             }
@@ -287,9 +292,9 @@ namespace aspect
                                                                 "the longitude and latitude, separated by a ','."));
 
                   // Add the point to the list of points for this segment
-                  if (dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) == NULL)
-                     polygon_point_list[i_points] = (Point<2>(temp_point[0]/180.*numbers::PI, 0.5*numbers::PI-temp_point[1]/180.*numbers::PI));
-                  else
+                  //if (dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) == NULL)
+                  //   polygon_point_list[i_points] = (Point<2>(temp_point[0]/180.*numbers::PI, 0.5*numbers::PI-temp_point[1]/180.*numbers::PI));
+                  //else
                      polygon_point_list[i_points] = (Point<2>(temp_point[0], temp_point[1]));
                 }
             }
