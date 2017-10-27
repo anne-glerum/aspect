@@ -58,7 +58,7 @@ namespace aspect
       const Point<2> surface_point = surface_position(position, cartesian_geometry);
 
       // Get the distance to the line segments along a path parallel to the surface
-      const double distance_to_rift_axis = distance_to_rift(surface_point, cartesian_geometry);
+      const double distance_to_rift_axis = distance_to_rift(surface_point);
 
       // Get the signed distance to a polygon of different lithospheric thicknesses
       const double distance_to_L_polygon = distance_to_polygon(surface_point);
@@ -89,28 +89,16 @@ namespace aspect
     template <int dim>
     double
     LithosphereRift<dim>::
-    distance_to_rift (const Point<2> &surface_position,
-                      const bool cartesian_geometry) const
+    distance_to_rift (const Point<2> &surface_position) const
     {
       // Initiate distance with large value
       double distance_to_rift_axis = 1e23;
       double temp_distance = 0;
 
       // Loop over all line segments
-      // TODO: fix stupid dim of surface_position
-      // TODO: remove cartesian condition
       for (unsigned int i_segments = 0; i_segments < point_list.size(); ++i_segments)
         {
-          if (cartesian_geometry)
-            {
-              if (dim == 2)
-                temp_distance = std::abs(surface_position[0]-point_list[i_segments][0][0]);
-              else
-                temp_distance = std::abs(Utilities::distance_to_line<dim>(point_list[i_segments], surface_position));
-            }
-          // chunk (spherical) geometries
-          else
-            temp_distance = (dim == 2) ? std::abs(surface_position[0]-point_list[i_segments][0][0]) : Utilities::distance_to_line<dim>(point_list[i_segments], surface_position);
+          temp_distance = (dim == 2) ? std::abs(surface_position[0]-point_list[i_segments][0][0]) : std::abs(Utilities::distance_to_line<dim>(point_list[i_segments], surface_position));
 
           // Get the minimum distance
           distance_to_rift_axis = std::min(distance_to_rift_axis, temp_distance);
@@ -140,6 +128,8 @@ namespace aspect
           // return lon [degrees], lat [degrees]
           for (unsigned int d=0; d<dim-1; ++d)
             surface_point[d] = spherical_point[d+1]*180./numbers::PI;
+          if (dim == 3)
+            surface_point[dim-2] = 90. - surface_point[dim-2];
         }
 
       return surface_point;
