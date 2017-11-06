@@ -89,6 +89,10 @@ namespace aspect
       topo_rift_amplitude = (ref_rgh-rift_rgh) / densities[0];
       topo_polygon_amplitude = (ref_rgh-polygon_rgh) / densities[0];
 
+      // TODO: probably there are combinations of rift and polygon topography
+      // that result in a higher topography
+      maximum_topography = std::max(topo_rift_amplitude, topo_polygon_amplitude);
+
       this->get_pcout() << "   Maximum initial topography of rift: " << topo_rift_amplitude << " m" << std::endl;
       this->get_pcout() << "   Maximum initial topography of polygon: " << topo_polygon_amplitude << " m" << std::endl;
     }
@@ -136,6 +140,14 @@ namespace aspect
       return (ref_rgh - local_rgh) / densities[0];
     }
 
+
+    template <int dim>
+    double
+    LithosphereRift<dim>::
+    max_topography () const
+    {
+      return maximum_topography;
+    }
 
 
     template <int dim>
