@@ -40,15 +40,21 @@ namespace aspect
     void
     Litho1<dim>::initialize ()
     {
-      // Find the boundary indicator that represents the surface
+      // Find the boundary indicators that represents the surface and the bottom of the domain
       surface_boundary_id = this->get_geometry_model().translate_symbolic_boundary_name_to_id("top");
+      bottom_boundary_id = this->get_geometry_model().translate_symbolic_boundary_name_to_id("bottom");
 
-      std::set<types::boundary_id> surface_boundary_set;
-      surface_boundary_set.insert(surface_boundary_id);
+      // Abuse the top and bottom boundary id to create to tables,
+      // one for the crustal thickness, and one for the mantle thickness
+      // surface_boundary_id indicates the crust table and 
+      // bottom_boundary_id the LAB table
+      std::set<types::boundary_id> boundary_set;
+      boundary_set.insert(surface_boundary_id);
+      boundary_set.insert(bottom_boundary_id);
 
-      // The input ascii table contains two components, the crust depth and the LAB depth
-      Utilities::AsciiDataBoundary<dim>::initialize(surface_boundary_set,
-                                                    2);
+      // The input ascii table contains one component, either the crust depth or the LAB depth
+      Utilities::AsciiDataBoundary<dim>::initialize(boundary_set,
+                                                    1);
 
       // Check that the required radioactive heating model ("compositional heating") is used
       const std::vector<std::string> &heating_models = this->get_heating_model_manager().get_active_heating_model_names();
@@ -71,9 +77,9 @@ namespace aspect
                                                                                       position,
                                                                                       0);
       // We want to get at the LAB depth, which is the second component
-      const double LAB_depth = Utilities::AsciiDataBoundary<dim>::get_data_component(surface_boundary_id,
+      const double LAB_depth = Utilities::AsciiDataBoundary<dim>::get_data_component(bottom_boundary_id,
                                                                                      position,
-                                                                                     1);
+                                                                                     0);
 
       // The depth of the point under investigation
       const double depth = this->get_geometry_model().depth(position);
@@ -132,9 +138,9 @@ namespace aspect
     {
       prm.enter_subsection ("Initial temperature model");
       {
-        Utilities::AsciiDataBase<dim>::declare_parameters(prm,
+        Utilities::AsciiDataBoundary<dim>::declare_parameters(prm,
                                                           "$ASPECT_SOURCE_DIR/data/initial-temperature/ascii-data/test/",
-                                                          "box_2d.txt");
+                                                          "box_2d_%s.%d.txt");
         prm.enter_subsection ("Litho1.0");
         {
           prm.declare_entry ("LAB isotherm temperature", "1673.15",
@@ -168,7 +174,7 @@ namespace aspect
 
       prm.enter_subsection ("Initial temperature model");
       {
-        Utilities::AsciiDataBase<dim>::parse_parameters(prm);
+        Utilities::AsciiDataBoundary<dim>::parse_parameters(prm);
         prm.enter_subsection ("Litho1.0");
         {
           LAB_isotherm = prm.get_double ("LAB isotherm temperature");

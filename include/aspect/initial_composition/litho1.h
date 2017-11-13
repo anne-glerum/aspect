@@ -82,10 +82,11 @@ namespace aspect
 
       private:
         /**
-         * The boundary indicator that represents
-         * the surface of the domain.
+         * The boundary indicators that represent
+         * the surface and bottom of the domain.
          */
         types::boundary_id surface_boundary_id;
+        types::boundary_id bottom_boundary_id;
 
         /**
          * The fraction of the crust that will be
