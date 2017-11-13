@@ -92,6 +92,7 @@ namespace aspect
          * the surface of the domain.
          */
         types::boundary_id surface_boundary_id;
+        types::boundary_id bottom_boundary_id;
 
         /*
          * The isotherm that is to represent the LAB.
