@@ -25,7 +25,8 @@
 #include <aspect/geometry_model/box.h>
 #include <aspect/boundary_temperature/interface.h>
 #include <aspect/material_model/visco_plastic.h>
-#include "/gfs1/work/bbpanneg/software/aspect/aspect/lib_plastic_strain/visco_plastic_strain.h"
+//sb #include "/gfs1/work/bbpanneg/software/aspect/aspect/lib_plastic_strain/visco_plastic_strain.h"
+#include "/gfs1/work/bbpsbrun/aspect/09_VictoriaBlock/_Plugin_StrainSoftening_2017-11-23/visco_plastic_strain.h"
 #include <aspect/heating_model/interface.h>
 
 #include <cmath>
