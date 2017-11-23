@@ -166,7 +166,7 @@ namespace aspect
                              Patterns::List(Patterns::Double(0)),
                              "List of thicknesses for the bottom of the lithospheric layers,"
                              "for a total of N+1 values, where N is the number of compositional fields."
-                             "If only one value is given, then all use the same value.  Units: $kg / m^3$");
+                             "If only one value is given, then all use the same value.  Units: $m$");
           prm.declare_entry ("Rift axis line segments",
                              "",
                              Patterns::Anything(),
@@ -192,7 +192,7 @@ namespace aspect
                              Patterns::List(Patterns::Double(0)),
                              "List of thicknesses for the bottom of the lithospheric layers,"
                              "for a total of N+1 values, where N is the number of compositional fields."
-                             "If only one value is given, then all use the same value.  Units: $kg / m^3$");
+                             "If only one value is given, then all use the same value.  Units: $m$");
 
         }
         prm.leave_subsection();

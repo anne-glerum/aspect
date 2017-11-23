@@ -82,7 +82,7 @@ namespace aspect
                         distance_to_rift_axis = ic->distance_to_rift(surface_position);
                       }
 
-                  if(depth <= reference_crustal_thickness && std::abs(distance_to_rift_axis)<=3.*sigma)
+                  if(depth <= refinement_depth && std::abs(distance_to_rift_axis) <= refinement_width/2)
                     {
                       if (cell->level() <= rint(rift_refinement_level))
                         clear_coarsen = true;
@@ -105,9 +105,26 @@ namespace aspect
     template <int dim>
     void
     LithosphereRift<dim>::
-    declare_parameters (ParameterHandler &)
+    declare_parameters (ParameterHandler &prm)
     {
-
+      prm.enter_subsection ("Mesh refinement");
+      {
+        prm.enter_subsection("Lithosphere with rift");
+        {
+          prm.declare_entry ("Width of refined area along rift", "100000",
+                             Patterns::Double (0),
+                             "The width of the area that is refined along rift. "
+                             "Note that this parameter is taken to be the same for all rift segments. "
+                             "Units: $m$ or degrees.");
+          prm.declare_entry ("Depth of refined area along rift", "100000",
+                             Patterns::Double (0),
+                             "The depth of the area that is refined along rift. "
+                             "Note that this parameter is taken to be the same for all rift segments. "
+                             "Units: $m$ or degrees.");	  
+        }
+        prm.leave_subsection();
+      }
+      prm.leave_subsection();
     }
 
     template <int dim>
@@ -119,24 +136,17 @@ namespace aspect
         //compute maximum refinement level (initial global + initial adaptive)
         // and set this as minimum for rift area
         rift_refinement_level = prm.get_integer ("Initial global refinement") + prm.get_integer ("Initial adaptive refinement");
-      }
-      prm.leave_subsection();
-
-
-      // get sigma and reference crustal thickness
-      prm.enter_subsection ("Initial composition model");
-      {
-        prm.enter_subsection("Lithosphere with rift");
+	
+	// define width and depth of refinement along rift
+	prm.enter_subsection("Lithosphere with rift");
         {
-          sigma                = prm.get_double ("Standard deviation of Gaussian rift geometry");
-          std::vector<double> thicknesses = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Layer thicknesses"))),
-                                                                                    3,
-                                                                                    "Layer thicknesses");
-          reference_crustal_thickness = thicknesses[0]+thicknesses[1]+thicknesses[2];
-        }
-        prm.leave_subsection();
+	  refinement_width                = prm.get_double ("Width of refined area along rift");
+	  refinement_depth                = prm.get_double ("Depth of refined area along rift");
+	}
+	prm.leave_subsection();
       }
       prm.leave_subsection();
+
     }
   }
 }
