@@ -83,7 +83,7 @@ namespace aspect
          unsigned int rift_refinement_level;
 
          /**
-          * Width and depth arounf the rift polyline
+          * Width and depth around the rift polyline
           * up to which the mesh will be refined.
           */
          double refinement_width;
