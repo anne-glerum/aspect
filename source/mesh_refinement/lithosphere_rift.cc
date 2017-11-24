@@ -81,7 +81,8 @@ namespace aspect
                         surface_position = ic->surface_position(vertex, cartesian_geometry);
                         distance_to_rift_axis = ic->distance_to_rift(surface_position);
                       }
-
+                      
+		  // Specify refinement criteria
                   if(depth <= refinement_depth && std::abs(distance_to_rift_axis) <= refinement_width/2)
                     {
                       if (cell->level() <= rint(rift_refinement_level))
@@ -114,13 +115,14 @@ namespace aspect
           prm.declare_entry ("Width of refined area along rift", "100000",
                              Patterns::Double (0),
                              "The width of the area that is refined along rift. "
+			     "This area is centered around the rift axis, such that the refined distance from the center is width/2."
                              "Note that this parameter is taken to be the same for all rift segments. "
-                             "Units: $m$ or degrees.");
+                             "Units: $m$.");
           prm.declare_entry ("Depth of refined area along rift", "100000",
                              Patterns::Double (0),
                              "The depth of the area that is refined along rift. "
                              "Note that this parameter is taken to be the same for all rift segments. "
-                             "Units: $m$ or degrees.");	  
+                             "Units: $m$.");	  
         }
         prm.leave_subsection();
       }
