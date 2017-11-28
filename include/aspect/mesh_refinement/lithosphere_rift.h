@@ -83,12 +83,12 @@ namespace aspect
          unsigned int rift_refinement_level;
 
          /**
-          * A reference value for the overall thickness of the crust
-          * up to which depth the mesh will be refined.
+          * Width and depth around the rift polyline
+          * up to which the mesh will be refined.
           */
-         double reference_crustal_thickness;
+         double refinement_width;
 
-         double sigma;
+         double refinement_depth;
 
     };
   }
