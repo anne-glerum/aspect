@@ -766,7 +766,7 @@ namespace aspect
 
       if ((this->get_time() - first_data_file_model_time >= 0.0)) // && (this->get_geometry_model().depth(position) <= lithosphere_thickness + magic_number))
         {
-          const double depth = this->get_geometry_model().depth(position); 
+          const double depth = this->get_geometry_model().depth(position);
           const Tensor<1,dim> data = (0.5-0.5*std::tanh((depth - lithosphere_thickness)/htan_halfwidth)) * lookup->surface_velocity(position);
 
           if (!time_dependent)

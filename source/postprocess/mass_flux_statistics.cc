@@ -40,12 +40,12 @@ namespace aspect
                                "kg/yr"
                                :
                                "kg/s";
-      
+
       const std::string flux_unit = (this->convert_output_to_years())
-                               ?
-                               "m/yr"
-                               :
-                               "m/s";
+                                    ?
+                                    "m/yr"
+                                    :
+                                    "m/s";
       const double in_years = (this->convert_output_to_years())
                               ?
                               year_in_seconds
@@ -137,9 +137,9 @@ namespace aspect
              p = boundary_indicators.begin();
              p != boundary_indicators.end(); ++p)
           {
-          local_values.push_back (local_boundary_fluxes[*p]);
-          local_area_values.push_back (local_areas[*p]);
-          local_flux_values.push_back (local_fluxes[*p]);
+            local_values.push_back (local_boundary_fluxes[*p]);
+            local_area_values.push_back (local_areas[*p]);
+            local_flux_values.push_back (local_fluxes[*p]);
           }
         // then collect contributions from all processors
         std::vector<double> global_values (local_values.size());
@@ -154,11 +154,11 @@ namespace aspect
         for (std::set<types::boundary_id>::const_iterator
              p = boundary_indicators.begin();
              p != boundary_indicators.end(); ++p, ++index)
-         {
-          global_boundary_fluxes[*p] = global_values[index];
-          global_areas[*p] = global_area_values[index];
-          global_fluxes[*p] = global_flux_values[index];
-         }
+          {
+            global_boundary_fluxes[*p] = global_values[index];
+            global_areas[*p] = global_area_values[index];
+            global_fluxes[*p] = global_flux_values[index];
+          }
       }
 
       // now add all of the computed heat fluxes to the statistics object

@@ -66,11 +66,11 @@ namespace aspect
       // Compute the local thickness of the upper crust, lower crust and mantle part of the lithosphere
       // (in this exact order) based on the distance from the rift axis.
       const double local_upper_crust_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[0]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[0])*
-                                                          (1.0 - A[0] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+                                                 (1.0 - A[0] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
       const double local_lower_crust_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[1]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[1])*
-                                                          (1.0 - A[1] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+                                                 (1.0 - A[1] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
       const double local_mantle_lithosphere_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[2]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[2])*
-                                                                 (1.0 - A[2] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+                                                        (1.0 - A[2] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
 
       // Compute depth
       const double depth = this->get_geometry_model().depth(position);
@@ -117,7 +117,7 @@ namespace aspect
       Point<2> surface_point;
       if (cartesian_geometry)
         {
-          for(unsigned int d=0; d<dim-1; ++d)
+          for (unsigned int d=0; d<dim-1; ++d)
             surface_point[d]=position[d];
         }
       // chunk (spherical) geometries
@@ -219,8 +219,8 @@ namespace aspect
                                                                          3,
                                                                          "Amplitude of Gaussian rift geometry");
           thicknesses = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Layer thicknesses"))),
-                                                              3,
-                                                              "Layer thicknesses");
+                                                                3,
+                                                                "Layer thicknesses");
           // Read in the string of segments
           const std::string temp_all_segments = prm.get("Rift axis line segments");
           // Split the string into segment strings
@@ -261,7 +261,7 @@ namespace aspect
                   //if (dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) == NULL)
                   //   point_list[i_segment][i_points] = (Point<2>(temp_point[0]/180.*numbers::PI, 0.5*numbers::PI-temp_point[1]/180.*numbers::PI));
                   //else
-                     point_list[i_segment][i_points] = (Point<2>(temp_point[0], temp_point[1]));
+                  point_list[i_segment][i_points] = (Point<2>(temp_point[0], temp_point[1]));
                 }
             }
           // Read in the string of polygon points
@@ -271,7 +271,7 @@ namespace aspect
           const unsigned int n_temp_points = temp_points.size();
           polygon_point_list.resize(n_temp_points);
           // Loop over the points of the polygon. Each point should consist of 2 values (lon and lat coordinate).
-          if(dim == 3 && n_temp_points != 0)
+          if (dim == 3 && n_temp_points != 0)
             {
               AssertThrow(n_temp_points>=3, ExcMessage ("The number of polygon points should be equal or larger than 3."));
               for (unsigned int i_points = 0; i_points < n_temp_points; i_points++)
@@ -285,11 +285,11 @@ namespace aspect
                   //if (dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) == NULL)
                   //   polygon_point_list[i_points] = (Point<2>(temp_point[0]/180.*numbers::PI, 0.5*numbers::PI-temp_point[1]/180.*numbers::PI));
                   //else
-                     polygon_point_list[i_points] = (Point<2>(temp_point[0], temp_point[1]));
+                  polygon_point_list[i_points] = (Point<2>(temp_point[0], temp_point[1]));
                 }
             }
 
-          if(n_temp_points == 0)
+          if (n_temp_points == 0)
             polygon_thicknesses = thicknesses;
           else
             polygon_thicknesses = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Lithospheric polygon layer thicknesses"))),

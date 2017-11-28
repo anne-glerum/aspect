@@ -602,7 +602,7 @@ namespace aspect
     const double mass = Utilities::MPI::sum( local_mass, mpi_communicator);
     const double velocity_correction = Utilities::MPI::sum(local_radial_vel, mpi_communicator)/mass;
 
-    if(use_constant_density)
+    if (use_constant_density)
       pcout << "   Total domain volume " << mass << std::endl;
     else
       pcout << "   Total domain mass " << mass << std::endl;

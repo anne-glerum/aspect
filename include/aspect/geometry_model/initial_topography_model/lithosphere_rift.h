@@ -38,7 +38,7 @@ namespace aspect
      */
     template <int dim>
     class LithosphereRift : public Interface<dim>,
-    public SimulatorAccess<dim>
+      public SimulatorAccess<dim>
     {
       public:
         /**
