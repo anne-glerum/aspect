@@ -66,19 +66,19 @@ namespace aspect
       for (unsigned int l=0; l<rift_thicknesses.size(); ++l)
         rift_thicknesses[l] *= (1.-A[l]);
 
-       for (unsigned int l=0; l<3; ++l)
-         rift_rgh += densities[l+1] * rift_thicknesses[l];
+      for (unsigned int l=0; l<3; ++l)
+        rift_rgh += densities[l+1] * rift_thicknesses[l];
 
-       // The total lithosphere thickness at the rift
-       const double sum_rift_thicknesses = std::accumulate(rift_thicknesses.begin(), rift_thicknesses.end(),0);
+      // The total lithosphere thickness at the rift
+      const double sum_rift_thicknesses = std::accumulate(rift_thicknesses.begin(), rift_thicknesses.end(),0);
 
-       // The column at the polygon center
-       double polygon_rgh = 0;
-       for (unsigned int l=0; l<3; ++l)
-         polygon_rgh += densities[l+1] * polygon_thicknesses[l];
+      // The column at the polygon center
+      double polygon_rgh = 0;
+      for (unsigned int l=0; l<3; ++l)
+        polygon_rgh += densities[l+1] * polygon_thicknesses[l];
 
-       // The total lithosphere thickness
-       const double sum_polygon_thicknesses = std::accumulate(polygon_thicknesses.begin(), polygon_thicknesses.end(),0);
+      // The total lithosphere thickness
+      const double sum_polygon_thicknesses = std::accumulate(polygon_thicknesses.begin(), polygon_thicknesses.end(),0);
 
       // Add sublithospheric mantle part to the columns
       ref_rgh += (compensation_depth - sum_thicknesses) * densities[0];
@@ -114,7 +114,7 @@ namespace aspect
       double distance_to_L_polygon = 1e23;
       const std::list<std_cxx11::shared_ptr<InitialComposition::Interface<dim> > > initial_composition_objects = this->get_initial_composition_manager().get_active_initial_composition_conditions();
       for (typename std::list<std_cxx11::shared_ptr<InitialComposition::Interface<dim> > >::const_iterator it = initial_composition_objects.begin(); it != initial_composition_objects.end(); ++it)
-        if( InitialComposition::LithosphereRift<dim> *ic = dynamic_cast<InitialComposition::LithosphereRift<dim> *> ((*it).get()))
+        if ( InitialComposition::LithosphereRift<dim> *ic = dynamic_cast<InitialComposition::LithosphereRift<dim> *> ((*it).get()))
           {
             distance_to_rift_axis = ic->distance_to_rift(surface_position);
             distance_to_L_polygon = ic->distance_to_polygon(surface_position);
@@ -123,11 +123,11 @@ namespace aspect
       // Compute the topography based on distance to the rift and distance to the polygon
       std::vector<double> local_thicknesses(3);
       local_thicknesses[0] = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[0]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[0])*
-          (1.0 - A[0] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+                             (1.0 - A[0] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
       local_thicknesses[1] = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[1]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[1])*
-          (1.0 - A[1] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+                             (1.0 - A[1] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
       local_thicknesses[2] = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[2]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[2])*
-          (1.0 - A[2] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+                             (1.0 - A[2] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
 
       // The local lithospheric column
       double local_rgh = 0;
@@ -166,7 +166,7 @@ namespace aspect
       unsigned int n_fields;
       prm.enter_subsection ("Compositional fields");
       {
-       n_fields = prm.get_integer ("Number of fields");
+        n_fields = prm.get_integer ("Number of fields");
       }
       prm.leave_subsection();
       prm.enter_subsection ("Initial composition model");
@@ -194,9 +194,9 @@ namespace aspect
         prm.enter_subsection("Visco Plastic");
         {
           // The material model viscoplastic prefixes an entry for the background material
-         temp_densities = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Densities"))),
-                                                             n_fields+1,
-                                                             "Densities");
+          temp_densities = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Densities"))),
+                                                                   n_fields+1,
+                                                                   "Densities");
         }
         prm.leave_subsection();
       }

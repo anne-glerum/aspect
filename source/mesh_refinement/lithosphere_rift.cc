@@ -39,15 +39,15 @@ namespace aspect
     LithosphereRift<dim>::
     initialize ()
     {
-    // Check that the required initial composition model is used
-    const std::vector<std::string> active_initial_composition_models = this->get_initial_composition_manager().get_active_initial_composition_names();
-    AssertThrow(std::find(active_initial_composition_models.begin(),active_initial_composition_models.end(), "lithosphere with rift") != active_initial_composition_models.end(),
-                ExcMessage("The lithosphere with rift initial mesh refinement plugin requires the lithosphere with rift initial composition plugin."));
+      // Check that the required initial composition model is used
+      const std::vector<std::string> active_initial_composition_models = this->get_initial_composition_manager().get_active_initial_composition_names();
+      AssertThrow(std::find(active_initial_composition_models.begin(),active_initial_composition_models.end(), "lithosphere with rift") != active_initial_composition_models.end(),
+                  ExcMessage("The lithosphere with rift initial mesh refinement plugin requires the lithosphere with rift initial composition plugin."));
 
-    // Check that the required initial temperature model is used
-    const std::vector<std::string> active_initial_temperature_models = this->get_initial_temperature_manager().get_active_initial_temperature_names();
-    AssertThrow(std::find(active_initial_temperature_models.begin(),active_initial_temperature_models.end(), "lithosphere with rift") != active_initial_temperature_models.end(),
-                ExcMessage("The lithosphere with rift initial mesh refinement plugin requires the lithosphere with rift initial temperature plugin."));
+      // Check that the required initial temperature model is used
+      const std::vector<std::string> active_initial_temperature_models = this->get_initial_temperature_manager().get_active_initial_temperature_names();
+      AssertThrow(std::find(active_initial_temperature_models.begin(),active_initial_temperature_models.end(), "lithosphere with rift") != active_initial_temperature_models.end(),
+                  ExcMessage("The lithosphere with rift initial mesh refinement plugin requires the lithosphere with rift initial temperature plugin."));
     }
 
 
@@ -76,14 +76,14 @@ namespace aspect
                   Point<2> surface_position;
                   const std::list<std_cxx11::shared_ptr<InitialComposition::Interface<dim> > > initial_composition_objects = this->get_initial_composition_manager().get_active_initial_composition_conditions();
                   for (typename std::list<std_cxx11::shared_ptr<InitialComposition::Interface<dim> > >::const_iterator it = initial_composition_objects.begin(); it != initial_composition_objects.end(); ++it)
-                    if( InitialComposition::LithosphereRift<dim> *ic = dynamic_cast<InitialComposition::LithosphereRift<dim> *> ((*it).get()))
+                    if ( InitialComposition::LithosphereRift<dim> *ic = dynamic_cast<InitialComposition::LithosphereRift<dim> *> ((*it).get()))
                       {
                         surface_position = ic->surface_position(vertex, cartesian_geometry);
                         distance_to_rift_axis = ic->distance_to_rift(surface_position);
                       }
-                      
-		  // Specify refinement criteria
-                  if(depth <= refinement_depth && std::abs(distance_to_rift_axis) <= refinement_width/2)
+
+                  // Specify refinement criteria
+                  if (depth <= refinement_depth && std::abs(distance_to_rift_axis) <= refinement_width/2)
                     {
                       if (cell->level() <= rint(rift_refinement_level))
                         clear_coarsen = true;
@@ -115,14 +115,14 @@ namespace aspect
           prm.declare_entry ("Width of refined area along rift", "100000",
                              Patterns::Double (0),
                              "The width of the area that is refined along rift. "
-			     "This area is centered around the rift axis, such that the refined distance from the center is width/2."
+                             "This area is centered around the rift axis, such that the refined distance from the center is width/2."
                              "Note that this parameter is taken to be the same for all rift segments. "
-                             "Units: $m$.");
+                             "Units: $m$ or $degrees$ in spherical geometries.");
           prm.declare_entry ("Depth of refined area along rift", "100000",
                              Patterns::Double (0),
                              "The depth of the area that is refined along rift. "
                              "Note that this parameter is taken to be the same for all rift segments. "
-                             "Units: $m$.");	  
+                             "Units: $m$.");
         }
         prm.leave_subsection();
       }
@@ -138,14 +138,14 @@ namespace aspect
         //compute maximum refinement level (initial global + initial adaptive)
         // and set this as minimum for rift area
         rift_refinement_level = prm.get_integer ("Initial global refinement") + prm.get_integer ("Initial adaptive refinement");
-	
-	// define width and depth of refinement along rift
-	prm.enter_subsection("Lithosphere with rift");
+
+        // define width and depth of refinement along rift
+        prm.enter_subsection("Lithosphere with rift");
         {
-	  refinement_width                = prm.get_double ("Width of refined area along rift");
-	  refinement_depth                = prm.get_double ("Depth of refined area along rift");
-	}
-	prm.leave_subsection();
+          refinement_width                = prm.get_double ("Width of refined area along rift");
+          refinement_depth                = prm.get_double ("Depth of refined area along rift");
+        }
+        prm.leave_subsection();
       }
       prm.leave_subsection();
 
@@ -161,37 +161,13 @@ namespace aspect
     ASPECT_REGISTER_MESH_REFINEMENT_CRITERION(LithosphereRift,
                                               "lithosphere with rift",
                                               "A mesh refinement criterion that ensures a "
-                                              "minimum refinement level described by an "
-                                              "explicit formula with the depth or position "
-                                              "as argument. Which coordinate representation "
-                                              "is used is determined by an input parameter. "
-                                              "Whatever the coordinate system chosen, the "
-                                              "function you provide in the input file will "
-                                              "by default depend on variables `x', `y' and "
-                                              "`z' (if in 3d). However, the meaning of these "
-                                              "symbols depends on the coordinate system. In "
-                                              "the Cartesian coordinate system, they simply "
-                                              "refer to their natural meaning. If you have "
-                                              "selected `depth' for the coordinate system, "
-                                              "then `x' refers to the depth variable and `y' "
-                                              "and `z' will simply always be zero. If you "
-                                              "have selected a spherical coordinate system, "
-                                              "then `x' will refer to the radial distance of "
-                                              "the point to the origin, `y' to the azimuth "
-                                              "angle and `z' to the polar angle measured "
-                                              "positive from the north pole. Note that the "
-                                              "order of spherical coordinates is r,phi,theta "
-                                              "and not r,theta,phi, since this allows for "
-                                              "dimension independent expressions. "
-                                              "Each coordinate system also includes a final `t' "
-                                              "variable which represents the model time, evaluated "
-                                              "in years if the 'Use years in output instead of seconds' "
-                                              "parameter is set, otherwise evaluated in seconds. "
-                                              "After evaluating the function, its values are "
-                                              "rounded to the nearest integer."
-                                              "\n\n"
-                                              "The format of these "
-                                              "functions follows the syntax understood by the "
-                                              "muparser library, see Section~\\ref{sec:muparser-format}.")
+                                              "minimum refinement level around the rift center "
+                                              "described in the initial composition plugin "
+                                              "`lithosphere with rift'. "
+                                              "This plugin only makes sense with the corresponding "
+                                              "initial temperature and composition plugins. "
+                                              "When dealing with spherical geometries, distance "
+                                              "is measured in degrees (longitude/latitude), "
+                                              "depth is always measured in meters. ")
   }
 }

@@ -73,7 +73,7 @@ namespace aspect
       double distance_to_L_polygon = 1e23;
       const std::list<std_cxx11::shared_ptr<InitialComposition::Interface<dim> > > initial_composition_objects = this->get_initial_composition_manager().get_active_initial_composition_conditions();
       for (typename std::list<std_cxx11::shared_ptr<InitialComposition::Interface<dim> > >::const_iterator it = initial_composition_objects.begin(); it != initial_composition_objects.end(); ++it)
-        if( InitialComposition::LithosphereRift<dim> *ic = dynamic_cast<InitialComposition::LithosphereRift<dim> *> ((*it).get()))
+        if ( InitialComposition::LithosphereRift<dim> *ic = dynamic_cast<InitialComposition::LithosphereRift<dim> *> ((*it).get()))
           {
             surface_position = ic->surface_position(position, cartesian_geometry);
             distance_to_rift_axis = ic->distance_to_rift(surface_position);
@@ -84,14 +84,14 @@ namespace aspect
       // based on the distance from the rift axis.
       std::vector<double> local_thicknesses(3);
       local_thicknesses[0] = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[0]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[0])*
-                                      (1.0 - A[0] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+                             (1.0 - A[0] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
       local_thicknesses[1] = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[1]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[1])*
-                                      (1.0 - A[1] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+                             (1.0 - A[1] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
       local_thicknesses[2] = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[2]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[2])*
-                                      (1.0 - A[2] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+                             (1.0 - A[2] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
 
       const double depth = this->get_geometry_model().depth(position);
-      
+
       return temperature(depth, local_thicknesses);
     }
 
@@ -114,14 +114,14 @@ namespace aspect
       const double T2 = (c + conductivities[1]/layer_thicknesses[1]*T1) * d;
 
       // Temperature in layer 1
-      if(depth < layer_thicknesses[0])
-          return -0.5*densities[0]*heat_productivities[0]/conductivities[0]*std::pow(depth,2) + (0.5*densities[0]*heat_productivities[0]*layer_thicknesses[0]/conductivities[0] + (T1-T0)/layer_thicknesses[0])*depth + T0;
+      if (depth < layer_thicknesses[0])
+        return -0.5*densities[0]*heat_productivities[0]/conductivities[0]*std::pow(depth,2) + (0.5*densities[0]*heat_productivities[0]*layer_thicknesses[0]/conductivities[0] + (T1-T0)/layer_thicknesses[0])*depth + T0;
       // Temperature in layer 2
       else if (depth < layer_thicknesses[0]+layer_thicknesses[1])
-          return -0.5*densities[1]*heat_productivities[1]/conductivities[1]*std::pow(depth-layer_thicknesses[0],2.) + (0.5*densities[1]*heat_productivities[1]*layer_thicknesses[1]/conductivities[1] + (T2-T1)/layer_thicknesses[1])*(depth-layer_thicknesses[0]) + T1;
+        return -0.5*densities[1]*heat_productivities[1]/conductivities[1]*std::pow(depth-layer_thicknesses[0],2.) + (0.5*densities[1]*heat_productivities[1]*layer_thicknesses[1]/conductivities[1] + (T2-T1)/layer_thicknesses[1])*(depth-layer_thicknesses[0]) + T1;
       // Temperature in layer 3
       else if (depth < layer_thicknesses[0]+layer_thicknesses[1]+layer_thicknesses[2])
-          return (LAB_isotherm-T2)/layer_thicknesses[2] *(depth-layer_thicknesses[0]-layer_thicknesses[1]) + T2;
+        return (LAB_isotherm-T2)/layer_thicknesses[2] *(depth-layer_thicknesses[0]-layer_thicknesses[1]) + T2;
       // Return a constant sublithospheric temperature of 10*LAB_isotherm.
       // This way we can combine the continental geotherm with an adiabatic profile from the input file
       // using the "minimum" operator on the "List of initial temperature models"
@@ -172,7 +172,7 @@ namespace aspect
       unsigned int n_fields = 0;
       prm.enter_subsection ("Compositional fields");
       {
-       n_fields = prm.get_integer ("Number of fields");
+        n_fields = prm.get_integer ("Number of fields");
       }
       prm.leave_subsection();
 
@@ -185,11 +185,11 @@ namespace aspect
                                                                          3,
                                                                          "Amplitude of Gaussian rift geometry");
           thicknesses = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Layer thicknesses"))),
-                                                              3,
-                                                              "Layer thicknesses");
+                                                                3,
+                                                                "Layer thicknesses");
           polygon_thicknesses = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Lithospheric polygon layer thicknesses"))),
-                                                              3,
-                                                              "Lithospheric polygon layer thicknesses");
+                                                                        3,
+                                                                        "Lithospheric polygon layer thicknesses");
         }
         prm.leave_subsection();
       }
@@ -219,8 +219,8 @@ namespace aspect
       const unsigned int id_lower = this->introspection().compositional_index_for_name("lower");
       const unsigned int id_mantle_L = this->introspection().compositional_index_for_name("mantle_L");
 
-            // Retrieve other material properties set in different sections such that there
-            // is no need to set them twice.
+      // Retrieve other material properties set in different sections such that there
+      // is no need to set them twice.
 
       prm.enter_subsection("Heating model");
       {
@@ -228,8 +228,8 @@ namespace aspect
         {
           // The heating model compositional heating prefixes an entry for the background material
           const std::vector<double> temp_heat_productivities = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Compositional heating values"))),
-                                                                   n_fields+1,
-                                                                   "Compositional heating values");
+                                                               n_fields+1,
+                                                               "Compositional heating values");
           // This sets the heat productivity in W/m3 units
           heat_productivities.push_back(temp_heat_productivities[id_upper+1]);
           heat_productivities.push_back(temp_heat_productivities[id_lower+1]);
@@ -245,14 +245,14 @@ namespace aspect
         {
           // The material model viscoplastic prefixes an entry for the background material
           const std::vector<double> temp_densities = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Densities"))),
-                                                                   n_fields+1,
-                                                                   "Densities");
+                                                     n_fields+1,
+                                                     "Densities");
           const std::vector<double> temp_thermal_diffusivities = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Thermal diffusivities"))),
-                                                                                  n_fields+1,
-                                                                         "Thermal diffusivities");
+                                                                 n_fields+1,
+                                                                 "Thermal diffusivities");
           const std::vector<double> temp_heat_capacities = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Heat capacities"))),
-                                                                           n_fields+1,
-                                                                        "Heat capacities");
+                                                           n_fields+1,
+                                                           "Heat capacities");
 
           densities.push_back(temp_densities[id_upper+1]);
           densities.push_back(temp_densities[id_lower+1]);
@@ -268,7 +268,7 @@ namespace aspect
                       ExcMessage("The entries for density, conductivity and heat production do not match with the expected number of layers (3)."))
 
           for (unsigned int i = 0; i<3; ++i)
-          heat_productivities[i] /= densities[i];
+            heat_productivities[i] /= densities[i];
         }
         prm.leave_subsection();
       }
