@@ -108,6 +108,11 @@ namespace aspect
                              "For a fraction of 0, no compositional field is set for the "
                              "upper crust. "
                              "Unit: -.");
+          prm.declare_entry ("Layer thicknesses", "30000.",
+                             Patterns::List(Patterns::Double(0)),
+                             "List of thicknesses for the bottom of the lithospheric layers,"
+                             "for a total of N+1 values, where N is the number of compositional fields."
+                             "If only one value is given, then all use the same value.  Units: $m$");
         }
         prm.leave_subsection();
       }
@@ -154,9 +159,9 @@ namespace aspect
                                               "Either one compositional field is used to represent "
                                               "the total crust up to Moho depth, "
                                               "or an upper crust composition is "
-                                              "specified with the upper\_crust\_fraction parameter that"
+                                              "specified with the upper-crust-fraction parameter that"
                                               "sets an upper crustal field from 0 to "
-                                              "upper\_crust\_fraction*Moho\_depth. "
+                                              "upper-crust-fraction*Moho-depth. "
                                               "Note the required format of the "
                                               "input data: The first lines may contain any number of comments "
                                               "if they begin with '#', but one of these lines needs to "

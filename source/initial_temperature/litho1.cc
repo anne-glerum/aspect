@@ -21,9 +21,10 @@
 
 #include <aspect/global.h>
 #include <aspect/initial_temperature/litho1.h>
-#include <aspect/material_model/visco_plastic.h>
+//#include <aspect/material_model/visco_plastic.h>
 #include <aspect/heating_model/interface.h>
 #include <aspect/adiabatic_conditions/interface.h>
+#include "/gfs1/work/bbpanneg/software/aspect/aspect/lib_plastic_strain/visco_plastic_strain.h"
 
 namespace aspect
 {
@@ -62,7 +63,7 @@ namespace aspect
                   ExcMessage("The continental geotherm initial temperature plugin requires the compositional heating plugin."));
 
       // Check that the required material model ("visco plastic") is used
-      AssertThrow((dynamic_cast<MaterialModel::ViscoPlastic<dim> *> (const_cast<MaterialModel::Interface<dim> *>(&this->get_material_model()))) != 0,
+      AssertThrow((dynamic_cast<MaterialModel::ViscoPlasticStrain<dim> *> (const_cast<MaterialModel::Interface<dim> *>(&this->get_material_model()))) != 0,
                   ExcMessage("The continental geotherm initial temperature plugin requires the viscoplastic material model plugin."));
     }
 
