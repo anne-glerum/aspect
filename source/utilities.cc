@@ -34,6 +34,7 @@
 #include <aspect/geometry_model/box.h>
 #include <aspect/geometry_model/spherical_shell.h>
 #include <aspect/geometry_model/chunk.h>
+#include <aspect/geometry_model/ellipsoidal_chunk.h>
 
 #include <fstream>
 #include <string>
@@ -1559,6 +1560,7 @@ namespace aspect
     {
       AssertThrow ((dynamic_cast<const GeometryModel::SphericalShell<dim>*> (&this->get_geometry_model()))
                    || (dynamic_cast<const GeometryModel::Chunk<dim>*> (&this->get_geometry_model())) != 0
+                   || (dynamic_cast<const GeometryModel::EllipsoidalChunk<dim>*> (&this->get_geometry_model())) != 0
                    || (dynamic_cast<const GeometryModel::Box<dim>*> (&this->get_geometry_model())) != 0,
                    ExcMessage ("This ascii data plugin can only be used when using "
                                "a spherical shell, chunk or box geometry."));
@@ -1633,14 +1635,16 @@ namespace aspect
     {
       std_cxx11::array<unsigned int,dim-1> boundary_dimensions;
 
+      if (dynamic_cast<const GeometryModel::EllipsoidalChunk<dim>*> (&this->get_geometry_model()) != 0)
+    {
       switch (dim)
         {
           case 2:
-            if ((boundary_id == 2) || (boundary_id == 3))
+            if ((boundary_id == 0) || (boundary_id == 1))
               {
                 boundary_dimensions[0] = 0;
               }
-            else if ((boundary_id == 0) || (boundary_id == 1))
+            else if ((boundary_id == 2) || (boundary_id == 3))
               {
                 boundary_dimensions[0] = 1;
               }
@@ -1653,17 +1657,17 @@ namespace aspect
             break;
 
           case 3:
-            if ((boundary_id == 4) || (boundary_id == 5))
+            if ((boundary_id == 2) || (boundary_id == 3))
               {
                 boundary_dimensions[0] = 0;
                 boundary_dimensions[1] = 1;
               }
-            else if ((boundary_id == 0) || (boundary_id == 1))
+            else if ((boundary_id == 4) || (boundary_id == 5))
               {
                 boundary_dimensions[0] = 1;
                 boundary_dimensions[1] = 2;
               }
-            else if ((boundary_id == 2) || (boundary_id == 3))
+            else if ((boundary_id == 0) || (boundary_id == 1))
               {
                 boundary_dimensions[0] = 0;
                 boundary_dimensions[1] = 2;
@@ -1681,6 +1685,60 @@ namespace aspect
             for (unsigned int d=0; d<dim-1; ++d)
               boundary_dimensions[d] = numbers::invalid_unsigned_int;
             AssertThrow(false,ExcNotImplemented());
+        }
+    }
+      else
+        {
+          switch (dim)
+                  {
+                    case 2:
+                      if ((boundary_id == 2) || (boundary_id == 3))
+                        {
+                          boundary_dimensions[0] = 0;
+                        }
+                      else if ((boundary_id == 0) || (boundary_id == 1))
+                        {
+                          boundary_dimensions[0] = 1;
+                        }
+                      else
+                        {
+                          boundary_dimensions[0] = numbers::invalid_unsigned_int;
+                          AssertThrow(false,ExcNotImplemented());
+                        }
+
+                      break;
+
+                    case 3:
+                      if ((boundary_id == 4) || (boundary_id == 5))
+                        {
+                          boundary_dimensions[0] = 0;
+                          boundary_dimensions[1] = 1;
+                        }
+                      else if ((boundary_id == 0) || (boundary_id == 1))
+                        {
+                          boundary_dimensions[0] = 1;
+                          boundary_dimensions[1] = 2;
+                        }
+                      else if ((boundary_id == 2) || (boundary_id == 3))
+                        {
+                          boundary_dimensions[0] = 0;
+                          boundary_dimensions[1] = 2;
+                        }
+                      else
+                        {
+                          boundary_dimensions[0] = numbers::invalid_unsigned_int;
+                          boundary_dimensions[1] = numbers::invalid_unsigned_int;
+                          AssertThrow(false,ExcNotImplemented());
+                        }
+
+                      break;
+
+                    default:
+                      for (unsigned int d=0; d<dim-1; ++d)
+                        boundary_dimensions[d] = numbers::invalid_unsigned_int;
+                      AssertThrow(false,ExcNotImplemented());
+                  }
+
         }
       return boundary_dimensions;
     }
@@ -1880,7 +1938,8 @@ namespace aspect
           Point<dim> internal_position = position;
 
           if (dynamic_cast<const GeometryModel::SphericalShell<dim>*> (&this->get_geometry_model()) != 0
-              || dynamic_cast<const GeometryModel::Chunk<dim>*> (&this->get_geometry_model()) != 0)
+              || dynamic_cast<const GeometryModel::EllipsoidalChunk<dim>*> (&this->get_geometry_model()) != 0
+            || dynamic_cast<const GeometryModel::Chunk<dim>*> (&this->get_geometry_model()) != 0)
             {
               const std_cxx11::array<double,dim> spherical_position =
                 Utilities::Coordinates::cartesian_to_spherical_coordinates(position);
@@ -1992,6 +2051,7 @@ namespace aspect
     {
       AssertThrow ((dynamic_cast<const GeometryModel::SphericalShell<dim>*> (&this->get_geometry_model()))
                    || (dynamic_cast<const GeometryModel::Chunk<dim>*> (&this->get_geometry_model())) != 0
+                   || (dynamic_cast<const GeometryModel::EllipsoidalChunk<dim>*> (&this->get_geometry_model())) != 0
                    || (dynamic_cast<const GeometryModel::Box<dim>*> (&this->get_geometry_model())) != 0,
                    ExcMessage ("This ascii data plugin can only be used when using "
                                "a spherical shell, chunk or box geometry."));
@@ -2025,6 +2085,7 @@ namespace aspect
       Point<dim> internal_position = position;
 
       if (dynamic_cast<const GeometryModel::SphericalShell<dim>*> (&this->get_geometry_model()) != 0
+          || (dynamic_cast<const GeometryModel::EllipsoidalChunk<dim>*> (&this->get_geometry_model())) != 0
           || (dynamic_cast<const GeometryModel::Chunk<dim>*> (&this->get_geometry_model())) != 0)
         {
           const std_cxx11::array<double,dim> spherical_position =
