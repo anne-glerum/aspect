@@ -109,16 +109,19 @@ namespace aspect
           std_cxx11::array<double,dim> spherical_position;
           for (unsigned int d=1; d<dim; ++d)
             spherical_position[d] = surface_position[d-1]/180.*numbers::PI;
+          // set radius to surface radius
           spherical_position[0] = 6371000.;
+          // convert from latitude to colatitude
+          spherical_position[dim-1] = 0.5*numbers::PI-spherical_position[dim-1];
           position = Utilities::Coordinates::spherical_to_cartesian_coordinates<dim>(spherical_position);
         }
 
-      // The Moho depth is the first component
+      // The Moho depth is stored in the surface file
       const double Moho_depth = Utilities::AsciiDataBoundary<dim>::get_data_component(surface_boundary_id,
                                                                                       position,
                                                                                       0);
 
-      // The LAB depth is the second component
+      // The LAB depth is stored in the bottom file
       const double LAB_depth = std::max(Moho_depth, Utilities::AsciiDataBoundary<dim>::get_data_component(bottom_boundary_id,
                                                                                                           position,
                                                                                                           0));
@@ -141,7 +144,7 @@ namespace aspect
     Isostasy<dim>::
     max_topography () const
     {
-      return 0;
+      return -7060.61;
     }
 
 
