@@ -239,13 +239,13 @@ namespace aspect
 
               if (dim == 3)
                 {
-                  Assert(temp_segment.size() == 2,ExcMessage ("The given coordinate '" + temp_segment[i_segment] + "' is not correct. "
+                  AssertThrow(temp_segment.size() == 2,ExcMessage ("The given coordinate '" + temp_segment[i_segment] + "' is not correct. "
                                                               "It should only contain 2 parts: "
                                                               "the two points of the segment, separated by a '>'."));
                 }
               else
                 {
-                  Assert(temp_segment.size() == 1,ExcMessage ("The given coordinate '" + temp_segment[i_segment] + "' is not correct. "
+                  AssertThrow(temp_segment.size() == 1,ExcMessage ("The given coordinate '" + temp_segment[i_segment] + "' is not correct. "
                                                               "In 2d it should only contain only 1 part: "));
                 }
 
@@ -253,7 +253,7 @@ namespace aspect
               for (unsigned int i_points = 0; i_points < dim-1; i_points++)
                 {
                   const std::vector<double> temp_point = Utilities::string_to_double(Utilities::split_string_list(temp_segment[i_points],','));
-                  Assert(temp_point.size() == 2,ExcMessage ("The given coordinates of segment '" + temp_segment[i_points] + "' are not correct. "
+                  AssertThrow(temp_point.size() == 2,ExcMessage ("The given coordinates of segment '" + temp_segment[i_points] + "' are not correct. "
                                                             "It should only contain 2 parts: "
                                                             "the two coordinates of the segment end point, separated by a ','."));
 
@@ -277,7 +277,7 @@ namespace aspect
               for (unsigned int i_points = 0; i_points < n_temp_points; i_points++)
                 {
                   const std::vector<double> temp_point = Utilities::string_to_double(Utilities::split_string_list(temp_points[i_points],','));
-                  Assert(temp_point.size() == dim-1,ExcMessage ("The given coordinates of point '" + temp_points[i_points] + "' are not correct. "
+                  AssertThrow(temp_point.size() == dim-1,ExcMessage ("The given coordinates of point '" + temp_points[i_points] + "' are not correct. "
                                                                 "It should only contain 2 parts: "
                                                                 "the longitude and latitude, separated by a ','."));
 
