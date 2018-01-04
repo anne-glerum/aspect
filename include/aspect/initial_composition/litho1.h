@@ -96,6 +96,12 @@ namespace aspect
         double upper_crust_fraction;
 
         /**
+         * The minimum thickness of the lithosphere
+         * regardless of the thickness from the ascii table.
+         */
+        double min_LAB_thickness;
+
+        /**
          * The compositional field number of the lower crust.
          * For an upper and lower crust, the upper crust
          * will be field 0, the lower crust field 1 and

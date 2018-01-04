@@ -78,9 +78,11 @@ namespace aspect
                                                                                       position,
                                                                                       0);
       // We want to get at the LAB depth, which is the second component
-      const double LAB_depth = Utilities::AsciiDataBoundary<dim>::get_data_component(bottom_boundary_id,
-                                                                                     position,
-                                                                                     0);
+      const double LAB_depth = std::max(min_LAB_thickness,
+                                        std::max(Moho_depth,
+                                                 Utilities::AsciiDataBoundary<dim>::get_data_component(bottom_boundary_id,
+                                                                                                       position,
+                                                                                                       0)));
 
       // The depth of the point under investigation
       const double depth = this->get_geometry_model().depth(position);
@@ -254,6 +256,7 @@ namespace aspect
         prm.enter_subsection("LITHO1.0");
         {
           upper_crust_fraction = prm.get_double ("Upper crust fraction");
+          min_LAB_thickness = prm.get_double ("Minimum LAB thickness");
         }
         prm.leave_subsection();
       }

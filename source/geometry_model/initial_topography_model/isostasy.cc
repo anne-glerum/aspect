@@ -45,7 +45,6 @@ namespace aspect
     Isostasy<dim>::
     initialize ()
     {
-      std::cout << "Initializing topo " << std::endl;
       // Find the boundary indicators that represents the surface and the bottom of the domain
       surface_boundary_id = this->get_geometry_model().translate_symbolic_boundary_name_to_id("top");
       bottom_boundary_id = this->get_geometry_model().translate_symbolic_boundary_name_to_id("bottom");
@@ -67,7 +66,7 @@ namespace aspect
       AssertThrow(this->introspection().compositional_name_exists("upper"),ExcMessage("We need a compositional field called 'upper' representing the upper crust."));
       AssertThrow(this->introspection().compositional_name_exists("lower"),ExcMessage("We need a compositional field called 'lower' representing the lower crust."));
       AssertThrow(this->introspection().compositional_name_exists("mantle_L"),ExcMessage("We need a compositional field called 'mantle_L' representing the lithospheric part of the mantle."));
-      std::cout << "Getting compo indices" << std::endl;
+
       const unsigned int id_upper = this->introspection().compositional_index_for_name("upper");
       const unsigned int id_lower = this->introspection().compositional_index_for_name("lower");
       const unsigned int id_mantle_L = this->introspection().compositional_index_for_name("mantle_L");
@@ -102,8 +101,10 @@ namespace aspect
       const bool cartesian_geometry = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) != NULL ? true : false;
       Point<dim> position;
       if (cartesian_geometry)
+        {
         for (unsigned int d=0; d<dim-1; ++d)
           position[d] = surface_position[d];
+        }
       else
         {
           std_cxx11::array<double,dim> spherical_position;
@@ -122,18 +123,17 @@ namespace aspect
                                                                                       0);
 
       // The LAB depth is stored in the bottom file
-      const double LAB_depth = std::max(Moho_depth, Utilities::AsciiDataBoundary<dim>::get_data_component(bottom_boundary_id,
-                                                                                                          position,
-                                                                                                          0));
+      const double LAB_depth = std::max(min_LAB_thickness,
+                                        std::max(Moho_depth, Utilities::AsciiDataBoundary<dim>::get_data_component(bottom_boundary_id,
+                                                                                                                   position,
+                                                                                                                   0)));
 
       const double upper_crust_depth = upper_crust_fraction * Moho_depth;
 
       // The local lithospheric column
-      double local_rgh = densities[1]*upper_crust_depth + densities[2]*(Moho_depth-upper_crust_depth)+densities[3]*(LAB_depth-Moho_depth);
-
-      // The total local lithosphere thickness
       const double sum_local_thicknesses = LAB_depth;
-      local_rgh += (compensation_depth - sum_local_thicknesses) * densities[0];
+      const double local_rgh = densities[1]*upper_crust_depth + densities[2]*(Moho_depth-upper_crust_depth)+densities[3]*(LAB_depth-Moho_depth)
+                         + (compensation_depth - sum_local_thicknesses) * densities[0];
 
       return (ref_rgh - local_rgh) / densities[0];
     }
@@ -178,7 +178,6 @@ namespace aspect
     void
     Isostasy<dim>::parse_parameters (ParameterHandler &prm)
     {
-      std::cout << "Param topo " << std::endl;
       unsigned int n_fields;
       prm.enter_subsection ("Compositional fields");
       {
@@ -186,13 +185,10 @@ namespace aspect
       }
       prm.leave_subsection();
 
-      std::cout << "Param topo 1" << std::endl;
-
       prm.enter_subsection("Geometry model");
       {
         prm.enter_subsection("Initial topography model");
         {
-          std::cout << "Param topo 1a" << std::endl;
           //Utilities::AsciiDataBoundary<dim>::parse_parameters(prm);
           Utilities::AsciiDataBase<dim>::parse_parameters(prm);
         }
@@ -205,15 +201,14 @@ namespace aspect
         prm.enter_subsection("LITHO1.0");
         {
           upper_crust_fraction = prm.get_double ("Upper crust fraction");
-          std::cout << "Param topo 1b" << std::endl;
           thicknesses = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Layer thicknesses"))),
                                                                 3,
                                                                 "Layer thicknesses");
+          min_LAB_thickness = prm.get_double ("Minimum LAB thickness");
         }
         prm.leave_subsection();
       }
       prm.leave_subsection();
-      std::cout << "Param topo 2" << std::endl;
 
       prm.enter_subsection("Material model");
       {
@@ -223,14 +218,10 @@ namespace aspect
           temp_densities = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Densities"))),
                                                                                              n_fields+1,
                                                                                              "Densities");
-
-
         }
         prm.leave_subsection();
       }
       prm.leave_subsection();
-
-      std::cout << "Param topo 3" << std::endl;
 
       prm.enter_subsection ("Initial temperature model");
       {
