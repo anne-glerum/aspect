@@ -96,6 +96,12 @@ namespace aspect
         std::vector<double> thicknesses;
 
         /**
+         * The minimum thickness of the lithosphere
+         * regardless of the thickness from the ascii table.
+         */
+        double min_LAB_thickness;
+
+        /**
          * The fraction of the crust that will be
          * designated as upper crust instead of reading
          * it's thickness from the ascii data file.

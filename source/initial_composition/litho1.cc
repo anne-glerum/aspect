@@ -65,9 +65,11 @@ namespace aspect
                                                                                       position,
                                                                                       0);
       // The LAB depth is the second component
-      const double LAB_depth = std::max(Moho_depth, Utilities::AsciiDataBoundary<dim>::get_data_component(bottom_boundary_id,
-                                        position,
-                                        0));
+      const double LAB_depth = std::max(min_LAB_thickness,
+                                        std::max(Moho_depth,
+                                                 Utilities::AsciiDataBoundary<dim>::get_data_component(bottom_boundary_id,
+                                                                                                       position,
+                                                                                                       0)));
 
       AssertThrow(Moho_depth <= LAB_depth, ExcMessage("The crust is thicker than the LAB."));
 
@@ -113,6 +115,11 @@ namespace aspect
                              "List of thicknesses for the bottom of the lithospheric layers,"
                              "for a total of N+1 values, where N is the number of compositional fields."
                              "If only one value is given, then all use the same value.  Units: $m$");
+          prm.declare_entry ("Minimum LAB thickness", "80e3",
+                             Patterns::Double (0),
+                             "A number that specifies the minimum thickness of the lithosphere "
+                             "regardless of the reading of its thickness from the ascii table. "
+                             "Unit: m.");
         }
         prm.leave_subsection();
       }
@@ -137,6 +144,8 @@ namespace aspect
             lower_crust_id = 0;
           else
             lower_crust_id = 1;
+
+          min_LAB_thickness = prm.get_double ("Minimum LAB thickness");
         }
         prm.leave_subsection();
       }

@@ -103,6 +103,13 @@ namespace aspect
          */
         double LAB_isotherm;
 
+        /**
+         * The minimum thickness of the lithosphere
+         * regardless of the thickness from the ascii table.
+         */
+        double min_LAB_thickness;
+
+
         /*
          * The temperature at the model's top boundary.
          */
