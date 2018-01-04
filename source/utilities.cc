@@ -41,6 +41,7 @@
 #include <aspect/geometry_model/spherical_shell.h>
 #include <aspect/geometry_model/chunk.h>
 #include <aspect/geometry_model/ellipsoidal_chunk.h>
+#include <aspect/geometry_model/initial_topography_model/isostasy.h>
 
 #include <fstream>
 #include <string>
@@ -2184,7 +2185,8 @@ namespace aspect
                         const Point<dim>                    &position,
                         const unsigned int                   component) const
     {
-      if (this->get_time() - first_data_file_model_time >= 0.0)
+      if (this->get_time() - first_data_file_model_time >= 0.0 ||
+          dynamic_cast<const InitialTopographyModel::Isostasy<dim> *>(&this->get_initial_topography_model()) != NULL)
         {
           Point<dim> internal_position = position;
 
