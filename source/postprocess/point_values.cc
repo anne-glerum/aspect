@@ -25,6 +25,7 @@
 #include <aspect/geometry_model/spherical_shell.h>
 #include <aspect/global.h>
 #include <deal.II/numerics/vector_tools.h>
+#include <deal.II/grid/grid_tools.h>
 
 #include <math.h>
 
@@ -85,6 +86,11 @@ namespace aspect
             {
               // ignore
             }
+          catch (const GridTools::ExcPointNotFound<dim> &)
+            {
+              // ignore
+            }
+
 
           // ensure that at least one processor found things
           const int n_procs = Utilities::MPI::sum (point_found ? 1 : 0, this->get_mpi_communicator());
