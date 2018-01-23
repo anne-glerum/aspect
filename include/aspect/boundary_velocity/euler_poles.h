@@ -36,8 +36,8 @@ namespace aspect
 
     /**
      * A class that implements prescribed velocity boundary conditions
-     * determined from EulerPoles input files. The interpolation in time is
-     * performed between two objects of the EulerPolesLookup class.
+     * determined from angular rotation vectors specified for each boundary
+     * with prescribed velocity boundary conditions.
      *
      * @ingroup BoundaryVelocities
      */
@@ -51,8 +51,9 @@ namespace aspect
         EulerPoles ();
 
         /**
-         * Return the boundary velocity as a function of position. For the
-         * current class, this function returns value from gplates.
+         * Return the boundary velocity as a function of position and boundary
+         * indicator. For the current class, this function returns the value
+         * of the cross product of the angular velocity vector and the point vector.
          */
         Tensor<1,dim>
         boundary_velocity (const types::boundary_id boundary_indicator,
@@ -88,11 +89,20 @@ namespace aspect
          * Scale the velocity boundary condition by a scalar factor.
          */
         double scale_factor;
+        double area_scale_factor;
+        double transition_area_scale_factor;
+
+        /**
+         * The outer and inner radius of the model domain.
+         */
+        double outer_radius;
+        double inner_radius;
 
         /**
          * The depth of the transition from outflow to inflow. This transition
-         * occurs linearly around the transition depth, where the gradient is determind
-         * by the transition width.
+         * occurs linearly around the transition depth, where the gradient is determined
+         * by the transition width. This transition ensures that the integrated
+         * prescribed flow through the boundaries is zero.
          */
         double transition_depth;
 
@@ -100,6 +110,13 @@ namespace aspect
          * The half width of the linear transition zone.
          */
         double transition_width;
+
+        /**
+         * Parameters describing the transition in terms of radius.
+         */
+        double transition_radius;
+        double transition_radius_max;
+        double transition_radius_min;
 
         /**
          * A map of spherical rotation vectors for each boundary indicator.

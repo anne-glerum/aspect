@@ -53,6 +53,42 @@ namespace aspect
               ExcMessage ("This Euler pole plugin can only be used when using "
               "a spherical shell or (ellipsoidal) chunk geometry."));
 
+      // set inner and outer radius
+      if (const GeometryModel::SphericalShell<dim> *gm = dynamic_cast<const GeometryModel::SphericalShell<dim>*> (&this->get_geometry_model()))
+        {
+          inner_radius = gm->inner_radius();
+          outer_radius = gm->outer_radius();
+        }
+      else if (const GeometryModel::Chunk<dim> *gm = dynamic_cast<const GeometryModel::Chunk<dim>*> (&this->get_geometry_model()))
+        {
+          inner_radius = gm->inner_radius();
+          outer_radius = gm->outer_radius();
+        }
+      else if (const GeometryModel::EllipsoidalChunk<dim> *gm = dynamic_cast<const GeometryModel::EllipsoidalChunk<dim>*> (&this->get_geometry_model()))
+        {
+          // If the eccentricity of the EllipsoidalChunk is non-zero, the radius can vary along a boundary,
+          // but the maximal depth is the same everywhere and we could calculate a representative pressure
+          // profile. However, it requires some extra logic with ellipsoidal
+          // coordinates, so for now we only allow eccentricity zero.
+          // Using the EllipsoidalChunk with eccentricity zero can still be useful,
+          // because the domain can be non-coordinate parallel.
+          AssertThrow(gm->get_eccentricity() == 0.0, ExcMessage("This initial lithospheric pressure plugin cannot be used with a non-zero eccentricity. "));
+
+          outer_radius = gm->get_semi_major_axis_a();
+          inner_radius = outer_radius - gm->maximal_depth();
+        }
+      else
+        AssertThrow(false, ExcNotImplemented());
+
+      transition_radius = outer_radius - transition_depth;
+      transition_radius_max = transition_radius + transition_width;
+      transition_radius_min = transition_radius - transition_width;
+
+      area_scale_factor = (outer_radius * outer_radius - transition_radius_max * transition_radius_max) / (transition_radius_min * transition_radius_min - inner_radius * inner_radius);
+      transition_area_scale_factor = std::fabs((transition_width/3. + 0.5 * transition_radius) / (transition_width/3. - 0.5 * transition_radius));
+
+      this->get_pcout() << "Area scale factor " << area_scale_factor << std::endl;
+      this->get_pcout() << "Transition area scale factor " << transition_area_scale_factor << std::endl;
     }
 
 
@@ -70,11 +106,14 @@ namespace aspect
       // Compute depth and transition scale factor to transition from outflow to inflow
       const double depth = this->get_geometry_model().depth(position);
       const double transition_scale_factor = std::min(1.,std::max(-1.,(depth - transition_depth) * (-1./transition_width)));
+      const double radial_scale_factor = outer_radius / position.norm();
 
       // Compute the cartesian velocity as the cross product of the pole and the point
       Tensor <1,dim> euler_velocity = cross_product_3d(it->second, position);
       // Scale the velocity for the transition and any user-defined scaling
-      euler_velocity *= (transition_scale_factor * scale_factor);
+      euler_velocity *= (transition_scale_factor * scale_factor * radial_scale_factor) *
+                        ((depth>outer_radius-transition_radius_min) ? area_scale_factor : 1.) *
+                        ((depth>outer_radius-transition_radius && depth<outer_radius-transition_radius_min) ? transition_area_scale_factor : 1.);
 
       return euler_velocity;
     }
@@ -102,7 +141,7 @@ namespace aspect
                              "of (asthenospheric) material. A linear transition from outflow to inflow is used. ");
           prm.declare_entry ("Boundary indicator to velocity mappings", "",
                              Patterns::Map (Patterns::Anything(),
-                                            Patterns::Double()),
+                                            Patterns::Anything()),
                              "A comma separated list of mappings between boundary "
                              "indicators and the euler pole associated with the "
                              "boundary indicators. The format for this list is "
@@ -112,7 +151,6 @@ namespace aspect
                              "by the geometry model) "
                              "and each value is a component of the angular velocity vector of that boundary."
                              "The Euler vector is assumed to be in spherical coordinates: lon [degrees], lat [degrees], rotation rate [degrees/My]." );
-          // TODO The cross product will give a smaller velocity with radius, need to account for this with balancing inflow
         }
         prm.leave_subsection();
       }
@@ -150,11 +188,12 @@ namespace aspect
                                                     "<boundary_id : value1x; value1y; value1z>, "
                                                     "but there is an entry of the form <") + *it + ">"));
 
-               types::boundary_id boundary_id;
+               types::boundary_id boundary_id = numbers::invalid_boundary_id;
                try
                  {
                    boundary_id
                      = this->get_geometry_model().translate_symbolic_boundary_name_to_id (parts[0]);
+                   this->get_pcout() << "Boundary name " << parts[0] << " has boundary id " << int(boundary_id) << std::endl;
                  }
                catch (const std::string &error)
                  {
@@ -177,21 +216,21 @@ namespace aspect
                                                     "but there is an entry of the form <") + parts[1] + ">"));
 
                std_cxx11::array<double,dim> pole;
-               for (unsigned int d=0; d<dim; ++d)
-                 pole[d] = Utilities::string_to_double (x_pole[d]);
+               // go from lon,lat,angular vel (in [degrees] or [degrees/My])
+               // to angular vel [rad/s], lon [rad], lat [rad]
+               pole[0] = Utilities::string_to_double (x_pole[dim-1]) * (numbers::PI / 180.) / (1e6 * year_in_seconds);
+               for (unsigned int d=1; d<dim; ++d)
+                 pole[d] = Utilities::string_to_double (x_pole[d-1]) * numbers::PI / 180.;
+
+               // Then go from latitude to colatitude
+               pole[dim-1] = 0.5*numbers::PI - pole[dim-1];
 
                // Transform spherical rotation vector to cartesian
-               // First go from degrees to radians
-               pole[0] = pole[0] * numbers::PI / 180.;
-               // Then go from latitude to colatitude
-               pole[1] = 0.5*numbers::PI - pole[1]* numbers::PI / 180.;
-               // Then go from My to seconds
-               pole[dim] = pole[dim] / (1e6 * year_in_seconds) * numbers::PI / 180.;
-               // Then go from spherical to cartesian vector
                const Point<dim> cartesian_pole = Utilities::Coordinates::spherical_to_cartesian_coordinates<dim>(pole);
 
                boundary_velocities[boundary_id] = cartesian_pole;
              }
+           this->get_pcout() << "Found " << boundary_velocities.size() << " euler pole velocity boundaries." << std::endl;
         }
         prm.leave_subsection();
       }
