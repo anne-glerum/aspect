@@ -121,7 +121,8 @@ namespace aspect
         /**
          * A map of spherical rotation vectors for each boundary indicator.
          */
-        std::map<types::boundary_id, Point<dim> > boundary_velocities;
+        std::map<types::boundary_id, std::vector<Point<dim> > > boundary_velocities;
+        std::map<types::boundary_id, std::vector<double> > boundary_transitions;
     };
   }
 }
