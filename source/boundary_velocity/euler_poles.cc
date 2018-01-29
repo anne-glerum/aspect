@@ -119,24 +119,32 @@ namespace aspect
       if (boundary_indicator == this->get_geometry_model().translate_symbolic_boundary_name_to_id ("east")
           || boundary_indicator == this->get_geometry_model().translate_symbolic_boundary_name_to_id ("west"))
         {
-          for (unsigned int d=0; d<it_transition->second.size(); ++d)
+          for (unsigned int d=0; d<it_transition->second.size()-1; ++d)
             {
-               if (spherical_position[dim-1] < (it_transition->second)[d])
-                 {
-                     pole = (it_pole->second)[d];
-                     break;
-                 }
+              // pole is hypertangent combination of poles around transition0
+              pole += (0.5-0.5*std::tanh((spherical_position[dim-1]-(it_transition->second)[d])/(numbers::PI/180.)))*(it_pole->second)[d]
+                    + (0.5+0.5*std::tanh((spherical_position[dim-1]-(it_transition->second)[d])/(numbers::PI/180.)))*(it_pole->second)[d+1];
+//
+//               if (spherical_position[dim-1] < (it_transition->second)[d])
+//                 {
+//
+//                     pole = (it_pole->second)[d];
+//                     break;
+//                 }
             }
         }
       else
         {
-          for (unsigned int d=0; d<it_transition->second.size(); ++d)
+          for (unsigned int d=0; d<it_transition->second.size()-1; ++d)
             {
-               if (spherical_position[1] < (it_transition->second)[d])
-                 {
-                     pole = (it_pole->second)[d];
-                     break;
-                 }
+              // pole is hypertangent combination of poles around transition
+              pole += (0.5-0.5*std::tanh((spherical_position[1]-(it_transition->second)[d])/(numbers::PI/180.)))*(it_pole->second)[d]
+                    + (0.5+0.5*std::tanh((spherical_position[1]-(it_transition->second)[d])/(numbers::PI/180.)))*(it_pole->second)[d+1];
+//               if (spherical_position[1] < (it_transition->second)[d])
+//                 {
+//                     pole = (it_pole->second)[d];
+//                     break;
+//                 }
             }
         }
 
