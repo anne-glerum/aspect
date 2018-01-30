@@ -112,10 +112,16 @@ namespace aspect
       const double transition_scale_factor = std::min(1.,std::max(-1.,(depth - transition_depth) * (-1./transition_width)));
       const double radial_scale_factor = outer_radius / position.norm();
 
-      Point<dim> pole;
+      Point<dim> pole = (it_pole->second)[0];
 
+      // if there's more than 1 pole, we need to transition smoothly between them
+      if ((it_pole->second).size()>1)
+        {
+          // reset pole
+          pole = Point<dim>();
       // determine the rotation vector based on position along the boundary in lon or colat
       const std_cxx11::array<double,dim> spherical_position = Utilities::Coordinates::cartesian_to_spherical_coordinates(position);
+
       if (boundary_indicator == this->get_geometry_model().translate_symbolic_boundary_name_to_id ("east")
           || boundary_indicator == this->get_geometry_model().translate_symbolic_boundary_name_to_id ("west"))
         {
@@ -133,7 +139,8 @@ namespace aspect
 //                 }
             }
         }
-      else
+      else if (boundary_indicator == this->get_geometry_model().translate_symbolic_boundary_name_to_id ("north")
+          || boundary_indicator == this->get_geometry_model().translate_symbolic_boundary_name_to_id ("south"))
         {
           for (unsigned int d=0; d<it_transition->second.size()-1; ++d)
             {
@@ -146,6 +153,9 @@ namespace aspect
 //                     break;
 //                 }
             }
+        }
+      else
+        AssertThrow(false, ExcNotImplemented());
         }
 
 
@@ -202,7 +212,7 @@ namespace aspect
                                             "where each indicator is a valid boundary indicator "
                                             "(either a number or the symbolic name of a boundary as provided "
                                             "by the geometry model) "
-                                            "and each value is a latitude or longitude of that boundary.Units: [degrees]" );
+                                            "and each value is a latitude or longitude of that boundary. Units: [degrees]" );
         }
         prm.leave_subsection();
       }
