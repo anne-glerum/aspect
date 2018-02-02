@@ -71,6 +71,29 @@ namespace aspect
         void
         initialize ();
 
+        virtual
+        void
+        update ();
+
+        /**
+         * Compute the integral of the net flux due to the prescribed velocity
+         * on the vertical domain boundaries.
+         */
+        double
+        compute_net_outflow () const;
+
+        double
+        compute_compensation (const Point<dim> &position) const;
+
+        /**
+         * Computes the velocity on the vertical domain boundaries
+         * in case we only want to prescribe the euler pole velocity
+         * and not correct for anything, while balancing the flow through the bottom.
+         */
+        Tensor<1,dim>
+        compute_vertical_boundary_velocity (const types::boundary_id boundary_indicator,
+                                            const Point<dim> &position) const;
+
         /**
          * Declare the parameters this class takes through input files.
          */
@@ -118,11 +141,18 @@ namespace aspect
         double transition_radius_max;
         double transition_radius_min;
 
+        double bottom_boundary_area;
+        bool bottom_boundary_compensation = false;
+
+        double net_outflow = 0;
+
         /**
          * A map of spherical rotation vectors for each boundary indicator.
          */
         std::map<types::boundary_id, std::vector<Point<dim> > > boundary_velocities;
         std::map<types::boundary_id, std::vector<double> > boundary_transitions;
+        std::set<types::boundary_id> vertical_boundary_indicators;
+        types::boundary_id bottom_boundary_indicator;
     };
   }
 }
