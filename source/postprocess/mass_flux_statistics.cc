@@ -38,9 +38,9 @@ namespace aspect
       // First determine the units for the output
       const std::string unit = (this->convert_output_to_years())
                                ?
-                               "kg/yr"
+                               "m3/yr"
                                :
-                               "kg/s";
+                               "m3/s";
       const double in_years = (this->convert_output_to_years())
                               ?
                               year_in_seconds
@@ -60,6 +60,7 @@ namespace aspect
       std::vector<std::vector<double> > composition_values (this->n_compositional_fields(),std::vector<double> (quadrature_formula.size()));
 
       std::map<types::boundary_id, double> local_boundary_fluxes;
+      std::map<types::boundary_id, double> local_areas;
 
       typename DoFHandler<dim>::active_cell_iterator
       cell = this->get_dof_handler().begin_active(),
@@ -89,23 +90,26 @@ namespace aspect
                 this->get_material_model().evaluate(in, out);
 
 
-                double local_normal_flux = 0;
+                double local_normal_flux = 0, local_area = 0;
                 for (unsigned int q=0; q<fe_face_values.n_quadrature_points; ++q)
                   {
                     local_normal_flux
                     +=
-                      out.densities[q]
-                      * (in.velocity[q] * fe_face_values.normal_vector(q))
+                      /*out.densities[q]
+                      * */ (in.velocity[q] * fe_face_values.normal_vector(q))
                       * fe_face_values.JxW(q);
+                    local_area += fe_face_values.JxW(q);
                   }
 
                 const types::boundary_id boundary_indicator
                   = cell->face(f)->boundary_id();
                 local_boundary_fluxes[boundary_indicator] += local_normal_flux * in_years;
+                local_areas[boundary_indicator] += local_area;
               }
 
       // now communicate to get the global values
       std::map<types::boundary_id, double> global_boundary_fluxes;
+      std::map<types::boundary_id, double> global_boundary_areas;
       {
         // first collect local values in the same order in which they are listed
         // in the set of boundary indicators
@@ -113,32 +117,42 @@ namespace aspect
         boundary_indicators
           = this->get_geometry_model().get_used_boundary_indicators ();
         std::vector<double> local_values;
+        std::vector<double> local_area_values;
         for (std::set<types::boundary_id>::const_iterator
              p = boundary_indicators.begin();
              p != boundary_indicators.end(); ++p)
+          {
           local_values.push_back (local_boundary_fluxes[*p]);
+          local_area_values.push_back (local_areas[*p]);
+          }
 
         // then collect contributions from all processors
         std::vector<double> global_values (local_values.size());
+        std::vector<double> global_area_values (local_area_values.size());
         Utilities::MPI::sum (local_values, this->get_mpi_communicator(), global_values);
+        Utilities::MPI::sum (local_area_values, this->get_mpi_communicator(), global_area_values);
 
         // and now take them apart into the global map again
         unsigned int index = 0;
         for (std::set<types::boundary_id>::const_iterator
              p = boundary_indicators.begin();
              p != boundary_indicators.end(); ++p, ++index)
+          {
           global_boundary_fluxes[*p] = global_values[index];
+          global_boundary_areas[*p] = global_area_values[index];
+          }
       }
 
       // now add all of the computed heat fluxes to the statistics object
       // and create a single string that can be output to the screen
       std::ostringstream screen_text;
       unsigned int index = 0;
+      std::map<types::boundary_id, double>::const_iterator a = global_boundary_areas.begin();
       for (std::map<types::boundary_id, double>::const_iterator
            p = global_boundary_fluxes.begin();
-           p != global_boundary_fluxes.end(); ++p, ++index)
+           p != global_boundary_fluxes.end(); ++p, ++index, ++a)
         {
-          const std::string name = "Outward mass flux through boundary with indicator "
+          const std::string name = "Outward area flux through boundary with indicator "
                                    + Utilities::int_to_string(p->first)
                                    + aspect::Utilities::parenthesize_if_nonempty(this->get_geometry_model()
                                                                                  .translate_id_to_symbol_name (p->first))
@@ -152,11 +166,14 @@ namespace aspect
 
           // finally have something for the screen
           screen_text.precision(4);
-          screen_text << p->second << " " << unit
-                      << (index == global_boundary_fluxes.size()-1 ? "" : ", ");
+          screen_text << " \n              ";
+          screen_text << this->get_geometry_model().translate_id_to_symbol_name(p->first) << ": " << p->second << " " << unit
+                      << " and its area ";
+          screen_text << a->second << " m2"
+                      << (index == global_boundary_areas.size()-1 ? "." : ";");
         }
 
-      return std::pair<std::string, std::string> ("Mass fluxes through boundary parts:",
+      return std::pair<std::string, std::string> ("Volume flux through boundary part:",
                                                   screen_text.str());
     }
   }
