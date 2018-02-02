@@ -111,6 +111,8 @@ namespace aspect
          * will be field 0 and the lithospheric mantle field 1.
          */
         unsigned int lower_crust_id;
+        unsigned int upper_crust_id;
+        unsigned int mantle_L_id;
 
     };
   }

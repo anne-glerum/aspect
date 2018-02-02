@@ -77,13 +77,13 @@ namespace aspect
       const double depth = this->get_geometry_model().depth(position);
 
       // The upper crustal field (with field id 0)
-      if (depth < Moho_depth*upper_crust_fraction && n_comp == 0)
+      if (depth < Moho_depth*upper_crust_fraction && n_comp == upper_crust_id)
         return 1.;
       // The lower crustal field (with field id 1 (or 0))
       if (depth >= Moho_depth*upper_crust_fraction && depth < Moho_depth && n_comp == lower_crust_id)
         return 1.;
       // The lithospheric mantle
-      else if (depth >= Moho_depth && depth < LAB_depth && n_comp == lower_crust_id+1)
+      else if (depth >= Moho_depth && depth < LAB_depth && n_comp == mantle_L_id)
         return 1.;
       // Everything else, which is not represented by a compositional field.
       else
@@ -131,6 +131,17 @@ namespace aspect
     void
     Litho1<dim>::parse_parameters (ParameterHandler &prm)
     {
+      // Retrieve the indices of the fields that represent the lithospheric layers.
+      AssertThrow(this->introspection().compositional_name_exists("upper"),ExcMessage("We need a compositional field called 'upper' representing the upper crust."));
+      AssertThrow(this->introspection().compositional_name_exists("lower"),ExcMessage("We need a compositional field called 'lower' representing the lower crust."));
+      AssertThrow(this->introspection().compositional_name_exists("mantle_L"),ExcMessage("We need a compositional field called 'mantle_L' representing the lithospheric part of the mantle."));
+
+      // For now, we assume a 3-layer system with an upper crust, lower crust and lithospheric mantle
+      upper_crust_id = this->introspection().compositional_index_for_name("upper");
+      lower_crust_id = this->introspection().compositional_index_for_name("lower");
+      mantle_L_id = this->introspection().compositional_index_for_name("mantle_L");
+
+
       prm.enter_subsection("Initial composition model");
       {
         Utilities::AsciiDataBoundary<dim>::parse_parameters(prm);
@@ -138,12 +149,12 @@ namespace aspect
         {
           upper_crust_fraction = prm.get_double ("Upper crust fraction");
 
-          // If there is no upper crust, the compositional field number
-          // of the lower crust is the same as that of the upper crust (i.e. they are the same field)
-          if (upper_crust_fraction == 0 && !this->introspection().compositional_name_exists("upper"))
-            lower_crust_id = 0;
-          else
-            lower_crust_id = 1;
+//          // If there is no upper crust, the compositional field number
+//          // of the lower crust is the same as that of the upper crust (i.e. they are the same field)
+//          if (upper_crust_fraction == 0 && !this->introspection().compositional_name_exists("upper"))
+//            lower_crust_id = 0;
+//          else
+//            lower_crust_id = 1;
 
           min_LAB_thickness = prm.get_double ("Minimum LAB thickness");
         }
