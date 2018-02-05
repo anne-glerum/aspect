@@ -126,10 +126,12 @@ namespace aspect
     {
       // Compute the net outward flow through the vertical boundaries
       if (bottom_boundary_compensation)
+        {
         net_outflow = compute_net_outflow();
 
       this->get_pcout() << "   At time " << this->get_time() << " the netto vertical boundary outflow is " << net_outflow*year_in_seconds << " m3/year leading to a bottom inflow velocity of " <<
           net_outflow/bottom_boundary_area*year_in_seconds << " m/yr." << std::endl;
+        }
     }
 
 
