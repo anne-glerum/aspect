@@ -152,7 +152,7 @@ namespace aspect
         std::map<types::boundary_id, std::vector<Point<dim> > > boundary_velocities;
         std::map<types::boundary_id, std::vector<double> > boundary_transitions;
         std::set<types::boundary_id> vertical_boundary_indicators;
-        types::boundary_id bottom_boundary_indicator;
+        types::boundary_id bottom_boundary_indicator = numbers::invalid_boundary_id;
     };
   }
 }

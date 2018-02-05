@@ -104,7 +104,7 @@ namespace aspect
           dlon = (max_lon - min_lon) * numbers::PI / 180.;
         }
       else
-        AssertThrow(false, ExcNotImplemented());
+        AssertThrow(false, ExcMessage("The Euler poles boundary velocity plugin does not work for this geometry model."));
 
       // TODO only needed when not compensating through the bottom
       transition_radius = outer_radius - transition_depth;
@@ -155,7 +155,8 @@ namespace aspect
           return compensated_velocity;
         }
       else
-        AssertThrow(false, ExcNotImplemented());
+        AssertThrow(false, ExcMessage("The boundary velocity plugin Euler poles has reached a combination of bottom boundary velocity and indicator not implemented. Current boundary indicator " + Utilities::int_to_string(int(boundary_indicator)) +
+                                      + " and bottom compenstion is " + Utilities::int_to_string(int(bottom_boundary_compensation))));
 
       // we shouldn't get here
       return Tensor<1,dim>();
@@ -201,7 +202,7 @@ namespace aspect
             }
         }
       else
-        AssertThrow(false, ExcNotImplemented());
+        AssertThrow(false, ExcMessage("The boundary velocity plugin Euler poles found a boundary indicator that is not supported"));
       }
 
       // Compute the cartesian velocity as the cross product of the pole and the point on the boundary
@@ -449,7 +450,7 @@ namespace aspect
 
               AssertThrow (parts.size() == 2,
                            ExcMessage (std::string("Invalid entry trying to describe boundary "
-                               "velocities. Each entry needs to have the form "
+                               "transitions. Each entry needs to have the form "
                                "<boundary_id : value1x; value1y; value1z>, "
                                "but there is an entry of the form <") + *it + ">"));
 
@@ -462,8 +463,8 @@ namespace aspect
 
                   if (parts[0] == "inner" || parts[0] == "bottom")
                       {
-                        bottom_boundary_indicator = boundary_id;
-                        bottom_boundary_compensation = true;
+                        //bottom_boundary_indicator = boundary_id;
+                        //bottom_boundary_compensation = true;
                         continue;
                       }
               }
