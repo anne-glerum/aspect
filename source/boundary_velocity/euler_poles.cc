@@ -106,7 +106,6 @@ namespace aspect
       else
         AssertThrow(false, ExcMessage("The Euler poles boundary velocity plugin does not work for this geometry model."));
 
-      // TODO only needed when not compensating through the bottom
       transition_radius = outer_radius - transition_depth;
       transition_radius_max = transition_radius + transition_width;
       transition_radius_min = transition_radius - transition_width;
@@ -116,8 +115,11 @@ namespace aspect
 
       // Compute the area of the bottom boundary
       // as the integral over longitude interval dlon and latitude interval dlat of R0*R0*sin(lat)
-      bottom_boundary_area = bottom_boundary_compensation ? inner_radius * inner_radius * dlon * (std::cos(min_lat) - std::cos(max_lat)) : 0;
+      if (bottom_boundary_compensation)
+        {
+      bottom_boundary_area = inner_radius * inner_radius * dlon * (std::cos(min_lat) - std::cos(max_lat));
       this->get_pcout() << "   Bottom boundary area " << bottom_boundary_area << " for R,dlon,mincolat,maxcolat " << inner_radius << ", " << dlon / numbers::PI * 180. << ", " << min_lat / numbers::PI * 180. << ", " << max_lat / numbers::PI * 180. << std::endl;
+        }
     }
 
     template <int dim>
@@ -209,6 +211,14 @@ namespace aspect
 
       // Compute the cartesian velocity as the cross product of the pole and the point on the boundary
       Tensor <1,dim> euler_velocity = cross_product_3d(pole, position);
+
+      // Scale the velocity with depth around transition zone such that velocity is zero at bottom of vertical boundaries.
+      if (bottom_boundary_compensation)
+        {
+          const double radius = position.norm();
+          const double scale  = std::min(1., (radius - inner_radius) / (transition_radius - inner_radius));
+          euler_velocity *= scale;
+        }
 
       return euler_velocity;
     }
