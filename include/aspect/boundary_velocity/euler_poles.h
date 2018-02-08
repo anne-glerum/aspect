@@ -141,7 +141,7 @@ namespace aspect
         double transition_radius_max;
         double transition_radius_min;
 
-        double bottom_boundary_area;
+        double bottom_boundary_area = 0;
         bool bottom_boundary_compensation = false;
 
         double net_outflow = 0;
