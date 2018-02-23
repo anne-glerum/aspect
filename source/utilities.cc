@@ -743,6 +743,7 @@ namespace aspect
       // Return distance between point P and the base point.
       const Point<2> point_on_segment = point_list[0] + (c1/c2) * vector_segment;
       return (Tensor<1,2> (point - point_on_segment)).norm();
+
     }
 
     template <int dim>
@@ -3010,6 +3011,8 @@ namespace aspect
     template double signed_distance_to_polygon<2>(const std::vector<Point<2> > &pointList, const dealii::Point<2> &point);
     template double signed_distance_to_polygon<3>(const std::vector<Point<2> > &pointList, const dealii::Point<2> &point);
 
+    template double distance_to_line<2>(const std::vector<Point<2> > &pointList, const dealii::Point<2> &point);
+    template double distance_to_line<3>(const std::vector<Point<2> > &pointList, const dealii::Point<2> &point);
 
     template std::array<Tensor<1,2>,1> orthogonal_vectors (const Tensor<1,2> &v);
     template std::array<Tensor<1,3>,2> orthogonal_vectors (const Tensor<1,3> &v);
