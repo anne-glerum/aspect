@@ -65,12 +65,12 @@ namespace aspect
 
       // Compute the local thickness of the upper crust, lower crust and mantle part of the lithosphere
       // (in this exact order) based on the distance from the rift axis.
-      const double local_upper_crust_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[0]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[0])*
-                                                 (1.0 - A[0] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
-      const double local_lower_crust_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[1]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[1])*
-                                                 (1.0 - A[1] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
-      const double local_mantle_lithosphere_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[2]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[2])*
-                                                        (1.0 - A[2] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+      const double local_upper_crust_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma_polygon))*polygon_thicknesses[0]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma_polygon))*thicknesses[0])*
+                                                 (1.0 - A[0] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma_rift,2)))));
+      const double local_lower_crust_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma_polygon))*polygon_thicknesses[1]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma_polygon))*thicknesses[1])*
+                                                 (1.0 - A[1] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma_rift,2)))));
+      const double local_mantle_lithosphere_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma_polygon))*polygon_thicknesses[2]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma_rift))*thicknesses[2])*
+                                                        (1.0 - A[2] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma_polygon,2)))));
 
       // Compute depth
       const double depth = this->get_geometry_model().depth(position);
@@ -156,6 +156,11 @@ namespace aspect
                              "The standard deviation of the Gaussian distribution of the amplitude of the strain noise. "
                              "Note that this parameter is taken to be the same for all rift segments. "
                              "Units: $m$ or degrees.");
+          prm.declare_entry ("Half width of polygon smoothing", "20000",
+                             Patterns::Double (0),
+                             "The half width of the hyperbolic tangent smoothing used to transition to the lithospheric thicknesses of the polygon. "
+                             "Note that this parameter is taken to be the same for all polygons. "
+                             "Units: $m$ or degrees.");
           prm.declare_entry ("Amplitude of Gaussian rift geometry", "0.2",
                              Patterns::List(Patterns::Double (-1,1)),
                              "The amplitude of the Gaussian distribution of the amplitude of the strain noise. "
@@ -214,7 +219,8 @@ namespace aspect
       {
         prm.enter_subsection("Lithosphere with rift");
         {
-          sigma                = prm.get_double ("Standard deviation of Gaussian rift geometry");
+          sigma_rift           = prm.get_double ("Standard deviation of Gaussian rift geometry");
+          sigma_polygon        = prm.get_double ("Half width of polygon smoothing");
           A                    = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Amplitude of Gaussian rift geometry"))),
                                                                          3,
                                                                          "Amplitude of Gaussian rift geometry");
