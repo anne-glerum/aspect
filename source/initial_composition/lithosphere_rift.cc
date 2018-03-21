@@ -65,11 +65,11 @@ namespace aspect
 
       // Compute the local thickness of the upper crust, lower crust and mantle part of the lithosphere
       // (in this exact order) based on the distance from the rift axis.
-      const double local_upper_crust_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon[0]/sigma_polygon))*polygon_thicknesses[distance_to_L_polygon[1]][0]+(0.5-0.5*std::tanh(distance_to_L_polygon[0]/sigma_polygon))*thicknesses[0])*
+      const double local_upper_crust_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon.first/sigma_polygon))*polygon_thicknesses[distance_to_L_polygon.second][0]+(0.5-0.5*std::tanh(distance_to_L_polygon.first/sigma_polygon))*thicknesses[0])*
                                                  (1.0 - A[0] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma_rift,2)))));
-      const double local_lower_crust_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon[0]/sigma_polygon))*polygon_thicknesses[distance_to_L_polygon[1]][1]+(0.5-0.5*std::tanh(distance_to_L_polygon[0]/sigma_polygon))*thicknesses[1])*
+      const double local_lower_crust_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon.first/sigma_polygon))*polygon_thicknesses[distance_to_L_polygon.second][1]+(0.5-0.5*std::tanh(distance_to_L_polygon.first/sigma_polygon))*thicknesses[1])*
                                                  (1.0 - A[1] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma_rift,2)))));
-      const double local_mantle_lithosphere_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon[0]/sigma_polygon))*polygon_thicknesses[distance_to_L_polygon[1]][2]+(0.5-0.5*std::tanh(distance_to_L_polygon[0]/sigma_rift))*thicknesses[2])*
+      const double local_mantle_lithosphere_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon.first/sigma_polygon))*polygon_thicknesses[distance_to_L_polygon.second][2]+(0.5-0.5*std::tanh(distance_to_L_polygon.first/sigma_rift))*thicknesses[2])*
                                                         (1.0 - A[2] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma_polygon,2)))));
 
       // Compute depth
@@ -98,7 +98,7 @@ namespace aspect
       // Loop over all line segments
       for (unsigned int i_segments = 0; i_segments < point_list.size(); ++i_segments)
         {
-          temp_distance = (dim == 2) ? std::abs(surface_position[0]-point_list[i_segments][0][0]) : std::abs(Utilities::distance_to_line<dim>(point_list[i_segments], surface_position));
+          temp_distance = (dim == 2) ? std::abs(surface_position[0]-point_list[i_segments][0][0]) : std::abs(Utilities::distance_to_line<dim>(point_list[i_segments], Point<2>(surface_position[0],surface_position[dim-2])));
 
           // Get the minimum distance
           distance_to_rift_axis = std::min(distance_to_rift_axis, temp_distance);
@@ -113,7 +113,6 @@ namespace aspect
     surface_position (const Point<dim> &position,
                       const bool cartesian_geometry) const
     {
-      // When in 2d, the second coordinate is zero
       Point<dim-1> surface_point;
       if (cartesian_geometry)
         {
@@ -144,14 +143,14 @@ namespace aspect
       unsigned int min_distance_polygon = 0;
       for (unsigned int n = 0; n<polygon_point_list.size(); ++n)
         {
-          temp_distance = Utilities::signed_distance_to_polygon<dim>(polygon_point_list[n], surface_position);
+          double temp_distance = (dim == 2) ? std::abs(surface_position[0]-polygon_point_list[n][0][0]) : Utilities::signed_distance_to_polygon<dim>(polygon_point_list[n], Point<2>(surface_position[0],surface_position[dim-2]));
           if (temp_distance < min_distance)
             {
               min_distance = temp_distance;
               min_distance_polygon = n;
             }
         }
-      return std::pair<double, unsigned int> (min_distance, n);
+      return std::pair<double, unsigned int> (min_distance, min_distance_polygon);
     }
 
     template <int dim>
@@ -248,42 +247,42 @@ namespace aspect
           for (unsigned int i_segment = 0; i_segment < n_temp_segments; i_segment++)
             {
               // In 3d a line segment consists of 2 points,
-              // in 2d only 1 (ridge axis orthogonal two x and y)
+              // in 2d only 1 (ridge axis orthogonal to x and y)
               point_list[i_segment].resize(dim-1);
 
 
               const std::vector<std::string> temp_segment = Utilities::split_string_list(temp_segments[i_segment],'>');
 
-              if (dim == 3)
-                {
                   Assert(temp_segment.size() == 2,ExcMessage ("The given coordinate '" + temp_segment[i_segment] + "' is not correct. "
                                                               "It should only contain 2 parts: "
                                                               "the two points of the segment, separated by a '>'."));
-                }
-              else
-                {
-                  Assert(temp_segment.size() == 1,ExcMessage ("The given coordinate '" + temp_segment[i_segment] + "' is not correct. "
-                                                              "In 2d it should only contain only 1 part: "));
-                }
 
               // Loop over the dim-1 points of each segment (i.e. in 2d only 1 point is required for a 'segment')
-              for (unsigned int i_points = 0; i_points < dim-1; i_points++)
+              for (unsigned int i_points = 0; i_points < 2; i_points++)
                 {
                   const std::vector<double> temp_point = Utilities::string_to_double(Utilities::split_string_list(temp_segment[i_points],','));
+                  if (dim == 3)
+                  {
                   Assert(temp_point.size() == 2,ExcMessage ("The given coordinates of segment '" + temp_segment[i_points] + "' are not correct. "
                                                             "It should only contain 2 parts: "
                                                             "the two coordinates of the segment end point, separated by a ','."));
+                  }
+                  else
+                  {
+                  Assert(temp_point.size() == 1,ExcMessage ("The given coordinates of segment '" + temp_segment[i_points] + "' are not correct. "
+                                                            "It should only contain 1 part: "
+                                                            "the one coordinate of the segment end point."));
 
                   // Add the point to the list of points for this segment
-                  point_list[i_segment][i_points] = temp_point;
+                       point_list[i_segment][i_points][0] = temp_point[0];
+                       point_list[i_segment][i_points][1] = temp_point[dim-2];
+                  }
                 }
             }
-          // Read in the string of polygon points
-          const std::string temp_all_polygons = prm.get("Lithospheric polygons");
-          const std::string temp_all_thicknesses = prm.get("Lithospheric polygon layer thicknesses");
+
           // Split the string into the separate polygons
-          const std::vector<std::string> temp_polygons = Utilities::split_string_list(temp_all_polygons,';');
-          const std::vector<std::string> temp_thicknesses = Utilities::split_string_list(temp_all_thicknesses,';');
+          const std::vector<std::string> temp_polygons = Utilities::split_string_list(prm.get("Lithospheric polygons"),';');
+          const std::vector<std::string> temp_thicknesses = Utilities::split_string_list(prm.get("Lithospheric polygon layer thicknesses"),';');
           const unsigned int n_polygons = temp_polygons.size();
           AssertThrow(temp_thicknesses.size() == n_polygons || temp_thicknesses.size() == 1,
                       ExcMessage("The number of polygons does not correspond to the number of polygons for which a thickness is prescribed."));
@@ -291,16 +290,20 @@ namespace aspect
           polygon_thicknesses.resize(n_polygons);
           for (unsigned int i_polygons = 0; i_polygons < n_polygons; ++i_polygons)
             {
-              polygon_thicknesses[i_polygon] = Utilities::string_to_double(Utilities::split_string_list(temp_all_thicknesses[i_polygon],'>');
-                                                                           AssertThrow(polygon_thicknesses[i_polygon]==3, ExcMessage ("The number of layer thicknesses should be equal to 3."));
+              polygon_thicknesses[i_polygons] = Utilities::string_to_double(Utilities::split_string_list(temp_thicknesses[i_polygons],','));
+                                                                           AssertThrow(polygon_thicknesses[i_polygons].size()==3, ExcMessage ("The number of layer thicknesses should be equal to 3."));
 
                                                                            // Split the string into point strings
-                                                                           const std::vector<std::string> temp_points = Utilities::split_string_list(temp_all_polygons,'>');
+                                                                           const std::vector<std::string> temp_points = Utilities::split_string_list(temp_polygons[i_polygons],'>');
                                                                            const unsigned int n_temp_points = temp_points.size();
                                                                            if (dim == 3)
-                                                                           AssertThrow(n_temp_points>=3, ExcMessage ("The number of polygon points should be equal to or larger than 3 in 3d."));
+                                                                           {
+               AssertThrow(n_temp_points>=3, ExcMessage ("The number of polygon points should be equal to or larger than 3 in 3d."));
+               }
                                                                            else
-                                                                             AssertThrow(n_temp_points==1, ExcMessage ("The number of polygon points should be equal to 1 in 2d."));
+              {
+                                                                           AssertThrow(n_temp_points==1, ExcMessage ("The number of polygon points should be equal to 1 in 2d."));
+               }
                                                                              polygon_point_list[i_polygons].resize(n_temp_points);
                                                                              // Loop over the points of the polygon. Each point should consist of 2 values (lon and lat coordinate).
                                                                              for (unsigned int i_points = 0; i_points < n_temp_points; i_points++)
@@ -311,7 +314,8 @@ namespace aspect
                                                                     "the longitude/x (and latitude/y in 3d) coordinate (separated by a ',')."));
 
                       // Add the point to the list of points for this segment
-                      polygon_point_list[i_polygons][i_points] = temp_point;
+                        polygon_point_list[i_polygons][i_points][0] = temp_point[0];
+                        polygon_point_list[i_polygons][i_points][1] = temp_point[dim-2];
                     }
             }
         }

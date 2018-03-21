@@ -112,16 +112,16 @@ namespace aspect
         std::vector<double> A;
 
         /**
-         * The list of line segments consisting of two 1d (in 2d) or 2d (in 3d) coordinates per segment.
+         * The list of line segments consisting of two 2d coordinates per segment.
          * The segments represent the rift axis.
          */
-        std::vector<std::vector<Point<dim-1> > > point_list;
+        std::vector<std::vector<Point<2> > > point_list;
 
         /**
          * The list of polygon points.
          * The polygon represent an area of different lithospheric thicknesses.
          */
-        std::vector::<std::vector<Point<dim-1> > > polygon_point_list;
+        std::vector<std::vector<Point<2> > > polygon_point_list;
 
         /**
          * Vector for the reference field thicknesses away from the rift.
