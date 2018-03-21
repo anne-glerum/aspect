@@ -195,11 +195,11 @@ namespace aspect
           const unsigned int n_polygons = temp_thicknesses.size();
           polygon_thicknesses.resize(n_polygons);
           for (unsigned int i_polygons = 0; i_polygons < n_polygons; ++i_polygons)
-          {
-            polygon_thicknesses[i_polygon] = Utilities::string_to_double(Utilities::split_string_list(temp_all_thicknesses[i_polygon],'>');
-            AssertThrow(polygon_thicknesses[i_polygon]==3, ExcMessage ("The number of layer thicknesses should be equal to 3."));
+            {
+              polygon_thicknesses[i_polygon] = Utilities::string_to_double(Utilities::split_string_list(temp_all_thicknesses[i_polygon],'>');
+                                                                           AssertThrow(polygon_thicknesses[i_polygon]==3, ExcMessage ("The number of layer thicknesses should be equal to 3."));
 
-          }
+            }
         }
         prm.leave_subsection();
       }

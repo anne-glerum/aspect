@@ -77,15 +77,15 @@ namespace aspect
       std::vector<double> polygon_rgh(n_polygons,0);
       std::vector<double> sum_polygon_thicknesses(n_polygons,0);
       for (unsigned int i_polygons=0; i_polygons<n_polygons; ++i_polygons)
-      {
-       for (unsigned int l=0; l<3; ++l)
-       {
-         polygon_rgh[i_polygons] += densities[l+1] * polygon_thicknesses[i_polygons][l];
-       }
-      // The total lithosphere thickness
-       sum_polygon_thicknesses[i_polygons] = std::accumulate(polygon_thicknesses[i_polygons].begin(), polygon_thicknesses[i_polygons].end(),0);
-       polygon_rgh[i_polygons] += (compensation_depth - sum_polygon_thicknesses[i_polygons]) * densities[0];
-      }
+        {
+          for (unsigned int l=0; l<3; ++l)
+            {
+              polygon_rgh[i_polygons] += densities[l+1] * polygon_thicknesses[i_polygons][l];
+            }
+          // The total lithosphere thickness
+          sum_polygon_thicknesses[i_polygons] = std::accumulate(polygon_thicknesses[i_polygons].begin(), polygon_thicknesses[i_polygons].end(),0);
+          polygon_rgh[i_polygons] += (compensation_depth - sum_polygon_thicknesses[i_polygons]) * densities[0];
+        }
 
       // Add sublithospheric mantle part to the columns
       ref_rgh += (compensation_depth - sum_thicknesses) * densities[0];
@@ -195,11 +195,11 @@ namespace aspect
           const unsigned int n_polygons = temp_thicknesses.size();
           polygon_thicknesses.resize(n_polygons);
           for (unsigned int i_polygons = 0; i_polygons < n_polygons; ++i_polygons)
-          {
-            polygon_thicknesses[i_polygon] = Utilities::string_to_double(Utilities::split_string_list(temp_all_thicknesses[i_polygon],'>');
-            AssertThrow(polygon_thicknesses[i_polygon]==3, ExcMessage ("The number of layer thicknesses should be equal to 3."));
+            {
+              polygon_thicknesses[i_polygon] = Utilities::string_to_double(Utilities::split_string_list(temp_all_thicknesses[i_polygon],'>');
+                                                                           AssertThrow(polygon_thicknesses[i_polygon]==3, ExcMessage ("The number of layer thicknesses should be equal to 3."));
 
-          }
+            }
         }
         prm.leave_subsection();
       }
