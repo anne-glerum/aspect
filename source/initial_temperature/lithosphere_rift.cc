@@ -70,7 +70,7 @@ namespace aspect
 
       double distance_to_rift_axis = 1e23;
       Point<dim-1> surface_position;
-      double distance_to_L_polygon = 1e23;
+      const std::pair<double, unsigned int> distance_to_L_polygon;
       const std::list<std_cxx11::shared_ptr<InitialComposition::Interface<dim> > > initial_composition_objects = this->get_initial_composition_manager().get_active_initial_composition_conditions();
       for (typename std::list<std_cxx11::shared_ptr<InitialComposition::Interface<dim> > >::const_iterator it = initial_composition_objects.begin(); it != initial_composition_objects.end(); ++it)
         if ( InitialComposition::LithosphereRift<dim> *ic = dynamic_cast<InitialComposition::LithosphereRift<dim> *> ((*it).get()))
@@ -83,12 +83,12 @@ namespace aspect
       // Compute the local thickness of the upper crust, lower crust and mantle part of the lithosphere
       // based on the distance from the rift axis.
       std::vector<double> local_thicknesses(3);
-      local_thicknesses[0] = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[0]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[0])*
-                             (1.0 - A[0] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
-      local_thicknesses[1] = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[1]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[1])*
-                             (1.0 - A[1] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
-      local_thicknesses[2] = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma))*polygon_thicknesses[2]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma))*thicknesses[2])*
-                             (1.0 - A[2] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))));
+      local_thicknesses[0] = ((0.5+0.5*std::tanh(distance_to_L_polygon[0]/sigma_polygon))*polygon_thicknesses[distance_to_L_polygon[1]][0]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma_polygon))*thicknesses[0])*
+                             (1.0 - A[0] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma_rift,2)))));
+      local_thicknesses[1] = ((0.5+0.5*std::tanh(distance_to_L_polygon[0]/sigma_polygon))*polygon_thicknesses[distance_to_L_polygon[1]][1]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma_polygon))*thicknesses[1])*
+                             (1.0 - A[1] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma_rift,2)))));
+      local_thicknesses[2] = ((0.5+0.5*std::tanh(distance_to_L_polygon[0]/sigma_polygon))*polygon_thicknesses[distance_to_L_polygon[1]][2]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma_polygon))*thicknesses[2])*
+                             (1.0 - A[2] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma_rift,2)))));
 
       const double depth = this->get_geometry_model().depth(position);
 
@@ -180,7 +180,8 @@ namespace aspect
       {
         prm.enter_subsection("Lithosphere with rift");
         {
-          sigma                = prm.get_double ("Standard deviation of Gaussian rift geometry");
+          sigma_rift           = prm.get_double ("Standard deviation of Gaussian rift geometry");
+          sigma_polygon        = prm.get_double ("Half width of polygon smoothing");
           A                    = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Amplitude of Gaussian rift geometry"))),
                                                                          3,
                                                                          "Amplitude of Gaussian rift geometry");
@@ -190,6 +191,18 @@ namespace aspect
           polygon_thicknesses = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Lithospheric polygon layer thicknesses"))),
                                                                         3,
                                                                         "Lithospheric polygon layer thicknesses");
+          // Read in the string of polygon thicknesses
+          const std::string temp_all_thicknesses = prm.get("Lithospheric polygon layer thicknesses");
+          // Split the string into the separate polygons
+          const std::vector<std::string> temp_thicknesses = Utilities::split_string_list(temp_all_thicknesses,';');
+          const unsigned int n_polygons = temp_thicknesses.size();
+          polygon_thicknesses.resize(n_polygons);
+          for (unsigned int i_polygons = 0; i_polygons < n_polygons; ++i_polygons)
+          {
+            polygon_thicknesses[i_polygon] = Utilities::string_to_double(Utilities::split_string_list(temp_all_thicknesses[i_polygon],'>');
+            AssertThrow(polygon_thicknesses[i_polygon]==3, ExcMessage ("The number of layer thicknesses should be equal to 3."));
+
+          }
         }
         prm.leave_subsection();
       }
