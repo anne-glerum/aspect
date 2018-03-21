@@ -143,14 +143,14 @@ namespace aspect
       double min_distance = 1e24;
       unsigned int min_distance_polygon = 0;
       for (unsigned int n = 0; n<polygon_point_list.size(); ++n)
-         {
+        {
           temp_distance = Utilities::signed_distance_to_polygon<dim>(polygon_point_list[n], surface_position);
           if (temp_distance < min_distance)
-          {
-             min_distance = temp_distance;
-             min_distance_polygon = n;
-          }
-         }
+            {
+              min_distance = temp_distance;
+              min_distance_polygon = n;
+            }
+        }
       return std::pair<double, unsigned int> (min_distance, n);
     }
 
@@ -221,7 +221,6 @@ namespace aspect
     void
     LithosphereRift<dim>::parse_parameters (ParameterHandler &prm)
     {
-
       // Check that the required compositional fields exist.
       AssertThrow(this->introspection().compositional_name_exists("upper"),ExcMessage("We need a compositional field called 'upper' representing the upper crust."));
       AssertThrow(this->introspection().compositional_name_exists("lower"),ExcMessage("We need a compositional field called 'lower' representing the lower crust."));
@@ -286,7 +285,7 @@ namespace aspect
           const std::vector<std::string> temp_polygons = Utilities::split_string_list(temp_all_polygons,';');
           const std::vector<std::string> temp_thicknesses = Utilities::split_string_list(temp_all_thicknesses,';');
           const unsigned int n_polygons = temp_polygons.size();
-          AssertThrow(temp_thicknesses.size() == n_polygons || temp_thicknesses.size() == 1, 
+          AssertThrow(temp_thicknesses.size() == n_polygons || temp_thicknesses.size() == 1,
                       ExcMessage("The number of polygons does not correspond to the number of polygons for which a thickness is prescribed."));
           polygon_point_list.resize(n_polygons);
           polygon_thicknesses.resize(n_polygons);
@@ -310,7 +309,6 @@ namespace aspect
                   AssertThrow(temp_point.size() == dim-1,ExcMessage ("The given coordinates of point '" + temp_points[i_points] + "' are not correct. "
                                                                 "It should only contain 1 (2d) or 2 (in 3d) parts: "
                                                                 "the longitude/x (and latitude/y in 3d) coordinate (separated by a ',')."));
->>>>>>> Add functionality for multiple polygons with diff thicknesses
 
                   // Add the point to the list of points for this segment
                   polygon_point_list[i_polygons][i_points] = temp_point;

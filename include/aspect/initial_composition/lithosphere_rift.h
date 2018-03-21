@@ -74,7 +74,7 @@ namespace aspect
          * i.e. x(,y) in meters or lon(,lat) in degrees.
          */
         Point<dim-1> surface_position (const Point<dim> &position,
-                                   const bool cartesian_geometry) const;
+                                       const bool cartesian_geometry) const;
 
         /**
          * Declare the parameters this class takes through input files.
