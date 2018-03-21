@@ -253,30 +253,30 @@ namespace aspect
 
               const std::vector<std::string> temp_segment = Utilities::split_string_list(temp_segments[i_segment],'>');
 
-                  Assert(temp_segment.size() == 2,ExcMessage ("The given coordinate '" + temp_segment[i_segment] + "' is not correct. "
-                                                              "It should only contain 2 parts: "
-                                                              "the two points of the segment, separated by a '>'."));
+              Assert(temp_segment.size() == 2,ExcMessage ("The given coordinate '" + temp_segment[i_segment] + "' is not correct. "
+                                                          "It should only contain 2 parts: "
+                                                          "the two points of the segment, separated by a '>'."));
 
               // Loop over the dim-1 points of each segment (i.e. in 2d only 1 point is required for a 'segment')
               for (unsigned int i_points = 0; i_points < 2; i_points++)
                 {
                   const std::vector<double> temp_point = Utilities::string_to_double(Utilities::split_string_list(temp_segment[i_points],','));
                   if (dim == 3)
-                  {
-                  Assert(temp_point.size() == 2,ExcMessage ("The given coordinates of segment '" + temp_segment[i_points] + "' are not correct. "
-                                                            "It should only contain 2 parts: "
-                                                            "the two coordinates of the segment end point, separated by a ','."));
-                  }
+                    {
+                      Assert(temp_point.size() == 2,ExcMessage ("The given coordinates of segment '" + temp_segment[i_points] + "' are not correct. "
+                                                                "It should only contain 2 parts: "
+                                                                "the two coordinates of the segment end point, separated by a ','."));
+                    }
                   else
-                  {
-                  Assert(temp_point.size() == 1,ExcMessage ("The given coordinates of segment '" + temp_segment[i_points] + "' are not correct. "
-                                                            "It should only contain 1 part: "
-                                                            "the one coordinate of the segment end point."));
+                    {
+                      Assert(temp_point.size() == 1,ExcMessage ("The given coordinates of segment '" + temp_segment[i_points] + "' are not correct. "
+                                                                "It should only contain 1 part: "
+                                                                "the one coordinate of the segment end point."));
 
-                  // Add the point to the list of points for this segment
-                       point_list[i_segment][i_points][0] = temp_point[0];
-                       point_list[i_segment][i_points][1] = temp_point[dim-2];
-                  }
+                      // Add the point to the list of points for this segment
+                      point_list[i_segment][i_points][0] = temp_point[0];
+                      point_list[i_segment][i_points][1] = temp_point[dim-2];
+                    }
                 }
             }
 
@@ -291,32 +291,32 @@ namespace aspect
           for (unsigned int i_polygons = 0; i_polygons < n_polygons; ++i_polygons)
             {
               polygon_thicknesses[i_polygons] = Utilities::string_to_double(Utilities::split_string_list(temp_thicknesses[i_polygons],','));
-                                                                           AssertThrow(polygon_thicknesses[i_polygons].size()==3, ExcMessage ("The number of layer thicknesses should be equal to 3."));
+              AssertThrow(polygon_thicknesses[i_polygons].size()==3, ExcMessage ("The number of layer thicknesses should be equal to 3."));
 
-                                                                           // Split the string into point strings
-                                                                           const std::vector<std::string> temp_points = Utilities::split_string_list(temp_polygons[i_polygons],'>');
-                                                                           const unsigned int n_temp_points = temp_points.size();
-                                                                           if (dim == 3)
-                                                                           {
-               AssertThrow(n_temp_points>=3, ExcMessage ("The number of polygon points should be equal to or larger than 3 in 3d."));
-               }
-                                                                           else
-              {
-                                                                           AssertThrow(n_temp_points==1, ExcMessage ("The number of polygon points should be equal to 1 in 2d."));
-               }
-                                                                             polygon_point_list[i_polygons].resize(n_temp_points);
-                                                                             // Loop over the points of the polygon. Each point should consist of 2 values (lon and lat coordinate).
-                                                                             for (unsigned int i_points = 0; i_points < n_temp_points; i_points++)
-                  {
-                    const std::vector<double> temp_point = Utilities::string_to_double(Utilities::split_string_list(temp_points[i_points],','));
-                      Assert(temp_point.size() == dim-1,ExcMessage ("The given coordinates of point '" + temp_points[i_points] + "' are not correct. "
-                                                                    "It should only contain 1 (2d) or 2 (in 3d) parts: "
-                                                                    "the longitude/x (and latitude/y in 3d) coordinate (separated by a ',')."));
+              // Split the string into point strings
+              const std::vector<std::string> temp_points = Utilities::split_string_list(temp_polygons[i_polygons],'>');
+              const unsigned int n_temp_points = temp_points.size();
+              if (dim == 3)
+                {
+                  AssertThrow(n_temp_points>=3, ExcMessage ("The number of polygon points should be equal to or larger than 3 in 3d."));
+                }
+              else
+                {
+                  AssertThrow(n_temp_points==1, ExcMessage ("The number of polygon points should be equal to 1 in 2d."));
+                }
+              polygon_point_list[i_polygons].resize(n_temp_points);
+              // Loop over the points of the polygon. Each point should consist of 2 values (lon and lat coordinate).
+              for (unsigned int i_points = 0; i_points < n_temp_points; i_points++)
+                {
+                  const std::vector<double> temp_point = Utilities::string_to_double(Utilities::split_string_list(temp_points[i_points],','));
+                  Assert(temp_point.size() == dim-1,ExcMessage ("The given coordinates of point '" + temp_points[i_points] + "' are not correct. "
+                                                                "It should only contain 1 (2d) or 2 (in 3d) parts: "
+                                                                "the longitude/x (and latitude/y in 3d) coordinate (separated by a ',')."));
 
-                      // Add the point to the list of points for this segment
-                        polygon_point_list[i_polygons][i_points][0] = temp_point[0];
-                        polygon_point_list[i_polygons][i_points][1] = temp_point[dim-2];
-                    }
+                  // Add the point to the list of points for this segment
+                  polygon_point_list[i_polygons][i_points][0] = temp_point[0];
+                  polygon_point_list[i_polygons][i_points][1] = temp_point[dim-2];
+                }
             }
         }
         prm.leave_subsection();
