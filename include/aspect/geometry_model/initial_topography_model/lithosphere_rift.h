@@ -131,7 +131,7 @@ namespace aspect
         /**
          * Vector for the polygon thicknesses at the center.
          */
-        std::vector<double> polygon_thicknesses;
+        std::vector<std::vector<double> > polygon_thicknesses;
 
         /**
          * The maximum topography in this model
