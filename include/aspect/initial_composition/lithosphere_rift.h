@@ -67,7 +67,7 @@ namespace aspect
         /*
          * Return the overall shortest distance to the polygon segments
          */
-        double distance_to_polygon (const Point<2> &position) const;
+        std::pair<double,unsigned int> distance_to_polygon (const Point<2> &position) const;
 
         /*
          * Return the position of the point in surface coordinates
@@ -121,7 +121,7 @@ namespace aspect
          * The list of polygon points.
          * The polygon represent an area of different lithospheric thicknesses.
          */
-        std::vector<Point<2> > polygon_point_list;
+        std::vector::<std::vector<Point<dim-1> > > polygon_point_list;
 
         /**
          * Vector for the reference field thicknesses away from the rift.
@@ -129,9 +129,9 @@ namespace aspect
         std::vector<double> thicknesses;
 
         /**
-         * Vector for the reference field thicknesses away from the rift.
+         * Vector for the field thicknesses inside the polygons.
          */
-        std::vector<double> polygon_thicknesses;
+        std::vector<std::vector<double> > polygon_thicknesses;
 
     };
   }

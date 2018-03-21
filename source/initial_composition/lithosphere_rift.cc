@@ -61,15 +61,15 @@ namespace aspect
       const double distance_to_rift_axis = distance_to_rift(surface_point);
 
       // Get the signed distance to a polygon of different lithospheric thicknesses
-      const double distance_to_L_polygon = distance_to_polygon(surface_point);
+      const std::pair<double, unsigned int> distance_to_L_polygon = distance_to_polygon(surface_point);
 
       // Compute the local thickness of the upper crust, lower crust and mantle part of the lithosphere
       // (in this exact order) based on the distance from the rift axis.
-      const double local_upper_crust_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma_polygon))*polygon_thicknesses[0]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma_polygon))*thicknesses[0])*
+      const double local_upper_crust_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon[0]/sigma_polygon))*polygon_thicknesses[distance_to_L_polygon[1]][0]+(0.5-0.5*std::tanh(distance_to_L_polygon[0]/sigma_polygon))*thicknesses[0])*
                                                  (1.0 - A[0] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma_rift,2)))));
-      const double local_lower_crust_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma_polygon))*polygon_thicknesses[1]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma_polygon))*thicknesses[1])*
+      const double local_lower_crust_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon[0]/sigma_polygon))*polygon_thicknesses[distance_to_L_polygon[1]][1]+(0.5-0.5*std::tanh(distance_to_L_polygon[0]/sigma_polygon))*thicknesses[1])*
                                                  (1.0 - A[1] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma_rift,2)))));
-      const double local_mantle_lithosphere_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon/sigma_polygon))*polygon_thicknesses[2]+(0.5-0.5*std::tanh(distance_to_L_polygon/sigma_rift))*thicknesses[2])*
+      const double local_mantle_lithosphere_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon[0]/sigma_polygon))*polygon_thicknesses[distance_to_L_polygon[1]][2]+(0.5-0.5*std::tanh(distance_to_L_polygon[0]/sigma_rift))*thicknesses[2])*
                                                         (1.0 - A[2] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma_polygon,2)))));
 
       // Compute depth
@@ -136,11 +136,22 @@ namespace aspect
     }
 
     template <int dim>
-    double
+    std::pair<double,unsigned int>
     LithosphereRift<dim>::
     distance_to_polygon (const Point<2> &surface_position) const
     {
-      return  polygon_point_list.size()>0 ? Utilities::signed_distance_to_polygon<dim>(polygon_point_list, surface_position) : -1e23;
+      double min_distance = 1e24;
+      unsigned int min_distance_polygon = 0;
+      for (unsigned int n = 0; n<polygon_point_list.size(); ++n)
+         {
+          temp_distance = Utilities::signed_distance_to_polygon<dim>(polygon_point_list[n], surface_position);
+          if (temp_distance < min_distance)
+          {
+             min_distance = temp_distance;
+             min_distance_polygon = n;
+          }
+         }
+      return std::pair<double, unsigned int> (min_distance, n);
     }
 
     template <int dim>
@@ -182,21 +193,22 @@ namespace aspect
                              "or isolated. The units of the coordinates are "
                              "dependent on the geometry model. In the box model they are in meters, in the "
                              "chunks they are in degrees.");
-          prm.declare_entry ("Lithospheric polygon",
+          prm.declare_entry ("Lithospheric polygons",
                              "",
-                             Patterns::Anything(),
-                             "Set the polygon that represents an area of different lithospheric thickness. "
-                             "The polygon is a list of "
+                             Patterns::List(Patterns::Anything()),
+                             "Set the polygons that represent an area of different lithospheric thickness. "
+                             "The polygons are separated by semicolons."
+                             "Each polygon is a list of "
                              "points that represent horizontal coordinates (x,y) or (lon,lat). "
-                             "The exact format for the point list describing the polygon is "
-                             "\"x1,y1;x2,y2;x3,y3;x4,y4;x5,y5\". Note that the polygon is assumed to be closed. "
+                             "The exact format for the point list describing a polygon is "
+                             "\"x1,y1>x2,y2>x3,y3>x4,y4>x5,y5\". Note that the polygon is assumed to be closed. "
                              "The units of the coordinates are "
                              "dependent on the geometry model. In the box model they are in meters, in the "
                              "chunks they are in degrees.");
           prm.declare_entry ("Lithospheric polygon layer thicknesses", "30000.",
-                             Patterns::List(Patterns::Double(0)),
-                             "List of thicknesses for the bottom of the lithospheric layers,"
-                             "for a total of N+1 values, where N is the number of compositional fields."
+                             Patterns::List(Patterns::List(Patterns::Double(0))),
+                             "List of thicknesses of the lithospheric layers for each polygon."
+                             "For each polygon a total of 3 values should be given (upper crust, lower crust, mantle lithosphere)."
                              "If only one value is given, then all use the same value.  Units: $m$");
 
         }
@@ -271,38 +283,41 @@ namespace aspect
                 }
             }
           // Read in the string of polygon points
-          const std::string temp_all_points = prm.get("Lithospheric polygon");
-          // Split the string into point strings
-          const std::vector<std::string> temp_points = Utilities::split_string_list(temp_all_points,';');
-          const unsigned int n_temp_points = temp_points.size();
-          polygon_point_list.resize(n_temp_points);
-          // Loop over the points of the polygon. Each point should consist of 2 values (lon and lat coordinate).
-          if (dim == 3 && n_temp_points != 0)
-            {
-              AssertThrow(n_temp_points>=3, ExcMessage ("The number of polygon points should be equal or larger than 3."));
-              for (unsigned int i_points = 0; i_points < n_temp_points; i_points++)
+          const std::string temp_all_polygons = prm.get("Lithospheric polygons");
+          const std::string temp_all_thicknesses = prm.get("Lithospheric polygon layer thicknesses");
+          // Split the string into the separate polygons
+          const std::vector<std::string> temp_polygons = Utilities::split_string_list(temp_all_polygons,';');
+          const std::vector<std::string> temp_thicknesses = Utilities::split_string_list(temp_all_thicknesses,';');
+          const unsigned int n_polygons = temp_polygons.size();
+          AssertThrow(temp_thicknesses.size() == n_polygons || temp_thicknesses.size() == 1, 
+                      ExcMessage("The number of polygons does not correspond to the number of polygons for which a thickness is prescribed."));
+          polygon_point_list.resize(n_polygons);
+          polygon_thicknesses.resize(n_polygons);
+          for (unsigned int i_polygons = 0; i_polygons < n_polygons; ++i_polygons)
+          {
+            polygon_thicknesses[i_polygon] = Utilities::string_to_double(Utilities::split_string_list(temp_all_thicknesses[i_polygon],'>');
+            AssertThrow(polygon_thicknesses[i_polygon]==3, ExcMessage ("The number of layer thicknesses should be equal to 3."));
+
+           // Split the string into point strings
+           const std::vector<std::string> temp_points = Utilities::split_string_list(temp_all_polygons,'>');
+           const unsigned int n_temp_points = temp_points.size();
+            if (dim == 3)
+              AssertThrow(n_temp_points>=3, ExcMessage ("The number of polygon points should be equal to or larger than 3 in 3d."));
+            else
+              AssertThrow(n_temp_points==1, ExcMessage ("The number of polygon points should be equal to 1 in 2d."));
+           polygon_point_list[i_polygons].resize(n_temp_points);
+           // Loop over the points of the polygon. Each point should consist of 2 values (lon and lat coordinate).
+           for (unsigned int i_points = 0; i_points < n_temp_points; i_points++)
                 {
                   const std::vector<double> temp_point = Utilities::string_to_double(Utilities::split_string_list(temp_points[i_points],','));
                   Assert(temp_point.size() == dim-1,ExcMessage ("The given coordinates of point '" + temp_points[i_points] + "' are not correct. "
-                                                                "It should only contain 2 parts: "
-                                                                "the longitude and latitude, separated by a ','."));
+                                                                "It should only contain 1 (2d) or 2 (in 3d) parts: "
+                                                                "the longitude/x (and latitude/y in 3d) coordinate (separated by a ',')."));
 
                   // Add the point to the list of points for this segment
-                  //if (dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) == NULL)
-                  //   polygon_point_list[i_points] = (Point<2>(temp_point[0]/180.*numbers::PI, 0.5*numbers::PI-temp_point[1]/180.*numbers::PI));
-                  //else
-                  polygon_point_list[i_points] = (Point<2>(temp_point[0], temp_point[1]));
+                  polygon_point_list[i_polygons][i_points] = temp_point;
                 }
             }
-
-          if (n_temp_points == 0)
-            polygon_thicknesses = thicknesses;
-          else
-            polygon_thicknesses = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Lithospheric polygon layer thicknesses"))),
-                                                                          3,
-                                                                          "Lithospheric polygon layer thicknesses");
-
-
         }
         prm.leave_subsection();
       }
