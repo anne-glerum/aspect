@@ -164,6 +164,9 @@ namespace aspect
                   else
                     f << time_point->second[i][c] * year_in_seconds;
 
+                  std::cout.precision(10);
+                  std::cout << time_point->second[i][c] << std::endl;
+
                   f << (c != time_point->second[i].size()-1 ? ' ' : '\n');
                 }
             }
