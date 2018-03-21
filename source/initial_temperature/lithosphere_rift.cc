@@ -188,9 +188,6 @@ namespace aspect
           thicknesses = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Layer thicknesses"))),
                                                                 3,
                                                                 "Layer thicknesses");
-          polygon_thicknesses = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Lithospheric polygon layer thicknesses"))),
-                                                                        3,
-                                                                        "Lithospheric polygon layer thicknesses");
           // Read in the string of polygon thicknesses
           const std::string temp_all_thicknesses = prm.get("Lithospheric polygon layer thicknesses");
           // Split the string into the separate polygons

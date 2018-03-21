@@ -79,7 +79,13 @@ namespace aspect
          * The standard deviation of the Gaussian amplitude of the lithospheric thicknesses
          * with distance from the rift axis.
          */
-        double sigma;
+        double sigma_rift;
+
+        /**
+         * The half width of the hyperbolic tangent used to smooth the transitions
+         * between reference and polygon lithospheric thicknesses.
+         */
+        double sigma_polygon;
 
         /**
          * The maximum amplitude of the Gaussian distribution of the lithospheric thicknesses
