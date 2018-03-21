@@ -62,18 +62,18 @@ namespace aspect
         /**
          * Return the overall shortest distance to the rift segments
          */
-        double distance_to_rift (const Point<2> &position) const;
+        double distance_to_rift (const Point<dim-1> &position) const;
 
         /*
          * Return the overall shortest distance to the polygon segments
          */
-        std::pair<double,unsigned int> distance_to_polygon (const Point<2> &position) const;
+        std::pair<double,unsigned int> distance_to_polygon (const Point<dim-1> &position) const;
 
         /*
          * Return the position of the point in surface coordinates
          * i.e. x(,y) in meters or lon(,lat) in degrees.
          */
-        Point<2> surface_position (const Point<dim> &position,
+        Point<dim-1> surface_position (const Point<dim> &position,
                                    const bool cartesian_geometry) const;
 
         /**
@@ -112,10 +112,10 @@ namespace aspect
         std::vector<double> A;
 
         /**
-         * The list of line segments consisting of two 2D coordinates per segment.
+         * The list of line segments consisting of two 1d (in 2d) or 2d (in 3d) coordinates per segment.
          * The segments represent the rift axis.
          */
-        std::vector<std::vector<Point<2> > > point_list;
+        std::vector<std::vector<Point<dim-1> > > point_list;
 
         /**
          * The list of polygon points.

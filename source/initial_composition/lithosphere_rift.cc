@@ -55,7 +55,7 @@ namespace aspect
       // Determine coordinate system
       const bool cartesian_geometry = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) != NULL ? true : false;
 
-      const Point<2> surface_point = surface_position(position, cartesian_geometry);
+      const Point<dim-1> surface_point = surface_position(position, cartesian_geometry);
 
       // Get the distance to the line segments along a path parallel to the surface
       const double distance_to_rift_axis = distance_to_rift(surface_point);
@@ -89,7 +89,7 @@ namespace aspect
     template <int dim>
     double
     LithosphereRift<dim>::
-    distance_to_rift (const Point<2> &surface_position) const
+    distance_to_rift (const Point<dim-1> &surface_position) const
     {
       // Initiate distance with large value
       double distance_to_rift_axis = 1e23;
@@ -108,13 +108,13 @@ namespace aspect
     }
 
     template <int dim>
-    Point<2>
+    Point<dim-1>
     LithosphereRift<dim>::
     surface_position (const Point<dim> &position,
                       const bool cartesian_geometry) const
     {
       // When in 2d, the second coordinate is zero
-      Point<2> surface_point;
+      Point<dim-1> surface_point;
       if (cartesian_geometry)
         {
           for (unsigned int d=0; d<dim-1; ++d)
@@ -138,7 +138,7 @@ namespace aspect
     template <int dim>
     std::pair<double,unsigned int>
     LithosphereRift<dim>::
-    distance_to_polygon (const Point<2> &surface_position) const
+    distance_to_polygon (const Point<dim-1> &surface_position) const
     {
       double min_distance = 1e24;
       unsigned int min_distance_polygon = 0;
@@ -276,10 +276,7 @@ namespace aspect
                                                             "the two coordinates of the segment end point, separated by a ','."));
 
                   // Add the point to the list of points for this segment
-                  //if (dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) == NULL)
-                  //   point_list[i_segment][i_points] = (Point<2>(temp_point[0]/180.*numbers::PI, 0.5*numbers::PI-temp_point[1]/180.*numbers::PI));
-                  //else
-                  point_list[i_segment][i_points] = (Point<2>(temp_point[0], temp_point[1]));
+                  point_list[i_segment][i_points] = temp_point;
                 }
             }
           // Read in the string of polygon points
