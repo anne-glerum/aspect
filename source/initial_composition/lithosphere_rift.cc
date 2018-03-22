@@ -152,13 +152,13 @@ namespace aspect
             {
               double sign = -1.;
               if (surface_position[0]>polygon_point_list[n][0][0] && surface_position[0]<polygon_point_list[n][1][0])
-                  sign = 1.;
+                sign = 1.;
               temp_distance = sign * std::min(std::abs(polygon_point_list[n][1][0] - surface_position[0]), std::abs(surface_position[0] - polygon_point_list[n][0][0]));
             }
           else
-             {
-            temp_distance = Utilities::signed_distance_to_polygon<dim>(polygon_point_list[n], Point<2>(surface_position[0],surface_position[dim-2]));
-             }
+            {
+              temp_distance = Utilities::signed_distance_to_polygon<dim>(polygon_point_list[n], Point<2>(surface_position[0],surface_position[dim-2]));
+            }
 
           if (temp_distance > max_distance)
             {
@@ -275,18 +275,18 @@ namespace aspect
 
               const std::vector<std::string> temp_segment = Utilities::split_string_list(temp_segments[i_segment],'>');
 
-              if (dim == 3) 
-                    {
-              AssertThrow(temp_segment.size() == 2,ExcMessage ("The given coordinate '" + temp_segment[i_segment] + "' is not correct. "
-                                                          "It should only contain 2 parts: "
-                                                          "the two points of the segment, separated by a '>'."));
-                    }
+              if (dim == 3)
+                {
+                  AssertThrow(temp_segment.size() == 2,ExcMessage ("The given coordinate '" + temp_segment[i_segment] + "' is not correct. "
+                                                                   "It should only contain 2 parts: "
+                                                                   "the two points of the segment, separated by a '>'."));
+                }
               else
-                    {
-              AssertThrow(temp_segment.size() == 1,ExcMessage ("The given coordinate '" + temp_segment[i_segment] + "' is not correct. "
-                                                          "It should only contain 1 part: "
-                                                          "the point representing the rift axis."));
-                    }
+                {
+                  AssertThrow(temp_segment.size() == 1,ExcMessage ("The given coordinate '" + temp_segment[i_segment] + "' is not correct. "
+                                                                   "It should only contain 1 part: "
+                                                                   "the point representing the rift axis."));
+                }
 
               // Loop over the dim-1 points of each segment (i.e. in 2d only 1 point is required for a 'segment')
               for (unsigned int i_points = 0; i_points < dim-1; i_points++)
@@ -294,20 +294,20 @@ namespace aspect
                   const std::vector<double> temp_point = Utilities::string_to_double(Utilities::split_string_list(temp_segment[i_points],','));
                   if (dim == 3)
                     {
-                      Assert(temp_point.size() == 2,ExcMessage ("The given coordinates of segment '" + temp_segment[i_points] + "' are not correct. "
-                                                                "It should only contain 2 parts: "
-                                                                "the two coordinates of the segment end point, separated by a ','."));
+                      AssertThrow(temp_point.size() == 2,ExcMessage ("The given coordinates of segment '" + temp_segment[i_points] + "' are not correct. "
+                                                                     "It should only contain 2 parts: "
+                                                                     "the two coordinates of the segment end point, separated by a ','."));
                     }
                   else
                     {
-                      Assert(temp_point.size() == 1,ExcMessage ("The given coordinates of segment '" + temp_segment[i_points] + "' are not correct. "
-                                                                "It should only contain 1 part: "
-                                                                "the one coordinate of the segment end point."));
+                      AssertThrow(temp_point.size() == 1,ExcMessage ("The given coordinates of segment '" + temp_segment[i_points] + "' are not correct. "
+                                                                     "It should only contain 1 part: "
+                                                                     "the one coordinate of the segment end point."));
 
-                      // Add the point to the list of points for this segment
-                      point_list[i_segment][i_points][0] = temp_point[0];
-                      point_list[i_segment][i_points][1] = temp_point[dim-2];
                     }
+                  // Add the point to the list of points for this segment
+                  point_list[i_segment][i_points][0] = temp_point[0];
+                  point_list[i_segment][i_points][1] = temp_point[dim-2];
                 }
             }
 
@@ -369,12 +369,13 @@ namespace aspect
   {
     ASPECT_REGISTER_INITIAL_COMPOSITION_MODEL(LithosphereRift,
                                               "lithosphere with rift",
-                                              "A class that implements initial conditions for the porosity field "
-                                              "by computing the equilibrium melt fraction for the given initial "
-                                              "condition and reference pressure profile. Note that this plugin only "
-                                              "works if there is a compositional field called `porosity', and the "
-                                              "used material model implements the 'MeltFractionModel' interface. "
-                                              "For all compositional fields except porosity this plugin returns 0.0, "
+                                              "A class that implements initial conditions for a 3-layer continental lithosphere "
+                                              "that can seed a continental rift through user-set local thinning/thickening. "
+                                              "Also, specific regions can be given different thicknesses through the use of "
+                                              "user-specified polygons. "
+                                              "Note that this plugin only works if there are compositional fields called `upper', "
+                                              "'lower' and 'mantle_L'. "
+                                              "For all compositional fields except these listed above this plugin returns 0.0, "
                                               "and they are therefore not changed as long as the default `add' "
                                               "operator is selected for this plugin.")
   }
