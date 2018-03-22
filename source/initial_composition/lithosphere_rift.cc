@@ -65,12 +65,15 @@ namespace aspect
 
       // Compute the local thickness of the upper crust, lower crust and mantle part of the lithosphere
       // (in this exact order) based on the distance from the rift axis.
-      const double local_upper_crust_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon.first/sigma_polygon))*polygon_thicknesses[distance_to_L_polygon.second][0]+(0.5-0.5*std::tanh(distance_to_L_polygon.first/sigma_polygon))*thicknesses[0])*
-                                                 (1.0 - A[0] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma_rift,2)))));
-      const double local_lower_crust_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon.first/sigma_polygon))*polygon_thicknesses[distance_to_L_polygon.second][1]+(0.5-0.5*std::tanh(distance_to_L_polygon.first/sigma_polygon))*thicknesses[1])*
-                                                 (1.0 - A[1] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma_rift,2)))));
-      const double local_mantle_lithosphere_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon.first/sigma_polygon))*polygon_thicknesses[distance_to_L_polygon.second][2]+(0.5-0.5*std::tanh(distance_to_L_polygon.first/sigma_rift))*thicknesses[2])*
-                                                        (1.0 - A[2] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma_polygon,2)))));
+      const double local_upper_crust_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon.first/sigma_polygon))*polygon_thicknesses[distance_to_L_polygon.second][0]
+                                                  +(0.5-0.5*std::tanh(distance_to_L_polygon.first/sigma_polygon))*thicknesses[0])
+                                                 * (!blend_rift_and_polygon && distance_to_L_polygon.first > 0.-2.*sigma_polygon ? 1. : (1.0 - A[0] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma_rift,2))))));
+      const double local_lower_crust_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon.first/sigma_polygon))*polygon_thicknesses[distance_to_L_polygon.second][1]
+                                                  +(0.5-0.5*std::tanh(distance_to_L_polygon.first/sigma_polygon))*thicknesses[1])
+                                                 * (!blend_rift_and_polygon && distance_to_L_polygon.first > 0.-2.*sigma_polygon ? 1. : (1.0 - A[1] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma_rift,2))))));
+      const double local_mantle_lithosphere_thickness = ((0.5+0.5*std::tanh(distance_to_L_polygon.first/sigma_polygon))*polygon_thicknesses[distance_to_L_polygon.second][2]
+                                                         +(0.5-0.5*std::tanh(distance_to_L_polygon.first/sigma_polygon))*thicknesses[2])
+                                                        *  (!blend_rift_and_polygon && distance_to_L_polygon.first > 0.-2.*sigma_polygon ? 1. : (1.0 - A[2] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma_rift,2))))));
 
       // Compute depth
       const double depth = this->get_geometry_model().depth(position);
@@ -139,18 +142,29 @@ namespace aspect
     LithosphereRift<dim>::
     distance_to_polygon (const Point<dim-1> &surface_position) const
     {
-      double min_distance = 1e24;
-      unsigned int min_distance_polygon = 0;
+      // Inside is positive, outside negative. We assume no overlap of the different polygons.
+      double max_distance = -1e24;
+      unsigned int max_distance_polygon = 0;
       for (unsigned int n = 0; n<polygon_point_list.size(); ++n)
         {
-          double temp_distance = (dim == 2) ? std::abs(surface_position[0]-polygon_point_list[n][0][0]) : Utilities::signed_distance_to_polygon<dim>(polygon_point_list[n], Point<2>(surface_position[0],surface_position[dim-2]));
-          if (temp_distance < min_distance)
+          double temp_distance = 0;
+          if (dim == 2)
             {
-              min_distance = temp_distance;
-              min_distance_polygon = n;
+              if (surface_position[0]>polygon_point_list[n][0][0] && surface_position[0]<polygon_point_list[n][1][0])
+                temp_distance = std::min(polygon_point_list[n][1][0] - surface_position[0], surface_position[0] - polygon_point_list[n][0][0]);
+              else
+                temp_distance = std::max(polygon_point_list[n][1][0] - surface_position[0], surface_position[0] - polygon_point_list[n][0][0]);
+            }
+          else
+            temp_distance = Utilities::signed_distance_to_polygon<dim>(polygon_point_list[n], Point<2>(surface_position[0],surface_position[dim-2]));
+
+          if (temp_distance > max_distance)
+            {
+              max_distance = temp_distance;
+              max_distance_polygon = n;
             }
         }
-      return std::pair<double, unsigned int> (min_distance, min_distance_polygon);
+      return std::pair<double, unsigned int> (max_distance, max_distance_polygon);
     }
 
     template <int dim>
@@ -171,6 +185,11 @@ namespace aspect
                              "The half width of the hyperbolic tangent smoothing used to transition to the lithospheric thicknesses of the polygon. "
                              "Note that this parameter is taken to be the same for all polygons. "
                              "Units: $m$ or degrees.");
+          prm.declare_entry ("Blend polygons and rifts", "true",
+                             Patterns::Bool (),
+                             "Whether or not to blend the contributions of polygons and the rift. For true, they're blend together. "
+                             "For false, the polygon thicknesses are taken as the local thicknesses. "
+                             "Units: /.");
           prm.declare_entry ("Amplitude of Gaussian rift geometry", "0.2",
                              Patterns::List(Patterns::Double (-1,1)),
                              "The amplitude of the Gaussian distribution of the amplitude of the strain noise. "
@@ -229,11 +248,12 @@ namespace aspect
       {
         prm.enter_subsection("Lithosphere with rift");
         {
-          sigma_rift           = prm.get_double ("Standard deviation of Gaussian rift geometry");
-          sigma_polygon        = prm.get_double ("Half width of polygon smoothing");
-          A                    = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Amplitude of Gaussian rift geometry"))),
-                                                                         3,
-                                                                         "Amplitude of Gaussian rift geometry");
+          sigma_rift             = prm.get_double ("Standard deviation of Gaussian rift geometry");
+          sigma_polygon          = prm.get_double ("Half width of polygon smoothing");
+          blend_rift_and_polygon = prm.get_bool ("Blend polygons and rifts");
+          A                      = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Amplitude of Gaussian rift geometry"))),
+                                                                           3,
+                                                                           "Amplitude of Gaussian rift geometry");
           thicknesses = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Layer thicknesses"))),
                                                                 3,
                                                                 "Layer thicknesses");
@@ -302,7 +322,7 @@ namespace aspect
                 }
               else
                 {
-                  AssertThrow(n_temp_points==1, ExcMessage ("The number of polygon points should be equal to 1 in 2d."));
+                  AssertThrow(n_temp_points==2, ExcMessage ("The number of polygon points should be equal to 2 in 2d."));
                 }
               polygon_point_list[i_polygons].resize(n_temp_points);
               // Loop over the points of the polygon. Each point should consist of 2 values (lon and lat coordinate).
@@ -317,6 +337,10 @@ namespace aspect
                   polygon_point_list[i_polygons][i_points][0] = temp_point[0];
                   polygon_point_list[i_polygons][i_points][1] = temp_point[dim-2];
                 }
+              if  (dim == 2)
+                AssertThrow(polygon_point_list[i_polygons][0][0] < polygon_point_list[i_polygons][1][0], ExcMessage("The order of the x coordinates of the 2 points "
+                            "of each 2d polygon should be ascending. "));
+
             }
         }
         prm.leave_subsection();
