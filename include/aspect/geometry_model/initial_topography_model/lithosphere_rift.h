@@ -106,6 +106,12 @@ namespace aspect
         double ref_rgh;
         double compensation_depth;
 
+        /**
+         * Wheter or not to take the polygon thicknesses as dominant, or to smooth them
+         * gradually into rift areas.
+         */
+        bool blend_rift_and_polygon;
+
 
         /**
          * The maximum amplitude of the topography of the polygon area.
