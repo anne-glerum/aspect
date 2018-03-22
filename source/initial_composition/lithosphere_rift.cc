@@ -150,13 +150,15 @@ namespace aspect
           double temp_distance = 0;
           if (dim == 2)
             {
+              double sign = -1.;
               if (surface_position[0]>polygon_point_list[n][0][0] && surface_position[0]<polygon_point_list[n][1][0])
-                temp_distance = std::min(polygon_point_list[n][1][0] - surface_position[0], surface_position[0] - polygon_point_list[n][0][0]);
-              else
-                temp_distance = std::max(polygon_point_list[n][1][0] - surface_position[0], surface_position[0] - polygon_point_list[n][0][0]);
+                  sign = 1.;
+              temp_distance = sign * std::min(std::abs(polygon_point_list[n][1][0] - surface_position[0]), std::abs(surface_position[0] - polygon_point_list[n][0][0]));
             }
           else
+             {
             temp_distance = Utilities::signed_distance_to_polygon<dim>(polygon_point_list[n], Point<2>(surface_position[0],surface_position[dim-2]));
+             }
 
           if (temp_distance > max_distance)
             {
@@ -273,12 +275,21 @@ namespace aspect
 
               const std::vector<std::string> temp_segment = Utilities::split_string_list(temp_segments[i_segment],'>');
 
-              Assert(temp_segment.size() == 2,ExcMessage ("The given coordinate '" + temp_segment[i_segment] + "' is not correct. "
+              if (dim == 3) 
+                    {
+              AssertThrow(temp_segment.size() == 2,ExcMessage ("The given coordinate '" + temp_segment[i_segment] + "' is not correct. "
                                                           "It should only contain 2 parts: "
                                                           "the two points of the segment, separated by a '>'."));
+                    }
+              else
+                    {
+              AssertThrow(temp_segment.size() == 1,ExcMessage ("The given coordinate '" + temp_segment[i_segment] + "' is not correct. "
+                                                          "It should only contain 1 part: "
+                                                          "the point representing the rift axis."));
+                    }
 
               // Loop over the dim-1 points of each segment (i.e. in 2d only 1 point is required for a 'segment')
-              for (unsigned int i_points = 0; i_points < 2; i_points++)
+              for (unsigned int i_points = 0; i_points < dim-1; i_points++)
                 {
                   const std::vector<double> temp_point = Utilities::string_to_double(Utilities::split_string_list(temp_segment[i_points],','));
                   if (dim == 3)

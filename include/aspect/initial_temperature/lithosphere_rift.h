@@ -93,6 +93,12 @@ namespace aspect
         double LAB_isotherm;
 
         /**
+         * Wheter or not to take the polygon thicknesses as dominant, or to smooth them
+         * gradually into rift areas.
+         */
+        bool blend_rift_and_polygon;
+
+        /**
          * Vector for field heat production rates.
          */
         std::vector<double> heat_productivities;
