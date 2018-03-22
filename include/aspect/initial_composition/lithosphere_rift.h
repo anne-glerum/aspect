@@ -105,6 +105,12 @@ namespace aspect
         double sigma_polygon;
 
         /**
+         * Wheter or not to take the polygon thicknesses as dominant, or to smooth them
+         * gradually into rift areas.
+         */
+        bool blend_rift_and_polygon;
+
+        /**
          * The maximum amplitude of the Gaussian distribution of the lithospheric thicknesses
          * with distance from the rift axis. It should have values between -1 and 1, where positive
          * numbers represent a reduction in thickness and negative numbers an increase.
