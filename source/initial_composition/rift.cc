@@ -175,7 +175,7 @@ namespace aspect
           distance_to_rift_axis = std::min(distance_to_rift_axis, temp_distance);
         }
 
-      const double depth_smoothing = 0.5 * (1.0 - std::tanh((this->get_geometry_model().depth(position) - strain_depth) / sigma));
+      const double depth_smoothing = 0.5 * (1.0 - std::tanh((this->get_geometry_model().depth(position) - strain_depth) / strain_halfwidth));
 
       const double noise_amplitude = A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))) * depth_smoothing;
 
@@ -203,6 +203,11 @@ namespace aspect
           prm.declare_entry ("Depth around which Gaussian noise is smoothed out", "40000",
                              Patterns::Double (0),
                              "The depth around which smoothing out of the strain noise starts with a hyperbolic tangent. "
+                             "Note that this parameter is taken to be the same for all rift segments. "
+                             "Units: $m$.");
+          prm.declare_entry ("Halfwidth with which Gaussian noise is smoothed out in depth", "40000",
+                             Patterns::Double (0),
+                             "The halfwidth with which smoothing out of the strain noise is done with a hyperbolic tangent. "
                              "Note that this parameter is taken to be the same for all rift segments. "
                              "Units: $m$.");
           prm.declare_entry ("Grid intervals for noise X", "25",
@@ -251,6 +256,7 @@ namespace aspect
         sigma                = prm.get_double ("Standard deviation of Gaussian noise amplitude distribution");
         A                    = prm.get_double ("Maximum amplitude of Gaussian noise amplitude distribution");
         strain_depth         = prm.get_double ("Depth around which Gaussian noise is smoothed out");
+        strain_halfwidth     = prm.get_double ("Halfwidth with which Gaussian noise is smoothed out in depth");
         grid_intervals[0]    = prm.get_integer ("Grid intervals for noise X");
         grid_intervals[1]    = prm.get_integer ("Grid intervals for noise Y");
         if (dim == 3)
