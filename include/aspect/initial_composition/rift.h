@@ -95,9 +95,10 @@ namespace aspect
         double sigma;
 
         /**
-         * The depth around which the noise is smoothed out.
+         * The depth around and halfwidth with which the noise is smoothed out.
          */
         double strain_depth;
+        double strain_halfwidth;
 
         /**
          * The list of line segments consisting of two 2D coordinates per segment.
