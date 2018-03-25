@@ -23,6 +23,7 @@
 #include <aspect/postprocess/interface.h>
 #include <aspect/geometry_model/box.h>
 #include <aspect/geometry_model/chunk.h>
+#include <aspect/geometry_model/ellipsoidal_chunk.h>
 #include <aspect/material_model/visco_plastic.h>
 #include <aspect/utilities.h>
 
@@ -59,27 +60,52 @@ namespace aspect
 
           extents_max = geometry_model->get_extents();
         }
-      else if (dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) != NULL)
+      else if (dynamic_cast<const GeometryModel::Chunk<dim> *>(&this->get_geometry_model()) != NULL)
         {
           const GeometryModel::Chunk<dim> *
           geometry_model
           = dynamic_cast<const GeometryModel::Chunk<dim> *>(&this->get_geometry_model());
 
-          extents_min[0] = geometry_model->inner_radius();
+          // Min and max radius
           extents_max[0] = geometry_model->outer_radius();
+          extents_min[0] = std::max(extents_max[0]-strain_depth-5.*strain_halfwidth,geometry_model->inner_radius());
+
+          // Min and max longitude (already in radians)
           extents_min[1] = geometry_model->east_longitude();
           extents_max[1] = geometry_model->west_longitude();
+
+          // Min and max latitude (already in radians), convert to colatitude
           if (dim == 3)
             {
-              extents_min[dim-1] = geometry_model->south_latitude();
-              extents_max[dim-1] = geometry_model->north_latitude();
+              extents_max[dim-1] = 0.5 * numbers::PI - geometry_model->south_latitude();
+              extents_min[dim-1] = 0.5 * numbers::PI - geometry_model->north_latitude();
             }
 
+        }
+      else if (dynamic_cast<const GeometryModel::EllipsoidalChunk<dim> *>(&this->get_geometry_model()) != NULL)
+        {
+          const GeometryModel::EllipsoidalChunk<dim> *
+          geometry_model
+          = dynamic_cast<const GeometryModel::EllipsoidalChunk<dim> *>(&this->get_geometry_model());
+
+          // Check that the model is not elliptical
+          AssertThrow(geometry_model->get_eccentricity() == 0.0, ExcMessage("This boundary velocity plugin cannot be used with a non-zero eccentricity. "));
+
+          // Min and max radius
+          extents_max[0] = geometry_model->get_semi_major_axis_a();
+          extents_min[0] = std::max(extents_max[0]-geometry_model->maximal_depth(), extents_max[0]-strain_depth-5.*strain_halfwidth);
+          // Assume chunk outlines are lat/lon parallel
+          std::vector<Point<2> > corners = geometry_model->get_corners();
+          // Convert to radians, lon, colat
+          extents_min[1] = corners[1][0] * numbers::PI / 180.;
+          extents_max[1] = corners[0][0] * numbers::PI / 180.;
+          extents_min[dim-1] = 0.5 * numbers::PI - corners[0][1] * numbers::PI / 180.;
+          extents_max[dim-1] = 0.5 * numbers::PI - corners[2][1] * numbers::PI / 180.;
         }
       else
         {
           AssertThrow(false,
-                      ExcMessage("This initial condition only works with the box or chunk geometry model."));
+                      ExcMessage("This initial condition only works with the box or (ellipsoidal) chunk geometry model."));
         }
 
       for (unsigned int d=0; d<dim; ++d)
@@ -144,30 +170,36 @@ namespace aspect
       double distance_to_rift_axis = 1e23;
       double temp_distance = 0;
 
+      // For spherical geometries
+      Point<dim> natural_coords = position;
+
       // Loop over all line segments
       for (unsigned int i_segments = 0; i_segments < point_list.size(); ++i_segments)
         {
           if (cartesian_geometry)
             {
               if (dim == 2)
-                temp_distance = std::abs(position[0]-point_list[i_segments][0][0]);
+                temp_distance = std::abs(natural_coords[0]-point_list[i_segments][0][0]);
               else
                 {
                   // Get the surface coordinates by dropping the last coordinate
-                  const Point<2> surface_position = Point<2>(position[0],position[1]);
+                  const Point<2> surface_position = Point<2>(natural_coords[0],natural_coords[1]);
                   temp_distance = std::abs(Utilities::distance_to_line<dim>(point_list[i_segments], surface_position));
                 }
             }
           // chunk (spherical) geometries
           else
             {
-              // spherical coordinates in radius [m], lon [rad], lat [rad] format
+              // spherical coordinates in radius [m], lon [rad], colat [rad] format
               const std_cxx11::array<double,dim> spherical_point = Utilities::Coordinates::cartesian_to_spherical_coordinates(position);
+              natural_coords[0] = spherical_point[0];
               Point<2> surface_position;
               for (unsigned int d=0; d<dim-1; ++d)
+              {
                 surface_position[d] = spherical_point[d+1];
-              // TODO check if this works correctly
-              // as we're calculating distances in radians
+                natural_coords[d+1] = spherical_point[d+1];
+              }
+
               temp_distance = (dim == 2) ? std::abs(surface_position[0]-point_list[i_segments][0][0]) : Utilities::distance_to_line<dim>(point_list[i_segments], surface_position);
             }
 
@@ -179,7 +211,7 @@ namespace aspect
 
       const double noise_amplitude = A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))) * depth_smoothing;
 
-      return noise_amplitude * interpolate_noise->value(position);
+      return noise_amplitude * interpolate_noise->value(natural_coords);
     }
 
     template <int dim>
@@ -210,34 +242,35 @@ namespace aspect
                              "The halfwidth with which smoothing out of the strain noise is done with a hyperbolic tangent. "
                              "Note that this parameter is taken to be the same for all rift segments. "
                              "Units: $m$.");
-          prm.declare_entry ("Grid intervals for noise X", "25",
+          prm.declare_entry ("Grid intervals for noise X or radius", "25",
                              Patterns::Integer (0),
-                             "Grid intervals in X directions for the white noise added to "
-                             "the initial background porosity that will then be interpolated "
+                             "Grid intervals in X (cartesian domain) or radial (spherical) direction for the white noise "
+                             "added to the initial background porosity that will then be interpolated "
                              "to the model grid. "
                              "Units: none.");
-          prm.declare_entry ("Grid intervals for noise Y", "25",
+          prm.declare_entry ("Grid intervals for noise Y or longitude", "25",
                              Patterns::Integer (0),
-                             "Grid intervals in Y directions for the white noise added to "
-                             "the initial background porosity that will then be interpolated "
+                             "Grid intervals in Y (cartesian domain) or longitude (spherical) direction for the white noise "
+                             "added to the initial background porosity that will then be interpolated "
                              "to the model grid. "
                              "Units: none.");
-          prm.declare_entry ("Grid intervals for noise Z", "25",
+          prm.declare_entry ("Grid intervals for noise Z or latitude", "25",
                              Patterns::Integer (0),
-                             "Grid intervals in Z directions for the white noise added to "
-                             "the initial background porosity that will then be interpolated "
+                             "Grid intervals in Z (cartesian domain) or latitude (spherical) direction for the white noise "
+                             "added to the initial background porosity that will then be interpolated "
                              "to the model grid. "
                              "Units: none.");
           prm.declare_entry("Rift axis line segments",
                             "",
                             Patterns::Anything(),
-                            "Set the line segments that represent the rift axis. Each segment is made up of "
+                            "Set the line segments that represent the rift axis. In 3d each segment is made up of "
                             "two points that represent horizontal coordinates (x,y) or (lon,lat). "
                             "The exact format for the point list describing the segments is "
-                            "\"x1,y1>x2,y2;x2,y2>x3,y3;x4,y4>x5,y5\". Note that the segments can be connected "
+                            "\"x1,y1>x2,y2;x2,y2>x3,y3;x4,y4>x5,y5\". In 2d, a segment is made up by 1 horizontal "
+                            "x or longitude coordinate: \"x1;x2;x3\". Note that the segments can be connected "
                             "or isolated. The units of the coordinates are "
                             "dependent on the geometry model. In the box model they are in meters, in the "
-                            "chunks they are in radians.");
+                            "chunks they are in degrees.");
         }
         prm.leave_subsection();
       }
@@ -257,10 +290,10 @@ namespace aspect
         A                    = prm.get_double ("Maximum amplitude of Gaussian noise amplitude distribution");
         strain_depth         = prm.get_double ("Depth around which Gaussian noise is smoothed out");
         strain_halfwidth     = prm.get_double ("Halfwidth with which Gaussian noise is smoothed out in depth");
-        grid_intervals[0]    = prm.get_integer ("Grid intervals for noise X");
-        grid_intervals[1]    = prm.get_integer ("Grid intervals for noise Y");
+        grid_intervals[0]    = prm.get_integer ("Grid intervals for noise X or radius");
+        grid_intervals[1]    = prm.get_integer ("Grid intervals for noise Y or longitude");
         if (dim == 3)
-          grid_intervals[2]    = prm.get_integer ("Grid intervals for noise Z");
+          grid_intervals[2]    = prm.get_integer ("Grid intervals for noise Z or latitude");
 
         // Read in the string of rift segments
         const std::string temp_all_segments = prm.get("Rift axis line segments");
@@ -289,10 +322,18 @@ namespace aspect
                 // Loop over the 2 points of each segment
                 for (unsigned int i_points = 0; i_points < dim-1; i_points++)
                   {
-                    const std::vector<double> temp_point = Utilities::string_to_double(Utilities::split_string_list(temp_segment[i_points],','));
+                    std::vector<double> temp_point = Utilities::string_to_double(Utilities::split_string_list(temp_segment[i_points],','));
                     Assert(temp_point.size() == 2,ExcMessage ("The given coordinates of segment '" + temp_segment[i_points] + "' are not correct. "
                                                               "It should only contain 2 parts: "
                                                               "the x and y coordinates of the segment begin/end point, separated by a ','."));
+
+                    if (dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) == NULL)
+                    {
+                        // longitude
+                        temp_point[0] *= numbers::PI/180.;
+                        // latitude -> colatitude
+                        temp_point[1] = 0.5 * numbers::PI - temp_point[1] * numbers::PI / 180.;
+                    }
 
                     // Add the point to the list of points for this segment
                     point_list[i_segment][i_points] = (Point<2>(temp_point[0], temp_point[1]));
