@@ -90,6 +90,11 @@ namespace aspect
         unsigned int strain_composition_number;
 
         /**
+         * Whether or not the domain is a cartesian box.
+         */
+        bool cartesian_domain = true;
+
+        /**
          * The maximum amplitude of the Gaussian amplitude of the noise.
          */
         double A;
