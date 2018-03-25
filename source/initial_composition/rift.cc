@@ -57,6 +57,7 @@ namespace aspect
           const GeometryModel::Box<dim> * geometry_model
           = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model());
 
+          // Min and max of each direction (m)
           extents_max = geometry_model->get_extents();
         }
       else if (const GeometryModel::Chunk<dim> * geometry_model
@@ -76,7 +77,6 @@ namespace aspect
               extents_max[dim-1] = 0.5 * numbers::PI - geometry_model->south_latitude();
               extents_min[dim-1] = 0.5 * numbers::PI - geometry_model->north_latitude();
             }
-
         }
       else if (const GeometryModel::EllipsoidalChunk<dim> *geometry_model
           = dynamic_cast<const GeometryModel::EllipsoidalChunk<dim> *>(&this->get_geometry_model()))
@@ -109,7 +109,7 @@ namespace aspect
 
       // use a fixed number as seed for random generator
       // this is important if we run the code on more than 1 processor
-      std::srand(0);
+      std::srand(seed);
 
       TableIndices<dim> idx;
 
@@ -209,6 +209,10 @@ namespace aspect
       {
         prm.enter_subsection("Rift");
         {
+          prm.declare_entry ("Random number generator seed", "0",
+                             Patterns::Double (0),
+                             "The value of the seed used for the random number generator. "
+                             "Units: none.");
           prm.declare_entry ("Standard deviation of Gaussian noise amplitude distribution", "20000",
                              Patterns::Double (0),
                              "The standard deviation of the Gaussian distribution of the amplitude of the strain noise. "
@@ -279,6 +283,7 @@ namespace aspect
         prm.enter_subsection("Rift");
         sigma                = prm.get_double ("Standard deviation of Gaussian noise amplitude distribution");
         A                    = prm.get_double ("Maximum amplitude of Gaussian noise amplitude distribution");
+        seed                 = prm.get_double ("Random number generator seed");
         strain_depth         = prm.get_double ("Depth around which Gaussian noise is smoothed out");
         strain_halfwidth     = prm.get_double ("Halfwidth with which Gaussian noise is smoothed out in depth");
         grid_intervals[0]    = prm.get_integer ("Grid intervals for noise X or radius");
