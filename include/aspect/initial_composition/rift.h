@@ -85,6 +85,11 @@ namespace aspect
       private:
 
         /**
+         * The number of the compositional field representing the strain.
+         */
+        unsigned int strain_composition_number;
+
+        /**
          * The maximum amplitude of the Gaussian amplitude of the noise.
          */
         double A;
@@ -105,7 +110,6 @@ namespace aspect
          * The segments represent the rift axis.
          */
         std::vector<std::vector<Point<2> > > point_list;
-
 
         /**
          * A table with random noise for the
