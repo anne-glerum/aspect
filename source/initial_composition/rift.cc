@@ -52,20 +52,16 @@ namespace aspect
       white_noise.TableBase<dim,double>::reinit(size_idx);
       std_cxx1x::array<std::pair<double,double>,dim> grid_extents;
 
-      if (dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) != NULL)
+      if (cartesian_domain)
         {
-          const GeometryModel::Box<dim> *
-          geometry_model
+          const GeometryModel::Box<dim> * geometry_model
           = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model());
 
           extents_max = geometry_model->get_extents();
         }
-      else if (dynamic_cast<const GeometryModel::Chunk<dim> *>(&this->get_geometry_model()) != NULL)
+      else if (const GeometryModel::Chunk<dim> * geometry_model
+          = dynamic_cast<const GeometryModel::Chunk<dim> *>(&this->get_geometry_model()))
         {
-          const GeometryModel::Chunk<dim> *
-          geometry_model
-          = dynamic_cast<const GeometryModel::Chunk<dim> *>(&this->get_geometry_model());
-
           // Min and max radius
           extents_max[0] = geometry_model->outer_radius();
           extents_min[0] = std::max(extents_max[0]-strain_depth-5.*strain_halfwidth,geometry_model->inner_radius());
@@ -82,12 +78,9 @@ namespace aspect
             }
 
         }
-      else if (dynamic_cast<const GeometryModel::EllipsoidalChunk<dim> *>(&this->get_geometry_model()) != NULL)
+      else if (const GeometryModel::EllipsoidalChunk<dim> *geometry_model
+          = dynamic_cast<const GeometryModel::EllipsoidalChunk<dim> *>(&this->get_geometry_model()))
         {
-          const GeometryModel::EllipsoidalChunk<dim> *
-          geometry_model
-          = dynamic_cast<const GeometryModel::EllipsoidalChunk<dim> *>(&this->get_geometry_model());
-
           // Check that the model is not elliptical
           AssertThrow(geometry_model->get_eccentricity() == 0.0, ExcMessage("This boundary velocity plugin cannot be used with a non-zero eccentricity. "));
 
@@ -160,12 +153,6 @@ namespace aspect
       if (n_comp != strain_composition_number)
         return 0.0;
 
-      // If we are looking for the initial value of the strain field,
-      // get the distance to the line segments along a path parallel to the surface
-
-      // Determine coordinate system
-      bool cartesian_geometry = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) != NULL ? true : false;
-
       // Initiate distance with large value
       double distance_to_rift_axis = 1e23;
       double temp_distance = 0;
@@ -176,7 +163,7 @@ namespace aspect
       // Loop over all line segments
       for (unsigned int i_segments = 0; i_segments < point_list.size(); ++i_segments)
         {
-          if (cartesian_geometry)
+          if (cartesian_domain)
             {
               if (dim == 2)
                 temp_distance = std::abs(natural_coords[0]-point_list[i_segments][0][0]);
@@ -285,7 +272,7 @@ namespace aspect
       AssertThrow(this->introspection().compositional_name_exists("strain"),
                   ExcMessage("This plugin requires a compositional field named strain. "));
 
-      strain_composition_number =  = this->introspection().compositional_index_for_name("strain");
+      strain_composition_number = this->introspection().compositional_index_for_name("strain");
 
       prm.enter_subsection("Initial composition model");
       {
@@ -306,6 +293,9 @@ namespace aspect
         // The number of segments, each consisting of a begin and an end point in 3d and one point in 3d
         const unsigned int n_temp_segments = temp_segments.size();
         point_list.resize(n_temp_segments);
+
+        if (dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) == NULL)
+          cartesian_domain = false;
 
         // Loop over the segments to extract the points
         for (unsigned int i_segment = 0; i_segment < n_temp_segments; i_segment++)
@@ -331,7 +321,7 @@ namespace aspect
                                                               "It should only contain 2 parts: "
                                                               "the x and y coordinates of the segment begin/end point, separated by a ','."));
 
-                    if (dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) == NULL)
+                    if (!cartesian_domain)
                     {
                         // longitude
                         temp_point[0] *= numbers::PI/180.;
