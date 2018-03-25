@@ -57,7 +57,8 @@ namespace aspect
 
         /**
          * Return the initial composition as a function of position and number
-         * of compositional field.
+         * of compositional field. The composition varies as a Gaussian distribution
+         * around a user-defined set of line-segments.
          */
         virtual
         double initial_composition (const Point<dim> &position, const unsigned int n_comp) const;
@@ -116,7 +117,7 @@ namespace aspect
         double strain_halfwidth;
 
         /**
-         * The list of line segments consisting of two 2D coordinates per segment.
+         * The list of line segments consisting of two 2d coordinates per segment (even in 2d).
          * The segments represent the rift axis.
          */
         std::vector<std::vector<Point<2> > > point_list;
@@ -127,8 +128,6 @@ namespace aspect
          */
         std_cxx1x::array<unsigned int,dim> grid_intervals;
         Functions::InterpolatedUniformGridData<dim> *interpolate_noise;
-
-
     };
   }
 }

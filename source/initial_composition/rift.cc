@@ -54,14 +54,14 @@ namespace aspect
 
       if (cartesian_domain)
         {
-          const GeometryModel::Box<dim> * geometry_model
-          = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model());
+          const GeometryModel::Box<dim> *geometry_model
+            = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model());
 
           // Min and max of each direction (m)
           extents_max = geometry_model->get_extents();
         }
-      else if (const GeometryModel::Chunk<dim> * geometry_model
-          = dynamic_cast<const GeometryModel::Chunk<dim> *>(&this->get_geometry_model()))
+      else if (const GeometryModel::Chunk<dim> *geometry_model
+               = dynamic_cast<const GeometryModel::Chunk<dim> *>(&this->get_geometry_model()))
         {
           // Min and max radius
           extents_max[0] = geometry_model->outer_radius();
@@ -79,7 +79,7 @@ namespace aspect
             }
         }
       else if (const GeometryModel::EllipsoidalChunk<dim> *geometry_model
-          = dynamic_cast<const GeometryModel::EllipsoidalChunk<dim> *>(&this->get_geometry_model()))
+               = dynamic_cast<const GeometryModel::EllipsoidalChunk<dim> *>(&this->get_geometry_model()))
         {
           // Check that the model is not elliptical
           AssertThrow(geometry_model->get_eccentricity() == 0.0, ExcMessage("This boundary velocity plugin cannot be used with a non-zero eccentricity. "));
@@ -134,7 +134,6 @@ namespace aspect
                 }
               else
                 white_noise(idx) = ((std::rand() % 10000) / 10000.0);
-
             }
         }
 
@@ -157,7 +156,7 @@ namespace aspect
       double distance_to_rift_axis = 1e23;
       double temp_distance = 0;
 
-      // For spherical geometries
+      // For spherical geometries we need to reorder the coordinates
       Point<dim> natural_coords = position;
 
       // Loop over all line segments
@@ -182,10 +181,10 @@ namespace aspect
               natural_coords[0] = spherical_point[0];
               Point<2> surface_position;
               for (unsigned int d=0; d<dim-1; ++d)
-              {
-                surface_position[d] = spherical_point[d+1];
-                natural_coords[d+1] = spherical_point[d+1];
-              }
+                {
+                  surface_position[d] = spherical_point[d+1];
+                  natural_coords[d+1] = spherical_point[d+1];
+                }
 
               temp_distance = (dim == 2) ? std::abs(surface_position[0]-point_list[i_segments][0][0]) : Utilities::distance_to_line<dim>(point_list[i_segments], surface_position);
             }
@@ -194,10 +193,11 @@ namespace aspect
           distance_to_rift_axis = std::min(distance_to_rift_axis, temp_distance);
         }
 
+      // Smoothing of noise with depth
       const double depth_smoothing = 0.5 * (1.0 - std::tanh((this->get_geometry_model().depth(position) - strain_depth) / strain_halfwidth));
-
+      // Smoothing of noise with lateral distance to the rift axis
       const double noise_amplitude = A * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma,2)))) * depth_smoothing;
-
+      // Add randomness
       return noise_amplitude * interpolate_noise->value(natural_coords);
     }
 
@@ -251,17 +251,17 @@ namespace aspect
                              "added to the initial background porosity that will then be interpolated "
                              "to the model grid. "
                              "Units: none.");
-          prm.declare_entry("Rift axis line segments",
-                            "",
-                            Patterns::Anything(),
-                            "Set the line segments that represent the rift axis. In 3d each segment is made up of "
-                            "two points that represent horizontal coordinates (x,y) or (lon,lat). "
-                            "The exact format for the point list describing the segments is "
-                            "\"x1,y1>x2,y2;x2,y2>x3,y3;x4,y4>x5,y5\". In 2d, a segment is made up by 1 horizontal "
-                            "x or longitude coordinate: \"x1;x2;x3\". Note that the segments can be connected "
-                            "or isolated. The units of the coordinates are "
-                            "dependent on the geometry model. In the box model they are in meters, in the "
-                            "chunks they are in degrees.");
+          prm.declare_entry ("Rift axis line segments",
+                             "",
+                             Patterns::Anything(),
+                             "Set the line segments that represent the rift axis. In 3d each segment is made up of "
+                             "two points that represent horizontal coordinates (x,y) or (lon,lat). "
+                             "The exact format for the point list describing the segments is "
+                             "\"x1,y1>x2,y2;x2,y2>x3,y3;x4,y4>x5,y5\". In 2d, a segment is made up by 1 horizontal "
+                             "x or longitude coordinate: \"x1;x2;x3\". Note that the segments can be connected "
+                             "or isolated. The units of the coordinates are "
+                             "dependent on the geometry model. In the box model they are in meters, in the "
+                             "chunks they are in degrees.");
         }
         prm.leave_subsection();
       }
@@ -273,9 +273,9 @@ namespace aspect
     void
     Rift<dim>::parse_parameters (ParameterHandler &prm)
     {
+      // Check that there is a compositional field called strain and retrieve its index
       AssertThrow(this->introspection().compositional_name_exists("strain"),
                   ExcMessage("This plugin requires a compositional field named strain. "));
-
       strain_composition_number = this->introspection().compositional_index_for_name("strain");
 
       prm.enter_subsection("Initial composition model");
@@ -299,6 +299,7 @@ namespace aspect
         const unsigned int n_temp_segments = temp_segments.size();
         point_list.resize(n_temp_segments);
 
+        // Default is true, but in case we use a (ellipsoidal) chunk domain, set to false
         if (dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) == NULL)
           cartesian_domain = false;
 
@@ -306,7 +307,7 @@ namespace aspect
         for (unsigned int i_segment = 0; i_segment < n_temp_segments; i_segment++)
           {
             // In 3d a line segment consists of 2 points,
-            // in 2d only 1 (ridge axis orthogonal to x and y).
+            // in 2d of only 1 (ridge axis orthogonal to x and y).
             // Also, a 3d point has 2 coordinates (x and y),
             // a 2d point only 1 (x).
             point_list[i_segment].resize(dim-1);
@@ -327,12 +328,13 @@ namespace aspect
                                                               "the x and y coordinates of the segment begin/end point, separated by a ','."));
 
                     if (!cartesian_domain)
-                    {
+                      {
+                        // convert degrees to radians for (ellipsoidal) chunks
                         // longitude
                         temp_point[0] *= numbers::PI/180.;
-                        // latitude -> colatitude
+                        // and convert latitude to colatitude
                         temp_point[1] = 0.5 * numbers::PI - temp_point[1] * numbers::PI / 180.;
-                    }
+                      }
 
                     // Add the point to the list of points for this segment
                     point_list[i_segment][i_points] = (Point<2>(temp_point[0], temp_point[1]));
@@ -345,8 +347,6 @@ namespace aspect
                 const double temp_point = Utilities::string_to_double(temp_segments[i_segment]);
                 point_list[i_segment][0] = (Point<2>(temp_point, temp_point));
               }
-
-
           }
         prm.leave_subsection();
       }
@@ -363,7 +363,7 @@ namespace aspect
   {
     ASPECT_REGISTER_INITIAL_COMPOSITION_MODEL(Rift,
                                               "rift",
-                                              "Specify the first compositional field value based on the distance to a list of line segments "
-                                              "and the user-defined Gaussian distribution around these segments.")
+                                              "Specify the strain initial compositional field value based on the distance to a list of line segments "
+                                              "and the user-defined Gaussian distribution around these segments, combined with random noise.")
   }
 }
