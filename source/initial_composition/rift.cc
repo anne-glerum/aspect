@@ -262,46 +262,51 @@ namespace aspect
         if (dim == 3)
           grid_intervals[2]    = prm.get_integer ("Grid intervals for noise Z");
 
-        // Read in the string of segments
+        // Read in the string of rift segments
         const std::string temp_all_segments = prm.get("Rift axis line segments");
         // Split the string into segment strings
         const std::vector<std::string> temp_segments = Utilities::split_string_list(temp_all_segments,';');
+        // The number of segments, each consisting of a begin and an end point in 3d and one point in 3d
         const unsigned int n_temp_segments = temp_segments.size();
         point_list.resize(n_temp_segments);
+
         // Loop over the segments to extract the points
         for (unsigned int i_segment = 0; i_segment < n_temp_segments; i_segment++)
           {
             // In 3d a line segment consists of 2 points,
-            // in 2d only 1 (ridge axis orthogonal two x and y)
+            // in 2d only 1 (ridge axis orthogonal to x and y).
+            // Also, a 3d point has 2 coordinates (x and y),
+            // a 2d point only 1 (x).
             point_list[i_segment].resize(dim-1);
-
-
-            // TODO what happens if there is no >?
-            const std::vector<std::string> temp_segment = Utilities::split_string_list(temp_segments[i_segment],'>');
 
             if (dim == 3)
               {
+                const std::vector<std::string> temp_segment = Utilities::split_string_list(temp_segments[i_segment],'>');
                 Assert(temp_segment.size() == 2,ExcMessage ("The given coordinate '" + temp_segment[i_segment] + "' is not correct. "
                                                             "It should only contain 2 parts: "
                                                             "the two points of the segment, separated by a '>'."));
+
+                // Loop over the 2 points of each segment
+                for (unsigned int i_points = 0; i_points < dim-1; i_points++)
+                  {
+                    const std::vector<double> temp_point = Utilities::string_to_double(Utilities::split_string_list(temp_segment[i_points],','));
+                    Assert(temp_point.size() == 2,ExcMessage ("The given coordinates of segment '" + temp_segment[i_points] + "' are not correct. "
+                                                              "It should only contain 2 parts: "
+                                                              "the x and y coordinates of the segment begin/end point, separated by a ','."));
+
+                    // Add the point to the list of points for this segment
+                    point_list[i_segment][i_points] = (Point<2>(temp_point[0], temp_point[1]));
+                  }
               }
             else
               {
-                Assert(temp_segment.size() == 1,ExcMessage ("The given coordinate '" + temp_segment[i_segment] + "' is not correct. "
-                                                            "In 2d it should only contain only 1 part: "));
-              }
-
-            // Loop over the dim-1 points of each segment (i.e. in 2d only 1 point is required for a 'segment')
-            for (unsigned int i_points = 0; i_points < dim-1; i_points++)
-              {
-                const std::vector<double> temp_point = Utilities::string_to_double(Utilities::split_string_list(temp_segment[i_points],','));
-                Assert(temp_point.size() == 2,ExcMessage ("The given coordinates of segment '" + temp_segment[i_points] + "' are not correct. "
-                                                          "It should only contain 2 parts: "
-                                                          "the two coordinates of the segment end point, separated by a ','."));
-
                 // Add the point to the list of points for this segment
-                point_list[i_segment][i_points] = (Point<2>(temp_point[0], temp_point[1]));
+                // As we're in 2d all segments correspond to 1 point consisting of 1 coordinate
+                const double temp_point = Utilities::string_to_double(temp_segments[i_segment]);
+                point_list[i_segment][0] = (Point<2>(temp_point, temp_point));
               }
+
+
           }
         prm.leave_subsection();
       }
