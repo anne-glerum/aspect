@@ -155,9 +155,9 @@ namespace aspect
     Rift<dim>::
     initial_composition (const Point<dim> &position, const unsigned int n_comp) const
     {
-      // If n_comp does not represent the strain field, which is reserved for the first field,
+      // If n_comp does not represent the strain field,
       // return 0 right away.
-      if (n_comp != 0)
+      if (n_comp != strain_composition_number)
         return 0.0;
 
       // If we are looking for the initial value of the strain field,
@@ -282,6 +282,10 @@ namespace aspect
     void
     Rift<dim>::parse_parameters (ParameterHandler &prm)
     {
+      AssertThrow(this->introspection().compositional_name_exists("strain"),
+                  ExcMessage("This plugin requires a compositional field named strain. "));
+
+      strain_composition_number =  = this->introspection().compositional_index_for_name("strain");
 
       prm.enter_subsection("Initial composition model");
       {
