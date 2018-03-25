@@ -95,6 +95,11 @@ namespace aspect
         bool cartesian_domain = true;
 
         /**
+         * The value of the seed for the random number generator
+         */
+        double seed;
+
+        /**
          * The maximum amplitude of the Gaussian amplitude of the noise.
          */
         double A;
