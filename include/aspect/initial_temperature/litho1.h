@@ -93,6 +93,7 @@ namespace aspect
          */
         types::boundary_id surface_boundary_id;
         types::boundary_id bottom_boundary_id;
+        types::boundary_id left_boundary_id;
 
         /*
          * The isotherm that is to represent the LAB.
@@ -109,6 +110,23 @@ namespace aspect
          */
         double min_LAB_thickness;
 
+
+        /**
+         * Whether or not to merge two overlapping data sets for
+         * the LAB thickness.
+         */
+         bool merge_LAB_grids;
+
+         /**
+          * The halfwidth of the hyperbolic tangent to merge
+          * the two LAB gridth with.
+          */
+         double merge_LAB_grids_halfwidth;
+
+         /**
+          * The list of polygon points for smoothing.
+          */
+         std::vector<Point<2> > polygon_point_list;
 
         /*
          * The temperature at the model's top boundary.
