@@ -48,6 +48,7 @@ namespace aspect
       // Find the boundary indicators that represents the surface and the bottom of the domain
       surface_boundary_id = this->get_geometry_model().translate_symbolic_boundary_name_to_id("top");
       bottom_boundary_id = this->get_geometry_model().translate_symbolic_boundary_name_to_id("bottom");
+      left_boundary_id = this->get_geometry_model().translate_symbolic_boundary_name_to_id("west");
 
       // Abuse the top and bottom boundary id to create to tables,
       // one for the crustal thickness, and one for the mantle thickness
@@ -56,6 +57,7 @@ namespace aspect
       std::set<types::boundary_id> boundary_set;
       boundary_set.insert(surface_boundary_id);
       boundary_set.insert(bottom_boundary_id);
+      boundary_set.insert(left_boundary_id);
 
       // The input ascii table contains one component, either the crust depth or the LAB depth
       Utilities::AsciiDataBoundary<dim>::initialize(boundary_set,
@@ -122,11 +124,36 @@ namespace aspect
                                                                                       position,
                                                                                       0);
 
-      // The LAB depth is stored in the bottom file
-      const double LAB_depth = std::max(min_LAB_thickness,
-                                        std::max(Moho_depth, Utilities::AsciiDataBoundary<dim>::get_data_component(bottom_boundary_id,
-                                                                                                                   position,
-                                                                                                                   0)));
+      // The LAB depth is the second and third component
+      const double LAB_depth_1 = std::max(min_LAB_thickness,
+                                        std::max(Moho_depth,
+                                                 Utilities::AsciiDataBoundary<dim>::get_data_component(bottom_boundary_id,
+                                                                                                       position,
+                                                                                                       0)));
+
+      const double LAB_depth_2 = std::max(min_LAB_thickness,
+                                        std::max(Moho_depth,
+                                                 Utilities::AsciiDataBoundary<dim>::get_data_component(left_boundary_id,
+                                                                                                       position,
+                                                                                                       0)));
+
+      // Inside is positive, outside negative.
+      double distance_to_polygon = 0;
+      if (dim == 2)
+        {
+          double sign = -1.;
+          if (surface_position[0]>polygon_point_list[0][0] && surface_position[0]<polygon_point_list[1][0])
+            sign = 1.;
+          distance_to_polygon = sign * std::min(std::abs(polygon_point_list[1][0] - surface_position[0]), std::abs(surface_position[0] - polygon_point_list[0][0]));
+        }
+      else
+        {
+          distance_to_polygon = Utilities::signed_distance_to_polygon<dim>(polygon_point_list, Point<2>(surface_position[0],surface_position[dim-2]));
+        }
+
+      const double LAB_depth =  merge_LAB_grids ? (0.5+0.5*std::tanh(distance_to_polygon/merge_LAB_grids_halfwidth))*LAB_depth_2
+                                +(0.5-0.5*std::tanh(distance_to_polygon/merge_LAB_grids_halfwidth))*LAB_depth_1
+                                : LAB_depth_1;
 
       const double upper_crust_depth = upper_crust_fraction * Moho_depth;
 
@@ -205,6 +232,37 @@ namespace aspect
                                                                 3,
                                                                 "Layer thicknesses");
           min_LAB_thickness = prm.get_double ("Minimum LAB thickness");
+          merge_LAB_grids   = prm.get_bool ("Merge LAB grids");
+          merge_LAB_grids_halfwidth = prm.get_double ("LAB grid merge halfwidth");
+
+           // Split the string into point strings
+           const std::vector<std::string> temp_points = Utilities::split_string_list(prm.get("LAB grid merge polygon"),'>');
+           const unsigned int n_temp_points = temp_points.size();
+           if (dim == 3)
+             {
+               AssertThrow(n_temp_points>=3, ExcMessage ("The number of polygon points should be equal to or larger than 3 in 3d."));
+             }
+           else
+             {
+               AssertThrow(n_temp_points==2, ExcMessage ("The number of polygon points should be equal to 2 in 2d."));
+             }
+           polygon_point_list.resize(n_temp_points);
+           // Loop over the points of the polygon.
+           for (unsigned int i_points = 0; i_points < n_temp_points; i_points++)
+             {
+               const std::vector<double> temp_point = Utilities::string_to_double(Utilities::split_string_list(temp_points[i_points],','));
+               Assert(temp_point.size() == dim-1,ExcMessage ("The given coordinates of point '" + temp_points[i_points] + "' are not correct. "
+                                                             "It should only contain 1 (2d) or 2 (in 3d) parts: "
+                                                             "the longitude/x (and latitude/y in 3d) coordinate (separated by a ',')."));
+
+               // Add the point to the list of points for this segment
+               polygon_point_list[i_points][0] = temp_point[0];
+               polygon_point_list[i_points][1] = temp_point[dim-2];
+             }
+           if  (dim == 2)
+             AssertThrow(polygon_point_list[0][0] < polygon_point_list[1][0], ExcMessage("The order of the x coordinates of the 2 points "
+                 "of each 2d polygon should be ascending. "));
+
         }
         prm.leave_subsection();
       }
