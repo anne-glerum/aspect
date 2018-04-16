@@ -143,6 +143,8 @@ namespace aspect
 
         double bottom_boundary_area = 0;
         bool bottom_boundary_compensation = false;
+        bool vertical_residual_compensation = false;
+        double vertical_compensation_area = 0;
 
         double net_outflow = 0;
 
@@ -152,6 +154,7 @@ namespace aspect
         std::map<types::boundary_id, std::vector<Point<dim> > > boundary_velocities;
         std::map<types::boundary_id, std::vector<double> > boundary_transitions;
         std::set<types::boundary_id> vertical_boundary_indicators;
+        std::set<types::boundary_id> vertical_boundary_compensation_indicators;
         types::boundary_id bottom_boundary_indicator = numbers::invalid_boundary_id;
     };
   }
