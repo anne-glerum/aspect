@@ -110,6 +110,10 @@ namespace aspect
       transition_radius_max = transition_radius + transition_width;
       transition_radius_min = transition_radius - transition_width;
 
+      //euler_pole_area = ;
+      //vertical_compensation_area;
+      //transition_area;
+
       area_scale_factor = (outer_radius * outer_radius - transition_radius_max * transition_radius_max) / (transition_radius_min * transition_radius_min - inner_radius * inner_radius);
       transition_area_scale_factor = std::fabs((transition_width/3. + 0.5 * transition_radius) / (transition_width/3. - 0.5 * transition_radius));
 
@@ -327,6 +331,15 @@ namespace aspect
                              Patterns::Double (0),
                              "Determines the half-width with which the outflow of lithospheric material changes to inflow "
                              "of (asthenospheric) material. A linear transition from outflow to inflow is used. ");
+          prm.declare_entry ("Compensate net flow", "false",
+                             Patterns::Bool (),
+                             "Whether or not to compute the net in/outflow over the vertical boundaries for the prescribed "
+                             "euler poles and compensate uniformly for this residual orthogonally to the boundaries. ");
+          prm.declare_entry ("Vertical compensation boundary indicators", "",
+                             Patterns::Anything(Patterns::Selection("east|west|south|north|left|right|front|back")),
+                             "A comma separated list of vertical boundary indicators "
+                             "specifying which vertical boundaries are used for compensating "
+                             "a net in/outflow. ");
           prm.declare_entry ("Boundary indicator to velocity mappings", "",
                              Patterns::Map (Patterns::Anything(),
                                             Patterns::Anything()),
@@ -368,6 +381,28 @@ namespace aspect
           scale_factor          = prm.get_double ("Scale factor");
           transition_depth = prm.get_double ("Velocity transition depth");
           transition_width = prm.get_double ("Velocity transition width");
+          vertical_residual_compensation = prm.get_bool ("Compensate net flow");
+          const std::vector<std::string> x_vertical_boundary_indicators
+          = Utilities::split_string_list(prm.get ("Vertical compensation boundary indicators"));
+          for (std::vector<std::string>::const_iterator it = x_vertical_boundary_indicators.begin();
+              it != x_vertical_boundary_indicators.end(); ++it)
+            {
+              types::boundary_id boundary_id = numbers::invalid_boundary_id;
+              try
+              {
+                  boundary_id
+                  = this->get_geometry_model().translate_symbolic_boundary_name_to_id (*it);
+
+                  vertical_boundary_compensation_indicators.insert(boundary_id);
+              }
+              catch (const std::string &error)
+              {
+                  AssertThrow (false, ExcMessage ("While parsing the entry <Boundary velocity model/Vertical compensation boundary indicators>, "
+                      "there was an error. Specifically, "
+                      "the conversion function complained as follows: "
+                      + error));
+              }
+            }
 
           // get the list of mappings
           const std::vector<std::string> x_boundary_velocities
