@@ -43,6 +43,8 @@
 #include <aspect/geometry_model/ellipsoidal_chunk.h>
 #include <aspect/geometry_model/initial_topography_model/isostasy.h>
 
+#include <aspect/initial_composition/interface.h>
+
 #include <fstream>
 #include <string>
 #include <locale>
@@ -1893,6 +1895,7 @@ namespace aspect
       switch (dim)
         {
           case 2:
+           {
             if ((boundary_id == 0) || (boundary_id == 1))
               {
                 boundary_dimensions[0] = 0;
@@ -1908,8 +1911,18 @@ namespace aspect
               }
 
             break;
-
+           }
           case 3:
+           {
+            // TODO find another way to manipulate AsciiDataBoundary for litho1
+            const std::vector<std::string> init_compos = this->get_initial_composition_manager().get_active_initial_composition_names();
+            if (std::find(init_compos.begin(),init_compos.end(),"litho1") != init_compos.end())
+            {
+                boundary_dimensions[0] = 1;
+                boundary_dimensions[1] = 2;
+            }
+            else
+            {
             if ((boundary_id == 2) || (boundary_id == 3))
               {
                 boundary_dimensions[0] = 0;
@@ -1931,9 +1944,10 @@ namespace aspect
                 boundary_dimensions[1] = numbers::invalid_unsigned_int;
                 AssertThrow(false,ExcNotImplemented());
               }
+            }
 
             break;
-
+           }
           default:
             for (unsigned int d=0; d<dim-1; ++d)
               boundary_dimensions[d] = numbers::invalid_unsigned_int;
