@@ -83,7 +83,10 @@ namespace aspect
         compute_net_outflow () const;
 
         double
-        compute_compensation (const Point<dim> &position) const;
+        compute_vertical_compensation_area () const;
+
+        double
+        compute_antiparallel_compensation (const Point<dim> &position) const;
 
         /**
          * Computes the velocity on the vertical domain boundaries
