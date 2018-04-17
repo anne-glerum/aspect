@@ -50,11 +50,11 @@ namespace aspect
                    ExcMessage ("To use the Euler pole boundary velocity plugin, the model "
                        "must be 3D."));
 
-      AssertThrow (((dynamic_cast<const GeometryModel::SphericalShell<dim>*> (&this->get_geometry_model())) != 0)
-                   || ((dynamic_cast<const GeometryModel::Chunk<dim>*> (&this->get_geometry_model())) != 0)
+      AssertThrow (/*((dynamic_cast<const GeometryModel::SphericalShell<dim>*> (&this->get_geometry_model())) != 0)
+                   || */((dynamic_cast<const GeometryModel::Chunk<dim>*> (&this->get_geometry_model())) != 0)
                    || ((dynamic_cast<const GeometryModel::EllipsoidalChunk<dim>*> (&this->get_geometry_model())) != 0),
                    ExcMessage ("This Euler pole plugin can only be used when using "
-                       "a spherical shell or (ellipsoidal) chunk geometry."));
+                       "a (ellipsoidal) chunk geometry."));
 
       double dlon = 0;
       double min_lat = 0, max_lat = 0;
@@ -110,10 +110,6 @@ namespace aspect
       transition_radius_max = transition_radius + transition_width;
       transition_radius_min = transition_radius - transition_width;
 
-      //euler_pole_area = ;
-      //vertical_compensation_area;
-      //transition_area;
-
       area_scale_factor = (outer_radius * outer_radius - transition_radius_max * transition_radius_max) / (transition_radius_min * transition_radius_min - inner_radius * inner_radius);
       transition_area_scale_factor = std::fabs((transition_width/3. + 0.5 * transition_radius) / (transition_width/3. - 0.5 * transition_radius));
 
@@ -131,12 +127,16 @@ namespace aspect
     EulerPoles<dim>::update ()
     {
       // Compute the net outward flow through the vertical boundaries
-      if (bottom_boundary_compensation)
+      if (bottom_boundary_compensation || vertical_residual_compensation)
         {
+          this->get_pcout() << "    Current net outflow is " << net_outflow << std::endl;
         net_outflow = compute_net_outflow();
-
-      this->get_pcout() << "   At time " << this->get_time() << " the netto vertical boundary outflow is " << net_outflow*year_in_seconds << " m3/year leading to a bottom inflow velocity of " <<
-          net_outflow/bottom_boundary_area*year_in_seconds << " m/yr." << std::endl;
+        }
+      // Compute the area over which the Euler pole velocity is prescribed.
+      if  (vertical_residual_compensation)
+        {
+          vertical_compensation_area = compute_vertical_compensation_area();
+          this->get_pcout() << "    Current vertical compensation area is " << vertical_compensation_area << std::endl;
         }
     }
 
@@ -157,14 +157,56 @@ namespace aspect
           Tensor<1,dim> uncompensated_velocity = compute_vertical_boundary_velocity (boundary_indicator, position);
           if (bottom_boundary_compensation)
             return uncompensated_velocity;
+          else if (vertical_residual_compensation)
+            {
+              // above transition radius, return the euler pole velocity for every boundary
+              if (position.norm() > transition_radius)
+                return uncompensated_velocity;
+              // for boundaries that are not used to compensate the prescribed net flow,
+              // set velocity to zero below the transition zone.
+              else if (vertical_boundary_compensation_indicators.find(boundary_indicator)==vertical_boundary_compensation_indicators.end())
+                return Tensor<1,dim>();
+              else
+                {
+                  // R, phi  (lon), theta (colat)
+                  std_cxx11::array<double,dim> spherical_position = Utilities::Coordinates::cartesian_to_spherical_coordinates(position);
+                  // inward normal
+                  Point<dim> normal;
+                  // The east and west boundary of a chunk are planes...
+                  if (boundary_indicator == this->get_geometry_model().translate_symbolic_boundary_name_to_id ("east"))
+                    {
+                      normal[0] =   std::sin(spherical_position[1]);
+                      normal[1] = - std::cos(spherical_position[1]);
+                    }
+                  else if (boundary_indicator == this->get_geometry_model().translate_symbolic_boundary_name_to_id ("west"))
+                    {
+                      normal[0] = - std::sin(spherical_position[1]);
+                      normal[1] =   std::cos(spherical_position[1]);
+                    }
+                  // while the north and south boundary are part of a cone.
+                  else if (boundary_indicator == this->get_geometry_model().translate_symbolic_boundary_name_to_id ("north")
+                      || boundary_indicator == this->get_geometry_model().translate_symbolic_boundary_name_to_id ("south"))
+                    {
+                      normal = -2. * position;
+                      const double z_cone = outer_radius*std::cos(spherical_position[dim-1]);
+                      const double radius_cone_squared = outer_radius * outer_radius - z_cone * z_cone;
+                      const double c_squared = radius_cone_squared / (z_cone * z_cone);
+                      normal[0] /= -c_squared;
+                      normal[1] /= -c_squared;
+                      normal /= normal.norm();
+                    }
+                  // Return an inward pointing normal vector with an average compensating velocity.
+                  return normal * net_outflow / vertical_compensation_area;
+                }
+            }
 
-          const Tensor<1,dim> compensated_velocity = compute_compensation(position) * uncompensated_velocity;
+          const Tensor<1,dim> compensated_velocity = compute_antiparallel_compensation(position) * uncompensated_velocity;
 
           return compensated_velocity;
         }
       else
         AssertThrow(false, ExcMessage("The boundary velocity plugin Euler poles has reached a combination of bottom boundary velocity and indicator not implemented. Current boundary indicator " + Utilities::int_to_string(int(boundary_indicator)) +
-                                      + " and bottom compenstion is " + Utilities::int_to_string(int(bottom_boundary_compensation))));
+                                      + " and bottom compensation is " + Utilities::int_to_string(int(bottom_boundary_compensation))));
 
       // we shouldn't get here
       return Tensor<1,dim>();
@@ -223,6 +265,13 @@ namespace aspect
           const double scale  = std::min(1., (radius - inner_radius) / (transition_radius - inner_radius));
           euler_velocity *= scale;
         }
+      // Scale the velocity with depth so that it decreases to zero over the transition zone.
+      else if (vertical_residual_compensation)
+        {
+          const double radius = position.norm();
+          const double scale  = std::max(0.,std::min(1., (radius - transition_radius) / (transition_radius_max - transition_radius)));
+          euler_velocity *= scale;
+        }
 
       return euler_velocity;
     }
@@ -230,17 +279,17 @@ namespace aspect
     template <int dim>
     double
     EulerPoles<dim>::
-    compute_compensation (const Point<dim> &position) const
-                          {
-    // Compute depth and transition scale factor to transition from outflow to inflow
-    const double depth = this->get_geometry_model().depth(position);
-    const double transition_scale_factor = std::min(1.,std::max(-1.,(depth - transition_depth) * (-1./transition_width)));
-    const double radial_scale_factor = outer_radius / position.norm();
+    compute_antiparallel_compensation (const Point<dim> &position) const
+    {
+      // Compute depth and transition scale factor to transition from outflow to inflow
+      const double depth = this->get_geometry_model().depth(position);
+      const double transition_scale_factor = std::min(1.,std::max(-1.,(depth - transition_depth) * (-1./transition_width)));
+      const double radial_scale_factor = outer_radius / position.norm();
 
-    return (transition_scale_factor * scale_factor * radial_scale_factor) *
-        ((depth>outer_radius-transition_radius_min) ? area_scale_factor : 1.) *
-        ((depth>outer_radius-transition_radius && depth<outer_radius-transition_radius_min) ? transition_area_scale_factor : 1.);
-      }
+      return (transition_scale_factor * scale_factor * radial_scale_factor) *
+          ((depth>outer_radius-transition_radius_min) ? area_scale_factor : 1.) *
+          ((depth>outer_radius-transition_radius && depth<outer_radius-transition_radius_min) ? transition_area_scale_factor : 1.);
+    }
 
     template <int dim>
     double
@@ -305,10 +354,77 @@ namespace aspect
          Utilities::MPI::sum (local_values, this->get_mpi_communicator(), global_values);
        }
 
-      const double net_outflow = std::accumulate(global_values.begin(), global_values.end(), 0);
+      const double net_flow = std::accumulate(global_values.begin(), global_values.end(), 0.);
 
-      return net_outflow;
+      return net_flow;
     }
+
+    template <int dim>
+     double
+     EulerPoles<dim>::
+     compute_vertical_compensation_area () const
+     {
+       // Upon initialization, the coarse_mesh is available
+       // create a quadrature formula based on the velocity element alone.
+        const QGauss<dim-1> quadrature_formula (this->introspection().polynomial_degree.velocities + 1);
+
+        FEFaceValues<dim> fe_face_values (this->get_mapping(),
+                                          this->get_fe(),
+                                          quadrature_formula,
+                                          update_q_points       | update_JxW_values);
+
+        std::map<types::boundary_id, double> local_boundary_areas;
+
+        typename DoFHandler<dim>::active_cell_iterator
+        cell = this->get_dof_handler().begin_active(),
+        endc = this->get_dof_handler().end();
+
+        // for every surface face on which it makes sense to compute a
+        // mass flux and that is owned by this processor,
+        // integrate the normal flux given by the formula
+        //   j =  v * n
+        for (; cell!=endc; ++cell)
+          if (cell->is_locally_owned())
+            for (unsigned int f=0; f<GeometryInfo<dim>::faces_per_cell; ++f)
+              if (cell->at_boundary(f) && vertical_boundary_compensation_indicators.find(cell->face(f)->boundary_id())!=vertical_boundary_compensation_indicators.end())
+                {
+                  fe_face_values.reinit (cell, f);
+
+                  const types::boundary_id id
+                    = cell->face(f)->boundary_id();
+
+                  double local_area = 0;
+                  for (unsigned int q=0; q<fe_face_values.n_quadrature_points; ++q)
+                    {
+                      if (this->get_geometry_model().depth(fe_face_values.quadrature_point(q)) > transition_depth)
+                          local_area += fe_face_values.JxW(q);
+                    }
+
+                  local_boundary_areas[id] += local_area;
+                }
+
+        // Compute the global outflow through the Euler poles boundaries
+        std::vector<double> global_values;
+        // now communicate to get the global values
+        {
+          // first collect local values in the same order in which they are listed
+          // in the set of boundary indicators
+          std::vector<double> local_values;
+          for (std::set<types::boundary_id>::const_iterator
+               p = vertical_boundary_compensation_indicators.begin();
+               p != vertical_boundary_compensation_indicators.end(); ++p)
+            local_values.push_back (local_boundary_areas[*p]);
+
+          global_values.resize(local_values.size());
+
+          // then collect contributions from all processors
+          Utilities::MPI::sum (local_values, this->get_mpi_communicator(), global_values);
+        }
+
+       const double compensation_area = std::accumulate(global_values.begin(), global_values.end(), 0.);
+
+       return compensation_area;
+     }
 
 
     template <int dim>
@@ -336,7 +452,7 @@ namespace aspect
                              "Whether or not to compute the net in/outflow over the vertical boundaries for the prescribed "
                              "euler poles and compensate uniformly for this residual orthogonally to the boundaries. ");
           prm.declare_entry ("Vertical compensation boundary indicators", "",
-                             Patterns::Anything(Patterns::Selection("east|west|south|north|left|right|front|back")),
+                             Patterns::List(Patterns::Selection("east|west|south|north|left|right|front|back")),
                              "A comma separated list of vertical boundary indicators "
                              "specifying which vertical boundaries are used for compensating "
                              "a net in/outflow. ");
@@ -555,6 +671,11 @@ namespace aspect
         prm.leave_subsection();
       }
       prm.leave_subsection();
+
+      AssertThrow(bottom_boundary_compensation != bool(vertical_boundary_compensation_indicators.size()),
+                  ExcMessage("When using bottom boundary compensation, one cannot also compensate through the bottom. "));
+      AssertThrow(vertical_residual_compensation == bool(vertical_boundary_compensation_indicators.size()),
+                  ExcMessage("When using vertical boundary compensation, one should specify indicators for the boundaries through which to compensate. "));
     }
   }
 }
