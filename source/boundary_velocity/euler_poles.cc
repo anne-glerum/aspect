@@ -83,19 +83,17 @@ namespace aspect
         }
       else if (const GeometryModel::EllipsoidalChunk<dim> *gm = dynamic_cast<const GeometryModel::EllipsoidalChunk<dim>*> (&this->get_geometry_model()))
         {
-          // If the eccentricity of the EllipsoidalChunk is non-zero, the radius can vary along a boundary,
-          // but the maximal depth is the same everywhere and we could calculate a representative pressure
-          // profile. However, it requires some extra logic with ellipsoidal
-          // coordinates, so for now we only allow eccentricity zero.
-          // Using the EllipsoidalChunk with eccentricity zero can still be useful,
-          // because the domain can be non-coordinate parallel.
+          // Only valid for zero eccentricity (spherical) chunks
+          // with coordinate parallel domain boundaries
           AssertThrow(gm->get_eccentricity() == 0.0, ExcMessage("This boundary velocity plugin cannot be used with a non-zero eccentricity. "));
 
           outer_radius = gm->get_semi_major_axis_a();
           inner_radius = outer_radius - gm->maximal_depth();
 
-          // TODO assuming chunk outlines are lat/lon parallel
+          // Assume chunk outlines are lat/lon parallel
           std::vector<Point<2> > corners = gm->get_corners();
+          AssertThrow(corners[0][0]==corners[3][0] && corners[0][1]==corners[1][1],
+                      ExcMessage("This boundary velocity plugin cannot be used when the domain boundaries are not parallel to the lat/lon grid."));
           // colat
           min_lat = (90. - corners[0][1]) * numbers::PI / 180.;
           max_lat = (90. - corners[2][1]) * numbers::PI / 180.;
@@ -115,6 +113,7 @@ namespace aspect
 
       // Compute the area of the bottom boundary
       // as the integral over longitude interval dlon and latitude interval dlat of R0*R0*sin(lat)
+      // TODO use compute_vertical_compensation_area to calculate the bottom boundary area once
       if (bottom_boundary_compensation)
         {
       bottom_boundary_area = inner_radius * inner_radius * dlon * (std::cos(min_lat) - std::cos(max_lat));
@@ -130,9 +129,9 @@ namespace aspect
       if (bottom_boundary_compensation || vertical_residual_compensation)
         {
           this->get_pcout() << "    Current net outflow is " << net_outflow << std::endl;
-        net_outflow = compute_net_outflow();
+          net_outflow = compute_net_outflow();
         }
-      // Compute the area over which the Euler pole velocity is prescribed.
+      // Compute the area over which the prescribed Euler pole velocity will be compensated
       if  (vertical_residual_compensation)
         {
           vertical_compensation_area = compute_vertical_compensation_area();
@@ -626,8 +625,8 @@ namespace aspect
 
                   if (parts[0] == "inner" || parts[0] == "bottom")
                       {
-                        //bottom_boundary_indicator = boundary_id;
-                        //bottom_boundary_compensation = true;
+                        bottom_boundary_indicator = boundary_id;
+                        bottom_boundary_compensation = true;
                         continue;
                       }
               }
