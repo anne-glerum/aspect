@@ -861,6 +861,8 @@ namespace aspect
          p = boundary_traction.begin();
          p != boundary_traction.end(); ++p)
       p->second->update ();
+ 
+    pcout << "End of start_timestep" << std::endl;
   }
 
 

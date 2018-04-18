@@ -239,6 +239,8 @@ namespace aspect
 
           std::vector<Tensor<1,dim> > old_velocity_values;
           std::vector<Tensor<1,dim> > old_old_velocity_values;
+          std::vector<Tensor<1,dim> > old_mesh_velocity_values;
+          std::vector<Tensor<1,dim> > old_old_mesh_velocity_values;
 
           std::vector<double>         old_pressure;
           std::vector<double>         old_old_pressure;

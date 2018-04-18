@@ -425,6 +425,10 @@ namespace aspect
        */
       const LinearAlgebra::BlockVector &
       get_mesh_velocity () const;
+      const LinearAlgebra::BlockVector &
+      get_old_mesh_velocity () const;
+      const LinearAlgebra::BlockVector &
+      get_old_old_mesh_velocity () const;
 
       /**
        * Return a reference to the DoFHandler that is used to discretize the

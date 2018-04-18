@@ -685,6 +685,8 @@ namespace aspect
         }
 
     distributed_mesh_velocity.compress(VectorOperation::insert);
+    old_old_mesh_velocity = old_mesh_velocity;
+    old_mesh_velocity = mesh_velocity;
     mesh_velocity = distributed_mesh_velocity;
   }
 
@@ -697,6 +699,12 @@ namespace aspect
 
     // these live in the same FE as the velocity variable:
     mesh_velocity.reinit(sim.introspection.index_sets.system_partitioning,
+                         sim.introspection.index_sets.system_relevant_partitioning,
+                         sim.mpi_communicator);
+    old_mesh_velocity.reinit(sim.introspection.index_sets.system_partitioning,
+                         sim.introspection.index_sets.system_relevant_partitioning,
+                         sim.mpi_communicator);
+    old_old_mesh_velocity.reinit(sim.introspection.index_sets.system_partitioning,
                          sim.introspection.index_sets.system_relevant_partitioning,
                          sim.mpi_communicator);
 

@@ -21,6 +21,7 @@
 #include <aspect/simulator.h>
 #include <aspect/simulator/assemblers/interface.h>
 #include <aspect/melt.h>
+#include <aspect/free_surface.h>
 
 #include <deal.II/base/signaling_nan.h>
 #include <deal.II/fe/fe_values.h>
@@ -155,8 +156,17 @@ namespace aspect
 
     for (unsigned int q=0; q < scratch.finite_element_values.n_quadrature_points; ++q)
       {
-        const Tensor<1,dim> velocity = (scratch.old_velocity_values[q] +
-                                        scratch.old_old_velocity_values[q]) / 2;
+        Tensor<1,dim> velocity;
+        if(parameters.free_surface_enabled)
+          {
+             velocity = (scratch.old_velocity_values[q] - scratch.old_mesh_velocity_values[q] +
+                         scratch.old_old_velocity_values[q] - scratch.old_old_mesh_velocity_values[q]) / 2;
+
+          }
+        else 
+         velocity = (scratch.old_velocity_values[q] +
+                     scratch.old_old_velocity_values[q]) / 2;
+
         double velocity_norm = velocity.norm();
 
         if (parameters.include_melt_transport)
@@ -339,6 +349,10 @@ namespace aspect
             scratch.old_velocity_values);
         scratch.finite_element_values[introspection.extractors.velocities].get_function_values (old_old_solution,
             scratch.old_old_velocity_values);
+        scratch.finite_element_values[introspection.extractors.velocities].get_function_values (free_surface->old_mesh_velocity,
+            scratch.old_mesh_velocity_values);
+        scratch.finite_element_values[introspection.extractors.velocities].get_function_values (free_surface->old_old_mesh_velocity,
+            scratch.old_old_mesh_velocity_values);
         scratch.finite_element_values[introspection.extractors.velocities].get_function_values(current_linearization_point,
             scratch.current_velocity_values);
 

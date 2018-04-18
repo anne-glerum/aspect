@@ -167,6 +167,8 @@ namespace aspect
        * This is used for ALE corrections.
        */
       LinearAlgebra::BlockVector mesh_velocity;
+      LinearAlgebra::BlockVector old_mesh_velocity;
+      LinearAlgebra::BlockVector old_old_mesh_velocity;
 
       /**
        * Vector for storing the positions of the mesh vertices. This

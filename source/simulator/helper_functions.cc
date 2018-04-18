@@ -32,6 +32,7 @@
 #include <aspect/particle/interpolator/interface.h>
 #include <aspect/particle/output/interface.h>
 #include <aspect/postprocess/visualization.h>
+#include <aspect/free_surface.h>
 
 #include <deal.II/base/index_set.h>
 #include <deal.II/base/conditional_ostream.h>
@@ -327,6 +328,7 @@ namespace aspect
 
     FEValues<dim> fe_values (*mapping, finite_element, quadrature_formula, update_values);
     std::vector<Tensor<1,dim> > velocity_values(n_q_points);
+    std::vector<Tensor<1,dim> > mesh_velocity_values(n_q_points);
 
     double max_local_velocity = 0;
 
@@ -342,10 +344,12 @@ namespace aspect
           fe_values.reinit (cell);
           fe_values[introspection.extractors.velocities].get_function_values (solution,
                                                                               velocity_values);
+          fe_values[introspection.extractors.velocities].get_function_values (free_surface->mesh_velocity,
+                                                                              mesh_velocity_values);
 
           for (unsigned int q=0; q<n_q_points; ++q)
             max_local_velocity = std::max (max_local_velocity,
-                                           velocity_values[q].norm());
+                                           (velocity_values[q]-mesh_velocity_values[q]).norm());
         }
 
     // return the largest value over all processors
