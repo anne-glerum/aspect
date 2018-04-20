@@ -671,8 +671,9 @@ namespace aspect
       }
       prm.leave_subsection();
 
-      AssertThrow(bottom_boundary_compensation != bool(vertical_boundary_compensation_indicators.size()),
-                  ExcMessage("When using bottom boundary compensation, one cannot also compensate through the bottom. "));
+      if(vertical_boundary_compensation_indicators.size())
+      AssertThrow(!bottom_boundary_compensation,
+                  ExcMessage("When using bottom boundary compensation, one cannot also compensate through the sides. "));
       AssertThrow(vertical_residual_compensation == bool(vertical_boundary_compensation_indicators.size()),
                   ExcMessage("When using vertical boundary compensation, one should specify indicators for the boundaries through which to compensate. "));
     }
