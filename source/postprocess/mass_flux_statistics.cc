@@ -67,15 +67,21 @@ namespace aspect
       MaterialModel::MaterialModelInputs<dim> in(fe_face_values.n_quadrature_points, this->n_compositional_fields());
       MaterialModel::MaterialModelOutputs<dim> out(fe_face_values.n_quadrature_points, this->n_compositional_fields());
 
+      std::vector<Tensor<1,dim> > mesh_velocity (fe_face_values.n_quadrature_points);
+
       // for every surface face on which it makes sense to compute a
       // mass flux and that is owned by this processor,
       // integrate the normal mass flux given by the formula
       //   j =  \rho * v * n
+      // In case the free surface is enabled, we subtract the mesh
+      // velocity from the velocity.
       //
       // for the spherical shell geometry, note that for the inner boundary,
       // the normal vector points *into* the core, i.e. we compute the flux
       // *out* of the mantle, not into it. we fix this when we add the local
       // contribution to the global flux
+      const bool free_surface = this->get_parameters().free_surface_enabled;
+
       for (; cell!=endc; ++cell)
         if (cell->is_locally_owned())
           for (unsigned int f=0; f<GeometryInfo<dim>::faces_per_cell; ++f)
@@ -87,6 +93,9 @@ namespace aspect
 
                 this->get_material_model().evaluate(in, out);
 
+                if (free_surface)
+                  fe_face_values[this->introspection().extractors.velocities].get_function_values(this->get_mesh_velocity(),
+                                                                                                  mesh_velocity);
 
                 double local_normal_flux = 0;
                 for (unsigned int q=0; q<fe_face_values.n_quadrature_points; ++q)
@@ -94,7 +103,7 @@ namespace aspect
                     local_normal_flux
                     +=
                       out.densities[q]
-                      * (in.velocity[q] * fe_face_values.normal_vector(q))
+                      * ((in.velocity[q]-mesh_velocity[q]) * fe_face_values.normal_vector(q))
                       * fe_face_values.JxW(q);
                   }
 
