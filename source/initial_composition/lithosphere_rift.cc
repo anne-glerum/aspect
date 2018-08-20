@@ -19,8 +19,8 @@
 */
 
 
-#include <aspect/initial_composition/lithosphere_rift.h>
-#include <aspect/initial_temperature/lithosphere_rift.h>
+#include "lithosphere_rift_comp.h"
+#include "lithosphere_rift.h"
 #include <aspect/geometry_model/box.h>
 #include <aspect/utilities.h>
 
@@ -101,7 +101,7 @@ namespace aspect
       // Loop over all line segments
       for (unsigned int i_segments = 0; i_segments < point_list.size(); ++i_segments)
         {
-          temp_distance = (dim == 2) ? std::abs(surface_position[0]-point_list[i_segments][0][0]) : std::abs(Utilities::distance_to_line<dim>(point_list[i_segments], Point<2>(surface_position[0],surface_position[dim-2])));
+          temp_distance = (dim == 2) ? std::abs(surface_position[0]-point_list[i_segments][0][0]) : std::abs(Utilities::distance_to_line(point_list[i_segments], Point<2>(surface_position[0],surface_position[dim-2])));
 
           // Get the minimum distance
           distance_to_rift_axis = std::min(distance_to_rift_axis, temp_distance);
@@ -226,7 +226,7 @@ namespace aspect
                              "dependent on the geometry model. In the box model they are in meters, in the "
                              "chunks they are in degrees.");
           prm.declare_entry ("Lithospheric polygon layer thicknesses", "30000.",
-                             Patterns::List(Patterns::List(Patterns::Double(0))),
+                             Patterns::List(Patterns::List(Patterns::Double(0),0,3,","),0,10,";"),
                              "List of thicknesses of the lithospheric layers for each polygon."
                              "For each polygon a total of 3 values should be given (upper crust, lower crust, mantle lithosphere)."
                              "If only one value is given, then all use the same value.  Units: $m$");
@@ -270,8 +270,6 @@ namespace aspect
             {
               // In 3d a line segment consists of 2 points,
               // in 2d only 1 (ridge axis orthogonal to x and y)
-              point_list[i_segment].resize(dim-1);
-
 
               const std::vector<std::string> temp_segment = Utilities::split_string_list(temp_segments[i_segment],'>');
 
@@ -303,11 +301,11 @@ namespace aspect
                       AssertThrow(temp_point.size() == 1,ExcMessage ("The given coordinates of segment '" + temp_segment[i_points] + "' are not correct. "
                                                                 "It should only contain 1 part: "
                                                                 "the one coordinate of the segment end point."));
+                    }
 
                       // Add the point to the list of points for this segment
                       point_list[i_segment][i_points][0] = temp_point[0];
                       point_list[i_segment][i_points][1] = temp_point[dim-2];
-                    }
                 }
             }
 
@@ -340,7 +338,7 @@ namespace aspect
               for (unsigned int i_points = 0; i_points < n_temp_points; i_points++)
                 {
                   const std::vector<double> temp_point = Utilities::string_to_double(Utilities::split_string_list(temp_points[i_points],','));
-                  Assert(temp_point.size() == dim-1,ExcMessage ("The given coordinates of point '" + temp_points[i_points] + "' are not correct. "
+                  AssertThrow(temp_point.size() == dim-1,ExcMessage ("The given coordinates of point '" + temp_points[i_points] + "' are not correct. "
                                                                 "It should only contain 1 (2d) or 2 (in 3d) parts: "
                                                                 "the longitude/x (and latitude/y in 3d) coordinate (separated by a ',')."));
 

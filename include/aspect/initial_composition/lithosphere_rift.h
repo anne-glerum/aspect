@@ -121,7 +121,7 @@ namespace aspect
          * The list of line segments consisting of two 2d coordinates per segment.
          * The segments represent the rift axis.
          */
-        std::vector<std::vector<Point<2> > > point_list;
+        std::vector<std::array<Point<2>,2 > > point_list;
 
         /**
          * The list of polygon points.
