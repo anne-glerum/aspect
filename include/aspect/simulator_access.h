@@ -624,6 +624,12 @@ namespace aspect
       get_boundary_traction () const;
 
       /**
+        * Return the map of traction_boundary_conditions
+        */
+      const std::set<types::boundary_id>
+      get_traction_boundary_indicators () const;
+
+      /**
        * Return a pointer to the object that describes the temperature initial
        * values.
        *

@@ -2141,6 +2141,11 @@ namespace aspect
 
               for (unsigned int i = 0; i < dim; i++)
                 internal_position[i] = spherical_position[i];
+
+              // Rescale phi to -angle if on western hemisphere
+              // TODO only of domain crosses 0 meridian
+              if (internal_position[1] > numbers::PI)
+                internal_position[1] -= 2*numbers::PI;
             }
 
           const std::array<unsigned int,dim-1> boundary_dimensions =
@@ -2288,6 +2293,11 @@ namespace aspect
 
           for (unsigned int i = 0; i < dim; i++)
             internal_position[i] = spherical_position[i];
+
+          // Rescale phi to -angle if on western hemisphere
+          // TODO only of domain crosses 0 meridian
+          if (internal_position[1] > numbers::PI)
+            internal_position[1] -= 2*numbers::PI;
         }
       return lookup->get_data(internal_position,component);
     }
@@ -2742,6 +2752,10 @@ namespace aspect
           {
             return std::max(x,y);
           }
+          case Utilities::Operator::ignore:
+          {
+            return x;
+          }
           default:
           {
             Assert (false, ExcInternalError());
@@ -2774,6 +2788,8 @@ namespace aspect
             operator_list[i] = Operator(Operator::minimum);
           else if (operator_names[i] == "maximum")
             operator_list[i] = Operator(Operator::maximum);
+          else if (operator_names[i] == "ignore")
+            operator_list[i] = Operator(Operator::ignore);
           else
             AssertThrow(false,
                         ExcMessage ("ASPECT only accepts the following operators: "

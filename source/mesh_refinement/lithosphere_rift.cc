@@ -1,0 +1,181 @@
+/*
+  Copyright (C) 2011 - 2016 by the authors of the ASPECT code.
+
+  This file is part of ASPECT.
+
+  ASPECT is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 2, or (at your option)
+  any later version.
+
+  ASPECT is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with ASPECT; see the file LICENSE.  If not see
+  <http://www.gnu.org/licenses/>.
+*/
+
+
+
+#include <aspect/mesh_refinement/lithosphere_rift.h>
+#include <aspect/utilities.h>
+#include <aspect/initial_composition/lithosphere_rift.h>
+#include <aspect/initial_temperature/lithosphere_rift.h>
+#include <aspect/geometry_model/box.h>
+
+#include <deal.II/base/quadrature_lib.h>
+#include <deal.II/fe/fe_values.h>
+#include <math.h>
+
+namespace aspect
+{
+  namespace MeshRefinement
+  {
+    template <int dim>
+    void
+    LithosphereRift<dim>::
+    initialize ()
+    {
+      // Check that the required initial composition model is used
+      const std::vector<std::string> active_initial_composition_models =
+        this->get_initial_composition_manager().get_active_initial_composition_names();
+      AssertThrow(std::find(active_initial_composition_models.begin(),active_initial_composition_models.end(), "lithosphere with rift")
+                  != active_initial_composition_models.end(),
+                  ExcMessage("The lithosphere with rift initial mesh refinement plugin requires the lithosphere with rift initial composition plugin."));
+
+      // Check that the required initial temperature model is used
+      const std::vector<std::string> active_initial_temperature_models =
+        this->get_initial_temperature_manager().get_active_initial_temperature_names();
+      AssertThrow(std::find(active_initial_temperature_models.begin(),active_initial_temperature_models.end(), "lithosphere with rift")
+                  != active_initial_temperature_models.end(),
+                  ExcMessage("The lithosphere with rift initial mesh refinement plugin requires the lithosphere with rift initial temperature plugin."));
+    }
+
+
+    template <int dim>
+    void
+    LithosphereRift<dim>::tag_additional_cells () const
+    {
+      for (typename Triangulation<dim>::active_cell_iterator
+           cell = this->get_triangulation().begin_active();
+           cell != this->get_triangulation().end(); ++cell)
+        {
+          if (cell->is_locally_owned())
+            {
+              bool refine = false;
+              bool clear_coarsen = false;
+
+              for ( unsigned int v = 0; v < GeometryInfo<dim>::vertices_per_cell;  ++v)
+                {
+                  const Point<dim> vertex = cell->vertex(v);
+
+                  const double depth = this->get_geometry_model().depth(vertex);
+
+                  // Determine coordinate system
+                  const bool cartesian_geometry = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) != NULL ? true : false;
+                  double distance_to_rift_axis = 1e23;
+                  Point<dim-1> surface_position;
+                  const std::list<std_cxx11::shared_ptr<InitialComposition::Interface<dim> > > initial_composition_objects =
+                    this->get_initial_composition_manager().get_active_initial_composition_conditions();
+                  for (typename std::list<std_cxx11::shared_ptr<InitialComposition::Interface<dim> > >::const_iterator it = initial_composition_objects.begin();
+                       it != initial_composition_objects.end(); ++it)
+                    if ( InitialComposition::LithosphereRift<dim> *ic = dynamic_cast<InitialComposition::LithosphereRift<dim> *> ((*it).get()))
+                      {
+                        surface_position = ic->surface_position(vertex, cartesian_geometry);
+                        distance_to_rift_axis = ic->distance_to_rift(surface_position);
+                      }
+
+                  // Specify refinement criteria
+                  if (depth <= refinement_depth && std::abs(distance_to_rift_axis) <= refinement_width/2)
+                    {
+                      if (cell->level() <= rint(rift_refinement_level))
+                        clear_coarsen = true;
+                      if (cell->level() <  rint(rift_refinement_level))
+                        {
+                          refine = true;
+                          break;
+                        }
+                    }
+                }
+
+              if (clear_coarsen)
+                cell->clear_coarsen_flag ();
+              if (refine)
+                cell->set_refine_flag ();
+            }
+        }
+    }
+
+    template <int dim>
+    void
+    LithosphereRift<dim>::
+    declare_parameters (ParameterHandler &prm)
+    {
+      prm.enter_subsection ("Mesh refinement");
+      {
+        prm.enter_subsection("Lithosphere with rift");
+        {
+          prm.declare_entry ("Width of refined area along rift", "100000",
+                             Patterns::Double (0),
+                             "The width of the area that is refined along rift. "
+                             "This area is centered around the rift axis, such that "
+                             "the refined distance from the center is width/2."
+                             "Note that this parameter is taken to be the same for all rift segments. "
+                             "Units: $m$ or $degrees$ in spherical geometries.");
+          prm.declare_entry ("Depth of refined area along rift", "100000",
+                             Patterns::Double (0),
+                             "The depth of the area that is refined along rift. "
+                             "Note that this parameter is taken to be the same for all rift segments. "
+                             "Units: $m$.");
+        }
+        prm.leave_subsection();
+      }
+      prm.leave_subsection();
+    }
+
+    template <int dim>
+    void
+    LithosphereRift<dim>::parse_parameters (ParameterHandler &prm)
+    {
+      prm.enter_subsection("Mesh refinement");
+      {
+        //compute maximum refinement level (initial global + initial adaptive)
+        // and set this as minimum for rift area
+        rift_refinement_level = prm.get_integer ("Initial global refinement")
+                                + prm.get_integer ("Initial adaptive refinement");
+
+        // define width and depth of refinement along rift
+        prm.enter_subsection("Lithosphere with rift");
+        {
+          refinement_width                = prm.get_double ("Width of refined area along rift");
+          refinement_depth                = prm.get_double ("Depth of refined area along rift");
+        }
+        prm.leave_subsection();
+      }
+      prm.leave_subsection();
+
+    }
+  }
+}
+
+// explicit instantiations
+namespace aspect
+{
+  namespace MeshRefinement
+  {
+    ASPECT_REGISTER_MESH_REFINEMENT_CRITERION(LithosphereRift,
+                                              "lithosphere with rift",
+                                              "A mesh refinement criterion that ensures a "
+                                              "minimum refinement level around the rift center "
+                                              "described in the initial composition plugin "
+                                              "`lithosphere with rift'. "
+                                              "This plugin only makes sense with the corresponding "
+                                              "initial temperature and composition plugins. "
+                                              "When dealing with spherical geometries, distance "
+                                              "is measured in degrees (longitude/latitude), "
+                                              "depth is always measured in meters. ")
+  }
+}

@@ -363,7 +363,6 @@ namespace aspect
                   throw;
                 }
             }
-
           n_points = prm.get_integer ("Number of points");
           use_surface_condition_function = prm.get_bool("Use surface condition function");
           if (use_surface_condition_function)
