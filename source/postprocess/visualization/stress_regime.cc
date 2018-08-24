@@ -38,8 +38,8 @@ namespace aspect
       {
         const unsigned int n_quadrature_points = input_data.solution_values.size();
         Assert (computed_quantities.size() == n_quadrature_points,    ExcInternalError());
-        // Output a scalar where -1 is normal faulting, 0 strike-slip and 1 thrust faulting
-        Assert ((computed_quantities[0].size() == 1),
+        // Output is a dim vector of magnitude 0, 1, 2 or 3, where 1 is normal faulting, 2 strike-slip and 3 thrust faulting
+        Assert ((computed_quantities[0].size() == dim),
                 ExcInternalError());
         Assert (input_data.solution_values[0].size() == this->introspection().n_components,   ExcInternalError());
         Assert (input_data.solution_gradients[0].size() == this->introspection().n_components,  ExcInternalError());
@@ -85,6 +85,7 @@ namespace aspect
               orthogonal_directions[i] /= orthogonal_directions[i].norm();
 
             double stress_regime = std::numeric_limits<double>::quiet_NaN();
+            Tensor<1,dim> maximum_horizontal_compressive_stress;
             switch (dim)
               {
                 // in 2d, there is only one horizontal direction, and
@@ -106,10 +107,12 @@ namespace aspect
 
                   // normal faulting
                   if (vertical_compressive_stress_magnitude > maximum_horizontal_compressive_stress_magnitude)
-                    stress_regime = -1.;
+                    stress_regime = 1.;
                   // thrust faulting
                   else
-                    stress_regime = 1.;
+                    stress_regime = 3.;
+
+                  maximum_horizontal_compressive_stress = orthogonal_directions[0] * stress_regime;
 
                   break;
                 }
@@ -164,6 +167,7 @@ namespace aspect
                     = (n * ((compressive_stress
                              -
                              in.pressure[q] * unit_symmetric_tensor<dim>()) * n));
+
                   const Tensor<1,dim> n_perp = std::sin(alpha) * orthogonal_directions[0] -
                                                std::cos(alpha) * orthogonal_directions[1];
 
@@ -172,31 +176,33 @@ namespace aspect
                                   -
                                   in.pressure[q] * unit_symmetric_tensor<dim>()) * n_perp));
 
-                  const Tensor<1,dim> maximum_horizontal_compressive_stress
-                    = n * (maximum_horizontal_compressive_stress_magnitude -
-                           minimum_horizontal_compressive_stress_magnitude);
-
                   const double vertical_compressive_stress_magnitude
                     = (vertical_direction * ((compressive_stress
                         -
                         in.pressure[q] * unit_symmetric_tensor<dim>()) * vertical_direction));
 
+                  // TODO find another test to check for hydrostatic state
                   if (maximum_horizontal_compressive_stress_magnitude - minimum_horizontal_compressive_stress_magnitude >
                   std::numeric_limits<double>::epsilon()*maximum_horizontal_compressive_stress_magnitude)
                   {
                     // normal faulting
                     if (vertical_compressive_stress_magnitude > maximum_horizontal_compressive_stress_magnitude &&
                         maximum_horizontal_compressive_stress_magnitude > minimum_horizontal_compressive_stress_magnitude)
-                      stress_regime = -1.;
+                      stress_regime = 1.;
                     // strike-slip faulting
                     else if (maximum_horizontal_compressive_stress_magnitude > vertical_compressive_stress_magnitude &&
                         vertical_compressive_stress_magnitude > minimum_horizontal_compressive_stress_magnitude)
-                      stress_regime = 0.;
+                      stress_regime = 2.;
                     // thrust faulting
                     else if (maximum_horizontal_compressive_stress_magnitude > minimum_horizontal_compressive_stress_magnitude &&
                         minimum_horizontal_compressive_stress_magnitude > vertical_compressive_stress_magnitude)
-                      stress_regime = 1.;
+                      stress_regime = 3.;
                   }
+                  else
+                    stress_regime = 0.;
+
+                  maximum_horizontal_compressive_stress = n * stress_regime;
+
 
                   break;
                 }
@@ -206,7 +212,8 @@ namespace aspect
                   Assert (false, ExcNotImplemented());
               }
 
-              computed_quantities[q](0) = stress_regime;
+            for (unsigned int i=0; i<dim; ++i)
+              computed_quantities[q](i) = maximum_horizontal_compressive_stress[i];
           }
       }
 
@@ -215,7 +222,7 @@ namespace aspect
       std::vector<std::string>
       StressRegime<dim>::get_names () const
       {
-        return std::vector<std::string> (1, "stress_regime");
+        return std::vector<std::string> (dim, "stress_regime");
       }
 
 
@@ -225,8 +232,8 @@ namespace aspect
       {
         return
           std::vector<DataComponentInterpretation::DataComponentInterpretation>
-          (1,
-           DataComponentInterpretation::component_is_scalar);
+          (dim,
+           DataComponentInterpretation::component_is_part_of_vector);
       }
 
 
@@ -252,12 +259,11 @@ namespace aspect
     {
       ASPECT_REGISTER_VISUALIZATION_POSTPROCESSOR(StressRegime,
                                                   "stress regime",
-                                                  "A plugin that computes the direction and magnitude of the "
+                                                  "A plugin that computes the direction of the "
                                                   "maximum horizontal component of the compressive stress as a vector "
-                                                  "field. The direction of this vector can often be used to "
-                                                  "visualize the principal mode of deformation (e.g., at "
-                                                  "normal faults or extensional margins) and can be "
-                                                  "correlated with seismic anisotropy. Recall that the "
+                                                  "field, scaled with a value that indicates the principle mode of deformation. "
+                                                  "A value of 1 indicates normal faulting, 2 strike-slip and 3 thrust faulting. "
+                                                  "Recall that the "
                                                   "\\textit{compressive} stress is simply the negative stress, "
                                                   "$\\sigma_c=-\\sigma=-\\left["
                                                   "     2\\eta (\\varepsilon(\\mathbf u)"
@@ -313,74 +319,12 @@ namespace aspect
                                                   "$f(\\alpha)$, and from this immediately arrives at the correct "
                                                   "form for the maximum horizontal stress $\\mathbf n$."
                                                   "\n\n"
-                                                  "The description above computes a 3d \\textit{direction} vector "
-                                                  "$\\mathbf n$. If one were to scale this vector the same way "
-                                                  "as done in 2d, i.e., with the magnitude of the stress in "
-                                                  "this direction, one will typically get vectors whose length "
-                                                  "is principally determined by the hydrostatic pressure at "
-                                                  "a given location simply because the hydrostatic pressure "
-                                                  "is the largest component of the overall stress. On the other "
-                                                  "hand, the hydrostatic pressure does not determine any "
-                                                  "principle direction because it is an isotropic, anti-compressive "
-                                                  "force. As a consequence, there are often points in simulations "
-                                                  "(e.g., at the center of convection rolls) where the stress has "
-                                                  "no dominant horizontal direction, and the algorithm above will "
-                                                  "then in essence choose a random direction because the stress "
-                                                  "is approximately equal in all horizontal directions. If one "
-                                                  "scaled the output by the magnitude of the stress in this "
-                                                  "direction (i.e., approximately equal to the hydrostatic "
-                                                  "pressure at this point), one would get randomly oriented vectors "
-                                                  "at these locations with significant lengths."
-                                                  "\n\n"
-                                                  "To avoid this problem, we scale the maximal horizontal "
-                                                  "compressive stress direction $\\mathbf n$ by the \\textit{difference} "
-                                                  "between the stress in the maximal and minimal horizontal stress "
-                                                  "directions. In other words, let "
-                                                  "$\\mathbf n_\\perp=(\\sin \\alpha)\\mathbf u - (\\cos\\alpha)\\mathbf v$ "
-                                                  "be the horizontal direction perpendicular to "
-                                                  "$\\mathbf n$, then this plugin outputs the vector quantity "
-                                                  "$\\mathbf w = (\\mathbf n^T \\sigma_c \\mathbf n "
-                                                  "               -\\mathbf n^T_\\perp \\sigma_c \\mathbf n_\\perp) "
-                                                  "              \\; \\mathbf n$. "
-                                                  "In other words, the length of the vector produced indicates "
-                                                  "\\textit{how dominant} the direction of maximal horizontal "
-                                                  "compressive strength is."
-                                                  "\n\n"
-                                                  "Fig.~\\ref{fig:max-horizontal-compressive-stress} shows a "
-                                                  "simple example for this kind of visualization in 3d."
-                                                  "\n\n"
-                                                  "\\begin{figure}"
-                                                  "  \\includegraphics[width=0.3\\textwidth]"
-                                                  "    {viz/plugins/stress_regime/temperature.png}"
-                                                  "  \\hfill"
-                                                  "  \\includegraphics[width=0.3\\textwidth]"
-                                                  "    {viz/plugins/stress_regime/velocity.png}"
-                                                  "  \\hfill"
-                                                  "  \\includegraphics[width=0.3\\textwidth]"
-                                                  "    {viz/plugins/stress_regime/horizontal-stress.png}"
-                                                  "  \\caption{\\it Illustration of the `maximum horizontal "
-                                                  "    compressive stress' visualization plugin. The left "
-                                                  "    figure shows a ridge-like temperature anomaly. Together "
-                                                  "    with no-slip boundary along all six boundaries, this "
-                                                  "    results in two convection rolls (center). The maximal "
-                                                  "    horizontal compressive strength at the bottom center "
-                                                  "    of the domain is perpendicular to the ridge because "
-                                                  "    the flow comes together there from the left and right, "
-                                                  "    yielding a compressive force in left-right direction. "
-                                                  "    At the top of the model, the flow separates outward, "
-                                                  "    leading to a \\textit{negative} compressive stress "
-                                                  "    in left-right direction; because there is no flow "
-                                                  "    in front-back direction, the compressive strength "
-                                                  "    in front-back direction is zero, making the along-ridge "
-                                                  "    direction the dominant one. At the center of the "
-                                                  "    convection rolls, both horizontal directions yield "
-                                                  "    the same stress; the plugin therefore chooses an "
-                                                  "    essentially arbitrary horizontal vector, but then "
-                                                  "    uses a zero magnitude given that the difference "
-                                                  "    between the maximal and minimal horizontal stress "
-                                                  "    is zero at these points.}"
-                                                  "  \\label{fig:max-horizontal-compressive-stress}"
-                                                  "\\end{figure}"
+                                                  "The stress regime is determined based on the magnitudes of the "
+                                                  "maximum ($\\sigma_H$) and minimum ($\\sigma_h$) horizontal stress "
+                                                  "and the vertical stress, "
+                                                  "where $\\sigma_v>\\sigma_H>\\sigma_h$ defines normal faulting, "
+                                                  "$\\sigma_H>\\sigma_v>\\sigma_h$ strike-slip faulting and "
+                                                  "$\\sigma_H>\\sigma_h>\\sigma_v$ thrust faulting. "
                                                  )
     }
   }
