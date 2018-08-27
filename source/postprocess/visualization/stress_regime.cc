@@ -38,8 +38,9 @@ namespace aspect
       {
         const unsigned int n_quadrature_points = input_data.solution_values.size();
         Assert (computed_quantities.size() == n_quadrature_points,    ExcInternalError());
-        // Output is a dim vector of magnitude 0, 1, 2 or 3, where 1 is normal faulting, 2 strike-slip and 3 thrust faulting
-        Assert ((computed_quantities[0].size() == dim),
+        // Output is a dim+1 vector of where the first three entries represent the maximum horizontal
+        // compressive stress and the fourth has a value of 1, 2 or 3, where 1 is normal faulting, 2 strike-slip and 3 thrust faulting
+        Assert ((computed_quantities[0].size() == dim+1),
                 ExcInternalError());
         Assert (input_data.solution_values[0].size() == this->introspection().n_components,   ExcInternalError());
         Assert (input_data.solution_gradients[0].size() == this->introspection().n_components,  ExcInternalError());
@@ -112,7 +113,7 @@ namespace aspect
                   else
                     stress_regime = 3.;
 
-                  maximum_horizontal_compressive_stress = orthogonal_directions[0] * stress_regime;
+                  maximum_horizontal_compressive_stress = orthogonal_directions[0] * maximum_horizontal_compressive_stress_magnitude;
 
                   break;
                 }
@@ -181,10 +182,6 @@ namespace aspect
                         -
                         in.pressure[q] * unit_symmetric_tensor<dim>()) * vertical_direction));
 
-                  // TODO find another test to check for hydrostatic state
-                  if (maximum_horizontal_compressive_stress_magnitude - minimum_horizontal_compressive_stress_magnitude >
-                  std::numeric_limits<double>::epsilon()*maximum_horizontal_compressive_stress_magnitude)
-                  {
                     // normal faulting
                     if (vertical_compressive_stress_magnitude > maximum_horizontal_compressive_stress_magnitude &&
                         maximum_horizontal_compressive_stress_magnitude > minimum_horizontal_compressive_stress_magnitude)
@@ -197,11 +194,8 @@ namespace aspect
                     else if (maximum_horizontal_compressive_stress_magnitude > minimum_horizontal_compressive_stress_magnitude &&
                         minimum_horizontal_compressive_stress_magnitude > vertical_compressive_stress_magnitude)
                       stress_regime = 3.;
-                  }
-                  else
-                    stress_regime = 0.;
 
-                  maximum_horizontal_compressive_stress = n * stress_regime;
+                  maximum_horizontal_compressive_stress = n * (maximum_horizontal_compressive_stress_magnitude - minimum_horizontal_compressive_stress_magnitude);
 
 
                   break;
@@ -214,6 +208,7 @@ namespace aspect
 
             for (unsigned int i=0; i<dim; ++i)
               computed_quantities[q](i) = maximum_horizontal_compressive_stress[i];
+            computed_quantities[q](dim) = stress_regime;
           }
       }
 
@@ -222,7 +217,12 @@ namespace aspect
       std::vector<std::string>
       StressRegime<dim>::get_names () const
       {
-        return std::vector<std::string> (dim, "stress_regime");
+        std::vector<std::string> names(dim+1);
+        names[0] = "sigma_H_x";
+        names[dim-1] = "sigma_H_z";
+        names[1] = "sigma_H_y";
+        names[dim] = "stress_regime";
+        return names;
       }
 
 
@@ -230,10 +230,10 @@ namespace aspect
       std::vector<DataComponentInterpretation::DataComponentInterpretation>
       StressRegime<dim>::get_data_component_interpretation () const
       {
-        return
-          std::vector<DataComponentInterpretation::DataComponentInterpretation>
-          (dim,
-           DataComponentInterpretation::component_is_part_of_vector);
+          std::vector<DataComponentInterpretation::DataComponentInterpretation> interpretation
+            (dim+1,DataComponentInterpretation::component_is_part_of_vector);
+          interpretation[dim] = DataComponentInterpretation::component_is_scalar;
+        return interpretation;
       }
 
 
