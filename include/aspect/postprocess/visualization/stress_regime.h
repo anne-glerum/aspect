@@ -26,6 +26,7 @@
 #include <aspect/simulator_access.h>
 
 #include <deal.II/numerics/data_postprocessor.h>
+#include <deal.II/base/symmetric_tensor.h>
 
 
 namespace aspect
@@ -34,6 +35,81 @@ namespace aspect
   {
     namespace VisualizationPostprocessors
     {
+      enum struct SymmetricTensorEigenvectorMethod
+      {
+        /**
+         * A hybrid approach that preferentially uses the characteristic equation to
+         * compute eigenvalues and an analytical approach based on the cross-product
+         * for the eigenvectors. If the computations are deemed too inaccurate then
+         * the method falls back to ql_implicit_shifts.
+         *
+         * This method potentially offers the quickest computation if the pathological
+         * case is not encountered.
+         */
+        hybrid,
+        /**
+         * The iterative QL algorithm with implicit shifts applied after
+         * tridiagonalization of the tensor using the householder method.
+         *
+         * This method offers a compromise between speed of computation and its
+         * robustness. This method is particularly useful when the elements
+         * of $T$ have greatly varying magnitudes, which would typically lead to a
+         * loss of accuracy when computing the smaller eigenvalues.
+         */
+        ql_implicit_shifts,
+        /**
+         * The iterative Jacobi algorithm.
+         *
+         * This method offers is the most robust of the available options, with
+         * reliable results obtained for even the most pathological cases. It is,
+         * however, the slowest algorithm of all of those implemented.
+         */
+        jacobi
+      };
+
+      namespace internal
+      {
+        namespace SymmetricTensorImplementation
+        {
+          template <int dim, typename Number>
+          void
+          tridiagonalize(const dealii::SymmetricTensor<2, dim, Number> &A,
+                         dealii::Tensor<2, dim, Number> &               Q,
+                         std::array<Number, dim> &                      d,
+                         std::array<Number, dim - 1> &                  e);
+
+          template <int dim, typename Number>
+          std::array<std::pair<Number, Tensor<1, dim, Number>>, dim>
+          ql_implicit_shifts(const dealii::SymmetricTensor<2, dim, Number> &A);
+
+          template <int dim, typename Number>
+          std::array<std::pair<Number, Tensor<1, dim, Number>>, dim>
+            jacobi(dealii::SymmetricTensor<2, dim, Number> A);
+
+          template <typename Number>
+          std::array<std::pair<Number, Tensor<1, 2, Number>>, 2>
+          hybrid(const dealii::SymmetricTensor<2, 2, Number> &A);
+
+          template <typename Number>
+          std::array<std::pair<Number, Tensor<1, 3, Number>>, 3>
+          hybrid(const dealii::SymmetricTensor<2, 3, Number> &A);
+
+          /**
+           * A struct that is used to sort arrays of pairs of eign=envalues and
+           * eigenvectors. Sorting is performed in descending order of eigenvalue.
+           */
+          template <int dim, typename Number>
+          struct SortEigenValuesVectors
+          {
+            using EigValsVecs = std::pair<Number, Tensor<1, dim, Number>>;
+            bool
+            operator()(const EigValsVecs &lhs, const EigValsVecs &rhs)
+            {
+              return lhs.first > rhs.first;
+            }
+          };
+        }
+      }
       /**
        * A class that computes a field of horizontal vectors that
        * represent the direction of maximal horizontal compressive
@@ -43,7 +119,7 @@ namespace aspect
        * The member functions are all implementations of those declared in the
        * base class. See there for their meaning.
        */
-      template <int dim>
+      template <int dim, typename Number>
       class StressRegime
         : public DataPostprocessor<dim>,
           public SimulatorAccess<dim>,
@@ -81,6 +157,13 @@ namespace aspect
            * constructor of this class.
            */
           virtual UpdateFlags get_needed_update_flags () const;
+
+        private:
+          std::array<std::pair<double, Tensor<1, dim, double> >, dim>
+          eigenvectors(const SymmetricTensor<2, dim, double> &,
+                       const SymmetricTensorEigenvectorMethod) const;
+
+
       };
     }
   }
