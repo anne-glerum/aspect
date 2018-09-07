@@ -32,7 +32,90 @@ namespace aspect
 {
   namespace Postprocess
   {
+    enum struct SymmetricTensorEigenvectorMethod
+          {
+            /**
+             * A hybrid approach that preferentially uses the characteristic equation to
+             * compute eigenvalues and an analytical approach based on the cross-product
+             * for the eigenvectors. If the computations are deemed too inaccurate then
+             * the method falls back to ql_implicit_shifts.
+             *
+             * This method potentially offers the quickest computation if the pathological
+             * case is not encountered.
+             */
+            hybrid,
+            /**
+             * The iterative QL algorithm with implicit shifts applied after
+             * tridiagonalization of the tensor using the householder method.
+             *
+             * This method offers a compromise between speed of computation and its
+             * robustness. This method is particularly useful when the elements
+             * of $T$ have greatly varying magnitudes, which would typically lead to a
+             * loss of accuracy when computing the smaller eigenvalues.
+             */
+            ql_implicit_shifts,
+            /**
+             * The iterative Jacobi algorithm.
+             *
+             * This method offers is the most robust of the available options, with
+             * reliable results obtained for even the most pathological cases. It is,
+             * however, the slowest algorithm of all of those implemented.
+             */
+            jacobi
+          };
 
+          namespace internal
+          {
+            namespace SymmetricTensorImplementation
+            {
+              template <int dim>
+              void
+              tridiagonalize(const dealii::SymmetricTensor<2, dim, double> &A,
+                             dealii::Tensor<2, dim, double> &               Q,
+                             std::array<double, dim> &                      d,
+                             std::array<double, dim - 1> &                  e);
+
+              template <int dim>
+              std::array<std::pair<double, Tensor<1, dim, double>>, dim>
+              ql_implicit_shifts(const dealii::SymmetricTensor<2, dim, double> &A);
+    //
+    //          template <int dim, typename Number>
+    //          std::array<std::pair<Number, Tensor<1, dim, Number>>, dim>
+    //            jacobi(dealii::SymmetricTensor<2, dim, Number> A);
+
+              std::array<std::pair<double, Tensor<1, 2, double>>, 2>
+              hybrid(const dealii::SymmetricTensor<2, 2, double> &A);
+
+              std::array<std::pair<double, Tensor<1, 3, double>>, 3>
+              hybrid(const dealii::SymmetricTensor<2, 3, double> &A);
+
+              std::array<double, 2>
+              eigenvalues(const SymmetricTensor<2, 2, double> &T);
+
+              std::array<double, 3>
+              eigenvalues(const SymmetricTensor<2, 3, double> &T);
+
+              template <int dim>
+              std::array<std::pair<double, Tensor<1, dim, double>>, dim>
+              perform_eigenvector_decomposition(const SymmetricTensor<2, dim, double> &T,
+                  const SymmetricTensorEigenvectorMethod method);
+
+              /**
+               * A struct that is used to sort arrays of pairs of eign=envalues and
+               * eigenvectors. Sorting is performed in descending order of eigenvalue.
+               */
+              template <int dim>
+              struct SortEigenValuesVectors
+              {
+                using EigValsVecs = std::pair<double, Tensor<1, dim, double>>;
+                bool
+                operator()(const EigValsVecs &lhs, const EigValsVecs &rhs)
+                {
+                  return lhs.first > rhs.first;
+                }
+              };
+            }
+          }
     /**
      * A postprocessor that evaluates the solution vector at individual
      * points.
@@ -90,6 +173,22 @@ namespace aspect
         void serialize (Archive &ar, const unsigned int version);
 
       private:
+
+        /**
+         * Return the maximum horizontal compressive stress and the stress regime
+         * for a given point.
+         */
+        std::pair<Tensor<1,dim>, double>
+        compute_sigmaH_and_stress_regime(const SymmetricTensor<2,dim> compressive_stress,
+                                         const double pressure,
+                                         const Tensor<1,dim> vertical_direction,
+                                         const std::array<Tensor<1,dim>,dim-1 > orthogonal_directions) const;
+
+        std::array<std::pair<double, Tensor<1, dim, double> >, dim>
+        eigenvectors(const SymmetricTensor<2, dim, double> &,
+                     const SymmetricTensorEigenvectorMethod) const;
+
+
         /**
          * Set the time output was supposed to be written. In the simplest
          * case, this is the previous last output time plus the interval, but
@@ -124,6 +223,12 @@ namespace aspect
          * as natural coordinates or not.
          */
         bool use_natural_coordinates;
+
+        /**
+         * Whether or not to also compute the maximum horizontal compressive stress
+         * and the stress regime. If false, only the solution variables are outputted.
+         */
+        bool output_stress_regime;
     };
   }
 }
