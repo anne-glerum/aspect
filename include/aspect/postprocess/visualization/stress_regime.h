@@ -71,37 +71,46 @@ namespace aspect
       {
         namespace SymmetricTensorImplementation
         {
-          template <int dim, typename Number>
+          template <int dim>
           void
-          tridiagonalize(const dealii::SymmetricTensor<2, dim, Number> &A,
-                         dealii::Tensor<2, dim, Number> &               Q,
-                         std::array<Number, dim> &                      d,
-                         std::array<Number, dim - 1> &                  e);
+          tridiagonalize(const dealii::SymmetricTensor<2, dim, double> &A,
+                         dealii::Tensor<2, dim, double> &               Q,
+                         std::array<double, dim> &                      d,
+                         std::array<double, dim - 1> &                  e);
 
-          template <int dim, typename Number>
-          std::array<std::pair<Number, Tensor<1, dim, Number>>, dim>
-          ql_implicit_shifts(const dealii::SymmetricTensor<2, dim, Number> &A);
+          template <int dim>
+          std::array<std::pair<double, Tensor<1, dim, double>>, dim>
+          ql_implicit_shifts(const dealii::SymmetricTensor<2, dim, double> &A);
+//
+//          template <int dim, typename Number>
+//          std::array<std::pair<Number, Tensor<1, dim, Number>>, dim>
+//            jacobi(dealii::SymmetricTensor<2, dim, Number> A);
 
-          template <int dim, typename Number>
-          std::array<std::pair<Number, Tensor<1, dim, Number>>, dim>
-            jacobi(dealii::SymmetricTensor<2, dim, Number> A);
+          std::array<std::pair<double, Tensor<1, 2, double>>, 2>
+          hybrid(const dealii::SymmetricTensor<2, 2, double> &A);
 
-          template <typename Number>
-          std::array<std::pair<Number, Tensor<1, 2, Number>>, 2>
-          hybrid(const dealii::SymmetricTensor<2, 2, Number> &A);
+          std::array<std::pair<double, Tensor<1, 3, double>>, 3>
+          hybrid(const dealii::SymmetricTensor<2, 3, double> &A);
 
-          template <typename Number>
-          std::array<std::pair<Number, Tensor<1, 3, Number>>, 3>
-          hybrid(const dealii::SymmetricTensor<2, 3, Number> &A);
+          std::array<double, 2>
+          eigenvalues(const SymmetricTensor<2, 2, double> &T);
+
+          std::array<double, 3>
+          eigenvalues(const SymmetricTensor<2, 3, double> &T);
+
+          template <int dim>
+          std::array<std::pair<double, Tensor<1, dim, double>>, dim>
+          perform_eigenvector_decomposition(const SymmetricTensor<2, dim, double> &T,
+              const SymmetricTensorEigenvectorMethod method);
 
           /**
            * A struct that is used to sort arrays of pairs of eign=envalues and
            * eigenvectors. Sorting is performed in descending order of eigenvalue.
            */
-          template <int dim, typename Number>
+          template <int dim>
           struct SortEigenValuesVectors
           {
-            using EigValsVecs = std::pair<Number, Tensor<1, dim, Number>>;
+            using EigValsVecs = std::pair<double, Tensor<1, dim, double>>;
             bool
             operator()(const EigValsVecs &lhs, const EigValsVecs &rhs)
             {
@@ -119,7 +128,7 @@ namespace aspect
        * The member functions are all implementations of those declared in the
        * base class. See there for their meaning.
        */
-      template <int dim, typename Number>
+      template <int dim>
       class StressRegime
         : public DataPostprocessor<dim>,
           public SimulatorAccess<dim>,
@@ -157,6 +166,16 @@ namespace aspect
            * constructor of this class.
            */
           virtual UpdateFlags get_needed_update_flags () const;
+
+          /**
+           * Return the maximum horizontal compressive stress and the stress regime
+           * for a given point.
+           */
+          std::pair<Tensor<1,dim>, double>
+          compute_sigmaH_and_stress_regime(const SymmetricTensor<2,dim> compressive_stress,
+                                           const double pressure,
+                                           const Tensor<1,dim> vertical_direction,
+                                           const std::array<Tensor<1,dim>,dim-1 > orthogonal_directions) const;
 
         private:
           std::array<std::pair<double, Tensor<1, dim, double> >, dim>
