@@ -171,7 +171,6 @@ namespace aspect
          * every timestep.
          */
         bool use_surface_condition_function;
-        bool use_constant_reference_profile;
 
         /**
          * ParsedFunction: If provided in the inpute file it prescribes

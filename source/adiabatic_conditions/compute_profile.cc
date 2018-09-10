@@ -119,7 +119,7 @@ namespace aspect
               const double gravity = gravity_direction * this->get_gravity_model().gravity_vector(in.position[0]).norm();
 
               pressures[i] = pressures[i-1] + density * gravity * delta_z;
-              temperatures[i] = (this->include_adiabatic_heating() || !use_constant_reference_profile)
+              temperatures[i] = (this->include_adiabatic_heating())
                                 ?
                                 temperatures[i-1] * (1 + alpha * gravity * delta_z * one_over_cp)
                                 :
@@ -306,11 +306,6 @@ namespace aspect
                              "profile. The higher the number of points, the more accurate "
                              "the downward integration from the adiabatic surface "
                              "temperature will be.");
-          prm.declare_entry ("Use constant reference temperature", "false",
-                             Patterns::Bool(),
-                             "Whether to use the surface adiabatic temperature for "
-                             "the reference temperature profile, or compute a depth- "
-                             "dependent adiabatic profile.");
           prm.declare_entry ("Use surface condition function", "false",
                              Patterns::Bool(),
                              "Whether to use the 'Surface condition function' to determine surface "
@@ -368,7 +363,6 @@ namespace aspect
                   throw;
                 }
             }
-          use_constant_reference_profile = prm.get_bool("Use constant reference temperature");
           n_points = prm.get_integer ("Number of points");
           use_surface_condition_function = prm.get_bool("Use surface condition function");
           if (use_surface_condition_function)
