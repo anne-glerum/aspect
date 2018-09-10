@@ -1098,7 +1098,8 @@ namespace aspect
           add,
           subtract,
           minimum,
-          maximum
+          maximum,
+          ignore
         };
 
         /**

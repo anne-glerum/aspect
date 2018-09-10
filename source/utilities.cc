@@ -2742,6 +2742,10 @@ namespace aspect
           {
             return std::max(x,y);
           }
+          case Utilities::Operator::ignore:
+          {
+            return x;
+          }
           default:
           {
             Assert (false, ExcInternalError());
@@ -2774,6 +2778,8 @@ namespace aspect
             operator_list[i] = Operator(Operator::minimum);
           else if (operator_names[i] == "maximum")
             operator_list[i] = Operator(Operator::maximum);
+          else if (operator_names[i] == "ignore")
+            operator_list[i] = Operator(Operator::ignore);
           else
             AssertThrow(false,
                         ExcMessage ("ASPECT only accepts the following operators: "
