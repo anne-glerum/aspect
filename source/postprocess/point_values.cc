@@ -853,19 +853,25 @@ namespace aspect
 
           // ensure that at least one processor found things
           const int n_procs = Utilities::MPI::sum (point_found ? 1 : 0, this->get_mpi_communicator());
-          AssertThrow (n_procs > 0,
-                       ExcMessage ("While trying to evaluate the solution at point " +
-                                   Utilities::to_string(evaluation_points_cartesian[p][0]) + ", " +
-                                   Utilities::to_string(evaluation_points_cartesian[p][1]) +
-                                   (dim == 3
-                                    ?
-                                    ", " + Utilities::to_string(evaluation_points_cartesian[p][2])
-                                    :
-                                    "") + "), " +
-                                   "no processors reported that the point lies inside the " +
-                                   "set of cells they own. Are you trying to evaluate the " +
-                                   "solution at a point that lies outside of the domain?"
-                                  ));
+          // actually, if none of the processors found the point, just continue to the next point
+          // especially with the free surface, this can happen, or when a point is exactly on the boundary
+          // of two cells
+          // All variables will stay zero, as initialized.
+          if (n_procs == 1)
+            continue;
+//          AssertThrow (n_procs > 0,
+//                       ExcMessage ("While trying to evaluate the solution at point " +
+//                                   Utilities::to_string(evaluation_points_cartesian[p][0]) + ", " +
+//                                   Utilities::to_string(evaluation_points_cartesian[p][1]) +
+//                                   (dim == 3
+//                                    ?
+//                                    ", " + Utilities::to_string(evaluation_points_cartesian[p][2])
+//                                    :
+//                                    "") + "), " +
+//                                   "no processors reported that the point lies inside the " +
+//                                   "set of cells they own. Are you trying to evaluate the " +
+//                                   "solution at a point that lies outside of the domain?"
+//                                  ));
 
           // Reduce all collected values into local Vector
           Utilities::MPI::sum (current_point_values[p], this->get_mpi_communicator(),
