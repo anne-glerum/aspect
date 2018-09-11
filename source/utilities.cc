@@ -40,6 +40,7 @@
 #include <aspect/geometry_model/box.h>
 #include <aspect/geometry_model/spherical_shell.h>
 #include <aspect/geometry_model/chunk.h>
+#include "/gfs1/work/bbpanneg/software/aspect/aspect/lib_aegean_ascii_2018/two_merged_chunks.h"
 
 #include <fstream>
 #include <string>
@@ -1814,6 +1815,7 @@ namespace aspect
     {
       AssertThrow ((dynamic_cast<const GeometryModel::SphericalShell<dim>*> (&this->get_geometry_model()))
                    || (dynamic_cast<const GeometryModel::Chunk<dim>*> (&this->get_geometry_model())) != 0
+                   || (dynamic_cast<const GeometryModel::TwoMergedChunks<dim>*> (&this->get_geometry_model())) != 0
                    || (dynamic_cast<const GeometryModel::Box<dim>*> (&this->get_geometry_model())) != 0,
                    ExcMessage ("This ascii data plugin can only be used when using "
                                "a spherical shell, chunk or box geometry."));
@@ -1890,7 +1892,7 @@ namespace aspect
       switch (dim)
         {
           case 2:
-            if ((boundary_id == 2) || (boundary_id == 3))
+            if ((boundary_id == 2) || (boundary_id == 3) || (boundary_id == 4) || (boundary_id == 5))
               {
                 boundary_dimensions[0] = 0;
               }
@@ -1907,7 +1909,7 @@ namespace aspect
             break;
 
           case 3:
-            if ((boundary_id == 4) || (boundary_id == 5))
+            if ((boundary_id == 4) || (boundary_id == 5)  || (boundary_id == 8) || (boundary_id == 9))
               {
                 boundary_dimensions[0] = 0;
                 boundary_dimensions[1] = 1;
@@ -1917,7 +1919,7 @@ namespace aspect
                 boundary_dimensions[0] = 1;
                 boundary_dimensions[1] = 2;
               }
-            else if ((boundary_id == 2) || (boundary_id == 3))
+            else if ((boundary_id == 2) || (boundary_id == 3) || (boundary_id == 6) || (boundary_id == 7))
               {
                 boundary_dimensions[0] = 0;
                 boundary_dimensions[1] = 2;
@@ -2134,6 +2136,7 @@ namespace aspect
           Point<dim> internal_position = position;
 
           if (dynamic_cast<const GeometryModel::SphericalShell<dim>*> (&this->get_geometry_model()) != 0
+              || dynamic_cast<const GeometryModel::TwoMergedChunks<dim>*> (&this->get_geometry_model()) != 0
               || dynamic_cast<const GeometryModel::Chunk<dim>*> (&this->get_geometry_model()) != 0)
             {
               const std::array<double,dim> spherical_position =
@@ -2141,6 +2144,11 @@ namespace aspect
 
               for (unsigned int i = 0; i < dim; i++)
                 internal_position[i] = spherical_position[i];
+
+              // Rescale phi to -angle if on western hemisphere
+              // TODO only of domain crosses 0 meridian
+              if (internal_position[1] > numbers::PI)
+                internal_position[1] -= 2*numbers::PI;
             }
 
           const std::array<unsigned int,dim-1> boundary_dimensions =
@@ -2250,6 +2258,7 @@ namespace aspect
     {
       AssertThrow ((dynamic_cast<const GeometryModel::SphericalShell<dim>*> (&this->get_geometry_model()))
                    || (dynamic_cast<const GeometryModel::Chunk<dim>*> (&this->get_geometry_model())) != 0
+                   || (dynamic_cast<const GeometryModel::TwoMergedChunks<dim>*> (&this->get_geometry_model())) != 0
                    || (dynamic_cast<const GeometryModel::Box<dim>*> (&this->get_geometry_model())) != 0,
                    ExcMessage ("This ascii data plugin can only be used when using "
                                "a spherical shell, chunk or box geometry."));
@@ -2281,6 +2290,7 @@ namespace aspect
       Point<dim> internal_position = position;
 
       if (dynamic_cast<const GeometryModel::SphericalShell<dim>*> (&this->get_geometry_model()) != 0
+          || (dynamic_cast<const GeometryModel::TwoMergedChunks<dim>*> (&this->get_geometry_model())) != 0
           || (dynamic_cast<const GeometryModel::Chunk<dim>*> (&this->get_geometry_model())) != 0)
         {
           const std::array<double,dim> spherical_position =
@@ -2288,6 +2298,11 @@ namespace aspect
 
           for (unsigned int i = 0; i < dim; i++)
             internal_position[i] = spherical_position[i];
+
+              // Rescale phi to -angle if on western hemisphere
+              // TODO only of domain crosses 0 meridian
+              if (internal_position[1] > numbers::PI)
+                internal_position[1] -= 2*numbers::PI;
         }
       return lookup->get_data(internal_position,component);
     }
