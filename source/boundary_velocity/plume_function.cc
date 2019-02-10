@@ -97,6 +97,11 @@ namespace aspect
         outer_radius = gm->outer_radius();
 
         // compute the bottom area
+        // int int R2 sin(theta) dtheta dphi =
+        // R2 int [-cos(theta)]colat_min->colat_max dphi =
+        // R2 int [-cos(colat_max) - -cos(colat_min)] dphi =
+        // -R2 int [cos(colat_max) - cos(colat_min)] dphi =
+        // -R2 (cos(colat_max) - cos(colat_min)) (lon_max-lon_min)
          area = inner_radius * inner_radius * (-std::cos(colat_max) + std::cos(colat_min)) * (lon_max-lon_min);
       }
       // TODO implement for spherical shell and ellipsoidal chunk
@@ -210,15 +215,17 @@ namespace aspect
       // Compute the distance from the current point to the line axis of the cylinder
       // representing the tail of the plume. For simplicity, the cylinder is extended
       // to the domain's surface
-      // TODO two methods give the same result
-      const Point<dim> top_tail_cylinder_axis = tmp_plume_position / tmp_plume_position.norm() * outer_radius;
-      const double c1 = top_tail_cylinder_axis * position;
-      const double c2 = top_tail_cylinder_axis * top_tail_cylinder_axis;
-      AssertThrow(c1>=0 && c2>=c1, ExcMessage("Point on bottom boundary does not fall in artificial tail cylinder. Distance head to boundary: " + std::to_string(distance_head_to_boundary)
-            + ", position norm: " + std::to_string(position.norm()) + ", inner radius: " + std::to_string(inner_radius) + ", top cylinder: " + std::to_string(top_tail_cylinder_axis.norm())
-            + ", c1 " + std::to_string(c1) + ", c2 " + std::to_string(c2)));
-      const double distance_to_tail_axis = Tensor<1,dim> (position -  c1/c2 * top_tail_cylinder_axis).norm();
-      const double test_distance_to_tail_axis = (cross_product_3d(position,plume_position/inner_radius)).norm();
+      // These two methods give the same result
+      // but the latter also accounts for the case when the plume
+      // is on one hemisphere and the point on the other
+//      const Point<dim> top_tail_cylinder_axis = tmp_plume_position / tmp_plume_position.norm() * outer_radius;
+//      const double c1 = top_tail_cylinder_axis * position;
+//      const double c2 = top_tail_cylinder_axis * top_tail_cylinder_axis;
+//      AssertThrow(c1>=0 && c2>=c1, ExcMessage("Point on bottom boundary does not fall in artificial tail cylinder. Distance head to boundary: " + std::to_string(distance_head_to_boundary)
+//            + ", position norm: " + std::to_string(position.norm()) + ", inner radius: " + std::to_string(inner_radius) + ", top cylinder: " + std::to_string(top_tail_cylinder_axis.norm())
+//            + ", c1 " + std::to_string(c1) + ", c2 " + std::to_string(c2)));
+//      const double distance_to_tail_axis = Tensor<1,dim> (position -  c1/c2 * top_tail_cylinder_axis).norm();
+      const double distance_to_tail_axis = (cross_product_3d(position,plume_position/inner_radius)).norm();
 
       // Compute the distance between the current point and the center of the plume
       // to see if the point falls within the plume head

@@ -275,11 +275,12 @@ namespace aspect
         const Point<dim> tmp_plume_position = plume_position * (inner_radius + distance_head_to_boundary) / inner_radius;
 
         // Compute the distance to the axis of the tail
-        Point<dim> top_tail_cylinder_axis = plume_position / plume_position.norm() * outer_radius;
-        const double c1 = top_tail_cylinder_axis * position;
-        const double c2 = top_tail_cylinder_axis * top_tail_cylinder_axis;
-        AssertThrow(c1>=0 && c2>=c1, ExcMessage("Point on bottom boundary does not fall in artificial tail cylinder."));
-        const double distance_to_tail_axis = Tensor<1,dim> (position -  c1/c2 * top_tail_cylinder_axis).norm();
+//        Point<dim> top_tail_cylinder_axis = plume_position / plume_position.norm() * outer_radius;
+//        const double c1 = top_tail_cylinder_axis * position;
+//        const double c2 = top_tail_cylinder_axis * top_tail_cylinder_axis;
+//        AssertThrow(c1>=0 && c2>=c1, ExcMessage("Point on bottom boundary does not fall in artificial tail cylinder."));
+//        const double distance_to_tail_axis = Tensor<1,dim> (position -  c1/c2 * top_tail_cylinder_axis).norm();
+        const double distance_to_tail_axis = (cross_product_3d(position,plume_position/inner_radius)).norm();
 
         // If the two spheres (plume head and inner_radius) intersect,
         // their intersection is a circle with radius current_head_radius.
