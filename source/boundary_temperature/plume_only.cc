@@ -286,7 +286,7 @@ namespace aspect
         // their intersection is a circle with radius current_head_radius.
         // The center of the inner_radius sphere is origin
         const double distance_sphere_centers = tmp_plume_position.norm();
-        if (distance_sphere_centers <= head_radius + inner_radius || distance_sphere_centers >= abs(inner_radius - head_radius))
+        if (distance_sphere_centers <= head_radius + inner_radius && distance_sphere_centers >= abs(inner_radius - head_radius))
           current_head_radius = std::sqrt(4*inner_radius*inner_radius*distance_sphere_centers*distance_sphere_centers
               -std::pow(distance_sphere_centers*distance_sphere_centers-head_radius*head_radius+inner_radius*inner_radius,2))/(2*distance_sphere_centers);
 
