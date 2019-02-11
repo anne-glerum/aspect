@@ -22,6 +22,7 @@
 #include <aspect/initial_temperature/plume_only.h>
 #include <aspect/geometry_model/box.h>
 #include <aspect/geometry_model/chunk.h>
+#include <aspect/geometry_model/ellipsoidal_chunk.h>
 #include <aspect/boundary_temperature/interface.h>
 
 
@@ -61,6 +62,13 @@ namespace aspect
       {
         inner_radius = gm->inner_radius();
         outer_radius = gm->outer_radius();
+      }
+      else if (GeometryModel::EllipsoidalChunk<dim> *gm = dynamic_cast<GeometryModel::EllipsoidalChunk<dim> *>
+      (const_cast<GeometryModel::Interface<dim> *>(&this->get_geometry_model())))
+      {
+        AssertThrow(gm->get_eccentricity()==0, ExcMessage("This plume boundary velocity plugin does not work for an ellipsoidal domain."));
+        outer_radius = gm->get_semi_major_axis_a();
+        inner_radius = outer_radius - gm->maximal_depth();
       }
       else
         AssertThrow(false, ExcNotImplemented());
@@ -156,7 +164,7 @@ namespace aspect
 
         //Normal plume tail if most of the plume head has passed
         if ((this->get_time() >= model_time_to_start_plume_tail)
-            && (current_head_radius < tail_radius))
+            && (current_head_radius < tail_radius) && position.norm() < plume_position.norm())
         {
           // Prescribe temperature in tail
           initial_temperature += tail_amplitude * std::exp(-std::pow(distance_to_tail_axis/tail_radius,2));
