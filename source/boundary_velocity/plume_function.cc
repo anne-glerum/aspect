@@ -331,7 +331,7 @@ namespace aspect
 
     template <int dim>
     void
-    PlumeFunction<dim>::declare_parameters (ParameterHandler &prm)
+    PlumeFunction<dim>::declare_parameters (ParameterHandler &)
     {
     }
 

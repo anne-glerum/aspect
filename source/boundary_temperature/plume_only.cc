@@ -65,7 +65,7 @@ namespace aspect
         AssertThrow (in,
                      ExcMessage (std::string("Couldn't open file <") + filename));
 
-        double time,start_time,x,y;
+        double time,start_time(0),x,y;
 
         while (in >> time >> x >> y)
           {
@@ -311,7 +311,7 @@ namespace aspect
     template <int dim>
     double
     PlumeOnly<dim>::
-    minimal_temperature (const std::set<types::boundary_id> &fixed_boundary_ids) const
+    minimal_temperature (const std::set<types::boundary_id> &) const
     {
       // Something very hot as we can't set it to the minimum (0) of this plugin,
       // because it will take the minimum with the other plugins, which will be 0
@@ -322,7 +322,7 @@ namespace aspect
     template <int dim>
     double
     PlumeOnly<dim>::
-    maximal_temperature (const std::set<types::boundary_id> &fixed_boundary_ids) const
+    maximal_temperature (const std::set<types::boundary_id> &) const
     {
       // Something very small so that it
       // doesn't affect the maximum of the other
