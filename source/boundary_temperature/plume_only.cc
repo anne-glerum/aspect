@@ -22,6 +22,7 @@
 #include <aspect/boundary_temperature/plume_only.h>
 #include <aspect/geometry_model/box.h>
 #include <aspect/geometry_model/chunk.h>
+#include <aspect/geometry_model/ellipsoidal_chunk.h>
 
 #include <deal.II/base/parameter_handler.h>
 #include <fstream>
@@ -182,6 +183,13 @@ namespace aspect
       {
         inner_radius = gm->inner_radius();
         outer_radius = gm->outer_radius();
+      }
+      else if (GeometryModel::EllipsoidalChunk<dim> *gm = dynamic_cast<GeometryModel::EllipsoidalChunk<dim> *>
+      (const_cast<GeometryModel::Interface<dim> *>(&this->get_geometry_model())))
+      {
+        AssertThrow(gm->get_eccentricity()==0, ExcMessage("This plume boundary velocity plugin does not work for an ellipsoidal domain."));
+        outer_radius = gm->get_semi_major_axis_a();
+        inner_radius = outer_radius - gm->maximal_depth();
       }
       else
         AssertThrow(false, ExcNotImplemented());

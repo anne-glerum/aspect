@@ -23,6 +23,7 @@
 #include <aspect/boundary_velocity/plume_function.h>
 #include <aspect/geometry_model/box.h>
 #include <aspect/geometry_model/chunk.h>
+#include <aspect/geometry_model/ellipsoidal_chunk.h>
 
 #include <deal.II/base/parameter_handler.h>
 
@@ -103,6 +104,19 @@ namespace aspect
         // -R2 int [cos(colat_max) - cos(colat_min)] dphi =
         // -R2 (cos(colat_max) - cos(colat_min)) (lon_max-lon_min)
          area = inner_radius * inner_radius * (-std::cos(colat_max) + std::cos(colat_min)) * (lon_max-lon_min);
+      }
+      else if (GeometryModel::EllipsoidalChunk<dim> *gm = dynamic_cast<GeometryModel::EllipsoidalChunk<dim> *>
+      (const_cast<GeometryModel::Interface<dim> *>(&this->get_geometry_model())))
+      {
+        AssertThrow(gm->get_eccentricity()==0, ExcMessage("This plume boundary velocity plugin does not work for an ellipsoidal domain."));
+        const std::vector<Point<2> > corners = gm->get_corners();
+        const double lon_min = corners[2][0];
+        const double lon_max = corners[0][0];
+        const double colat_min = 0.5*numbers::PI - corners[0][1];
+        const double colat_max = 0.5*numbers::PI - corners[2][1];
+        outer_radius = gm->get_semi_major_axis_a();
+        inner_radius = outer_radius - gm->maximal_depth();
+        area = inner_radius * inner_radius * (-std::cos(colat_max) + std::cos(colat_min)) * (lon_max-lon_min);
       }
       // TODO implement for spherical shell and ellipsoidal chunk
       else
