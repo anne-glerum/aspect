@@ -94,8 +94,8 @@ namespace aspect
                   {
                     local_normal_flux
                     +=
-                      out.densities[q]
-                      * (in.velocity[q] * fe_face_values.normal_vector(q))
+                      /*out.densities[q]
+                      * */(in.velocity[q] * fe_face_values.normal_vector(q))
                       * fe_face_values.JxW(q);
                   }
 

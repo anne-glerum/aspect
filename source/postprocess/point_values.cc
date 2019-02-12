@@ -25,6 +25,7 @@
 #include <aspect/geometry_model/spherical_shell.h>
 #include <aspect/global.h>
 #include <deal.II/numerics/vector_tools.h>
+#include <deal.II/grid/grid_tools.h>
 
 #include <aspect/gravity_model/interface.h>
 
@@ -850,6 +851,9 @@ namespace aspect
             {
               // ignore
             }
+           catch (const GridTools::ExcPointNotFound<dim> &)
+             {
+             }
 
           // ensure that at least one processor found things
           const int n_procs = Utilities::MPI::sum (point_found ? 1 : 0, this->get_mpi_communicator());
@@ -857,7 +861,7 @@ namespace aspect
           // especially with the free surface, this can happen, or when a point is exactly on the boundary
           // of two cells
           // All variables will stay zero, as initialized.
-          if (n_procs == 1)
+          if (n_procs == 0)
             continue;
 //          AssertThrow (n_procs > 0,
 //                       ExcMessage ("While trying to evaluate the solution at point " +
