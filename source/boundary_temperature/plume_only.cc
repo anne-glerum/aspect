@@ -106,7 +106,6 @@ namespace aspect
                 spherical_position[1] += 2.*numbers::PI;
               spherical_position[dim-1] = 0.5 * numbers::PI - spherical_position[dim-1];
               plume_positions.push_back(Utilities::Coordinates::spherical_to_cartesian_coordinates<dim>(spherical_position));
-              Point<dim> cartesian_plume_position = Utilities::Coordinates::spherical_to_cartesian_coordinates<dim>(spherical_position);
             }
 
             // Convert the time to SI units
@@ -232,11 +231,11 @@ namespace aspect
                           const Point<dim>         &position) const
     {
       // Make sure this boundary condition is only used on the bottom boundary
-//      AssertThrow(this->get_geometry_model().translate_id_to_symbol_name(boundary_indicator) == "bottom",
-//          ExcMessage ("The plume boundary temperature plugin can only be used for the bottom boundary."));
-      if (this->get_geometry_model().translate_id_to_symbol_name(boundary_indicator) == "top")
+      // and not at t0 if in conjunction with the initial temperature boundary temperature plugin
+      // TODO test for initial temperature boundary temperature plugin
+      if (this->get_geometry_model().translate_id_to_symbol_name(boundary_indicator) == "top"
+          || this->get_time() == 0)
       {
-//        this->get_pcout() << "The plume inflow boundary temperature is requested for boundary: " << this->get_geometry_model().translate_id_to_symbol_name(boundary_indicator) << std::endl;
         return 0;
       }
 
@@ -300,7 +299,7 @@ namespace aspect
 
         //Normal plume tail if most of the plume head has passed
         if ((this->get_time() >= model_time_to_start_plume_tail)
-            && (current_head_radius < tail_radius))
+            && (current_head_radius < tail_radius)  && position.norm() < plume_position.norm())
         {
           // Prescribe temperature in tail
           boundary_temperature += tail_amplitude * std::exp(-std::pow(distance_to_tail_axis/tail_radius,2));

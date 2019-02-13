@@ -20,7 +20,7 @@
 
 
 #include <aspect/global.h>
-#include <aspect/boundary_velocity/plume_function.h>
+#include <aspect/boundary_velocity/plume_only.h>
 #include <aspect/geometry_model/box.h>
 #include <aspect/geometry_model/chunk.h>
 #include <aspect/geometry_model/ellipsoidal_chunk.h>
@@ -34,7 +34,7 @@ namespace aspect
   {
 
     template <int dim>
-    PlumeFunction<dim>::PlumeFunction ()
+    PlumeOnly<dim>::PlumeOnly ()
       :
       boundary_id(numbers::invalid_boundary_id),
       volume(0),
@@ -43,13 +43,14 @@ namespace aspect
       current_head_radius(0),
       inner_radius(0),
       outer_radius(0),
-      cartesian(false)
+      cartesian(false),
+      boundary_normal_plume_inflow(false)
     {}
 
 
     template <int dim>
     void
-    PlumeFunction<dim>::initialize ()
+    PlumeOnly<dim>::initialize ()
     {
       // TODO For now, this plume inflow only works in 3D
       AssertThrow (dim == 3, ExcMessage("This boundary velocity plume plugin has not been checked for 2d."));
@@ -110,15 +111,16 @@ namespace aspect
       {
         AssertThrow(gm->get_eccentricity()==0, ExcMessage("This plume boundary velocity plugin does not work for an ellipsoidal domain."));
         const std::vector<Point<2> > corners = gm->get_corners();
-        const double lon_min = corners[2][0];
-        const double lon_max = corners[0][0];
-        const double colat_min = 0.5*numbers::PI - corners[0][1];
-        const double colat_max = 0.5*numbers::PI - corners[2][1];
+        // convert to radians and colatitude
+        const double lon_min = corners[2][0]*numbers::PI/180.;
+        const double lon_max = corners[0][0]*numbers::PI/180.;
+        const double colat_min = (90 - corners[0][1])*numbers::PI/180.;
+        const double colat_max = (90 - corners[2][1])*numbers::PI/180.;
         outer_radius = gm->get_semi_major_axis_a();
         inner_radius = outer_radius - gm->maximal_depth();
-        area = inner_radius * inner_radius * (-std::cos(colat_max) + std::cos(colat_min)) * (lon_max-lon_min);
+        area = inner_radius * inner_radius * (std::cos(colat_min) - std::cos(colat_max)) * (lon_max-lon_min);
       }
-      // TODO implement for spherical shell and ellipsoidal chunk
+      // TODO implement for spherical shell
       else
         AssertThrow(false, ExcNotImplemented());
 
@@ -133,7 +135,7 @@ namespace aspect
 
     template <int dim>
     void
-    PlumeFunction<dim>::update ()
+    PlumeOnly<dim>::update ()
     {
       Interface<dim>::update ();
 
@@ -146,52 +148,48 @@ namespace aspect
       // reset radius of intersection of plume and bottom boundary
       current_head_radius = 0.;
 
-      if ((head_radius > 0) && (head_velocity > 0))
+      // Cartesian box
+      if (cartesian)
       {
-        // Cartesian box
-        if (cartesian)
+        // Absolute vertical distance [m] between the center of the plume
+        // and the bottom boundary
+        distance_head_to_boundary = fabs(head_velocity * (this->get_time() - model_time_to_start_plume_tail));
+
+        // Compute the radius of the plume head in the plane of the bottom boundary
+        // if the plume head and bottom boundary intersect
+        if (distance_head_to_boundary < head_radius)
         {
-          // Absolute vertical distance [m] between the center of the plume
-          // and the bottom boundary
-          distance_head_to_boundary = fabs(head_velocity * (this->get_time() - model_time_to_start_plume_tail));
-
-          // Compute the radius of the plume head in the plane of the bottom boundary
-          // if the plume head and bottom boundary intersect
-          if (distance_head_to_boundary < head_radius)
-          {
-            current_head_radius = sqrt(head_radius * head_radius
-                - distance_head_to_boundary * distance_head_to_boundary);
-          }
+          current_head_radius = sqrt(head_radius * head_radius
+              - distance_head_to_boundary * distance_head_to_boundary);
         }
-        // Spherical geometries
-        else
-        {
-          // Radial distance [m] between plume center and bottom boundary
-          // in the direction of gravity
-          distance_head_to_boundary = head_velocity * (this->get_time() - model_time_to_start_plume_tail);
+      }
+      // Spherical geometries
+      else
+      {
+        // Radial distance [m] between plume center and bottom boundary
+        // in the direction of gravity
+        distance_head_to_boundary = head_velocity * (this->get_time() - model_time_to_start_plume_tail);
 
-          // Adapt the plume position radius which was set to the bottom boundary
-          const Point<dim> tmp_plume_position = plume_position * (inner_radius + distance_head_to_boundary) / inner_radius;
+        // Adapt the plume position radius which was set to the bottom boundary
+        const Point<dim> tmp_plume_position = plume_position * (inner_radius + distance_head_to_boundary) / inner_radius;
 
-          // If the two spheres (plume head and inner_radius) intersect,
-          // their intersection is a circle with radius current_head_radius.
-          // The center of the inner_radius sphere is origin
-          const double distance_sphere_centers = tmp_plume_position.norm();
-          if (distance_sphere_centers <= head_radius + inner_radius && distance_sphere_centers >= abs(inner_radius - head_radius))
-            current_head_radius = std::sqrt(4.*inner_radius*inner_radius*distance_sphere_centers*distance_sphere_centers
-                -std::pow(distance_sphere_centers*distance_sphere_centers-head_radius*head_radius+inner_radius*inner_radius,2.))/(2.*distance_sphere_centers);
-        }
+        // If the two spheres (plume head and inner_radius) intersect,
+        // their intersection is a circle with radius current_head_radius.
+        // The center of the inner_radius sphere is origin
+        const double distance_sphere_centers = tmp_plume_position.norm();
+        if (distance_sphere_centers <= head_radius + inner_radius && distance_sphere_centers >= abs(inner_radius - head_radius))
+          current_head_radius = std::sqrt(4.*inner_radius*inner_radius*distance_sphere_centers*distance_sphere_centers
+              -std::pow(distance_sphere_centers*distance_sphere_centers-head_radius*head_radius+inner_radius*inner_radius,2.))/(2.*distance_sphere_centers);
       }
 
       // Integrate the plume inflow over the bottom boundary
       volume = integrate_plume_inflow();
-
     }
 
 
     template <int dim>
     Tensor<1,dim>
-    PlumeFunction<dim>::cartesian_velocity (const Point<dim> position) const
+    PlumeOnly<dim>::cartesian_velocity (const Point<dim> position) const
     {
       Tensor<1,dim> velocity;
 
@@ -219,7 +217,7 @@ namespace aspect
 
     template <int dim>
     Tensor<1,dim>
-    PlumeFunction<dim>::
+    PlumeOnly<dim>::
     spherical_velocity (const Point<dim> position) const
     {
       Tensor<1,dim> velocity;
@@ -252,14 +250,20 @@ namespace aspect
         // Prescribe velocity in direction parallel to plume
         // (so not in the boundary normal direction except directly
         // above the plume)
-        velocity  += tail_velocity * std::exp(-std::pow(distance_to_tail_axis/tail_radius,2)) * plume_position / plume_position.norm();
+        if (boundary_normal_plume_inflow)
+          velocity  += tail_velocity * std::exp(-std::pow(distance_to_tail_axis/tail_radius,2)) * position / position.norm();
+        else
+          velocity  += tail_velocity * std::exp(-std::pow(distance_to_tail_axis/tail_radius,2)) * plume_position / plume_position.norm();
       }
       else if (point_in_plume_head)
       {
         // Prescribe velocity in direction parallel to plume
         // (so not in the boundary normal direction except directly
         // above the plume)
-        velocity += head_velocity * plume_position / plume_position.norm();
+        if (boundary_normal_plume_inflow)
+          velocity += head_velocity * position / position.norm();
+        else
+          velocity += head_velocity * plume_position / plume_position.norm();
       }
 
       return velocity;
@@ -267,7 +271,7 @@ namespace aspect
 
     template <int dim>
     double
-    PlumeFunction<dim>::
+    PlumeOnly<dim>::
     integrate_plume_inflow ()
     {
       const QGauss<dim-1> quadrature_formula (this->introspection().polynomial_degree.velocities + 1);
@@ -310,24 +314,21 @@ namespace aspect
       // by communicating over all processors
       const double global_inflow = Utilities::MPI::sum (local_normal_flux, this->get_mpi_communicator());
 
-      std::cout << "Plume inflow through bottom: " << global_inflow << " m3/s" << std::endl;
-
       return global_inflow;
     }
 
     template <int dim>
     Tensor<1,dim>
-    PlumeFunction<dim>::
+    PlumeOnly<dim>::
     boundary_velocity (const types::boundary_id boundary_id,
                        const Point<dim> &position) const
     {
-      // Make sure we're only prescribing the plume velocity on the
-      // bottom boundary
-//      AssertThrow(this->get_geometry_model().translate_id_to_symbol_name(boundary_id) == "bottom",
-//         ExcMessage("This plume inflow boundary velocity plugin only works for the bottom boundary."));
-      if (this->get_geometry_model().translate_id_to_symbol_name(boundary_id) == "top")
+      // Make sure we're not prescribing the plume velocity on the
+      // top boundary. Also, when the plume has no prescribed velocity,
+      // return zero right away.
+      if (this->get_geometry_model().translate_id_to_symbol_name(boundary_id) == "top"
+          || (head_velocity == 0. && tail_velocity == 0.))
       {
-//        this->get_pcout() << "The plume inflow boundary velocity is requested for boundary: " << this->get_geometry_model().translate_id_to_symbol_name(boundary_id) << std::endl;
         return Tensor<1,dim>();
       }
 
@@ -345,14 +346,23 @@ namespace aspect
 
     template <int dim>
     void
-    PlumeFunction<dim>::declare_parameters (ParameterHandler &)
+    PlumeOnly<dim>::declare_parameters (ParameterHandler &prm)
     {
+      prm.enter_subsection("Plume");
+      {
+      prm.declare_entry ("Boundary normal inflow", "false",
+                         Patterns::Bool (),
+                         "Whether or not to apply the plume inflow velocity normal "
+                         "to the bottom boundary or parallel to the direction of the "
+                         "center of the plume head.");
+      }
+      prm.leave_subsection ();
     }
 
 
     template <int dim>
     void
-    PlumeFunction<dim>::parse_parameters (ParameterHandler &prm)
+    PlumeOnly<dim>::parse_parameters (ParameterHandler &prm)
     {
       prm.enter_subsection("Plume");
       {
@@ -377,6 +387,8 @@ namespace aspect
         head_velocity                  = prm.get_double("Head velocity");
         model_time_to_start_plume_tail = prm.get_double ("Model time to start plume tail");
 
+        boundary_normal_plume_inflow   = prm.get_bool("Boundary normal inflow");
+
         if (this->convert_output_to_years() == true)
           {
             tail_velocity /= year_in_seconds;
@@ -395,8 +407,8 @@ namespace aspect
 {
   namespace BoundaryVelocity
   {
-    ASPECT_REGISTER_BOUNDARY_VELOCITY_MODEL(PlumeFunction,
-                                            "plume and function",
+    ASPECT_REGISTER_BOUNDARY_VELOCITY_MODEL(PlumeOnly,
+                                            "plume only",
                                             "This is a velocity plugin that provides plume inflow velocities "
                                             "for the bottom boundary together with a user-defined function "
                                             "to specify any other in- or outflow through the bottom. "

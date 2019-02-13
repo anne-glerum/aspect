@@ -19,8 +19,8 @@
 */
 
 
-#ifndef _aspect_velocity_boundary_conditions_plume_function_h
-#define _aspect_velocity_boundary_conditions_plume_function_h
+#ifndef _aspect_velocity_boundary_conditions_plume_only_h
+#define _aspect_velocity_boundary_conditions_plume_only_h
 
 #include <aspect/boundary_velocity/interface.h>
 //#include <aspect/boundary_velocity/function.h>
@@ -44,13 +44,13 @@ namespace aspect
      * @ingroup VelocityBoundaryConditionsModels
      */
     template <int dim>
-    class PlumeFunction : public Interface<dim>, public SimulatorAccess<dim>
+    class PlumeOnly : public Interface<dim>, public SimulatorAccess<dim>
     {
       public:
         /**
          * Empty Constructor.
          */
-        PlumeFunction ();
+        PlumeOnly ();
 
         /**
          * Initialization function. This function is called once at the
@@ -189,6 +189,13 @@ namespace aspect
          * Whether or not the model domain is a box or spherical
          */
         bool cartesian;
+
+        /**
+         * Whether or not to apply the plume inflow velocity normal
+         * to the bottom boundary or parallel to the direction of the
+         * center of the plume head.
+         */
+        bool boundary_normal_plume_inflow;
     };
   }
 }

@@ -24,6 +24,7 @@
 #include <aspect/boundary_temperature/plume_only.h>
 #include <aspect/geometry_model/box.h>
 #include <aspect/geometry_model/chunk.h>
+#include <aspect/geometry_model/ellipsoidal_chunk.h>
 
 
 #include <deal.II/base/quadrature_lib.h>
@@ -47,6 +48,15 @@ namespace aspect
       const BoundaryTemperature::PlumeOnly<dim> &boundary_temperature =
         this->get_boundary_temperature_manager().template get_matching_boundary_temperature_model<BoundaryTemperature::PlumeOnly<dim> >();
 
+      // TODO once the plume head is inside the domain,
+      // there is no knowing how fast it travels. It could well
+      // be slower than the prescribed inflow velocity.
+      // In this case, the mesh refinement criteria specified
+      // here do not follow the plume head correctly.
+      // Perhaps after the plume head has passed, assume the tail velocity?
+      // TODO also, the plume head does not necessarily move laterally as the
+      // plume tail does at the boundary, so I'm not sure how to use this plugin
+      // Perhaps only for the bottom boundary?
       const Point<dim> plume_position = boundary_temperature.get_plume_position();
       const double distance_head_to_boundary = head_velocity * (this->get_time() - model_time_to_start_plume_tail);
       Point<dim> top_tail_cylinder_axis = plume_position;
@@ -58,6 +68,13 @@ namespace aspect
       else if (GeometryModel::Chunk<dim> *gm = dynamic_cast<GeometryModel::Chunk<dim> *>
       (const_cast<GeometryModel::Interface<dim> *>(&this->get_geometry_model())))
         top_tail_cylinder_axis *= (gm->inner_radius()+distance_head_to_boundary) / plume_position.norm();
+      else if (GeometryModel::EllipsoidalChunk<dim> *gm = dynamic_cast<GeometryModel::EllipsoidalChunk<dim> *>
+      (const_cast<GeometryModel::Interface<dim> *>(&this->get_geometry_model())))
+      {
+        AssertThrow(gm->get_eccentricity()==0, ExcMessage("This plume boundary velocity plugin does not work for an ellipsoidal domain."));
+        const double outer_radius = gm->get_semi_major_axis_a();
+        top_tail_cylinder_axis *= (outer_radius - gm->maximal_depth()+distance_head_to_boundary) / plume_position.norm();
+      }
       else
         AssertThrow(false, ExcNotImplemented());
       const double c2 = top_tail_cylinder_axis * top_tail_cylinder_axis;
