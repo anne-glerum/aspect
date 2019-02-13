@@ -40,9 +40,9 @@ namespace aspect
     {
       template <int dim>
       PlumeOnlyLookup<dim>::PlumeOnlyLookup(const std::string &filename,
-                                    const ConditionalOStream &pcout,
-                                    const bool cartesian,
-                                    const double inner_radius)
+                                            const ConditionalOStream &pcout,
+                                            const bool cartesian,
+                                            const double inner_radius)
       {
         pcout << std::endl << "   Loading Plume position file for boundary temperature: "
               << filename << "." << std::endl << std::endl;
@@ -97,16 +97,16 @@ namespace aspect
             // 4. convert from spherical to cartesian coordinates
             // TODO needed?
             else
-            {
-              std_cxx11::array<double,dim> spherical_position;
-              spherical_position[0] = inner_radius;
-              for (unsigned int d = 1; d<dim; d++)
-                spherical_position[d] = position[d-1] * degrees_to_radians;
-              if (spherical_position[1] < 0.)
-                spherical_position[1] += 2.*numbers::PI;
-              spherical_position[dim-1] = 0.5 * numbers::PI - spherical_position[dim-1];
-              plume_positions.push_back(Utilities::Coordinates::spherical_to_cartesian_coordinates<dim>(spherical_position));
-            }
+              {
+                std_cxx11::array<double,dim> spherical_position;
+                spherical_position[0] = inner_radius;
+                for (unsigned int d = 1; d<dim; d++)
+                  spherical_position[d] = position[d-1] * degrees_to_radians;
+                if (spherical_position[1] < 0.)
+                  spherical_position[1] += 2.*numbers::PI;
+                spherical_position[dim-1] = 0.5 * numbers::PI - spherical_position[dim-1];
+                plume_positions.push_back(Utilities::Coordinates::spherical_to_cartesian_coordinates<dim>(spherical_position));
+              }
 
             // Convert the time to SI units
             if (times.size() == 0)
@@ -171,25 +171,25 @@ namespace aspect
       // and what the height/radius of the bottom and top boundaries is
       // TODO for now this plugin only works for a box or a chunk
       if (GeometryModel::Box<dim> *gm = dynamic_cast<GeometryModel::Box<dim> *>
-      (const_cast<GeometryModel::Interface<dim> *>(&this->get_geometry_model())))
-      {
-        cartesian = true;
-        inner_radius = gm->get_origin()[dim-1];
-        outer_radius = gm->get_extents()[dim-1]+inner_radius;
-      }
+                                        (const_cast<GeometryModel::Interface<dim> *>(&this->get_geometry_model())))
+        {
+          cartesian = true;
+          inner_radius = gm->get_origin()[dim-1];
+          outer_radius = gm->get_extents()[dim-1]+inner_radius;
+        }
       else if (GeometryModel::Chunk<dim> *gm = dynamic_cast<GeometryModel::Chunk<dim> *>
-      (const_cast<GeometryModel::Interface<dim> *>(&this->get_geometry_model())))
-      {
-        inner_radius = gm->inner_radius();
-        outer_radius = gm->outer_radius();
-      }
+                                               (const_cast<GeometryModel::Interface<dim> *>(&this->get_geometry_model())))
+        {
+          inner_radius = gm->inner_radius();
+          outer_radius = gm->outer_radius();
+        }
       else if (GeometryModel::EllipsoidalChunk<dim> *gm = dynamic_cast<GeometryModel::EllipsoidalChunk<dim> *>
-      (const_cast<GeometryModel::Interface<dim> *>(&this->get_geometry_model())))
-      {
-        AssertThrow(gm->get_eccentricity()==0, ExcMessage("This plume boundary velocity plugin does not work for an ellipsoidal domain."));
-        outer_radius = gm->get_semi_major_axis_a();
-        inner_radius = outer_radius - gm->maximal_depth();
-      }
+                                                          (const_cast<GeometryModel::Interface<dim> *>(&this->get_geometry_model())))
+        {
+          AssertThrow(gm->get_eccentricity()==0, ExcMessage("This plume boundary velocity plugin does not work for an ellipsoidal domain."));
+          outer_radius = gm->get_semi_major_axis_a();
+          inner_radius = outer_radius - gm->maximal_depth();
+        }
       else
         AssertThrow(false, ExcNotImplemented());
 
@@ -198,9 +198,9 @@ namespace aspect
       // plume head position (which is not provided in the file)
       // to a reasonable value.
       lookup.reset(new internal::PlumeOnlyLookup<dim>(data_directory+plume_file_name,
-          this->get_pcout(),
-          cartesian,
-          inner_radius));
+                                                      this->get_pcout(),
+                                                      cartesian,
+                                                      inner_radius));
     }
 
     template <int dim>
@@ -235,84 +235,84 @@ namespace aspect
       // TODO test for initial temperature boundary temperature plugin
       if (this->get_geometry_model().translate_id_to_symbol_name(boundary_indicator) == "top"
           || this->get_time() == 0)
-      {
-        return 0;
-      }
+        {
+          return 0;
+        }
 
       double boundary_temperature(0);
 
       // Cartesian box
       if (cartesian)
-      {
-        // Compute plume head or tail velocity
-        double distance_head_to_boundary,current_head_radius(0);
-        // radial distance in m
-        distance_head_to_boundary = fabs(head_velocity * (this->get_time() - model_time_to_start_plume_tail));
-
-        // If the plume is not yet there, perturbation will not be set
-        // Compute the radius of the plume head in the plane of the bottom boundary
-        if (distance_head_to_boundary < head_radius)
         {
-          current_head_radius = sqrt(head_radius * head_radius
-              - distance_head_to_boundary * distance_head_to_boundary);
-        }
+          // Compute plume head or tail velocity
+          double distance_head_to_boundary,current_head_radius(0);
+          // radial distance in m
+          distance_head_to_boundary = fabs(head_velocity * (this->get_time() - model_time_to_start_plume_tail));
 
-        //Normal plume tail if most of the plume head has passed
-        if ((this->get_time() >= model_time_to_start_plume_tail)
-            && (current_head_radius < tail_radius))
-        {
-          // T=T_0*exp-(r/r_0)**2
-          boundary_temperature += tail_amplitude * std::exp(-std::pow((position-plume_position).norm()/tail_radius,2));
+          // If the plume is not yet there, perturbation will not be set
+          // Compute the radius of the plume head in the plane of the bottom boundary
+          if (distance_head_to_boundary < head_radius)
+            {
+              current_head_radius = sqrt(head_radius * head_radius
+                                         - distance_head_to_boundary * distance_head_to_boundary);
+            }
+
+          //Normal plume tail if most of the plume head has passed
+          if ((this->get_time() >= model_time_to_start_plume_tail)
+              && (current_head_radius < tail_radius))
+            {
+              // T=T_0*exp-(r/r_0)**2
+              boundary_temperature += tail_amplitude * std::exp(-std::pow((position-plume_position).norm()/tail_radius,2));
+            }
+          else if ((position-plume_position).norm() < current_head_radius)
+            boundary_temperature += head_amplitude;
         }
-        else if ((position-plume_position).norm() < current_head_radius)
-          boundary_temperature += head_amplitude;
-      }
       // Spherical geometries
       else
-      {
-        double distance_head_to_boundary(0),current_head_radius(0);
-        // Does the current point lie in the plume head?
-        bool point_in_plume_head = false;
-        if ((position-plume_position).norm() <= head_radius)
-          point_in_plume_head = true;
+        {
+          double distance_head_to_boundary(0),current_head_radius(0);
+          // Does the current point lie in the plume head?
+          bool point_in_plume_head = false;
+          if ((position-plume_position).norm() <= head_radius)
+            point_in_plume_head = true;
 
-        // radial distance in m
-        distance_head_to_boundary = head_velocity * (this->get_time() - model_time_to_start_plume_tail);
-        // Adapt the plume position radius which was set to the bottom boundary
-        const Point<dim> tmp_plume_position = plume_position * (inner_radius + distance_head_to_boundary) / inner_radius;
+          // radial distance in m
+          distance_head_to_boundary = head_velocity * (this->get_time() - model_time_to_start_plume_tail);
+          // Adapt the plume position radius which was set to the bottom boundary
+          const Point<dim> tmp_plume_position = plume_position * (inner_radius + distance_head_to_boundary) / inner_radius;
 
-        // Compute the distance to the axis of the tail
+          // Compute the distance to the axis of the tail
 //        Point<dim> top_tail_cylinder_axis = plume_position / plume_position.norm() * outer_radius;
 //        const double c1 = top_tail_cylinder_axis * position;
 //        const double c2 = top_tail_cylinder_axis * top_tail_cylinder_axis;
 //        AssertThrow(c1>=0 && c2>=c1, ExcMessage("Point on bottom boundary does not fall in artificial tail cylinder."));
 //        const double distance_to_tail_axis = Tensor<1,dim> (position -  c1/c2 * top_tail_cylinder_axis).norm();
-        const double distance_to_tail_axis = (cross_product_3d(position,plume_position/inner_radius)).norm();
+          const double distance_to_tail_axis = (cross_product_3d(position,plume_position/inner_radius)).norm();
 
-        // If the two spheres (plume head and inner_radius) intersect,
-        // their intersection is a circle with radius current_head_radius.
-        // The center of the inner_radius sphere is origin
-        const double distance_sphere_centers = tmp_plume_position.norm();
-        if (distance_sphere_centers <= head_radius + inner_radius && distance_sphere_centers >= abs(inner_radius - head_radius))
-          current_head_radius = std::sqrt(4*inner_radius*inner_radius*distance_sphere_centers*distance_sphere_centers
-              -std::pow(distance_sphere_centers*distance_sphere_centers-head_radius*head_radius+inner_radius*inner_radius,2))/(2*distance_sphere_centers);
+          // If the two spheres (plume head and inner_radius) intersect,
+          // their intersection is a circle with radius current_head_radius.
+          // The center of the inner_radius sphere is origin
+          const double distance_sphere_centers = tmp_plume_position.norm();
+          if (distance_sphere_centers <= head_radius + inner_radius && distance_sphere_centers >= abs(inner_radius - head_radius))
+            current_head_radius = std::sqrt(4*inner_radius*inner_radius*distance_sphere_centers*distance_sphere_centers
+                                            -std::pow(distance_sphere_centers*distance_sphere_centers-head_radius*head_radius+inner_radius*inner_radius,2))/(2*distance_sphere_centers);
 
-        //Normal plume tail if most of the plume head has passed
-        if ((this->get_time() >= model_time_to_start_plume_tail)
-            && (current_head_radius < tail_radius)  && position.norm() < plume_position.norm())
-        {
-          // Prescribe temperature in tail
-          boundary_temperature += tail_amplitude * std::exp(-std::pow(distance_to_tail_axis/tail_radius,2));
+          //Normal plume tail if most of the plume head has passed
+          if ((this->get_time() >= model_time_to_start_plume_tail)
+              && (current_head_radius < tail_radius)  && position.norm() < plume_position.norm())
+            {
+              // Prescribe temperature in tail
+              boundary_temperature += tail_amplitude * std::exp(-std::pow(distance_to_tail_axis/tail_radius,2));
+            }
+          else if (point_in_plume_head)
+            {
+              // Prescribe temperature in head
+              boundary_temperature += head_amplitude;
+            }
         }
-        else if (point_in_plume_head)
-        {
-          // Prescribe temperature in head
-          boundary_temperature += head_amplitude;
-        }
-      }
 
-    return boundary_temperature;
-  }
+      return boundary_temperature;
+    }
 
 
     template <int dim>

@@ -99,49 +99,49 @@ namespace aspect
         /**
            * Magnitude of the temperature anomaly
            */
-          double tail_amplitude;
+        double tail_amplitude;
 
-          /**
-           * Radius of the temperature anomaly
-           */
-          double tail_radius;
+        /**
+         * Radius of the temperature anomaly
+         */
+        double tail_radius;
 
-          /**
-           * Magnitude of the plume head temperature anomaly
-           */
-          double head_amplitude;
+        /**
+         * Magnitude of the plume head temperature anomaly
+         */
+        double head_amplitude;
 
-          /**
-           * Radius of the plume head temperature anomaly
-           */
-          double head_radius;
+        /**
+         * Radius of the plume head temperature anomaly
+         */
+        double head_radius;
 
-          /**
-           * Velocity of the plume head inflow
-           */
-          double head_velocity;
+        /**
+         * Velocity of the plume head inflow
+         */
+        double head_velocity;
 
-          /**
-           * Model time at which the plume tail will start to move according to
-           * the position data file. This is equivalent to the difference between
-           * model start time (in the past) and the first data time of the plume
-           * positions file.
-           */
-          double model_time_to_start_plume_tail;
+        /**
+         * Model time at which the plume tail will start to move according to
+         * the position data file. This is equivalent to the difference between
+         * model start time (in the past) and the first data time of the plume
+         * positions file.
+         */
+        double model_time_to_start_plume_tail;
 
-          /**
-           * Whether or not the model domain is a cartesian box.
-           */
-          bool cartesian = false;
+        /**
+         * Whether or not the model domain is a cartesian box.
+         */
+        bool cartesian = false;
 
-          /**
-           * For cartesian models that are offset from the origin,
-           * this represents the z-value of the bottom boundary.
-           * For spherical domains, this is the radius of the bottom
-           * boundary.
-           */
-          double inner_radius;
-          double outer_radius;
+        /**
+         * For cartesian models that are offset from the origin,
+         * this represents the z-value of the bottom boundary.
+         * For spherical domains, this is the radius of the bottom
+         * boundary.
+         */
+        double inner_radius;
+        double outer_radius;
     };
   }
 }

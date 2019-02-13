@@ -61,24 +61,25 @@ namespace aspect
       const double distance_head_to_boundary = head_velocity * (this->get_time() - model_time_to_start_plume_tail);
       Point<dim> top_tail_cylinder_axis = plume_position;
       if (dynamic_cast<const GeometryModel::Box<dim>*> (&this->get_geometry_model()) != 0 )
-      {
-        top_tail_cylinder_axis -= plume_position;
-        top_tail_cylinder_axis[dim-1] += distance_head_to_boundary;
-      }
+        {
+          top_tail_cylinder_axis -= plume_position;
+          top_tail_cylinder_axis[dim-1] += distance_head_to_boundary;
+        }
       else if (GeometryModel::Chunk<dim> *gm = dynamic_cast<GeometryModel::Chunk<dim> *>
-      (const_cast<GeometryModel::Interface<dim> *>(&this->get_geometry_model())))
+                                               (const_cast<GeometryModel::Interface<dim> *>(&this->get_geometry_model())))
         top_tail_cylinder_axis *= (gm->inner_radius()+distance_head_to_boundary) / plume_position.norm();
       else if (GeometryModel::EllipsoidalChunk<dim> *gm = dynamic_cast<GeometryModel::EllipsoidalChunk<dim> *>
-      (const_cast<GeometryModel::Interface<dim> *>(&this->get_geometry_model())))
-      {
-        AssertThrow(gm->get_eccentricity()==0, ExcMessage("This plume boundary velocity plugin does not work for an ellipsoidal domain."));
-        const double outer_radius = gm->get_semi_major_axis_a();
-        top_tail_cylinder_axis *= (outer_radius - gm->maximal_depth()+distance_head_to_boundary) / plume_position.norm();
-      }
+                                                          (const_cast<GeometryModel::Interface<dim> *>(&this->get_geometry_model())))
+        {
+          AssertThrow(gm->get_eccentricity()==0, ExcMessage("This plume boundary velocity plugin does not work for an ellipsoidal domain."));
+          const double outer_radius = gm->get_semi_major_axis_a();
+          top_tail_cylinder_axis *= (outer_radius - gm->maximal_depth() + distance_head_to_boundary) / plume_position.norm();
+        }
       else
         AssertThrow(false, ExcNotImplemented());
+
       const double c2 = top_tail_cylinder_axis * top_tail_cylinder_axis;
-      
+
 
       for (typename Triangulation<dim>::active_cell_iterator
            cell = this->get_triangulation().begin_active();
@@ -94,48 +95,48 @@ namespace aspect
               for ( unsigned int v = 0; v < GeometryInfo<dim>::vertices_per_cell;  ++v)
                 {
                   Point<dim> vertex = cell->vertex(v);
-            
+
                   // Find the head
                   unsigned int minimum_refinement_level = std::max(overall_minimum_refinement_level,
-                                                          ((vertex - plume_position).norm() < plume_refinement_radius)
-                                                          ?
-                                                          plume_refinement_level
-                                                          :
-                                                          0);
+                                                                   ((vertex - plume_position).norm() < plume_refinement_radius)
+                                                                   ?
+                                                                   plume_refinement_level
+                                                                   :
+                                                                   0);
                   // Find the plume tail
                   const double c1 = top_tail_cylinder_axis * vertex;
                   double distance_to_tail_axis = std::numeric_limits<double>::max();
                   if (c1>0 && c2>c1)
-                     distance_to_tail_axis = Tensor<1,dim> (vertex -  c1/c2 * top_tail_cylinder_axis).norm();
+                    distance_to_tail_axis = Tensor<1,dim> (vertex -  c1/c2 * top_tail_cylinder_axis).norm();
                   minimum_refinement_level = std::max(minimum_refinement_level,
-                                                          (distance_to_tail_axis <= tail_radius + (plume_refinement_radius-head_radius) ?
-                                                          plume_refinement_level
-                                                          :
-                                                          0));
+                                                      (distance_to_tail_axis <= tail_radius + (plume_refinement_radius-head_radius) ?
+                                                       plume_refinement_level
+                                                       :
+                                                       0));
 
 
                   if (cell->level() == rint(minimum_refinement_level))
-                  {
-                    clear_coarsen = true;
-                    clear_refine = true;
-                    refine = false;
-                    coarsen = false;
-                  }
+                    {
+                      clear_coarsen = true;
+                      clear_refine = true;
+                      refine = false;
+                      coarsen = false;
+                    }
                   if (cell->level() <  rint(minimum_refinement_level))
-                  {
+                    {
                       clear_coarsen = true;
                       refine = true;
                       clear_refine = false;
                       coarsen = false;
                       break;
-                  }
+                    }
                   if (cell->level() > rint(minimum_refinement_level))
-                  {
-                    clear_refine = true;
-                    coarsen = true;
-                    clear_coarsen = false;
-                    refine = false;
-                  }
+                    {
+                      clear_refine = true;
+                      coarsen = true;
+                      clear_coarsen = false;
+                      refine = false;
+                    }
                 }
 
               if (clear_coarsen)
@@ -194,7 +195,7 @@ namespace aspect
       prm.leave_subsection();
       prm.enter_subsection("Mesh refinement");
       {
-       overall_minimum_refinement_level = prm.get_integer ("Minimum refinement level");
+        overall_minimum_refinement_level = prm.get_integer ("Minimum refinement level");
       }
       prm.leave_subsection();
     }

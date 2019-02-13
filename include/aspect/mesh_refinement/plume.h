@@ -80,28 +80,28 @@ namespace aspect
          */
         double plume_refinement_radius;
 
-          /**
-           * Radius of the temperature anomaly
-           */
-          double tail_radius;
+        /**
+         * Radius of the temperature anomaly
+         */
+        double tail_radius;
 
-          /**
-           * Radius of the plume head temperature anomaly
-           */
-          double head_radius;
+        /**
+         * Radius of the plume head temperature anomaly
+         */
+        double head_radius;
 
-          /**
-           * Model time at which the plume tail will start to move according to
-           * the position data file. This is equivalent to the difference between
-           * model start time (in the past) and the first data time of the plume
-           * positions file.
-           */
-          double model_time_to_start_plume_tail;
+        /**
+         * Model time at which the plume tail will start to move according to
+         * the position data file. This is equivalent to the difference between
+         * model start time (in the past) and the first data time of the plume
+         * positions file.
+         */
+        double model_time_to_start_plume_tail;
 
-          /**
-           * Velocity of the plume head inflow
-           */
-          double head_velocity;
+        /**
+         * Velocity of the plume head inflow
+         */
+        double head_velocity;
 
         /**
          * The minimum level of refinement

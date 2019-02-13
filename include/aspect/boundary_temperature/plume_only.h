@@ -56,9 +56,9 @@ namespace aspect
            * actual plume positions and times.
            */
           PlumeOnlyLookup(const std::string &filename,
-                      const ConditionalOStream &pcout,
-                      const bool cartesian,
-                      const double inner_radius);
+                          const ConditionalOStream &pcout,
+                          const bool cartesian,
+                          const double inner_radius);
 
           /**
            * Check whether a file named @p filename exists.

@@ -72,54 +72,54 @@ namespace aspect
       AssertThrow(boundary_id != numbers::invalid_boundary_id,
                   ExcMessage("Did not find the boundary indicator for the prescribed data plugin."));
 
- //     AssertThrow(this->get_geometry_model().translate_id_to_symbol_name(boundary_id) == "bottom",
- //                 ExcMessage("The plume inflow velocity boundary condition can only be set for the bottom boundary."));
+//     AssertThrow(this->get_geometry_model().translate_id_to_symbol_name(boundary_id) == "bottom",
+//                 ExcMessage("The plume inflow velocity boundary condition can only be set for the bottom boundary."));
 
 
       // Set some parameters concerning the domain
       // to compute the area of the bottom boundary
       if (GeometryModel::Box<dim> *gm = dynamic_cast<GeometryModel::Box<dim> *>
-      (const_cast<GeometryModel::Interface<dim> *>(&this->get_geometry_model())))
-      {
-        cartesian = true;
-        const Point<dim> extents = gm->get_extents();
-        const Point<dim> origin = gm->get_origin();
-        for (unsigned int d = 0; d<dim-1; d++)
-        area = extents[0] * extents[dim-2];
-        inner_radius = origin[dim-1];
-      }
+                                        (const_cast<GeometryModel::Interface<dim> *>(&this->get_geometry_model())))
+        {
+          cartesian = true;
+          const Point<dim> extents = gm->get_extents();
+          const Point<dim> origin = gm->get_origin();
+          for (unsigned int d = 0; d<dim-1; d++)
+            area = extents[0] * extents[dim-2];
+          inner_radius = origin[dim-1];
+        }
       else if (GeometryModel::Chunk<dim> *gm = dynamic_cast<GeometryModel::Chunk<dim> *>
-      (const_cast<GeometryModel::Interface<dim> *>(&this->get_geometry_model())))
-      {
-        const double lon_min = gm->west_longitude();
-        const double lon_max = gm->east_longitude();
-        const double colat_min = 0.5*numbers::PI - gm->north_latitude();
-        const double colat_max = 0.5*numbers::PI - gm->south_latitude();
-        inner_radius = gm->inner_radius();
-        outer_radius = gm->outer_radius();
+                                               (const_cast<GeometryModel::Interface<dim> *>(&this->get_geometry_model())))
+        {
+          const double lon_min = gm->west_longitude();
+          const double lon_max = gm->east_longitude();
+          const double colat_min = 0.5*numbers::PI - gm->north_latitude();
+          const double colat_max = 0.5*numbers::PI - gm->south_latitude();
+          inner_radius = gm->inner_radius();
+          outer_radius = gm->outer_radius();
 
-        // compute the bottom area
-        // int int R2 sin(theta) dtheta dphi =
-        // R2 int [-cos(theta)]colat_min->colat_max dphi =
-        // R2 int [-cos(colat_max) - -cos(colat_min)] dphi =
-        // -R2 int [cos(colat_max) - cos(colat_min)] dphi =
-        // -R2 (cos(colat_max) - cos(colat_min)) (lon_max-lon_min)
-         area = inner_radius * inner_radius * (-std::cos(colat_max) + std::cos(colat_min)) * (lon_max-lon_min);
-      }
+          // compute the bottom area
+          // int int R2 sin(theta) dtheta dphi =
+          // R2 int [-cos(theta)]colat_min->colat_max dphi =
+          // R2 int [-cos(colat_max) - -cos(colat_min)] dphi =
+          // -R2 int [cos(colat_max) - cos(colat_min)] dphi =
+          // -R2 (cos(colat_max) - cos(colat_min)) (lon_max-lon_min)
+          area = inner_radius * inner_radius * (-std::cos(colat_max) + std::cos(colat_min)) * (lon_max-lon_min);
+        }
       else if (GeometryModel::EllipsoidalChunk<dim> *gm = dynamic_cast<GeometryModel::EllipsoidalChunk<dim> *>
-      (const_cast<GeometryModel::Interface<dim> *>(&this->get_geometry_model())))
-      {
-        AssertThrow(gm->get_eccentricity()==0, ExcMessage("This plume boundary velocity plugin does not work for an ellipsoidal domain."));
-        const std::vector<Point<2> > corners = gm->get_corners();
-        // convert to radians and colatitude
-        const double lon_min = corners[2][0]*numbers::PI/180.;
-        const double lon_max = corners[0][0]*numbers::PI/180.;
-        const double colat_min = (90 - corners[0][1])*numbers::PI/180.;
-        const double colat_max = (90 - corners[2][1])*numbers::PI/180.;
-        outer_radius = gm->get_semi_major_axis_a();
-        inner_radius = outer_radius - gm->maximal_depth();
-        area = inner_radius * inner_radius * (std::cos(colat_min) - std::cos(colat_max)) * (lon_max-lon_min);
-      }
+                                                          (const_cast<GeometryModel::Interface<dim> *>(&this->get_geometry_model())))
+        {
+          AssertThrow(gm->get_eccentricity()==0, ExcMessage("This plume boundary velocity plugin does not work for an ellipsoidal domain."));
+          const std::vector<Point<2> > corners = gm->get_corners();
+          // convert to radians and colatitude
+          const double lon_min = corners[2][0]*numbers::PI/180.;
+          const double lon_max = corners[0][0]*numbers::PI/180.;
+          const double colat_min = (90 - corners[0][1])*numbers::PI/180.;
+          const double colat_max = (90 - corners[2][1])*numbers::PI/180.;
+          outer_radius = gm->get_semi_major_axis_a();
+          inner_radius = outer_radius - gm->maximal_depth();
+          area = inner_radius * inner_radius * (std::cos(colat_min) - std::cos(colat_max)) * (lon_max-lon_min);
+        }
       // TODO implement for spherical shell
       else
         AssertThrow(false, ExcNotImplemented());
@@ -127,9 +127,9 @@ namespace aspect
 
       // Initialize the plume position lookup
       plume_lookup.reset(new BoundaryTemperature::internal::PlumeOnlyLookup<dim>(plume_data_directory+plume_file_name,
-                                                                             this->get_pcout(),
-                                                                             cartesian,
-                                                                             inner_radius));
+                                                                                 this->get_pcout(),
+                                                                                 cartesian,
+                                                                                 inner_radius));
     }
 
 
@@ -150,37 +150,37 @@ namespace aspect
 
       // Cartesian box
       if (cartesian)
-      {
-        // Absolute vertical distance [m] between the center of the plume
-        // and the bottom boundary
-        distance_head_to_boundary = fabs(head_velocity * (this->get_time() - model_time_to_start_plume_tail));
-
-        // Compute the radius of the plume head in the plane of the bottom boundary
-        // if the plume head and bottom boundary intersect
-        if (distance_head_to_boundary < head_radius)
         {
-          current_head_radius = sqrt(head_radius * head_radius
-              - distance_head_to_boundary * distance_head_to_boundary);
+          // Absolute vertical distance [m] between the center of the plume
+          // and the bottom boundary
+          distance_head_to_boundary = fabs(head_velocity * (this->get_time() - model_time_to_start_plume_tail));
+
+          // Compute the radius of the plume head in the plane of the bottom boundary
+          // if the plume head and bottom boundary intersect
+          if (distance_head_to_boundary < head_radius)
+            {
+              current_head_radius = sqrt(head_radius * head_radius
+                                         - distance_head_to_boundary * distance_head_to_boundary);
+            }
         }
-      }
       // Spherical geometries
       else
-      {
-        // Radial distance [m] between plume center and bottom boundary
-        // in the direction of gravity
-        distance_head_to_boundary = head_velocity * (this->get_time() - model_time_to_start_plume_tail);
+        {
+          // Radial distance [m] between plume center and bottom boundary
+          // in the direction of gravity
+          distance_head_to_boundary = head_velocity * (this->get_time() - model_time_to_start_plume_tail);
 
-        // Adapt the plume position radius which was set to the bottom boundary
-        const Point<dim> tmp_plume_position = plume_position * (inner_radius + distance_head_to_boundary) / inner_radius;
+          // Adapt the plume position radius which was set to the bottom boundary
+          const Point<dim> tmp_plume_position = plume_position * (inner_radius + distance_head_to_boundary) / inner_radius;
 
-        // If the two spheres (plume head and inner_radius) intersect,
-        // their intersection is a circle with radius current_head_radius.
-        // The center of the inner_radius sphere is origin
-        const double distance_sphere_centers = tmp_plume_position.norm();
-        if (distance_sphere_centers <= head_radius + inner_radius && distance_sphere_centers >= abs(inner_radius - head_radius))
-          current_head_radius = std::sqrt(4.*inner_radius*inner_radius*distance_sphere_centers*distance_sphere_centers
-              -std::pow(distance_sphere_centers*distance_sphere_centers-head_radius*head_radius+inner_radius*inner_radius,2.))/(2.*distance_sphere_centers);
-      }
+          // If the two spheres (plume head and inner_radius) intersect,
+          // their intersection is a circle with radius current_head_radius.
+          // The center of the inner_radius sphere is origin
+          const double distance_sphere_centers = tmp_plume_position.norm();
+          if (distance_sphere_centers <= head_radius + inner_radius && distance_sphere_centers >= abs(inner_radius - head_radius))
+            current_head_radius = std::sqrt(4.*inner_radius*inner_radius*distance_sphere_centers*distance_sphere_centers
+                                            -std::pow(distance_sphere_centers*distance_sphere_centers-head_radius*head_radius+inner_radius*inner_radius,2.))/(2.*distance_sphere_centers);
+        }
 
       // Integrate the plume inflow over the bottom boundary
       volume = integrate_plume_inflow();
@@ -197,20 +197,20 @@ namespace aspect
       // the tail velocity
       if ((this->get_time() >= model_time_to_start_plume_tail)
           && (current_head_radius < tail_radius))
-      {
-        // Prescribe velocity in the z direction
-        // Gaussian distribution based on the radial distance
-        // from the plume center in the plane of the bottom
-        // boundary
-        velocity[dim-1] += tail_velocity * std::exp(-std::pow((position-plume_position).norm()/tail_radius,2));
-      }
+        {
+          // Prescribe velocity in the z direction
+          // Gaussian distribution based on the radial distance
+          // from the plume center in the plane of the bottom
+          // boundary
+          velocity[dim-1] += tail_velocity * std::exp(-std::pow((position-plume_position).norm()/tail_radius,2));
+        }
       // If the current point lies within the plume head,
       // use the plume velocity
       else if ((position-plume_position).norm() < current_head_radius)
-      {
-        // Prescribe velocity in the z direction
-        velocity[dim-1] += head_velocity;
-      }
+        {
+          // Prescribe velocity in the z direction
+          velocity[dim-1] += head_velocity;
+        }
 
       return velocity;
     }
@@ -246,25 +246,25 @@ namespace aspect
       // Normal plume tail if most of the plume head has passed
       if ((this->get_time() >= model_time_to_start_plume_tail)
           && (current_head_radius < tail_radius))
-      {
-        // Prescribe velocity in direction parallel to plume
-        // (so not in the boundary normal direction except directly
-        // above the plume)
-        if (boundary_normal_plume_inflow)
-          velocity  += tail_velocity * std::exp(-std::pow(distance_to_tail_axis/tail_radius,2)) * position / position.norm();
-        else
-          velocity  += tail_velocity * std::exp(-std::pow(distance_to_tail_axis/tail_radius,2)) * plume_position / plume_position.norm();
-      }
+        {
+          // Prescribe velocity in direction parallel to plume
+          // (so not in the boundary normal direction except directly
+          // above the plume)
+          if (boundary_normal_plume_inflow)
+            velocity  += tail_velocity * std::exp(-std::pow(distance_to_tail_axis/tail_radius,2)) * position / position.norm();
+          else
+            velocity  += tail_velocity * std::exp(-std::pow(distance_to_tail_axis/tail_radius,2)) * plume_position / plume_position.norm();
+        }
       else if (point_in_plume_head)
-      {
-        // Prescribe velocity in direction parallel to plume
-        // (so not in the boundary normal direction except directly
-        // above the plume)
-        if (boundary_normal_plume_inflow)
-          velocity += head_velocity * position / position.norm();
-        else
-          velocity += head_velocity * plume_position / plume_position.norm();
-      }
+        {
+          // Prescribe velocity in direction parallel to plume
+          // (so not in the boundary normal direction except directly
+          // above the plume)
+          if (boundary_normal_plume_inflow)
+            velocity += head_velocity * position / position.norm();
+          else
+            velocity += head_velocity * plume_position / plume_position.norm();
+        }
 
       return velocity;
     }
@@ -277,10 +277,10 @@ namespace aspect
       const QGauss<dim-1> quadrature_formula (this->introspection().polynomial_degree.velocities + 1);
 
       FEFaceValues<dim> fe_face_values (this->get_mapping(),
-          this->get_fe(),
-          quadrature_formula,
-          update_normal_vectors |
-          update_q_points       | update_JxW_values);
+                                        this->get_fe(),
+                                        quadrature_formula,
+                                        update_normal_vectors |
+                                        update_q_points       | update_JxW_values);
 
       double local_normal_flux = 0;
 
@@ -299,16 +299,16 @@ namespace aspect
         if (cell->is_locally_owned())
           for (unsigned int f=0; f<GeometryInfo<dim>::faces_per_cell; ++f)
             if (cell->at_boundary(f) && cell->face(f)->boundary_id()==this->get_geometry_model().translate_symbolic_boundary_name_to_id("bottom"))
-            {
-              fe_face_values.reinit (cell, f);
-
-              for (unsigned int q=0; q<fe_face_values.n_quadrature_points; ++q)
               {
-                local_normal_flux += (cartesian ? cartesian_velocity(fe_face_values.quadrature_point(q)) : spherical_velocity(fe_face_values.quadrature_point(q)))
-                              * -fe_face_values.normal_vector(q)
-                              * fe_face_values.JxW(q);
+                fe_face_values.reinit (cell, f);
+
+                for (unsigned int q=0; q<fe_face_values.n_quadrature_points; ++q)
+                  {
+                    local_normal_flux += (cartesian ? cartesian_velocity(fe_face_values.quadrature_point(q)) : spherical_velocity(fe_face_values.quadrature_point(q)))
+                                         * -fe_face_values.normal_vector(q)
+                                         * fe_face_values.JxW(q);
+                  }
               }
-            }
 
       // Compute the global inflow through the bottom boundary
       // by communicating over all processors
@@ -328,9 +328,9 @@ namespace aspect
       // return zero right away.
       if (this->get_geometry_model().translate_id_to_symbol_name(boundary_id) == "top"
           || (head_velocity == 0. && tail_velocity == 0.))
-      {
-        return Tensor<1,dim>();
-      }
+        {
+          return Tensor<1,dim>();
+        }
 
       // Get plume velocity
       Tensor<1,dim> velocity = cartesian ? cartesian_velocity(position) : spherical_velocity(position);
@@ -350,11 +350,11 @@ namespace aspect
     {
       prm.enter_subsection("Plume");
       {
-      prm.declare_entry ("Boundary normal inflow", "false",
-                         Patterns::Bool (),
-                         "Whether or not to apply the plume inflow velocity normal "
-                         "to the bottom boundary or parallel to the direction of the "
-                         "center of the plume head.");
+        prm.declare_entry ("Boundary normal inflow", "false",
+                           Patterns::Bool (),
+                           "Whether or not to apply the plume inflow velocity normal "
+                           "to the bottom boundary or parallel to the direction of the "
+                           "center of the plume head.");
       }
       prm.leave_subsection ();
     }
