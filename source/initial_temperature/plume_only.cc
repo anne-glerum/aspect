@@ -66,7 +66,7 @@ namespace aspect
       else if (GeometryModel::EllipsoidalChunk<dim> *gm = dynamic_cast<GeometryModel::EllipsoidalChunk<dim> *>
                                                           (const_cast<GeometryModel::Interface<dim> *>(&this->get_geometry_model())))
         {
-          AssertThrow(gm->get_eccentricity()==0, ExcMessage("This plume boundary velocity plugin does not work for an ellipsoidal domain."));
+          AssertThrow(gm->get_eccentricity()==0, ExcMessage("This plume initial temperature plugin does not work for an ellipsoidal domain."));
           outer_radius = gm->get_semi_major_axis_a();
           inner_radius = outer_radius - gm->maximal_depth();
         }
