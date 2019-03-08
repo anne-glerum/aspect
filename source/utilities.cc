@@ -1816,7 +1816,7 @@ namespace aspect
     {
       AssertThrow ((dynamic_cast<const GeometryModel::SphericalShell<dim>*> (&this->get_geometry_model()))
                    || (dynamic_cast<const GeometryModel::Chunk<dim>*> (&this->get_geometry_model())) != nullptr
-                   || (dynamic_cast<const GeometryModel::Box<dim>*> (&this->get_geometry_model())) != nullptr,
+                   || (dynamic_cast<const GeometryModel::Box<dim>*> (&this->get_geometry_model())) != nullptr
                    || (dynamic_cast<const GeometryModel::EllipsoidalChunk<dim>*> (&this->get_geometry_model())) != nullptr,
                    ExcMessage ("This ascii data plugin can only be used when using "
                                "a spherical shell, chunk or box geometry."));
@@ -3025,8 +3025,8 @@ namespace aspect
     template double signed_distance_to_polygon<2>(const std::vector<Point<2> > &pointList, const dealii::Point<2> &point);
     template double signed_distance_to_polygon<3>(const std::vector<Point<2> > &pointList, const dealii::Point<2> &point);
 
-    template double distance_to_line<2>(const std::vector<Point<2> > &pointList, const dealii::Point<2> &point);
-    template double distance_to_line<3>(const std::vector<Point<2> > &pointList, const dealii::Point<2> &point);
+    //template double distance_to_line<2>(const std::vector<Point<2> > &pointList, const dealii::Point<2> &point);
+    //template double distance_to_line<3>(const std::vector<Point<2> > &pointList, const dealii::Point<2> &point);
 
     template std::array<Tensor<1,2>,1> orthogonal_vectors (const Tensor<1,2> &v);
     template std::array<Tensor<1,3>,2> orthogonal_vectors (const Tensor<1,3> &v);
