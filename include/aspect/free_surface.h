@@ -132,6 +132,7 @@ namespace aspect
        * Called by make_constraints()
        */
       void diffuse_surface(LinearAlgebra::Vector &output);
+
       /**
        * Solve vector Laplacian equation for internal mesh displacements.
        */
