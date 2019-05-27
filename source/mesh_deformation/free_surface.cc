@@ -145,6 +145,32 @@ namespace aspect
       AssertThrow ( this->get_parameters().pressure_normalization == "no",
                     ExcMessage("The free surface scheme can only be used with no pressure normalization") );
 
+      // Check that we do not use the free surface on a boundary that has zero slip,
+      // free slip or prescribed velocity boundary conditions on it.
+
+      // Get the zero velocity boundary indicators
+      std::set<types::boundary_id> velocity_boundary_indicators = this->get_boundary_velocity_manager().get_zero_boundary_velocity_indicators();
+
+      // Get the tangential velocity boundary indicators
+      const std::set<types::boundary_id> tmp_tangential_vel_boundary_indicators = this->get_boundary_velocity_manager().get_tangential_boundary_velocity_indicators();
+      velocity_boundary_indicators.insert(tmp_tangential_vel_boundary_indicators.begin(),
+          tmp_tangential_vel_boundary_indicators.end());
+
+      // Get the active velocity boundary indicators
+      const std::map<types::boundary_id, std::pair<std::string,std::vector<std::string> > >
+      tmp_active_vel_boundary_indicators = this->get_boundary_velocity_manager().get_active_boundary_velocity_names();
+
+      for (std::map<types::boundary_id, std::pair<std::string, std::vector<std::string> > >::const_iterator p = tmp_active_vel_boundary_indicators.begin();
+           p != tmp_active_vel_boundary_indicators.end(); ++p)
+        velocity_boundary_indicators.insert(p->first);
+
+      // Get the mesh deformation boundary indicators
+      const std::set<types::boundary_id> tmp_mesh_deformation_boundary_indicators = this->get_parameters().mesh_deformation_boundary_indicators;
+      for (std::set<types::boundary_id>::const_iterator p = tmp_mesh_deformation_boundary_indicators.begin();
+          p != tmp_mesh_deformation_boundary_indicators.end(); ++p)
+      AssertThrow(velocity_boundary_indicators.find(*p) == velocity_boundary_indicators.end(),
+          ExcMessage("The free surface mesh deformation plugin cannot be used with the current velocity boundary conditions"));
+
       this->get_signals().set_assemblers.connect(std::bind(&FreeSurface<dim>::set_assemblers,
                                                            std::cref(*this),
                                                            std::placeholders::_1,
