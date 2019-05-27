@@ -195,8 +195,8 @@ namespace aspect
       prm.leave_subsection ();
 
       if (sim.parameters.mesh_deformation_enabled)
-      AssertThrow(model_names.size()>0,
-          ExcMessage("If mesh deformation is enabled, at least 1 mesh deformation model must be specified."));
+        AssertThrow(model_names.size()>0,
+                    ExcMessage("If mesh deformation is enabled, at least 1 mesh deformation model must be specified."));
 
       // go through the list, create objects and let them parse
       // their own parameters
@@ -267,6 +267,7 @@ namespace aspect
         DoFTools::make_periodicity_constraints(mesh_deformation_dof_handler, (*p).first.first, (*p).first.second, (*p).second, mesh_velocity_constraints);
 
       // Zero out the displacement for the zero-velocity boundary indicators
+      // that are not mesh deformation boundary indicators
       for (std::set<types::boundary_id>::const_iterator p = sim.boundary_velocity_manager.get_zero_boundary_velocity_indicators().begin();
            p != sim.boundary_velocity_manager.get_zero_boundary_velocity_indicators().end(); ++p)
         if (sim.parameters.mesh_deformation_boundary_indicators.find(*p) == sim.parameters.mesh_deformation_boundary_indicators.end())
@@ -276,7 +277,7 @@ namespace aspect
           }
 
 
-      std::set< types::boundary_id > x_no_flux_boundary_indicators;
+
       // Zero out the displacement for the prescribed velocity boundaries
       // if the boundary is not in the set of tangential mesh boundaries and not in the set of mesh deformation boundary indicators
       for (std::map<types::boundary_id, std::pair<std::string, std::vector<std::string> > >::const_iterator p = sim.boundary_velocity_manager.get_active_boundary_velocity_names().begin();
@@ -289,11 +290,21 @@ namespace aspect
                   VectorTools::interpolate_boundary_values (mesh_deformation_dof_handler, p->first,
                                                             ZeroFunction<dim>(dim), mesh_velocity_constraints);
 
-                  x_no_flux_boundary_indicators.insert(p->first);
 
                 }
             }
         }
+
+      // The list of tangential boundary indicators for which we need to set
+      // no_normal_flux_constraints, which means the tangential boundary indicators
+      // minus the mesh deformation boundary indicators.
+      std::set< types::boundary_id > x_no_flux_boundary_indicators = tangential_mesh_boundary_indicators;
+      for (std::set<types::boundary_id>::const_iterator p = x_no_flux_boundary_indicators.begin();
+           p != x_no_flux_boundary_indicators.end(); ++p)
+        if (sim.parameters.mesh_deformation_boundary_indicators.find(*p) != sim.parameters.mesh_deformation_boundary_indicators.end())
+          {
+            x_no_flux_boundary_indicators.erase(*p);
+          }
 
       sim.signals.pre_compute_no_normal_flux_constraints(sim.triangulation);
       // Make the no flux boundary constraints
