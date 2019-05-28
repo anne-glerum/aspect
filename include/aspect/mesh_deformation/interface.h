@@ -92,6 +92,18 @@ namespace aspect
                                      ConstraintMatrix &mesh_velocity_constraints) const = 0;
 
         /**
+         * A function that creates constraints for the velocity of certain mesh
+         * vertices (e.g. the surface vertices) for a specific boundary.
+         * The calling class will respect
+         * these constraints when computing the new vertex positions.
+         */
+        virtual
+        void
+        compute_velocity_constraints_on_boundary(const DoFHandler<dim> &mesh_deformation_dof_handler,
+                                     ConstraintMatrix &mesh_velocity_constraints,
+                                     types::boundary_id boundary_id) const = 0;
+
+        /**
          * Declare the parameters this class takes through input files. The
          * default implementation of this function does not describe any
          * parameters. Consequently, derived classes do not have to overload
@@ -208,12 +220,18 @@ namespace aspect
         const std::vector<std::string> &
         get_active_mesh_deformation_names () const;
 
+        const std::map<types::boundary_id, std::vector<std::string> > &
+        get_active_prescribed_mesh_deformation_names () const;
+
         /**
          * Return a list of pointers to all mesh deformation models
          * currently used in the computation, as specified in the input file.
          */
         const std::vector<std::shared_ptr<Interface<dim> > > &
         get_active_mesh_deformation_models () const;
+
+        const std::map<types::boundary_id,std::vector<std::shared_ptr<Interface<dim> > > > &
+        get_active_prescribed_mesh_deformation_models () const;
 
         /**
          * Go through the list of all mesh deformation models that have been selected in
@@ -254,6 +272,7 @@ namespace aspect
          * parameter file.
          */
         std::vector<std::shared_ptr<Interface<dim> > > mesh_deformation_objects;
+        std::map<types::boundary_id,std::vector<std::shared_ptr<Interface<dim> > > > prescribed_mesh_deformation_objects;
 
         /**
          * A list of names of mesh deformation objects that have been requested
@@ -359,6 +378,16 @@ namespace aspect
          * the parameter file.
          */
         std::set<types::boundary_id> tangential_mesh_boundary_indicators;
+
+        /**
+         * Map from boundary id to a pair
+         * ("components", list of "velocity boundary type"),
+         * where components is of the format "[x][y][z]" and the velocity type is
+         * mapped to one of the plugins of velocity boundary conditions (e.g.
+         * "function"). If the components string is empty, it is assumed the
+         * plugins are used for all components.
+         */
+        std::map<types::boundary_id, std::vector<std::string> > prescribed_mesh_deformation_boundary_indicators;
 
         friend class Simulator<dim>;
         friend class SimulatorAccess<dim>;

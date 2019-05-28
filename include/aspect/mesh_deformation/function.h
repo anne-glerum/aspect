@@ -47,6 +47,18 @@ namespace aspect
                                      ConstraintMatrix &mesh_constraints) const;
 
         /**
+         * A function that creates constraints for the velocity of certain mesh
+         * vertices (e.g. the surface vertices) for a specific boundary.
+         * The calling class will respect
+         * these constraints when computing the new vertex positions.
+         */
+        virtual
+        void
+        compute_velocity_constraints_on_boundary(const DoFHandler<dim> &mesh_deformation_dof_handler,
+                                     ConstraintMatrix &mesh_velocity_constraints,
+                                     types::boundary_id boundary_id) const;
+
+        /**
          * Declare parameters for the free surface handling.
          */
         static
