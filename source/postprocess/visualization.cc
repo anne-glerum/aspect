@@ -128,10 +128,10 @@ namespace aspect
        * for when a deforming mesh is used.
        */
       template <int dim>
-      class FreeSurfacePostprocessor: public DataPostprocessorVector< dim >, public SimulatorAccess<dim>
+      class MeshDeformationPostprocessor: public DataPostprocessorVector< dim >, public SimulatorAccess<dim>
       {
         public:
-          FreeSurfacePostprocessor ()
+          MeshDeformationPostprocessor ()
             : DataPostprocessorVector<dim>( "mesh_velocity", UpdateFlags(update_values) )
           {}
 
@@ -377,7 +377,7 @@ namespace aspect
       internal::BaseVariablePostprocessor<dim> base_variables;
       base_variables.initialize_simulator (this->get_simulator());
 
-      std::shared_ptr<internal::FreeSurfacePostprocessor<dim> > free_surface_variables;
+      std::shared_ptr<internal::MeshDeformationPostprocessor<dim> > mesh_deformation_variables;
 
       // create a DataOut object on the heap; ownership of this
       // object will later be transferred to a different thread
@@ -389,12 +389,12 @@ namespace aspect
                                 base_variables);
 
       // If there is a deforming mesh, also attach the mesh velocity object
-      if ( this->get_mesh_deformation_handler().get_free_surface_boundary_indicator() != numbers::invalid_boundary_id && output_mesh_velocity)
+      if ( this->get_parameters().mesh_deformation_enabled && output_mesh_velocity)
         {
-          free_surface_variables = std::make_shared<internal::FreeSurfacePostprocessor<dim>>();
-          free_surface_variables->initialize_simulator(this->get_simulator());
+        mesh_deformation_variables = std::make_shared<internal::MeshDeformationPostprocessor<dim>>();
+        mesh_deformation_variables->initialize_simulator(this->get_simulator());
           data_out.add_data_vector (this->get_mesh_velocity(),
-                                    *free_surface_variables);
+                                    *mesh_deformation_variables);
         }
 
       // then for each additional selected output variable
