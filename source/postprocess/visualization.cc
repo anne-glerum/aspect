@@ -125,7 +125,7 @@ namespace aspect
 
       /**
        * This Postprocessor will generate the output variables of mesh velocity
-       * for when a free surface is used.
+       * for when a deforming mesh is used.
        */
       template <int dim>
       class FreeSurfacePostprocessor: public DataPostprocessorVector< dim >, public SimulatorAccess<dim>
@@ -388,7 +388,7 @@ namespace aspect
       data_out.add_data_vector (this->get_solution(),
                                 base_variables);
 
-      // If there is a free surface, also attach the mesh velocity object
+      // If there is a deforming mesh, also attach the mesh velocity object
       if ( this->get_mesh_deformation_handler().get_free_surface_boundary_indicator() != numbers::invalid_boundary_id && output_mesh_velocity)
         {
           free_surface_variables = std::make_shared<internal::FreeSurfacePostprocessor<dim>>();
@@ -888,7 +888,7 @@ namespace aspect
 
           prm.declare_entry ("Output mesh velocity", "false",
                              Patterns::Bool(),
-                             "For free surface computations Aspect uses an Arbitrary-Lagrangian-"
+                             "For computations with deforming meshes, Aspect uses an Arbitrary-Lagrangian-"
                              "Eulerian formulation to handle deforming the domain, so the mesh "
                              "has its own velocity field.  This may be written as an output field "
                              "by setting this parameter to true.");

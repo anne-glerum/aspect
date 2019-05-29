@@ -21,7 +21,6 @@
 
 #include <aspect/simulator.h>
 #include <aspect/utilities.h>
-#include <aspect/mesh_deformation/free_surface.h>
 #include <aspect/mesh_deformation/interface.h>
 #include <aspect/melt.h>
 
@@ -154,7 +153,7 @@ namespace aspect
       x_system[1] = &old_solution;
       x_system[2] = &old_old_solution;
 
-      // If we are using a free surface, include the mesh velocity, which uses the system dof handler
+      // If we are using a deformint mesh, include the mesh velocity, which uses the system dof handler
       if (parameters.mesh_deformation_enabled)
         x_system.push_back( &mesh_deformation->mesh_velocity );
 
@@ -329,7 +328,7 @@ namespace aspect
         // copy the mesh velocity which uses the system dof handler
         mesh_deformation->mesh_velocity = distributed_mesh_velocity;
 
-        // deserialize and copy the vectors using the free surface dof handler
+        // deserialize and copy the vectors using the mesh deformation dof handler
         parallel::distributed::SolutionTransfer<dim, LinearAlgebra::Vector> mesh_deformation_trans( mesh_deformation->mesh_deformation_dof_handler );
         LinearAlgebra::Vector distributed_mesh_displacements( mesh_deformation->mesh_locally_owned,
                                                               mpi_communicator );
