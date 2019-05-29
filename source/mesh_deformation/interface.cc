@@ -367,8 +367,8 @@ namespace aspect
     template <int dim>
     void MeshDeformationHandler<dim>::make_constraints()
     {
-//      if (!sim.parameters.free_surface_enabled)
-//        return;
+      if (!sim.parameters.mesh_deformation_enabled)
+        return;
 
       // Now construct the mesh displacement constraints
       mesh_velocity_constraints.clear();
@@ -388,7 +388,7 @@ namespace aspect
       // that are not mesh deformation boundary indicators
       for (std::set<types::boundary_id>::const_iterator p = sim.boundary_velocity_manager.get_zero_boundary_velocity_indicators().begin();
            p != sim.boundary_velocity_manager.get_zero_boundary_velocity_indicators().end(); ++p)
-        if (sim.parameters.mesh_deformation_boundary_indicators.find(*p) == sim.parameters.mesh_deformation_boundary_indicators.end())
+        if (prescribed_mesh_deformation_boundary_indicators_set.find(*p) == prescribed_mesh_deformation_boundary_indicators_set.end())
           {
             VectorTools::interpolate_boundary_values (mesh_deformation_dof_handler, *p,
                                                       ZeroFunction<dim>(dim), mesh_velocity_constraints);
@@ -401,7 +401,7 @@ namespace aspect
         {
           if (tangential_mesh_boundary_indicators.find(p->first) == tangential_mesh_boundary_indicators.end())
             {
-              if (sim.parameters.mesh_deformation_boundary_indicators.find(p->first) == sim.parameters.mesh_deformation_boundary_indicators.end())
+              if (prescribed_mesh_deformation_boundary_indicators_set.find(p->first) == prescribed_mesh_deformation_boundary_indicators_set.end())
                 {
                   VectorTools::interpolate_boundary_values (mesh_deformation_dof_handler, p->first,
                                                             ZeroFunction<dim>(dim), mesh_velocity_constraints);
@@ -415,7 +415,7 @@ namespace aspect
       std::set< types::boundary_id > x_no_flux_boundary_indicators = tangential_mesh_boundary_indicators;
       for (std::set<types::boundary_id>::const_iterator p = x_no_flux_boundary_indicators.begin();
            p != x_no_flux_boundary_indicators.end(); ++p)
-        if (sim.parameters.mesh_deformation_boundary_indicators.find(*p) != sim.parameters.mesh_deformation_boundary_indicators.end())
+        if (prescribed_mesh_deformation_boundary_indicators_set.find(*p) != prescribed_mesh_deformation_boundary_indicators_set.end())
           {
             x_no_flux_boundary_indicators.erase(*p);
           }
@@ -686,8 +686,9 @@ namespace aspect
     template <int dim>
     void MeshDeformationHandler<dim>::setup_dofs()
     {
-//      if (!sim.parameters.free_surface_enabled)
-//        return;
+      // TODO I think all these statements can be removed
+      if (!sim.parameters.mesh_deformation_enabled)
+        return;
 
       // these live in the same FE as the velocity variable:
       mesh_velocity.reinit(sim.introspection.index_sets.system_partitioning,
