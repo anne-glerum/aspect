@@ -167,22 +167,22 @@ namespace aspect
       system_trans.prepare_serialization (x_system);
 #endif
 
-      // If we are using a free surface, also serialize the mesh vertices vector, which
+      // If we are deforming the mesh, also serialize the mesh vertices vector, which
       // uses its own dof handler
       std::vector<const LinearAlgebra::Vector *> x_fs_system (1);
-      std::unique_ptr<parallel::distributed::SolutionTransfer<dim,LinearAlgebra::Vector> > freesurface_trans;
+      std::unique_ptr<parallel::distributed::SolutionTransfer<dim,LinearAlgebra::Vector> > mesh_deformation_trans;
       if (parameters.mesh_deformation_enabled)
         {
-          freesurface_trans
+        mesh_deformation_trans
             = std_cxx14::make_unique<parallel::distributed::SolutionTransfer<dim,LinearAlgebra::Vector>>
               (mesh_deformation->mesh_deformation_dof_handler);
 
           x_fs_system[0] = &mesh_deformation->mesh_displacements;
 
 #if DEAL_II_VERSION_GTE(9,1,0)
-          freesurface_trans->prepare_for_serialization(x_fs_system);
+          mesh_deformation_trans->prepare_for_serialization(x_fs_system);
 #else
-          freesurface_trans->prepare_serialization(x_fs_system);
+          mesh_deformation_trans->prepare_serialization(x_fs_system);
 #endif
         }
 
@@ -330,13 +330,13 @@ namespace aspect
         mesh_deformation->mesh_velocity = distributed_mesh_velocity;
 
         // deserialize and copy the vectors using the free surface dof handler
-        parallel::distributed::SolutionTransfer<dim, LinearAlgebra::Vector> freesurface_trans( mesh_deformation->mesh_deformation_dof_handler );
+        parallel::distributed::SolutionTransfer<dim, LinearAlgebra::Vector> mesh_deformation_trans( mesh_deformation->mesh_deformation_dof_handler );
         LinearAlgebra::Vector distributed_mesh_displacements( mesh_deformation->mesh_locally_owned,
                                                               mpi_communicator );
         std::vector<LinearAlgebra::Vector *> fs_system(1);
         fs_system[0] = &distributed_mesh_displacements;
 
-        freesurface_trans.deserialize (fs_system);
+        mesh_deformation_trans.deserialize (fs_system);
         mesh_deformation->mesh_displacements = distributed_mesh_displacements;
       }
 

@@ -1471,7 +1471,7 @@ namespace aspect
     system_trans(dof_handler);
 
     std::unique_ptr<parallel::distributed::SolutionTransfer<dim,LinearAlgebra::Vector> >
-    freesurface_trans;
+    mesh_deformation_trans;
 
     {
       TimerOutput::Scope timer (computing_timer, "Refine mesh structure, part 1");
@@ -1542,7 +1542,7 @@ namespace aspect
       if (parameters.mesh_deformation_enabled)
         {
           x_fs_system[0] = &mesh_deformation->mesh_displacements;
-          freesurface_trans
+          mesh_deformation_trans
             = std_cxx14::make_unique<parallel::distributed::SolutionTransfer<dim,LinearAlgebra::Vector>>
               (mesh_deformation->mesh_deformation_dof_handler);
         }
@@ -1555,7 +1555,7 @@ namespace aspect
       system_trans.prepare_for_coarsening_and_refinement(x_system);
 
       if (parameters.mesh_deformation_enabled)
-        freesurface_trans->prepare_for_coarsening_and_refinement(x_fs_system);
+        mesh_deformation_trans->prepare_for_coarsening_and_refinement(x_fs_system);
 
       triangulation.execute_coarsening_and_refinement ();
     } // leave the timed section
@@ -1617,7 +1617,7 @@ namespace aspect
           std::vector<LinearAlgebra::Vector *> system_tmp (1);
           system_tmp[0] = &distributed_mesh_displacements;
 
-          freesurface_trans->interpolate (system_tmp);
+          mesh_deformation_trans->interpolate (system_tmp);
           mesh_deformation->mesh_vertex_constraints.distribute (distributed_mesh_displacements);
           mesh_deformation->mesh_displacements = distributed_mesh_displacements;
         }
