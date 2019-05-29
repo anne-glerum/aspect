@@ -24,6 +24,7 @@
 #include <aspect/utilities.h>
 #include <aspect/simulator_access.h>
 #include <aspect/geometry_model/interface.h>
+#include <aspect/mesh_deformation/interface.h>
 
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/numerics/data_out.h>
@@ -388,7 +389,7 @@ namespace aspect
                                 base_variables);
 
       // If there is a free surface, also attach the mesh velocity object
-      if ( this->get_mesh_deformation_boundary_indicators().empty() == false && output_mesh_velocity)
+      if ( this->get_mesh_deformation_handler().get_free_surface_boundary_indicator() != numbers::invalid_boundary_id && output_mesh_velocity)
         {
           free_surface_variables = std::make_shared<internal::FreeSurfacePostprocessor<dim>>();
           free_surface_variables->initialize_simulator(this->get_simulator());

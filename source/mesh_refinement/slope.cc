@@ -83,7 +83,8 @@ namespace aspect
     ASPECT_REGISTER_MESH_REFINEMENT_CRITERION(Slope,
                                               "slope",
                                               "A class that implements a mesh refinement criterion intended for "
-                                              "use with a free surface. It calculates a local slope based on "
+                                              "use with deforming mesh boundaries, like the free surface. "
+                                              "It calculates a local slope based on "
                                               "the angle between the surface normal and the local gravity vector. "
                                               "Cells with larger angles are marked for refinement."
                                               "\n\n"
