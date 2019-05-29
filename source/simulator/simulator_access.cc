@@ -663,7 +663,7 @@ namespace aspect
   SimulatorAccess<dim>::get_mesh_deformation_handler () const
   {
     Assert (simulator->mesh_deformation.get() != nullptr,
-            ExcMessage("You can not call this function if the free surface is not enabled."));
+            ExcMessage("You can not call this function if no mesh deformation objects are not enabled."));
 
     return *(simulator->mesh_deformation);
   }
