@@ -1814,6 +1814,8 @@ namespace aspect
       const std::vector<std::string> x_mesh_deformation_boundary_indicators
       = Utilities::split_string_list(prm.get("Prescribed mesh deformation boundary indicators"),";");
       mesh_deformation_enabled = !x_mesh_deformation_boundary_indicators.empty();
+      if (mesh_deformation_enabled)
+        std::cout << "mesh def enabled" << std::endl;
 
     }
     prm.leave_subsection();
