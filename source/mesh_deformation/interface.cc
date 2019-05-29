@@ -259,7 +259,7 @@ namespace aspect
                 + error));
           }
 
-          if (prescribed_mesh_deformation_boundary_indicators.find(boundary_id) != prescribed_mesh_deformation_boundary_indicators.end())
+          if (prescribed_mesh_deformation_boundary_indicators.find(boundary_id) == prescribed_mesh_deformation_boundary_indicators.end())
           {
             // finally, put it into the list
             prescribed_mesh_deformation_boundary_indicators[boundary_id] = (mesh_def_objects);
