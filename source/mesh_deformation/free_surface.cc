@@ -393,8 +393,37 @@ namespace aspect
     void
     FreeSurface<dim>::compute_velocity_constraints_on_boundary(const DoFHandler<dim> &mesh_deformation_dof_handler,
                                  ConstraintMatrix &mesh_velocity_constraints,
-                                 types::boundary_id boundary_id) const
+                                 std::set<types::boundary_id> boundary_id) const
     {
+      // For the free surface indicators we constrain the displacement to be v.n
+      LinearAlgebra::Vector boundary_velocity;
+
+      const IndexSet mesh_locally_owned = mesh_deformation_dof_handler.locally_owned_dofs();
+      IndexSet mesh_locally_relevant;
+      DoFTools::extract_locally_relevant_dofs (mesh_deformation_dof_handler,
+                                               mesh_locally_relevant);
+      boundary_velocity.reinit(mesh_locally_owned, mesh_locally_relevant,
+                               this->get_mpi_communicator());
+      project_velocity_onto_boundary(mesh_deformation_dof_handler, mesh_locally_owned,
+                                     mesh_locally_relevant, boundary_velocity);
+
+      // now insert the relevant part of the solution into the mesh constraints
+      IndexSet constrained_dofs;
+      DoFTools::extract_boundary_dofs(mesh_deformation_dof_handler,
+                                      ComponentMask(dim, true),
+                                      constrained_dofs,
+                                      boundary_id);
+
+      for (unsigned int i = 0; i < constrained_dofs.n_elements();  ++i)
+        {
+          types::global_dof_index index = constrained_dofs.nth_index_in_set(i);
+          if (mesh_velocity_constraints.can_store_line(index))
+            if (mesh_velocity_constraints.is_constrained(index)==false)
+              {
+                mesh_velocity_constraints.add_line(index);
+                mesh_velocity_constraints.set_inhomogeneity(index, boundary_velocity[index]);
+              }
+        }
 
     }
 

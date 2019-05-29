@@ -76,9 +76,12 @@ namespace aspect
     void
     BoundaryFunction<dim>::compute_velocity_constraints_on_boundary(const DoFHandler<dim> &mesh_deformation_dof_handler,
                                  ConstraintMatrix &mesh_velocity_constraints,
-                                 types::boundary_id boundary_id) const
+                                 std::set<types::boundary_id> boundary_id) const
     {
-
+      VectorTools::interpolate_boundary_values (mesh_deformation_dof_handler,
+                                                *boundary_id.begin(),
+                                                function,
+                                                mesh_velocity_constraints);
     }
 
 
