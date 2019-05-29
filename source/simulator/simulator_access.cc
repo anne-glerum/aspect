@@ -312,7 +312,7 @@ namespace aspect
   SimulatorAccess<dim>::get_mesh_velocity () const
   {
     Assert( simulator->parameters.mesh_deformation_enabled,
-            ExcMessage("You cannot get the mesh velocity with no free surface."));
+            ExcMessage("You cannot get the mesh velocity if mesh deformation is not enabled."));
     return simulator->mesh_deformation->mesh_velocity;
   }
 

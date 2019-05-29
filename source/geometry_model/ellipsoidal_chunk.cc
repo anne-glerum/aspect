@@ -742,7 +742,7 @@ namespace aspect
     {
       AssertThrow(this->get_mesh_deformation_boundary_indicators().size() == 0 ||
                   this->get_timestep_number() == 0,
-                  ExcMessage("After displacement of the free surface, this function can no longer be used to determine whether a point lies in the domain or not."));
+                  ExcMessage("After displacement of the mesh, this function can no longer be used to determine whether a point lies in the domain or not."));
 
       // dim = 3
       const Point<dim> ellipsoidal_point = manifold.pull_back(point);

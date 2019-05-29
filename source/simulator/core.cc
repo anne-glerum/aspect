@@ -25,7 +25,6 @@
 #include <aspect/melt.h>
 #include <aspect/volume_of_fluid/handler.h>
 #include <aspect/newton.h>
-#include <aspect/mesh_deformation/free_surface.h>
 #include <aspect/mesh_deformation/interface.h>
 #include <aspect/citation_info.h>
 
@@ -105,8 +104,8 @@ namespace aspect
      * Helper function to construct mapping for the model.
      * The mapping is given by a degree four MappingQ for the case
      * of a curved mesh, and a cartesian mapping for a rectangular mesh that is
-     * not deformed. Use a MappingQ1 if the mesh is deformed.
-     * If a free surface is enabled, each mapping is later swapped out for a
+     * not deformed. Use a MappingQ1 if the initial mesh is deformed.
+     * If mesh deformation is enabled, each mapping is later swapped out for a
      * MappingQ1Eulerian, which allows for mesh deformation during the
      * computation.
      */
@@ -337,7 +336,7 @@ namespace aspect
     adiabatic_conditions->parse_parameters (prm);
     adiabatic_conditions->initialize ();
 
-    // Initialize the free surface handler
+    // Initialize the mesh deformation handler
     if (parameters.mesh_deformation_enabled)
       {
         // Allocate the MeshDeformationHandler object
@@ -1297,8 +1296,8 @@ namespace aspect
       pcout.get_stream().imbue(s);
     }
 
-    // We need to setup the free surface degrees of freedom first if there is a free
-    // surface active, since the mapping must be in place before applying boundary
+    // We need to set up the mesh deformation degrees of freedom first if mesh deformation
+    // is active, since the mapping must be in place before applying boundary
     // conditions that rely on it (such as no flux BCs).
     if (parameters.mesh_deformation_enabled)
       mesh_deformation->setup_dofs();
@@ -1603,7 +1602,7 @@ namespace aspect
       constraints.distribute (old_distributed_system);
       old_solution = old_distributed_system;
 
-      // do the same as above also for the free surface solution
+      // do the same as above, but for the mesh deformation solution
       if (parameters.mesh_deformation_enabled)
         {
           constraints.distribute (distributed_mesh_velocity);
@@ -1655,8 +1654,8 @@ namespace aspect
         current_linearization_point = distr_solution;
       }
 
-    // The free surface scheme is currently not built to work inside a nonlinear solver.
-    // We do the free surface execution at the beginning of the timestep for a specific reason.
+    // The mesh deformation scheme is currently not built to work inside a nonlinear solver.
+    // We do the mesh deformation execution at the beginning of the timestep for a specific reason.
     // The time step size is calculated AFTER the whole solve_timestep() function.  If we call
     // mesh_deformation_execute() after the Stokes solve, it will be before we know what the appropriate
     // time step to take is, and we will timestep the boundary incorrectly.
