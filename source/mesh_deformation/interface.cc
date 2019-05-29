@@ -263,6 +263,18 @@ namespace aspect
           {
             // finally, put it into the list
             prescribed_mesh_deformation_boundary_indicators[boundary_id] = (mesh_def_objects);
+            prescribed_mesh_deformation_boundary_indicators_set.insert(boundary_id);
+            // set the free surface boundary indicator,
+            // but only if we haven't encountered one before
+            for (std::vector<std::string>::const_iterator object = mesh_def_objects.begin();
+                object != mesh_def_objects.end(); ++object)
+            if (*object == "free surface")
+            {
+              AssertThrow (free_surface_boundary_id == numbers::invalid_boundary_id,
+                  ExcMessage("The free surface can only be applied to one boundary at the moment. It is already set for boundary id: "
+                      + dealii::Utilities::int_to_string(free_surface_boundary_id)));
+              free_surface_boundary_id = boundary_id;
+            }
           }
           else
           {
@@ -462,7 +474,6 @@ namespace aspect
             }
         }
 
-      // TODO
       for (typename std::map<types::boundary_id, std::vector<std::shared_ptr<Interface<dim> > > >::iterator boundary_id
           = prescribed_mesh_deformation_objects.begin();
           boundary_id != prescribed_mesh_deformation_objects.end(); ++boundary_id)
@@ -761,6 +772,24 @@ namespace aspect
     MeshDeformationHandler<dim>::get_active_prescribed_mesh_deformation_models () const
     {
       return prescribed_mesh_deformation_objects;
+    }
+
+
+
+    template <int dim>
+    const std::set<types::boundary_id> &
+    MeshDeformationHandler<dim>::get_active_prescribed_mesh_deformation_boundary_indicators () const
+    {
+      return prescribed_mesh_deformation_boundary_indicators_set;
+    }
+
+
+
+    template <int dim>
+    types::boundary_id
+    MeshDeformationHandler<dim>::get_free_surface_boundary_indicator () const
+    {
+      return free_surface_boundary_id;
     }
 
 

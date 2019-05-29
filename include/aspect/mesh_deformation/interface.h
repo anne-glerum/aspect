@@ -96,12 +96,13 @@ namespace aspect
          * vertices (e.g. the surface vertices) for a specific boundary.
          * The calling class will respect
          * these constraints when computing the new vertex positions.
+         * TODO should we pass a std::set<types::boundary_id> or just types::boundary_id.
          */
         virtual
         void
         compute_velocity_constraints_on_boundary(const DoFHandler<dim> &mesh_deformation_dof_handler,
                                      ConstraintMatrix &mesh_velocity_constraints,
-                                     types::boundary_id boundary_id) const = 0;
+                                     std::set<types::boundary_id> boundary_id) const = 0;
 
         /**
          * Declare the parameters this class takes through input files. The
@@ -233,12 +234,24 @@ namespace aspect
         const std::map<types::boundary_id,std::vector<std::shared_ptr<Interface<dim> > > > &
         get_active_prescribed_mesh_deformation_models () const;
 
+        const std::set<types::boundary_id> &
+        get_active_prescribed_mesh_deformation_boundary_indicators () const;
+
+        /**
+         * Return the boundary id of the surface that has a free surface
+         * mesh deformation object. If no free surface is used,
+         * numbers::invalid_boundary_id is returned.
+         */
+        types::boundary_id
+        get_free_surface_boundary_indicator () const;
+
         /**
          * Go through the list of all mesh deformation models that have been selected in
          * the input file (and are consequently currently active) and see if one
          * of them has the desired type specified by the template argument. If so,
          * return a pointer to it. If no mesh deformation model is active
          * that matches the given type, return a NULL pointer.
+         * TODO I don't know if this works with the new structure
          */
         template <typename MeshDeformationType>
         MeshDeformationType *
@@ -388,6 +401,8 @@ namespace aspect
          * plugins are used for all components.
          */
         std::map<types::boundary_id, std::vector<std::string> > prescribed_mesh_deformation_boundary_indicators;
+        std::set<types::boundary_id> prescribed_mesh_deformation_boundary_indicators_set;
+        types::boundary_id free_surface_boundary_id = numbers::invalid_boundary_id;
 
         friend class Simulator<dim>;
         friend class SimulatorAccess<dim>;
