@@ -696,7 +696,9 @@ namespace aspect
 
       /**
        * Return a set of boundary indicators that describes which of the
-       * boundaries have a mesh deformation boundary condition
+       * boundaries have a mesh deformation boundary condition. Note that
+       * it does not specify which boundaries have which mesh deformation
+       * condition, only which boundaries have a mesh deformation condition.
        */
       const std::set<types::boundary_id> &
       get_mesh_deformation_boundary_indicators () const;
