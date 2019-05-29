@@ -1790,24 +1790,31 @@ namespace aspect
   {
     prm.enter_subsection ("Mesh deformation");
     {
-      try
-        {
-          const std::vector<types::boundary_id> x_mesh_deformation_boundary_indicators
-            = geometry_model.translate_symbolic_boundary_names_to_ids(Utilities::split_string_list
-                                                                      (prm.get ("Mesh deformation boundary indicators")));
-          mesh_deformation_boundary_indicators
-            = std::set<types::boundary_id> (x_mesh_deformation_boundary_indicators.begin(),
-                                            x_mesh_deformation_boundary_indicators.end());
+//      try
+//        {
+//          const std::vector<types::boundary_id> x_mesh_deformation_boundary_indicators
+//            = geometry_model.translate_symbolic_boundary_names_to_ids(Utilities::split_string_list
+//                                                                      (prm.get ("Mesh deformation boundary indicators")));
+//          mesh_deformation_boundary_indicators
+//            = std::set<types::boundary_id> (x_mesh_deformation_boundary_indicators.begin(),
+//                                            x_mesh_deformation_boundary_indicators.end());
+//
+//          mesh_deformation_enabled = !mesh_deformation_boundary_indicators.empty();
+//        }
+//      catch (const std::string &error)
+//        {
+//          AssertThrow (false, ExcMessage ("While parsing the entry <Mesh deformation/Mesh deformation "
+//                                          "boundary indicators>, there was an error. Specifically, "
+//                                          "the conversion function complained as follows: "
+//                                          + error));
+//        }
 
-          mesh_deformation_enabled = !mesh_deformation_boundary_indicators.empty();
-        }
-      catch (const std::string &error)
-        {
-          AssertThrow (false, ExcMessage ("While parsing the entry <Mesh deformation/Mesh deformation "
-                                          "boundary indicators>, there was an error. Specifically, "
-                                          "the conversion function complained as follows: "
-                                          + error));
-        }
+      // TODO It's a bit of doubled work to just test here for whether there are
+      // any indicators active and then actually import them in the MeshDeformationHandler.
+      const std::vector<std::string> x_mesh_deformation_boundary_indicators
+      = Utilities::split_string_list(prm.get("Prescribed mesh deformation boundary indicators"),";");
+      mesh_deformation_enabled = !x_mesh_deformation_boundary_indicators.empty();
+
     }
     prm.leave_subsection();
 
