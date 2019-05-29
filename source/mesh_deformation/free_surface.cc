@@ -79,8 +79,8 @@ namespace aspect
               const types::boundary_id boundary_indicator
                 = cell->face(face_no)->boundary_id();
 
-              if (this->get_parameters().mesh_deformation_boundary_indicators.find(boundary_indicator)
-                  == this->get_parameters().mesh_deformation_boundary_indicators.end())
+              if (this->get_mesh_deformation_boundary_indicators().find(boundary_indicator)
+                  == this->get_mesh_deformation_boundary_indicators().end())
                 continue;
 
               scratch.face_finite_element_values.reinit(cell, face_no);
@@ -165,7 +165,7 @@ namespace aspect
         velocity_boundary_indicators.insert(p->first);
 
       // Get the mesh deformation boundary indicators
-      const std::set<types::boundary_id> tmp_mesh_deformation_boundary_indicators = this->get_parameters().mesh_deformation_boundary_indicators;
+      const std::set<types::boundary_id> tmp_mesh_deformation_boundary_indicators = this->get_mesh_deformation_boundary_indicators();
       for (std::set<types::boundary_id>::const_iterator p = tmp_mesh_deformation_boundary_indicators.begin();
           p != tmp_mesh_deformation_boundary_indicators.end(); ++p)
       AssertThrow(velocity_boundary_indicators.find(*p) == velocity_boundary_indicators.end(),
@@ -286,8 +286,8 @@ namespace aspect
                   = cell->face(face_no)->boundary_id();
                 // TODO implement a selector for the boundary indicators
                 // For now assume that the mesh deformation boundary is the free surface boundary
-                if (this->get_parameters().mesh_deformation_boundary_indicators.find(boundary_indicator)
-                    == this->get_parameters().mesh_deformation_boundary_indicators.end())
+                if (this->get_mesh_deformation_boundary_indicators().find(boundary_indicator)
+                    == this->get_mesh_deformation_boundary_indicators().end())
                   continue;
 
                 fscell->get_dof_indices (cell_dof_indices);
@@ -368,7 +368,7 @@ namespace aspect
       DoFTools::extract_boundary_dofs(mesh_deformation_dof_handler,
                                       ComponentMask(dim, true),
                                       constrained_dofs,
-                                      this->get_parameters().mesh_deformation_boundary_indicators);
+                                      this->get_mesh_deformation_boundary_indicators());
       for (unsigned int i = 0; i < constrained_dofs.n_elements();  ++i)
         {
           types::global_dof_index index = constrained_dofs.nth_index_in_set(i);
