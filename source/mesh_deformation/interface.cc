@@ -149,7 +149,7 @@ namespace aspect
                            "may have provided for each part of the boundary. You may want "
                            "to compare this with the documentation of the geometry model you "
                            "use in your model.");
-        prm.declare_entry ("Prescribed mesh deformation boundary indicators", "",
+        prm.declare_entry ("Mesh deformation boundary indicators", "",
                            Patterns::List (Patterns::Anything()),
                            "A comma separated list of names denoting those boundaries "
                            "where there the mesh is allowed to move according to the "
@@ -200,7 +200,7 @@ namespace aspect
         // Each boundary indicator can carry a number of mesh deformation plugin names.
         // Syntax: top: free surface, diffusion; left: diffusion.
         const std::vector<std::string> x_mesh_deformation_boundary_indicators
-        = Utilities::split_string_list(prm.get("Prescribed mesh deformation boundary indicators"),";");
+        = Utilities::split_string_list(prm.get("Mesh deformation boundary indicators"),";");
 
         for (std::vector<std::string>::const_iterator p = x_mesh_deformation_boundary_indicators.begin();
             p != x_mesh_deformation_boundary_indicators.end(); ++p)
@@ -211,7 +211,7 @@ namespace aspect
           // Split boundary id and values
           const std::vector<std::string> split_parts = Utilities::split_string_list (*p, ':');
           AssertThrow (split_parts.size() == 2,
-              ExcMessage ("The format for prescribed mesh deformation indicators "
+              ExcMessage ("The format for mesh deformation indicators "
                   "requires that each entry has the form `"
                   "<id> : <value, value, ...>', but there does not "
                   "appear to be a colon in the entry <"
@@ -230,8 +230,8 @@ namespace aspect
           }
           catch (const std::string &error)
           {
-            AssertThrow (false, ExcMessage ("While parsing the entry <Mesh deformation/Prescribed "
-                "mesh deformation boundary indicators>, there was an error. Specifically, "
+            AssertThrow (false, ExcMessage ("While parsing the entry <Mesh deformation/"
+                "Mesh deformation boundary indicators>, there was an error. Specifically, "
                 "the conversion function complained as follows: "
                 + error));
           }
@@ -302,9 +302,7 @@ namespace aspect
 
       TimerOutput::Scope timer (sim.computing_timer, "Mesh deformation");
 
-      // Make the constraints for the elliptic problem.  On the free surface, we
-      // constrain mesh velocity to be v.n, on free slip it is constrained to
-      // be tangential, and on no slip boundaries it is zero.
+      // Make the constraints for the elliptic problem.
       make_constraints();
 
       // Assemble and solve the vector Laplace problem which determines
@@ -558,7 +556,7 @@ namespace aspect
 
       mesh_velocity_constraints.distribute (velocity_solution);
 
-      // Update the free surface mesh velocity vector
+      // Update the mesh velocity vector
       fs_mesh_velocity = velocity_solution;
 
       // Update the mesh displacement vector
@@ -634,7 +632,7 @@ namespace aspect
 
       mesh_deformation_dof_handler.distribute_dofs(mesh_deformation_fe);
 
-      sim.pcout << "Number of free surface degrees of freedom: "
+      sim.pcout << "Number of mesh deformation degrees of freedom: "
                 << mesh_deformation_dof_handler.n_dofs()
                 << std::endl;
 

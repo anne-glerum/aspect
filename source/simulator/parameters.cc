@@ -1793,7 +1793,7 @@ namespace aspect
       // Test here for whether there are any boundary indicators active
       // for which mesh deformation objects are to be set.
       const std::vector<std::string> x_mesh_deformation_boundary_indicators
-      = Utilities::split_string_list(prm.get("Prescribed mesh deformation boundary indicators"),";");
+      = Utilities::split_string_list(prm.get("Mesh deformation boundary indicators"),";");
       mesh_deformation_enabled = !x_mesh_deformation_boundary_indicators.empty();
     }
     prm.leave_subsection();
