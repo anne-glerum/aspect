@@ -239,15 +239,26 @@ namespace aspect
         get_mesh_displacements () const;
 
         /**
-         * Go through the map of all mesh deformation models that have been selected in
-         * the input file (and are consequently currently active) and see if one
-         * of them has the desired type specified by the template argument. If so,
-         * return a pointer to it. If no mesh deformation model is active
-         * that matches the given type, return a NULL pointer.
+         * Go through the list of all mesh deformation objects that have been selected
+         * in the input file (and are consequently currently active) and return
+         * true if one of them has the desired type specified by the template
+         * argument.
          */
         template <typename MeshDeformationType>
-        MeshDeformationType *
-        find_mesh_deformation_model () const;
+        bool
+        has_matching_postprocessor () const;
+
+        /**
+         * Go through the list of all mesh deformation objects that have been selected
+         * in the input file (and are consequently currently active) and see
+         * if one of them has the type specified by the template
+         * argument or can be casted to that type. If so, return a reference
+         * to it. If no postprocessor is active that matches the given type,
+         * throw an exception.
+         */
+        template <typename MeshDeformationType>
+        const MeshDeformationType &
+        get_matching_postprocessor () const;
 
         /**
          * For the current plugin subsystem, write a connection graph of all of the
@@ -403,20 +414,48 @@ namespace aspect
     template <int dim>
     template <typename MeshDeformationType>
     inline
-    MeshDeformationType *
-    MeshDeformationHandler<dim>::find_mesh_deformation_model () const
+    bool
+    MeshDeformationHandler<dim>::has_matching_postprocessor () const
     {
       for (typename std::map<types::boundary_id, std::vector<std::unique_ptr<Interface<dim> > > >::iterator boundary_id
            = mesh_deformation_objects_map.begin();
            boundary_id != mesh_deformation_objects_map.end(); ++boundary_id)
-        for (typename std::vector<std::unique_ptr<Interface<dim> > >::const_iterator
-             p = boundary_id->second.begin();
-             p != boundary_id->second.end(); ++p)
-          if (MeshDeformationType *x = dynamic_cast<MeshDeformationType *> ( (*p).get()) )
-            return x;
-      return NULL;
+      for (const auto &p : boundary_id->second)
+        if (Plugins::plugin_type_matches<MeshDeformationType>(*p))
+          return true;
+
+      return false;
     }
 
+
+
+    template <int dim>
+    template <typename MeshDeformationType>
+    inline
+    const MeshDeformationType &
+    MeshDeformationHandler<dim>::get_matching_postprocessor () const
+    {
+      AssertThrow(has_matching_postprocessor<MeshDeformationType> (),
+                  ExcMessage("You asked MeshDeformation::MeshDeformationHandler::get_matching_postprocessor() for a "
+                             "mesh deformation object of type <" + boost::core::demangle(typeid(MeshDeformationType).name()) + "> "
+                             "that could not be found in the current model. Activate this "
+                             "mesh deformation in the input file."));
+
+      for (typename std::map<types::boundary_id, std::vector<std::unique_ptr<Interface<dim> > > >::iterator boundary_id
+           = mesh_deformation_objects_map.begin();
+           boundary_id != mesh_deformation_objects_map.end(); ++boundary_id)
+      {
+        typename std::vector<std::unique_ptr<Interface<dim> > >::const_iterator mesh_def;
+      for (const auto &p : boundary_id->second)
+      {
+        if (Plugins::plugin_type_matches<MeshDeformationType>(*p))
+          return Plugins::get_plugin_as_type<MeshDeformationType>(*p);
+        else
+          // We will never get here, because we had the Assert above. Just to avoid warnings.
+          return Plugins::get_plugin_as_type<MeshDeformationType>(*(*mesh_def));
+      }
+      }
+    }
 
 
     /**
