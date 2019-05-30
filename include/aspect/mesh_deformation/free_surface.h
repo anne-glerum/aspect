@@ -60,7 +60,7 @@ namespace aspect
          * zero and one. A value of zero means no stabilization. See Kaus
          * et. al. 2010 for more details.
          */
-        double free_surface_theta;
+        const double free_surface_theta;
     };
   }
 
