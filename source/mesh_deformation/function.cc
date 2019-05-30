@@ -49,23 +49,6 @@ namespace aspect
 
 
 
-    template <int dim>
-    void
-    BoundaryFunction<dim>::compute_velocity_constraints(const DoFHandler<dim> &mesh_deformation_dof_handler,
-                                                        ConstraintMatrix &mesh_constraints) const
-    {
-      for (std::set<types::boundary_id>::const_iterator p = this->get_mesh_deformation_boundary_indicators().begin();
-           p != this->get_mesh_deformation_boundary_indicators().end(); ++p)
-        {
-          VectorTools::interpolate_boundary_values (mesh_deformation_dof_handler,
-                                                    *p,
-                                                    function,
-                                                    mesh_constraints);
-        }
-    }
-
-
-
     /**
      * A function that creates constraints for the velocity of certain mesh
      * vertices (e.g. the surface vertices) for a specific boundary.
@@ -114,7 +97,7 @@ namespace aspect
           catch (...)
             {
               std::cerr << "ERROR: FunctionParser failed to parse\n"
-                        << "\t'Mesh deformation.Function'\n"
+                        << "\t'Mesh deformation.BoundaryFunction'\n"
                         << "with expression\n"
                         << "\t'" << prm.get("Function expression") << "'"
                         << "More information about the cause of the parse error \n"
