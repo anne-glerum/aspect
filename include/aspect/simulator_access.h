@@ -479,7 +479,7 @@ namespace aspect
 
       /**
        * Return a reference to the vector that has the mesh velocity for
-       * simulations with a free surface.
+       * simulations with mesh deformation.
        *
        * @note In general the vector is a distributed vector; however, it
        * contains ghost elements for all locally relevant degrees of freedom.

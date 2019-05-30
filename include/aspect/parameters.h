@@ -543,11 +543,10 @@ namespace aspect
      * @}
      */
     /**
-     * @name Parameters that have to do with free surface
+     * @name Parameters that have to do with mesh deformation
      * @{
      */
     bool                           mesh_deformation_enabled;
-    std::set<types::boundary_id>   mesh_deformation_boundary_indicators;
     /**
      * @}
      */
