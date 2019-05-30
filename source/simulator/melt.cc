@@ -1860,8 +1860,8 @@ namespace aspect
                                               internal::Assembly::Scratch::StokesSystem<dim>       &scratch,
                                               internal::Assembly::CopyData::StokesSystem<dim>      &data) const
   {
-    const types::boundary_id free_surface_boundary_indicator = this->get_mesh_deformation_handler().get_free_surface_boundary_indicator();
-    if (free_surface_boundary_indicator == numbers::invalid_boundary_id)
+    const std::set<types::boundary_id> free_surface_boundary_indicators = this->get_mesh_deformation_handler().get_free_surface_boundary_indicators();
+    if (free_surface_boundary_indicators.empty())
       return;
 
     const unsigned int n_face_q_points = scratch.face_finite_element_values.n_quadrature_points;
@@ -1875,7 +1875,7 @@ namespace aspect
             const types::boundary_id boundary_indicator
               = cell->face(face_no)->boundary_id();
 
-            if (boundary_indicator != free_surface_boundary_indicator)
+            if (free_surface_boundary_indicators.find(boundary_indicator) == free_surface_boundary_indicators.end())
               continue;
 
             scratch.face_finite_element_values.reinit(cell, face_no);

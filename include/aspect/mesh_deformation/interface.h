@@ -226,10 +226,17 @@ namespace aspect
         /**
          * Return the boundary id of the surface that has a free surface
          * mesh deformation object. If no free surface is used,
-         * numbers::invalid_boundary_id is returned.
+         * an empty set is returned.
          */
-        types::boundary_id
-        get_free_surface_boundary_indicator () const;
+        const std::set<types::boundary_id>
+        get_free_surface_boundary_indicators () const;
+
+        /**
+         * Return the mesh displacements stored on
+         * the mesh deformation element.
+         */
+        const LinearAlgebra::Vector &
+        get_mesh_displacements () const;
 
         /**
          * Go through the map of all mesh deformation models that have been selected in
@@ -383,9 +390,9 @@ namespace aspect
         std::set<types::boundary_id> mesh_deformation_boundary_indicators_set;
 
         /**
-         * The boundary indicator of the free surface.
+         * The boundary indicator(s) of the free surface(s).
          */
-        types::boundary_id free_surface_boundary_id = numbers::invalid_boundary_id;
+        std::set<types::boundary_id> free_surface_boundary_ids;
 
         friend class Simulator<dim>;
         friend class SimulatorAccess<dim>;

@@ -239,20 +239,16 @@ namespace aspect
             if (mesh_deformation_boundary_indicators_map.find(boundary_id) == mesh_deformation_boundary_indicators_map.end())
               {
                 for (unsigned int n = 0; n<mesh_def_objects.size(); ++n)
-                  // finally, put it into the list
                   mesh_deformation_boundary_indicators_map[boundary_id] = (mesh_def_objects);
+
+                // store the current boundary indicator
                 mesh_deformation_boundary_indicators_set.insert(boundary_id);
-                // set the free surface boundary indicator,
-                // but only if we haven't encountered one before
+
+                // store the free surface boundary indicators separately as well
                 for (std::vector<std::string>::const_iterator object = mesh_def_objects.begin();
                      object != mesh_def_objects.end(); ++object)
                   if (*object == "free surface")
-                    {
-                      AssertThrow (free_surface_boundary_id == numbers::invalid_boundary_id,
-                                   ExcMessage("The free surface can only be applied to one boundary at the moment. It is already set for boundary id: "
-                                              + dealii::Utilities::int_to_string(free_surface_boundary_id)));
-                      free_surface_boundary_id = boundary_id;
-                    }
+                      free_surface_boundary_ids.insert(boundary_id);
               }
             else
               {
@@ -701,10 +697,18 @@ namespace aspect
 
 
     template <int dim>
-    types::boundary_id
-    MeshDeformationHandler<dim>::get_free_surface_boundary_indicator () const
+    const std::set<types::boundary_id>
+    MeshDeformationHandler<dim>::get_free_surface_boundary_indicators () const
     {
-      return free_surface_boundary_id;
+      return free_surface_boundary_ids;
+    }
+
+
+    template <int dim>
+    const LinearAlgebra::Vector &
+    get_mesh_displacements () const
+    {
+      return mesh_displacements;
     }
 
 
