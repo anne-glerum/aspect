@@ -91,8 +91,8 @@ namespace aspect
         virtual
         void
         compute_velocity_constraints_on_boundary(const DoFHandler<dim> &mesh_deformation_dof_handler,
-                                     ConstraintMatrix &mesh_velocity_constraints,
-                                     std::set<types::boundary_id> boundary_id) const = 0;
+                                                 ConstraintMatrix &mesh_velocity_constraints,
+                                                 std::set<types::boundary_id> boundary_id) const = 0;
 
         /**
          * Declare the parameters this class takes through input files. The
@@ -401,13 +401,13 @@ namespace aspect
     MeshDeformationHandler<dim>::find_mesh_deformation_model () const
     {
       for (typename std::map<types::boundary_id, std::vector<std::shared_ptr<Interface<dim> > > >::iterator boundary_id
-          = mesh_deformation_objects_map.begin();
-          boundary_id != mesh_deformation_objects_map.end(); ++boundary_id)
-      for (typename std::vector<std::shared_ptr<Interface<dim> > >::const_iterator
-           p = boundary_id->second.begin();
-           p != boundary_id->second.end(); ++p)
-        if (MeshDeformationType *x = dynamic_cast<MeshDeformationType *> ( (*p).get()) )
-          return x;
+           = mesh_deformation_objects_map.begin();
+           boundary_id != mesh_deformation_objects_map.end(); ++boundary_id)
+        for (typename std::vector<std::shared_ptr<Interface<dim> > >::const_iterator
+             p = boundary_id->second.begin();
+             p != boundary_id->second.end(); ++p)
+          if (MeshDeformationType *x = dynamic_cast<MeshDeformationType *> ( (*p).get()) )
+            return x;
       return NULL;
     }
 

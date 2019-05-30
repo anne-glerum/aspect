@@ -113,14 +113,14 @@ namespace aspect
     MeshDeformationHandler<dim>::update ()
     {
       for (typename std::map<types::boundary_id, std::vector<std::shared_ptr<Interface<dim> > > >::iterator boundary_id
-          = mesh_deformation_objects_map.begin();
-          boundary_id != mesh_deformation_objects_map.end(); ++boundary_id)
-      {
-        for (typename std::vector<std::shared_ptr<Interface<dim> > >::iterator
-            model = boundary_id->second.begin();
-            model != boundary_id->second.end(); ++model)
-          (*model)->update();
-      }
+           = mesh_deformation_objects_map.begin();
+           boundary_id != mesh_deformation_objects_map.end(); ++boundary_id)
+        {
+          for (typename std::vector<std::shared_ptr<Interface<dim> > >::iterator
+               model = boundary_id->second.begin();
+               model != boundary_id->second.end(); ++model)
+            (*model)->update();
+        }
     }
 
 
@@ -200,67 +200,67 @@ namespace aspect
         // Each boundary indicator can carry a number of mesh deformation plugin names.
         // Syntax: top: free surface, diffusion; left: diffusion.
         const std::vector<std::string> x_mesh_deformation_boundary_indicators
-        = Utilities::split_string_list(prm.get("Mesh deformation boundary indicators"),";");
+          = Utilities::split_string_list(prm.get("Mesh deformation boundary indicators"),";");
 
         for (std::vector<std::string>::const_iterator p = x_mesh_deformation_boundary_indicators.begin();
-            p != x_mesh_deformation_boundary_indicators.end(); ++p)
-        {
-          // each entry has the format (white space is optional):
-          // <id> : <value, value, ...>
-
-          // Split boundary id and values
-          const std::vector<std::string> split_parts = Utilities::split_string_list (*p, ':');
-          AssertThrow (split_parts.size() == 2,
-              ExcMessage ("The format for mesh deformation indicators "
-                  "requires that each entry has the form `"
-                  "<id> : <value, value, ...>', but there does not "
-                  "appear to be a colon in the entry <"
-                  + *p
-                  + ">."));
-
-          // Get the values, i.e. the mesh deformation plugin names
-          const std::vector<std::string> mesh_def_objects = Utilities::split_string_list(split_parts[1],",");
-
-          // Try to translate the id into a boundary_id.
-          // Make sure we haven't seen it yet
-          types::boundary_id boundary_id;
-          try
+             p != x_mesh_deformation_boundary_indicators.end(); ++p)
           {
-            boundary_id = this->get_geometry_model().translate_symbolic_boundary_name_to_id(split_parts[0]);
-          }
-          catch (const std::string &error)
-          {
-            AssertThrow (false, ExcMessage ("While parsing the entry <Mesh deformation/"
-                "Mesh deformation boundary indicators>, there was an error. Specifically, "
-                "the conversion function complained as follows: "
-                + error));
-          }
+            // each entry has the format (white space is optional):
+            // <id> : <value, value, ...>
 
-          if (mesh_deformation_boundary_indicators_map.find(boundary_id) == mesh_deformation_boundary_indicators_map.end())
-          {
-            for (unsigned int n = 0; n<mesh_def_objects.size();++n)
-            // finally, put it into the list
-            mesh_deformation_boundary_indicators_map[boundary_id] = (mesh_def_objects);
-            mesh_deformation_boundary_indicators_set.insert(boundary_id);
-            // set the free surface boundary indicator,
-            // but only if we haven't encountered one before
-            for (std::vector<std::string>::const_iterator object = mesh_def_objects.begin();
-                object != mesh_def_objects.end(); ++object)
-            if (*object == "free surface")
-            {
-              AssertThrow (free_surface_boundary_id == numbers::invalid_boundary_id,
-                  ExcMessage("The free surface can only be applied to one boundary at the moment. It is already set for boundary id: "
-                      + dealii::Utilities::int_to_string(free_surface_boundary_id)));
-              free_surface_boundary_id = boundary_id;
-            }
+            // Split boundary id and values
+            const std::vector<std::string> split_parts = Utilities::split_string_list (*p, ':');
+            AssertThrow (split_parts.size() == 2,
+                         ExcMessage ("The format for mesh deformation indicators "
+                                     "requires that each entry has the form `"
+                                     "<id> : <value, value, ...>', but there does not "
+                                     "appear to be a colon in the entry <"
+                                     + *p
+                                     + ">."));
+
+            // Get the values, i.e. the mesh deformation plugin names
+            const std::vector<std::string> mesh_def_objects = Utilities::split_string_list(split_parts[1],",");
+
+            // Try to translate the id into a boundary_id.
+            // Make sure we haven't seen it yet
+            types::boundary_id boundary_id;
+            try
+              {
+                boundary_id = this->get_geometry_model().translate_symbolic_boundary_name_to_id(split_parts[0]);
+              }
+            catch (const std::string &error)
+              {
+                AssertThrow (false, ExcMessage ("While parsing the entry <Mesh deformation/"
+                                                "Mesh deformation boundary indicators>, there was an error. Specifically, "
+                                                "the conversion function complained as follows: "
+                                                + error));
+              }
+
+            if (mesh_deformation_boundary_indicators_map.find(boundary_id) == mesh_deformation_boundary_indicators_map.end())
+              {
+                for (unsigned int n = 0; n<mesh_def_objects.size(); ++n)
+                  // finally, put it into the list
+                  mesh_deformation_boundary_indicators_map[boundary_id] = (mesh_def_objects);
+                mesh_deformation_boundary_indicators_set.insert(boundary_id);
+                // set the free surface boundary indicator,
+                // but only if we haven't encountered one before
+                for (std::vector<std::string>::const_iterator object = mesh_def_objects.begin();
+                     object != mesh_def_objects.end(); ++object)
+                  if (*object == "free surface")
+                    {
+                      AssertThrow (free_surface_boundary_id == numbers::invalid_boundary_id,
+                                   ExcMessage("The free surface can only be applied to one boundary at the moment. It is already set for boundary id: "
+                                              + dealii::Utilities::int_to_string(free_surface_boundary_id)));
+                      free_surface_boundary_id = boundary_id;
+                    }
+              }
+            else
+              {
+                // TODO make it possible to write: top: free surface; top: function
+                // for now, give error message
+                AssertThrow(false, ExcMessage("Please write boundary id: value1, value2, i.e. list all mesh deformation objects for one boundary id in one."));
+              }
           }
-          else
-          {
-            // TODO make it possible to write: top: free surface; top: function
-            // for now, give error message
-            AssertThrow(false, ExcMessage("Please write boundary id: value1, value2, i.e. list all mesh deformation objects for one boundary id in one."));
-          }
-        }
 
 
       }
@@ -276,7 +276,7 @@ namespace aspect
                name = boundary_id->second.begin();
                name != boundary_id->second.end(); ++name)
             {
-            mesh_deformation_objects_map[boundary_id->first].push_back(
+              mesh_deformation_objects_map[boundary_id->first].push_back(
                 std::shared_ptr<Interface<dim> > (std::get<dim>(registered_plugins)
                                                   .create_plugin (*name,
                                                                   "Mesh deformation::Model names")));
@@ -403,41 +403,41 @@ namespace aspect
       ConstraintMatrix plugin_constraints(mesh_vertex_constraints.get_local_lines());
 
       for (typename std::map<types::boundary_id, std::vector<std::shared_ptr<Interface<dim> > > >::iterator boundary_id
-          = mesh_deformation_objects_map.begin();
-          boundary_id != mesh_deformation_objects_map.end(); ++boundary_id)
-      {
-        std::set<types::boundary_id> boundary_id_set;
-        boundary_id_set.insert(boundary_id->first);
-
-        for (typename std::vector<std::shared_ptr<Interface<dim> > >::iterator
-            model = boundary_id->second.begin();
-            model != boundary_id->second.end(); ++model)
+           = mesh_deformation_objects_map.begin();
+           boundary_id != mesh_deformation_objects_map.end(); ++boundary_id)
         {
-          ConstraintMatrix current_plugin_constraints(mesh_vertex_constraints.get_local_lines());
+          std::set<types::boundary_id> boundary_id_set;
+          boundary_id_set.insert(boundary_id->first);
 
-          (*model)->compute_velocity_constraints_on_boundary(mesh_deformation_dof_handler,
-                                                                    current_plugin_constraints,
-                                                                    boundary_id_set);
-
-          const IndexSet local_lines = current_plugin_constraints.get_local_lines();
-          for (auto index = local_lines.begin(); index != local_lines.end(); ++index)
+          for (typename std::vector<std::shared_ptr<Interface<dim> > >::iterator
+               model = boundary_id->second.begin();
+               model != boundary_id->second.end(); ++model)
             {
-              if (current_plugin_constraints.is_constrained(*index))
+              ConstraintMatrix current_plugin_constraints(mesh_vertex_constraints.get_local_lines());
+
+              (*model)->compute_velocity_constraints_on_boundary(mesh_deformation_dof_handler,
+                                                                 current_plugin_constraints,
+                                                                 boundary_id_set);
+
+              const IndexSet local_lines = current_plugin_constraints.get_local_lines();
+              for (auto index = local_lines.begin(); index != local_lines.end(); ++index)
                 {
-                  if (plugin_constraints.is_constrained(*index) == false)
+                  if (current_plugin_constraints.is_constrained(*index))
                     {
-                      plugin_constraints.add_line(*index);
-                      plugin_constraints.set_inhomogeneity(*index, current_plugin_constraints.get_inhomogeneity(*index));
-                    }
-                  else
-                    {
-                      const double inhomogeneity = plugin_constraints.get_inhomogeneity(*index);
-                      plugin_constraints.set_inhomogeneity(*index, current_plugin_constraints.get_inhomogeneity(*index) + inhomogeneity);
+                      if (plugin_constraints.is_constrained(*index) == false)
+                        {
+                          plugin_constraints.add_line(*index);
+                          plugin_constraints.set_inhomogeneity(*index, current_plugin_constraints.get_inhomogeneity(*index));
+                        }
+                      else
+                        {
+                          const double inhomogeneity = plugin_constraints.get_inhomogeneity(*index);
+                          plugin_constraints.set_inhomogeneity(*index, current_plugin_constraints.get_inhomogeneity(*index) + inhomogeneity);
+                        }
                     }
                 }
             }
         }
-      }
 
       mesh_velocity_constraints.merge(plugin_constraints,ConstraintMatrix::left_object_wins);
       mesh_velocity_constraints.close();

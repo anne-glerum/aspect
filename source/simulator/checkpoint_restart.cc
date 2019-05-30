@@ -172,7 +172,7 @@ namespace aspect
       std::unique_ptr<parallel::distributed::SolutionTransfer<dim,LinearAlgebra::Vector> > mesh_deformation_trans;
       if (parameters.mesh_deformation_enabled)
         {
-        mesh_deformation_trans
+          mesh_deformation_trans
             = std_cxx14::make_unique<parallel::distributed::SolutionTransfer<dim,LinearAlgebra::Vector>>
               (mesh_deformation->mesh_deformation_dof_handler);
 

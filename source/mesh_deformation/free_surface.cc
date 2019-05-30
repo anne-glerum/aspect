@@ -154,7 +154,7 @@ namespace aspect
       // Get the tangential velocity boundary indicators
       const std::set<types::boundary_id> tmp_tangential_vel_boundary_indicators = this->get_boundary_velocity_manager().get_tangential_boundary_velocity_indicators();
       velocity_boundary_indicators.insert(tmp_tangential_vel_boundary_indicators.begin(),
-          tmp_tangential_vel_boundary_indicators.end());
+                                          tmp_tangential_vel_boundary_indicators.end());
 
       // Get the active velocity boundary indicators
       const std::map<types::boundary_id, std::pair<std::string,std::vector<std::string> > >
@@ -167,9 +167,9 @@ namespace aspect
       // Get the mesh deformation boundary indicators
       const std::set<types::boundary_id> tmp_mesh_deformation_boundary_indicators = this->get_mesh_deformation_boundary_indicators();
       for (std::set<types::boundary_id>::const_iterator p = tmp_mesh_deformation_boundary_indicators.begin();
-          p != tmp_mesh_deformation_boundary_indicators.end(); ++p)
-      AssertThrow(velocity_boundary_indicators.find(*p) == velocity_boundary_indicators.end(),
-          ExcMessage("The free surface mesh deformation plugin cannot be used with the current velocity boundary conditions"));
+           p != tmp_mesh_deformation_boundary_indicators.end(); ++p)
+        AssertThrow(velocity_boundary_indicators.find(*p) == velocity_boundary_indicators.end(),
+                    ExcMessage("The free surface mesh deformation plugin cannot be used with the current velocity boundary conditions"));
 
       this->get_signals().set_assemblers.connect(std::bind(&FreeSurface<dim>::set_assemblers,
                                                            std::cref(*this),
@@ -392,8 +392,8 @@ namespace aspect
     template <int dim>
     void
     FreeSurface<dim>::compute_velocity_constraints_on_boundary(const DoFHandler<dim> &mesh_deformation_dof_handler,
-                                 ConstraintMatrix &mesh_velocity_constraints,
-                                 std::set<types::boundary_id> boundary_id) const
+                                                               ConstraintMatrix &mesh_velocity_constraints,
+                                                               std::set<types::boundary_id> boundary_id) const
     {
       // For the free surface indicators we constrain the displacement to be v.n
       LinearAlgebra::Vector boundary_velocity;
