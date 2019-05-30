@@ -239,8 +239,6 @@ namespace aspect
           if (mesh_deformation_boundary_indicators_map.find(boundary_id) == mesh_deformation_boundary_indicators_map.end())
           {
             for (unsigned int n = 0; n<mesh_def_objects.size();++n)
-              // TODO remove output
-            this->get_pcout() << "Adding " << mesh_def_objects[n] << " to the mesh def objects for boundary " << dealii::Utilities::int_to_string(boundary_id) << std::endl;
             // finally, put it into the list
             mesh_deformation_boundary_indicators_map[boundary_id] = (mesh_def_objects);
             mesh_deformation_boundary_indicators_set.insert(boundary_id);
