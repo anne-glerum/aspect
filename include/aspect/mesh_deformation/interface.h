@@ -83,16 +83,6 @@ namespace aspect
 
         /**
          * A function that creates constraints for the velocity of certain mesh
-         * vertices (e.g. the surface vertices). The calling class will respect
-         * these constraints when computing the new vertex positions.
-         */
-        virtual
-        void
-        compute_velocity_constraints(const DoFHandler<dim> &mesh_deformation_dof_handler,
-                                     ConstraintMatrix &mesh_velocity_constraints) const = 0;
-
-        /**
-         * A function that creates constraints for the velocity of certain mesh
          * vertices (e.g. the surface vertices) for a specific boundary.
          * The calling class will respect
          * these constraints when computing the new vertex positions.
@@ -213,29 +203,26 @@ namespace aspect
          void (*declare_parameters_function) (ParameterHandler &),
          Interface<dim> *(*factory_function) ());
 
-
         /**
-         * Return a list of names of all mesh deformation models currently
+         * Return a map of boundary indicators to the names of all mesh deformation models currently
          * used in the computation, as specified in the input file.
          */
-        const std::vector<std::string> &
+        const std::map<types::boundary_id, std::vector<std::string> > &
         get_active_mesh_deformation_names () const;
 
-        const std::map<types::boundary_id, std::vector<std::string> > &
-        get_active_prescribed_mesh_deformation_names () const;
-
         /**
-         * Return a list of pointers to all mesh deformation models
+         * Return a map of boundary indicators to vectors of pointers to all mesh deformation models
          * currently used in the computation, as specified in the input file.
          */
-        const std::vector<std::shared_ptr<Interface<dim> > > &
+        const std::map<types::boundary_id,std::vector<std::shared_ptr<Interface<dim> > > > &
         get_active_mesh_deformation_models () const;
 
-        const std::map<types::boundary_id,std::vector<std::shared_ptr<Interface<dim> > > > &
-        get_active_prescribed_mesh_deformation_models () const;
-
+        /**
+         * Return a set of all the indicators of boundaries with
+         * mesh deformation objects on them.
+         */
         const std::set<types::boundary_id> &
-        get_active_prescribed_mesh_deformation_boundary_indicators () const;
+        get_active_mesh_deformation_boundary_indicators () const;
 
         /**
          * Return the boundary id of the surface that has a free surface
@@ -246,12 +233,11 @@ namespace aspect
         get_free_surface_boundary_indicator () const;
 
         /**
-         * Go through the list of all mesh deformation models that have been selected in
+         * Go through the map of all mesh deformation models that have been selected in
          * the input file (and are consequently currently active) and see if one
          * of them has the desired type specified by the template argument. If so,
          * return a pointer to it. If no mesh deformation model is active
          * that matches the given type, return a NULL pointer.
-         * TODO I don't know if this works with the new structure
          */
         template <typename MeshDeformationType>
         MeshDeformationType *
@@ -281,17 +267,10 @@ namespace aspect
 
       private:
         /**
-         * A list of mesh deformation objects that have been requested in the
-         * parameter file.
-         */
-        std::vector<std::shared_ptr<Interface<dim> > > mesh_deformation_objects;
-        std::map<types::boundary_id,std::vector<std::shared_ptr<Interface<dim> > > > prescribed_mesh_deformation_objects;
-
-        /**
-         * A list of names of mesh deformation objects that have been requested
+         * A map of boundary ids to mesh deformation objects that have been requested
          * in the parameter file.
          */
-        std::vector<std::string> model_names;
+        std::map<types::boundary_id,std::vector<std::shared_ptr<Interface<dim> > > > mesh_deformation_objects_map;
 
         /**
          * Set the boundary conditions for the solution of the elliptic
@@ -393,15 +372,20 @@ namespace aspect
         std::set<types::boundary_id> tangential_mesh_boundary_indicators;
 
         /**
-         * Map from boundary id to a pair
-         * ("components", list of "velocity boundary type"),
-         * where components is of the format "[x][y][z]" and the velocity type is
-         * mapped to one of the plugins of velocity boundary conditions (e.g.
-         * "function"). If the components string is empty, it is assumed the
-         * plugins are used for all components.
+         * Map from boundary id to a vector of names representing
+         * mesh deformation objects.
          */
-        std::map<types::boundary_id, std::vector<std::string> > prescribed_mesh_deformation_boundary_indicators;
-        std::set<types::boundary_id> prescribed_mesh_deformation_boundary_indicators_set;
+        std::map<types::boundary_id, std::vector<std::string> > mesh_deformation_boundary_indicators_map;
+
+        /**
+         * The set of boundary indicators for which mesh deformation
+         * objects are set.
+         */
+        std::set<types::boundary_id> mesh_deformation_boundary_indicators_set;
+
+        /**
+         * The boundary indicator of the free surface.
+         */
         types::boundary_id free_surface_boundary_id = numbers::invalid_boundary_id;
 
         friend class Simulator<dim>;
@@ -416,9 +400,12 @@ namespace aspect
     MeshDeformationType *
     MeshDeformationHandler<dim>::find_mesh_deformation_model () const
     {
-      for (typename std::list<std::shared_ptr<Interface<dim> > >::const_iterator
-           p = mesh_deformation_objects.begin();
-           p != mesh_deformation_objects.end(); ++p)
+      for (typename std::map<types::boundary_id, std::vector<std::shared_ptr<Interface<dim> > > >::iterator boundary_id
+          = mesh_deformation_objects_map.begin();
+          boundary_id != mesh_deformation_objects_map.end(); ++boundary_id)
+      for (typename std::vector<std::shared_ptr<Interface<dim> > >::const_iterator
+           p = boundary_id->second.begin();
+           p != boundary_id->second.end(); ++p)
         if (MeshDeformationType *x = dynamic_cast<MeshDeformationType *> ( (*p).get()) )
           return x;
       return NULL;

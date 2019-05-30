@@ -112,14 +112,9 @@ namespace aspect
     void
     MeshDeformationHandler<dim>::update ()
     {
-//      for (typename std::vector<std::shared_ptr<Interface<dim> > >::iterator
-//          model = mesh_deformation_objects.begin(); model != mesh_deformation_objects.end(); ++model)
-//        (*model)->update();
-
-      //std::map<types::boundary_id,std::vector<std::shared_ptr<Interface<dim> > > > prescribed_mesh_deformation_objects;
       for (typename std::map<types::boundary_id, std::vector<std::shared_ptr<Interface<dim> > > >::iterator boundary_id
-          = prescribed_mesh_deformation_objects.begin();
-          boundary_id != prescribed_mesh_deformation_objects.end(); ++boundary_id)
+          = mesh_deformation_objects_map.begin();
+          boundary_id != mesh_deformation_objects_map.end(); ++boundary_id)
       {
         for (typename std::vector<std::shared_ptr<Interface<dim> > >::iterator
             model = boundary_id->second.begin();
@@ -136,16 +131,6 @@ namespace aspect
       {
         const std::string pattern_of_names
           = std::get<dim>(registered_plugins).get_pattern_of_names ();
-
-//        prm.declare_entry("List of model names",
-//                          "free surface",
-//                          Patterns::MultipleSelection(pattern_of_names),
-//                          "A comma-separated list of mesh deformation models that "
-//                          "will be used to deform the mesh over the model runtime. "
-//                          "These plugins are applied in the order given. \n\n"
-//                          "The following mesh deformation models are available:\n\n"
-//                          +
-//                          std::get<dim>(registered_plugins).get_description_string());
 
         prm.declare_entry ("Additional tangential mesh velocity boundary indicators", "",
                            Patterns::List (Patterns::Anything()),
@@ -179,7 +164,7 @@ namespace aspect
                            "use in your model. "
                            "\n\n"
                            "The format is id1: object1, object2; id2: object3, object2, where "
-                           "objects are one of " + pattern_of_names + ". ");
+                           "objects are one of " + std::get<dim>(registered_plugins).get_description_string());
       }
       prm.leave_subsection ();
 
@@ -191,14 +176,6 @@ namespace aspect
     {
       prm.enter_subsection ("Mesh deformation");
       {
-//        model_names
-//          = Utilities::split_string_list(prm.get("List of model names"));
-//
-//        AssertThrow(Utilities::has_unique_entries(model_names),
-//                    ExcMessage("The list of strings for the parameter "
-//                               "'Mesh deformation/List of model names' contains entries more than once. "
-//                               "This is not allowed. Please check your parameter file."));
-//
         // Create the list of tangential mesh movement boundary indicators
         try
           {
@@ -259,14 +236,14 @@ namespace aspect
                 + error));
           }
 
-          if (prescribed_mesh_deformation_boundary_indicators.find(boundary_id) == prescribed_mesh_deformation_boundary_indicators.end())
+          if (mesh_deformation_boundary_indicators_map.find(boundary_id) == mesh_deformation_boundary_indicators_map.end())
           {
             for (unsigned int n = 0; n<mesh_def_objects.size();++n)
               // TODO remove output
             this->get_pcout() << "Adding " << mesh_def_objects[n] << " to the mesh def objects for boundary " << dealii::Utilities::int_to_string(boundary_id) << std::endl;
             // finally, put it into the list
-            prescribed_mesh_deformation_boundary_indicators[boundary_id] = (mesh_def_objects);
-            prescribed_mesh_deformation_boundary_indicators_set.insert(boundary_id);
+            mesh_deformation_boundary_indicators_map[boundary_id] = (mesh_def_objects);
+            mesh_deformation_boundary_indicators_set.insert(boundary_id);
             // set the free surface boundary indicator,
             // but only if we haven't encountered one before
             for (std::vector<std::string>::const_iterator object = mesh_def_objects.begin();
@@ -291,48 +268,26 @@ namespace aspect
       }
       prm.leave_subsection ();
 
-//      if (sim.parameters.mesh_deformation_enabled)
-//        AssertThrow(model_names.size()>0,
-//                    ExcMessage("If mesh deformation is enabled, at least 1 mesh deformation model must be specified."));
-//
-//      // go through the list, create objects and let them parse
-//      // their own parameters
-//      for (unsigned int i=0; i<model_names.size(); ++i)
-//        {
-//          // create initial temperature objects
-//          mesh_deformation_objects.push_back (std::shared_ptr<Interface<dim> >
-//                                              (std::get<dim>(registered_plugins)
-//                                               .create_plugin (model_names[i],
-//                                                               "Mesh deformation::Model names")));
-//
-//          if (SimulatorAccess<dim> *sim = dynamic_cast<SimulatorAccess<dim>*>(&*mesh_deformation_objects.back()))
-//            sim->initialize_simulator (this->get_simulator());
-//
-//          mesh_deformation_objects.back()->parse_parameters (prm);
-//          mesh_deformation_objects.back()->initialize ();
-//        }
-
-
       // go through the list, create objects and let them parse
       // their own parameters
       for (std::map<types::boundary_id, std::vector<std::string> >::iterator
-           boundary_id = prescribed_mesh_deformation_boundary_indicators.begin();
-           boundary_id != prescribed_mesh_deformation_boundary_indicators.end(); ++boundary_id)
+           boundary_id = mesh_deformation_boundary_indicators_map.begin();
+           boundary_id != mesh_deformation_boundary_indicators_map.end(); ++boundary_id)
         {
           for (std::vector<std::string>::iterator
                name = boundary_id->second.begin();
                name != boundary_id->second.end(); ++name)
             {
-            prescribed_mesh_deformation_objects[boundary_id->first].push_back(
+            mesh_deformation_objects_map[boundary_id->first].push_back(
                 std::shared_ptr<Interface<dim> > (std::get<dim>(registered_plugins)
                                                   .create_plugin (*name,
                                                                   "Mesh deformation::Model names")));
 
-              if (SimulatorAccess<dim> *sim = dynamic_cast<SimulatorAccess<dim>*>(prescribed_mesh_deformation_objects[boundary_id->first].back().get()))
+              if (SimulatorAccess<dim> *sim = dynamic_cast<SimulatorAccess<dim>*>(mesh_deformation_objects_map[boundary_id->first].back().get()))
                 sim->initialize_simulator (this->get_simulator());
 
-              prescribed_mesh_deformation_objects[boundary_id->first].back()->parse_parameters (prm);
-              prescribed_mesh_deformation_objects[boundary_id->first].back()->initialize ();
+              mesh_deformation_objects_map[boundary_id->first].back()->parse_parameters (prm);
+              mesh_deformation_objects_map[boundary_id->first].back()->initialize ();
             }
         }
     }
@@ -391,7 +346,7 @@ namespace aspect
       // that are not mesh deformation boundary indicators
       for (std::set<types::boundary_id>::const_iterator p = sim.boundary_velocity_manager.get_zero_boundary_velocity_indicators().begin();
            p != sim.boundary_velocity_manager.get_zero_boundary_velocity_indicators().end(); ++p)
-        if (prescribed_mesh_deformation_boundary_indicators_set.find(*p) == prescribed_mesh_deformation_boundary_indicators_set.end())
+        if (mesh_deformation_boundary_indicators_set.find(*p) == mesh_deformation_boundary_indicators_set.end())
           {
             VectorTools::interpolate_boundary_values (mesh_deformation_dof_handler, *p,
                                                       ZeroFunction<dim>(dim), mesh_velocity_constraints);
@@ -404,7 +359,7 @@ namespace aspect
         {
           if (tangential_mesh_boundary_indicators.find(p->first) == tangential_mesh_boundary_indicators.end())
             {
-              if (prescribed_mesh_deformation_boundary_indicators_set.find(p->first) == prescribed_mesh_deformation_boundary_indicators_set.end())
+              if (mesh_deformation_boundary_indicators_set.find(p->first) == mesh_deformation_boundary_indicators_set.end())
                 {
                   VectorTools::interpolate_boundary_values (mesh_deformation_dof_handler, p->first,
                                                             ZeroFunction<dim>(dim), mesh_velocity_constraints);
@@ -418,7 +373,7 @@ namespace aspect
       std::set< types::boundary_id > x_no_flux_boundary_indicators = tangential_mesh_boundary_indicators;
       for (std::set<types::boundary_id>::const_iterator p = x_no_flux_boundary_indicators.begin();
            p != x_no_flux_boundary_indicators.end(); ++p)
-        if (prescribed_mesh_deformation_boundary_indicators_set.find(*p) != prescribed_mesh_deformation_boundary_indicators_set.end())
+        if (mesh_deformation_boundary_indicators_set.find(*p) != mesh_deformation_boundary_indicators_set.end())
           {
             x_no_flux_boundary_indicators.erase(*p);
           }
@@ -445,41 +400,15 @@ namespace aspect
                                                        mesh_velocity_constraints, *sim.mapping);
       sim.signals.post_compute_no_normal_flux_constraints(sim.triangulation);
 
-      // Ask all plugins to add their constraints
+      // Ask all plugins to add their constraints.
       // For the moment add constraints from all plugins into one matrix, then
       // merge that matrix with the existing constraints (respecting the existing
       // constraints as more important)
       ConstraintMatrix plugin_constraints(mesh_vertex_constraints.get_local_lines());
 
-//      for (unsigned int i=0; i<mesh_deformation_objects.size(); ++i)
-//        {
-//          ConstraintMatrix current_plugin_constraints(mesh_vertex_constraints.get_local_lines());
-//
-//          mesh_deformation_objects[i]->compute_velocity_constraints(mesh_deformation_dof_handler,
-//                                                                    current_plugin_constraints);
-//
-//          const IndexSet local_lines = current_plugin_constraints.get_local_lines();
-//          for (auto index = local_lines.begin(); index != local_lines.end(); ++index)
-//            {
-//              if (current_plugin_constraints.is_constrained(*index))
-//                {
-//                  if (plugin_constraints.is_constrained(*index) == false)
-//                    {
-//                      plugin_constraints.add_line(*index);
-//                      plugin_constraints.set_inhomogeneity(*index, current_plugin_constraints.get_inhomogeneity(*index));
-//                    }
-//                  else
-//                    {
-//                      const double inhomogeneity = plugin_constraints.get_inhomogeneity(*index);
-//                      plugin_constraints.set_inhomogeneity(*index, current_plugin_constraints.get_inhomogeneity(*index) + inhomogeneity);
-//                    }
-//                }
-//            }
-//        }
-
       for (typename std::map<types::boundary_id, std::vector<std::shared_ptr<Interface<dim> > > >::iterator boundary_id
-          = prescribed_mesh_deformation_objects.begin();
-          boundary_id != prescribed_mesh_deformation_objects.end(); ++boundary_id)
+          = mesh_deformation_objects_map.begin();
+          boundary_id != mesh_deformation_objects_map.end(); ++boundary_id)
       {
         std::set<types::boundary_id> boundary_id_set;
         boundary_id_set.insert(boundary_id->first);
@@ -490,8 +419,6 @@ namespace aspect
         {
           ConstraintMatrix current_plugin_constraints(mesh_vertex_constraints.get_local_lines());
 
-//          (*model)->compute_velocity_constraints(mesh_deformation_dof_handler,
-//                                                                    current_plugin_constraints);
           (*model)->compute_velocity_constraints_on_boundary(mesh_deformation_dof_handler,
                                                                     current_plugin_constraints,
                                                                     boundary_id_set);
@@ -751,46 +678,28 @@ namespace aspect
 
 
     template <int dim>
-    const std::vector<std::string> &
+    const std::map<types::boundary_id, std::vector<std::string> > &
     MeshDeformationHandler<dim>::get_active_mesh_deformation_names () const
     {
-      return model_names;
-    }
-
-
-
-    template <int dim>
-    const std::map<types::boundary_id, std::vector<std::string> > &
-    MeshDeformationHandler<dim>::get_active_prescribed_mesh_deformation_names () const
-    {
-      return prescribed_mesh_deformation_boundary_indicators;
-    }
-
-
-
-    template <int dim>
-    const std::vector<std::shared_ptr<Interface<dim> > > &
-    MeshDeformationHandler<dim>::get_active_mesh_deformation_models () const
-    {
-      return mesh_deformation_objects;
+      return mesh_deformation_boundary_indicators_map;
     }
 
 
 
     template <int dim>
     const std::map<types::boundary_id,std::vector<std::shared_ptr<Interface<dim> > > > &
-    MeshDeformationHandler<dim>::get_active_prescribed_mesh_deformation_models () const
+    MeshDeformationHandler<dim>::get_active_mesh_deformation_models () const
     {
-      return prescribed_mesh_deformation_objects;
+      return mesh_deformation_objects_map;
     }
 
 
 
     template <int dim>
     const std::set<types::boundary_id> &
-    MeshDeformationHandler<dim>::get_active_prescribed_mesh_deformation_boundary_indicators () const
+    MeshDeformationHandler<dim>::get_active_mesh_deformation_boundary_indicators () const
     {
-      return prescribed_mesh_deformation_boundary_indicators_set;
+      return mesh_deformation_boundary_indicators_set;
     }
 
 
