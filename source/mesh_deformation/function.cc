@@ -107,20 +107,20 @@ namespace aspect
       {
         prm.enter_subsection("Boundary function");
         {
-        try
-          {
-            function.parse_parameters (prm);
-          }
-        catch (...)
-          {
-            std::cerr << "ERROR: FunctionParser failed to parse\n"
-                      << "\t'Mesh deformation.Function'\n"
-                      << "with expression\n"
-                      << "\t'" << prm.get("Function expression") << "'"
-                      << "More information about the cause of the parse error \n"
-                      << "is shown below.\n";
-            throw;
-          }
+          try
+            {
+              function.parse_parameters (prm);
+            }
+          catch (...)
+            {
+              std::cerr << "ERROR: FunctionParser failed to parse\n"
+                        << "\t'Mesh deformation.Function'\n"
+                        << "with expression\n"
+                        << "\t'" << prm.get("Function expression") << "'"
+                        << "More information about the cause of the parse error \n"
+                        << "is shown below.\n";
+              throw;
+            }
         }
         prm.leave_subsection();
       }
