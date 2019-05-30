@@ -112,11 +112,11 @@ namespace aspect
     void
     MeshDeformationHandler<dim>::update ()
     {
-      for (typename std::map<types::boundary_id, std::vector<std::shared_ptr<Interface<dim> > > >::iterator boundary_id
+      for (typename std::map<types::boundary_id, std::vector<std::unique_ptr<Interface<dim> > > >::iterator boundary_id
            = mesh_deformation_objects_map.begin();
            boundary_id != mesh_deformation_objects_map.end(); ++boundary_id)
         {
-          for (typename std::vector<std::shared_ptr<Interface<dim> > >::iterator
+          for (typename std::vector<std::unique_ptr<Interface<dim> > >::iterator
                model = boundary_id->second.begin();
                model != boundary_id->second.end(); ++model)
             (*model)->update();
@@ -277,7 +277,7 @@ namespace aspect
                name != boundary_id->second.end(); ++name)
             {
               mesh_deformation_objects_map[boundary_id->first].push_back(
-                std::shared_ptr<Interface<dim> > (std::get<dim>(registered_plugins)
+                std::unique_ptr<Interface<dim> > (std::get<dim>(registered_plugins)
                                                   .create_plugin (*name,
                                                                   "Mesh deformation::Model names")));
 
@@ -402,14 +402,14 @@ namespace aspect
       // constraints as more important)
       ConstraintMatrix plugin_constraints(mesh_vertex_constraints.get_local_lines());
 
-      for (typename std::map<types::boundary_id, std::vector<std::shared_ptr<Interface<dim> > > >::iterator boundary_id
+      for (typename std::map<types::boundary_id, std::vector<std::unique_ptr<Interface<dim> > > >::iterator boundary_id
            = mesh_deformation_objects_map.begin();
            boundary_id != mesh_deformation_objects_map.end(); ++boundary_id)
         {
           std::set<types::boundary_id> boundary_id_set;
           boundary_id_set.insert(boundary_id->first);
 
-          for (typename std::vector<std::shared_ptr<Interface<dim> > >::iterator
+          for (typename std::vector<std::unique_ptr<Interface<dim> > >::iterator
                model = boundary_id->second.begin();
                model != boundary_id->second.end(); ++model)
             {
@@ -683,7 +683,7 @@ namespace aspect
 
 
     template <int dim>
-    const std::map<types::boundary_id,std::vector<std::shared_ptr<Interface<dim> > > > &
+    const std::map<types::boundary_id,std::vector<std::unique_ptr<Interface<dim> > > > &
     MeshDeformationHandler<dim>::get_active_mesh_deformation_models () const
     {
       return mesh_deformation_objects_map;

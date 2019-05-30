@@ -83,10 +83,9 @@ namespace aspect
 
         /**
          * A function that creates constraints for the velocity of certain mesh
-         * vertices (e.g. the surface vertices) for a specific boundary.
+         * vertices (e.g. the surface vertices) for a specific set of boundaries.
          * The calling class will respect
          * these constraints when computing the new vertex positions.
-         * TODO should we pass a std::set<types::boundary_id> or just types::boundary_id.
          */
         virtual
         void
@@ -214,7 +213,7 @@ namespace aspect
          * Return a map of boundary indicators to vectors of pointers to all mesh deformation models
          * currently used in the computation, as specified in the input file.
          */
-        const std::map<types::boundary_id,std::vector<std::shared_ptr<Interface<dim> > > > &
+        const std::map<types::boundary_id,std::vector<std::unique_ptr<Interface<dim> > > > &
         get_active_mesh_deformation_models () const;
 
         /**
@@ -270,7 +269,7 @@ namespace aspect
          * A map of boundary ids to mesh deformation objects that have been requested
          * in the parameter file.
          */
-        std::map<types::boundary_id,std::vector<std::shared_ptr<Interface<dim> > > > mesh_deformation_objects_map;
+        std::map<types::boundary_id,std::vector<std::unique_ptr<Interface<dim> > > > mesh_deformation_objects_map;
 
         /**
          * Set the boundary conditions for the solution of the elliptic
@@ -400,10 +399,10 @@ namespace aspect
     MeshDeformationType *
     MeshDeformationHandler<dim>::find_mesh_deformation_model () const
     {
-      for (typename std::map<types::boundary_id, std::vector<std::shared_ptr<Interface<dim> > > >::iterator boundary_id
+      for (typename std::map<types::boundary_id, std::vector<std::unique_ptr<Interface<dim> > > >::iterator boundary_id
            = mesh_deformation_objects_map.begin();
            boundary_id != mesh_deformation_objects_map.end(); ++boundary_id)
-        for (typename std::vector<std::shared_ptr<Interface<dim> > >::const_iterator
+        for (typename std::vector<std::unique_ptr<Interface<dim> > >::const_iterator
              p = boundary_id->second.begin();
              p != boundary_id->second.end(); ++p)
           if (MeshDeformationType *x = dynamic_cast<MeshDeformationType *> ( (*p).get()) )
