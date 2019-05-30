@@ -550,7 +550,7 @@ namespace aspect
       SolverCG<LinearAlgebra::Vector> cg(solver_control);
 
       cg.solve (mesh_matrix, velocity_solution, rhs, preconditioner_stiffness);
-      sim.pcout << "   Solving mesh velocity system... " << solver_control.last_step() <<" iterations."<< std::endl;
+      this->get_pcout() << "   Solving mesh velocity system... " << solver_control.last_step() <<" iterations."<< std::endl;
 
       mesh_velocity_constraints.distribute (velocity_solution);
 
@@ -630,9 +630,9 @@ namespace aspect
 
       mesh_deformation_dof_handler.distribute_dofs(mesh_deformation_fe);
 
-      sim.pcout << "Number of mesh deformation degrees of freedom: "
-                << mesh_deformation_dof_handler.n_dofs()
-                << std::endl;
+      this->get_pcout() << "Number of mesh deformation degrees of freedom: "
+                        << mesh_deformation_dof_handler.n_dofs()
+                        << std::endl;
 
       // Renumber the DoFs hierarchical so that we get the
       // same numbering if we resume the computation. This
