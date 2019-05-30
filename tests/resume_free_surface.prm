@@ -106,7 +106,6 @@ subsection Mesh deformation
   end
 end
 
-
 subsection Termination criteria
   set Termination criteria = end step
   set End step = 4

@@ -113,10 +113,10 @@ end
 
 subsection Mesh deformation
   set Mesh deformation boundary indicators        = 3: free surface
+  set Additional tangential mesh velocity boundary indicators = 0,1
   # On the vertical boundaries we allow the mesh to move tangentially
   # We only displace the surface in the vertical direction
   subsection Free surface
-    set Additional tangential mesh velocity boundary indicators = 0,1
     set Surface velocity projection                             = vertical
   end
 end
