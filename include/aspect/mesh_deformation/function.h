@@ -41,11 +41,6 @@ namespace aspect
 
         virtual void update();
 
-        virtual
-        void
-        compute_velocity_constraints(const DoFHandler<dim> &mesh_deformation_dof_handler,
-                                     ConstraintMatrix &mesh_constraints) const;
-
         /**
          * A function that creates constraints for the velocity of certain mesh
          * vertices (e.g. the surface vertices) for a specific boundary.

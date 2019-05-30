@@ -91,12 +91,8 @@ namespace aspect
     {
       prm.enter_subsection ("Mesh deformation");
       {
-        prm.enter_subsection ("Function");
+        prm.enter_subsection ("Boundary function");
         {
-          // TODO
-          //
-          //
-
           Functions::ParsedFunction<dim>::declare_parameters (prm, dim);
         }
         prm.leave_subsection();
@@ -109,7 +105,8 @@ namespace aspect
     {
       prm.enter_subsection ("Mesh deformation");
       {
-        prm.enter_subsection("Function");
+        prm.enter_subsection("Boundary function");
+        {
         try
           {
             function.parse_parameters (prm);
@@ -124,8 +121,8 @@ namespace aspect
                       << "is shown below.\n";
             throw;
           }
+        }
         prm.leave_subsection();
-
       }
       prm.leave_subsection ();
     }

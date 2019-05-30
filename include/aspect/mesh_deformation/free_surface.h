@@ -90,17 +90,6 @@ namespace aspect
                             aspect::Assemblers::Manager<dim> &assemblers) const;
 
         /**
-         * A function that creates constraints for the velocity of surface
-         * vertices based on the solution velocity. This is equivalent to
-         * having a free surface, as the velocity essentially carries the
-         * nodes with it.
-         */
-        virtual
-        void
-        compute_velocity_constraints(const DoFHandler<dim> &mesh_deformation_dof_handler,
-                                     ConstraintMatrix &mesh_velocity_constraints) const;
-
-        /**
          * A function that creates constraints for the velocity of certain mesh
          * vertices (e.g. the surface vertices) for a specific boundary.
          * The calling class will respect
