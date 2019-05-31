@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2011 - 2016 by the authors of the ASPECT code.
+  Copyright (C) 2011 - 2019 by the authors of the ASPECT code.
 
   This file is part of ASPECT.
 
@@ -196,11 +196,10 @@ namespace aspect
           }
 
         // Find out which plugins are requested for what boundary indicator.
-        // This will coexist with the above old way of specifying mesh deformation objects and indicators
         // Each boundary indicator can carry a number of mesh deformation plugin names.
-        // Syntax: top: free surface, diffusion; left: diffusion.
+        // Syntax: top: free surface & diffusion; left: diffusion.
         const std::vector<std::string> x_mesh_deformation_boundary_indicators
-          = Utilities::split_string_list(prm.get("Mesh deformation boundary indicators"),";");
+          = Utilities::split_string_list(prm.get("Mesh deformation boundary indicators"),",");
 
         for (std::vector<std::string>::const_iterator p = x_mesh_deformation_boundary_indicators.begin();
              p != x_mesh_deformation_boundary_indicators.end(); ++p)
@@ -219,7 +218,7 @@ namespace aspect
                                      + ">."));
 
             // Get the values, i.e. the mesh deformation plugin names
-            const std::vector<std::string> mesh_def_objects = Utilities::split_string_list(split_parts[1],",");
+            const std::vector<std::string> mesh_def_objects = Utilities::split_string_list(split_parts[1],"&");
 
             // Try to translate the id into a boundary_id.
             // Make sure we haven't seen it yet
@@ -238,8 +237,7 @@ namespace aspect
 
             if (mesh_deformation_boundary_indicators_map.find(boundary_id) == mesh_deformation_boundary_indicators_map.end())
               {
-                for (unsigned int n = 0; n<mesh_def_objects.size(); ++n)
-                  mesh_deformation_boundary_indicators_map[boundary_id] = (mesh_def_objects);
+              mesh_deformation_boundary_indicators_map[boundary_id] = mesh_def_objects;
 
                 // store the current boundary indicator
                 mesh_deformation_boundary_indicators_set.insert(boundary_id);
@@ -252,9 +250,20 @@ namespace aspect
               }
             else
               {
-                // TODO make it possible to write: top: free surface; top: function
-                // for now, give error message
-                AssertThrow(false, ExcMessage("Please write boundary id: value1, value2, i.e. list all mesh deformation objects for one boundary id in one."));
+              for (std::vector<std::string>::const_iterator object = mesh_def_objects.begin();
+                  object != mesh_def_objects.end(); ++object)
+              {
+                // Make sure there are no multiple entries
+                AssertThrow(std::find(mesh_deformation_boundary_indicators_map[boundary_id].begin(),
+                    mesh_deformation_boundary_indicators_map[boundary_id].end(), *object) == mesh_deformation_boundary_indicators_map[boundary_id].end(),
+                    ExcMessage("The current mesh deformation object is listed twice for boundary indicator " + dealii::Utilities::int_to_string(boundary_id)));
+
+                mesh_deformation_boundary_indicators_map[boundary_id].push_back(*object);
+
+                if (*object == "free surface" && free_surface_boundary_ids.find(boundary_id) == free_surface_boundary_ids.end())
+                    free_surface_boundary_ids.insert(boundary_id);
+              }
+
               }
           }
 
@@ -706,7 +715,7 @@ namespace aspect
 
     template <int dim>
     const LinearAlgebra::Vector &
-    get_mesh_displacements () const
+    MeshDeformationHandler<dim>::get_mesh_displacements () const
     {
       return mesh_displacements;
     }
