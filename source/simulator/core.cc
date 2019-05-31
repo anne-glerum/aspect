@@ -341,7 +341,6 @@ namespace aspect
       {
         // Allocate the MeshDeformationHandler object
         mesh_deformation = std_cxx14::make_unique<MeshDeformation::MeshDeformationHandler<dim>>(*this);
-//        mesh_deformation.reset(new MeshDeformation::MeshDeformationHandler<dim>(*this));
         mesh_deformation->initialize_simulator(*this);
         mesh_deformation->parse_parameters(prm);
       }
@@ -643,7 +642,8 @@ namespace aspect
     heating_model_manager.update();
     adiabatic_conditions->update();
     mesh_refinement_manager.update();
-    mesh_deformation->update();
+    if (parameters.mesh_deformation_enabled)
+      mesh_deformation->update();
 
     if (prescribed_stokes_solution.get())
       prescribed_stokes_solution->update();

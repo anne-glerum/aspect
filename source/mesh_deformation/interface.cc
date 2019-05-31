@@ -112,6 +112,8 @@ namespace aspect
     void
     MeshDeformationHandler<dim>::update ()
     {
+      AssertThrow(sim.parameters.mesh_deformation_enabled, ExcInternalError());
+
       for (typename std::map<types::boundary_id, std::vector<std::unique_ptr<Interface<dim> > > >::iterator boundary_id
            = mesh_deformation_objects_map.begin();
            boundary_id != mesh_deformation_objects_map.end(); ++boundary_id)
@@ -235,9 +237,14 @@ namespace aspect
                                                 + error));
               }
 
+            // Test that objects are not repeated
+            AssertThrow(Utilities::has_unique_entries(mesh_def_objects),
+                        ExcMessage("The current mesh deformation object is listed twice for boundary indicator "
+                                   + dealii::Utilities::int_to_string(boundary_id)));
+
             if (mesh_deformation_boundary_indicators_map.find(boundary_id) == mesh_deformation_boundary_indicators_map.end())
               {
-              mesh_deformation_boundary_indicators_map[boundary_id] = mesh_def_objects;
+                mesh_deformation_boundary_indicators_map[boundary_id] = mesh_def_objects;
 
                 // store the current boundary indicator
                 mesh_deformation_boundary_indicators_set.insert(boundary_id);
@@ -246,23 +253,25 @@ namespace aspect
                 for (std::vector<std::string>::const_iterator object = mesh_def_objects.begin();
                      object != mesh_def_objects.end(); ++object)
                   if (*object == "free surface")
-                      free_surface_boundary_ids.insert(boundary_id);
+                    free_surface_boundary_ids.insert(boundary_id);
               }
             else
               {
-              for (std::vector<std::string>::const_iterator object = mesh_def_objects.begin();
-                  object != mesh_def_objects.end(); ++object)
-              {
-                // Make sure there are no multiple entries
-                AssertThrow(std::find(mesh_deformation_boundary_indicators_map[boundary_id].begin(),
-                    mesh_deformation_boundary_indicators_map[boundary_id].end(), *object) == mesh_deformation_boundary_indicators_map[boundary_id].end(),
-                    ExcMessage("The current mesh deformation object is listed twice for boundary indicator " + dealii::Utilities::int_to_string(boundary_id)));
+                for (std::vector<std::string>::const_iterator object = mesh_def_objects.begin();
+                     object != mesh_def_objects.end(); ++object)
+                  {
+                    // Make sure there are no multiple entries
+                    AssertThrow(std::find(mesh_deformation_boundary_indicators_map[boundary_id].begin(),
+                                          mesh_deformation_boundary_indicators_map[boundary_id].end(), *object)
+                                == mesh_deformation_boundary_indicators_map[boundary_id].end(),
+                                ExcMessage("The current mesh deformation object is listed twice for boundary indicator "
+                                           + dealii::Utilities::int_to_string(boundary_id)));
 
-                mesh_deformation_boundary_indicators_map[boundary_id].push_back(*object);
+                    mesh_deformation_boundary_indicators_map[boundary_id].push_back(*object);
 
-                if (*object == "free surface" && free_surface_boundary_ids.find(boundary_id) == free_surface_boundary_ids.end())
-                    free_surface_boundary_ids.insert(boundary_id);
-              }
+                    if (*object == "free surface" && free_surface_boundary_ids.find(boundary_id) == free_surface_boundary_ids.end())
+                      free_surface_boundary_ids.insert(boundary_id);
+                  }
 
               }
           }
@@ -300,8 +309,7 @@ namespace aspect
     template <int dim>
     void MeshDeformationHandler<dim>::execute()
     {
-      if (!sim.parameters.mesh_deformation_enabled)
-        return;
+      AssertThrow(sim.parameters.mesh_deformation_enabled, ExcInternalError());
 
       TimerOutput::Scope timer (sim.computing_timer, "Mesh deformation");
 
@@ -326,8 +334,7 @@ namespace aspect
     template <int dim>
     void MeshDeformationHandler<dim>::make_constraints()
     {
-      if (!sim.parameters.mesh_deformation_enabled)
-        return;
+      AssertThrow(sim.parameters.mesh_deformation_enabled, ExcInternalError());
 
       // Now construct the mesh displacement constraints
       mesh_velocity_constraints.clear();
@@ -520,9 +527,10 @@ namespace aspect
               for (unsigned int i=0; i<dofs_per_cell; ++i)
                 {
                   for (unsigned int j=0; j<dofs_per_cell; ++j)
-                    cell_matrix(i,j) += scalar_product( fe_values[extract_vel].gradient(j,point),
-                                                        fe_values[extract_vel].gradient(i,point) ) *
-                                        fe_values.JxW(point);
+                    if (i==j)
+                      cell_matrix(i,j) += scalar_product( fe_values[extract_vel].gradient(i,point),
+                                                          fe_values[extract_vel].gradient(j,point) ) *
+                                          fe_values.JxW(point);
                 }
 
             mesh_velocity_constraints.distribute_local_to_global (cell_matrix, cell_vector,
@@ -623,9 +631,7 @@ namespace aspect
     template <int dim>
     void MeshDeformationHandler<dim>::setup_dofs()
     {
-      // TODO I think all these statements can be removed
-      if (!sim.parameters.mesh_deformation_enabled)
-        return;
+      AssertThrow(sim.parameters.mesh_deformation_enabled, ExcInternalError());
 
       // these live in the same FE as the velocity variable:
       mesh_velocity.reinit(sim.introspection.index_sets.system_partitioning,

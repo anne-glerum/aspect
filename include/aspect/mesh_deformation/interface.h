@@ -420,9 +420,9 @@ namespace aspect
       for (typename std::map<types::boundary_id, std::vector<std::unique_ptr<Interface<dim> > > >::iterator boundary_id
            = mesh_deformation_objects_map.begin();
            boundary_id != mesh_deformation_objects_map.end(); ++boundary_id)
-      for (const auto &p : boundary_id->second)
-        if (Plugins::plugin_type_matches<MeshDeformationType>(*p))
-          return true;
+        for (const auto &p : boundary_id->second)
+          if (Plugins::plugin_type_matches<MeshDeformationType>(*p))
+            return true;
 
       return false;
     }
@@ -444,17 +444,17 @@ namespace aspect
       for (typename std::map<types::boundary_id, std::vector<std::unique_ptr<Interface<dim> > > >::iterator boundary_id
            = mesh_deformation_objects_map.begin();
            boundary_id != mesh_deformation_objects_map.end(); ++boundary_id)
-      {
-        typename std::vector<std::unique_ptr<Interface<dim> > >::const_iterator mesh_def;
-      for (const auto &p : boundary_id->second)
-      {
-        if (Plugins::plugin_type_matches<MeshDeformationType>(*p))
-          return Plugins::get_plugin_as_type<MeshDeformationType>(*p);
-        else
-          // We will never get here, because we had the Assert above. Just to avoid warnings.
-          return Plugins::get_plugin_as_type<MeshDeformationType>(*(*mesh_def));
-      }
-      }
+        {
+          typename std::vector<std::unique_ptr<Interface<dim> > >::const_iterator mesh_def;
+          for (const auto &p : boundary_id->second)
+            {
+              if (Plugins::plugin_type_matches<MeshDeformationType>(*p))
+                return Plugins::get_plugin_as_type<MeshDeformationType>(*p);
+              else
+                // We will never get here, because we had the Assert above. Just to avoid warnings.
+                return Plugins::get_plugin_as_type<MeshDeformationType>(*(*mesh_def));
+            }
+        }
     }
 
 

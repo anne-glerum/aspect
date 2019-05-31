@@ -48,8 +48,8 @@ namespace aspect
       internal::Assembly::Scratch::StokesSystem<dim> &scratch = dynamic_cast<internal::Assembly::Scratch::StokesSystem<dim>& > (scratch_base);
       internal::Assembly::CopyData::StokesSystem<dim> &data = dynamic_cast<internal::Assembly::CopyData::StokesSystem<dim>& > (data_base);
 
-      if (!this->get_parameters().mesh_deformation_enabled)
-        return;
+      AssertThrow(!this->get_mesh_deformation_handler().get_free_surface_boundary_indicators().empty(),
+                  ExcMessage("Applying free surface stabilization, even though no free surface is active. "));
 
       if (this->get_parameters().include_melt_transport)
         {
@@ -107,7 +107,7 @@ namespace aspect
 
                   const Tensor<1,dim>
                   gravity = this->get_gravity_model().gravity_vector(scratch.face_finite_element_values.quadrature_point(q_point));
-                  double g_norm = gravity.norm();
+                  const double g_norm = gravity.norm();
 
                   // construct the relevant vectors
                   const Tensor<1,dim> n_hat = scratch.face_finite_element_values.normal_vector(q_point);
@@ -284,10 +284,9 @@ namespace aspect
               {
                 const types::boundary_id boundary_indicator
                   = cell->face(face_no)->boundary_id();
-                // TODO implement a selector for the boundary indicators
-                // For now assume that the mesh deformation boundary is the free surface boundary
-                if (this->get_mesh_deformation_boundary_indicators().find(boundary_indicator)
-                    == this->get_mesh_deformation_boundary_indicators().end())
+                // Only project onto the free surface boundary/boundaries.
+                if (this->get_mesh_deformation_handler().get_free_surface_boundary_indicators().find(boundary_indicator)
+                    == this->get_mesh_deformation_handler().get_free_surface_boundary_indicators().end())
                   continue;
 
                 fscell->get_dof_indices (cell_dof_indices);
@@ -465,6 +464,8 @@ namespace aspect
                                            "vertices according to the solution of the flow problem. "
                                            "In particular this means if the surface of the domain is "
                                            "left open to flow, this flow will carry the mesh with it. "
-                                           "TODO add more documentation.")
+                                           "The implementation was described in \\cite{rose_freesurface}, "
+                                           "with the stabilization of the free surface originally described "
+                                           "in \\cite{KMM2010}.")
   }
 }

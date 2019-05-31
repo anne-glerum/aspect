@@ -153,7 +153,7 @@ namespace aspect
       x_system[1] = &old_solution;
       x_system[2] = &old_old_solution;
 
-      // If we are using a deformint mesh, include the mesh velocity, which uses the system dof handler
+      // If we are using a deforming mesh, include the mesh velocity, which uses the system dof handler
       if (parameters.mesh_deformation_enabled)
         x_system.push_back( &mesh_deformation->mesh_velocity );
 
