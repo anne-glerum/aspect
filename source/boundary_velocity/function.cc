@@ -99,7 +99,9 @@ namespace aspect
                              "respectively with theta being the polar angle. `depth' "
                              "will create a function, in which only the first "
                              "parameter is non-zero, which is interpreted to "
-                             "be the depth of the point.");
+                             "be the depth of the point. Note that `Variable "
+                             "names' still requires dim or dim+1 names even "
+                             "though only the first variable is used. ");
           prm.declare_entry ("Use spherical unit vectors", "false",
                              Patterns::Bool (),
                              "Specify velocity as r, phi, and theta components "

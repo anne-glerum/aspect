@@ -108,9 +108,12 @@ namespace aspect
                              "are `depth', `cartesian' and `spherical'. `depth' "
                              "will create a function, in which only the first "
                              "variable is non-zero, which is interpreted to "
-                             "be the depth of the point. `spherical' coordinates "
-                             "are interpreted as r,phi or r,phi,theta in 2D/3D "
-                             "respectively with theta being the polar angle.");
+                             "be the depth of the point. Note that `Variable "
+                             "names' still requires dim or dim+1 names even "
+                             "though only the first variable is used. "
+                             "`spherical' coordinates are interpreted as "
+                             "r,phi or r,phi,theta in 2D/3D respectively "
+                             "with theta being the polar angle.");
           /**
            * Let the function that describes the maximal level of refinement
            * as a function of position declare its parameters.

@@ -73,7 +73,9 @@ namespace aspect
                              "being the polar angle. 'depth' will create a "
                              "function, in which only the first parameter is "
                              "non-zero, which is interpreted to be the depth of "
-                             "the point.");
+                             "the point. Note that `Variable names' "
+                             "still requires dim or dim+1 names even "
+                             "though only the first variable is used. ");
 
           Functions::ParsedFunction<dim>::declare_parameters (prm, 1);
         }
