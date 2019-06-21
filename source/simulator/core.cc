@@ -339,10 +339,12 @@ namespace aspect
     // Initialize the mesh deformation handler
     if (parameters.mesh_deformation_enabled)
       {
+      std::cout << "Initialize mesh def handler" << std::endl;
         // Allocate the MeshDeformationHandler object
         mesh_deformation = std_cxx14::make_unique<MeshDeformation::MeshDeformationHandler<dim>>(*this);
         mesh_deformation->initialize_simulator(*this);
         mesh_deformation->parse_parameters(prm);
+        mesh_deformation->initialize();
       }
 
     // Initialize the melt handler
@@ -1537,11 +1539,12 @@ namespace aspect
       if (parameters.mesh_deformation_enabled)
         x_system.push_back( &mesh_deformation->mesh_velocity );
 
-      std::vector<const LinearAlgebra::Vector *> x_fs_system (1);
+      std::vector<const LinearAlgebra::Vector *> x_fs_system (2);
 
       if (parameters.mesh_deformation_enabled)
         {
           x_fs_system[0] = &mesh_deformation->mesh_displacements;
+          x_fs_system[1] = &mesh_deformation->initial_topography;
           mesh_deformation_trans
             = std_cxx14::make_unique<parallel::distributed::SolutionTransfer<dim,LinearAlgebra::Vector>>
               (mesh_deformation->mesh_deformation_dof_handler);
@@ -1609,17 +1612,23 @@ namespace aspect
           constraints.distribute (distributed_mesh_velocity);
           mesh_deformation->mesh_velocity = distributed_mesh_velocity;
 
-          LinearAlgebra::Vector distributed_mesh_displacements;
+          LinearAlgebra::Vector distributed_mesh_displacements, distributed_initial_topography;
 
           distributed_mesh_displacements.reinit(mesh_deformation->mesh_locally_owned,
                                                 mpi_communicator);
 
-          std::vector<LinearAlgebra::Vector *> system_tmp (1);
+          distributed_initial_topography.reinit(mesh_deformation->mesh_locally_owned,
+                                                mpi_communicator);
+
+          std::vector<LinearAlgebra::Vector *> system_tmp (2);
           system_tmp[0] = &distributed_mesh_displacements;
+          system_tmp[1] = &distributed_initial_topography;
 
           mesh_deformation_trans->interpolate (system_tmp);
           mesh_deformation->mesh_vertex_constraints.distribute (distributed_mesh_displacements);
           mesh_deformation->mesh_displacements = distributed_mesh_displacements;
+          mesh_deformation->mesh_vertex_constraints.distribute (distributed_initial_topography);
+          mesh_deformation->initial_topography = distributed_initial_topography;
         }
 
       // Possibly load data of plugins associated with cells
@@ -1637,6 +1646,7 @@ namespace aspect
   Simulator<dim>::
   solve_timestep ()
   {
+    std::cout << "Solve" << std::endl;
     // start any scheme with an extrapolated value from the previous
     // two time steps if those are available
     current_linearization_point = old_solution;

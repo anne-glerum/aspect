@@ -239,6 +239,13 @@ namespace aspect
         get_mesh_displacements () const;
 
         /**
+         * Return the initial topography stored on
+         * the mesh deformation element.
+         */
+        const LinearAlgebra::Vector &
+        get_initial_topography () const;
+
+        /**
          * Go through the list of all mesh deformation objects that have been selected
          * in the input file (and are consequently currently active) and return
          * true if one of them has the desired type specified by the template
@@ -309,6 +316,12 @@ namespace aspect
         void compute_mesh_displacements ();
 
         /**
+         * Set up the Vector with initial displacments of the mesh
+         * due to the initial topography.
+         */
+        void set_initial_topography ();
+
+        /**
          * Calculate the velocity of the mesh for ALE corrections.
          */
         void interpolate_mesh_velocity ();
@@ -344,6 +357,13 @@ namespace aspect
          * redistributed upon mesh refinement.
          */
         LinearAlgebra::Vector mesh_displacements;
+
+        /**
+         * Vector for storing the positions of the mesh vertices at t0.
+         * TODO This must be
+         * redistributed upon mesh refinement?.
+         */
+        LinearAlgebra::Vector initial_topography;
 
         /**
          * Vector for storing the mesh velocity in the mesh deformation finite
@@ -404,6 +424,14 @@ namespace aspect
          * The boundary indicator(s) of the free surface(s).
          */
         std::set<types::boundary_id> free_surface_boundary_ids;
+
+
+        /**
+         * A pointer to the initial topography model.
+         */
+        InitialTopographyModel::Interface<dim> *topo_model;
+
+        bool include_initial_topography;
 
         friend class Simulator<dim>;
         friend class SimulatorAccess<dim>;

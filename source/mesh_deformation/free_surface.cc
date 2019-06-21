@@ -272,6 +272,8 @@ namespace aspect
       rhs.reinit(mesh_locally_owned, this->get_mpi_communicator());
       dist_solution.reinit(mesh_locally_owned, this->get_mpi_communicator());
 
+      std::set<types::boundary_id> free_surface_bi = this->get_mesh_deformation_handler().get_free_surface_boundary_indicators();
+
       typename DoFHandler<dim>::active_cell_iterator
       cell = this->get_dof_handler().begin_active(), endc= this->get_dof_handler().end();
       typename DoFHandler<dim>::active_cell_iterator
@@ -285,8 +287,8 @@ namespace aspect
                 const types::boundary_id boundary_indicator
                   = cell->face(face_no)->boundary_id();
                 // Only project onto the free surface boundary/boundaries.
-                if (this->get_mesh_deformation_handler().get_free_surface_boundary_indicators().find(boundary_indicator)
-                    == this->get_mesh_deformation_handler().get_free_surface_boundary_indicators().end())
+                if (free_surface_bi.find(boundary_indicator)
+                    == free_surface_bi.end())
                   continue;
 
                 fscell->get_dof_indices (cell_dof_indices);
