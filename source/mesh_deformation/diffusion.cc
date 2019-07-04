@@ -31,6 +31,7 @@
 
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/base/symmetric_tensor.h>
+#include <deal.II/numerics/vector_tools.h>
 
 namespace aspect
 {
@@ -43,9 +44,7 @@ namespace aspect
       diffusivity(0),
       diffusion_time_step(0),
       time_between_diffusion(0),
-      current_time(0),
-      topo_model(),
-      include_initial_topography(false)
+      current_time(0)
     {}
 
 
@@ -54,17 +53,6 @@ namespace aspect
     void
     Diffusion<dim>::initialize ()
     {
-      // Get pointer to initial topography model
-      topo_model = const_cast<InitialTopographyModel::Interface<dim>*>(&this->get_initial_topography_model());
-      // In case we prescribed initial topography, we should take this into
-      // account. However, it is not included in the mesh displacements,
-      // so we need to fetch it separately.
-      // TODO check that for refinement/mesh displacement after t0, getting the initial topography
-      // does not differ from the initial topography at the new point too much,
-      // or whether it is better to store and redistribute the initial initial topography
-      // in a similar way as the mesh displacements.
-      if (dynamic_cast<InitialTopographyModel::ZeroTopography<dim>*>(topo_model) == nullptr)
-        include_initial_topography = true;
     }
 
 
@@ -105,9 +93,26 @@ namespace aspect
       for (periodic_boundary_pairs::iterator p = pbp.begin(); p != pbp.end(); ++p)
         DoFTools::make_periodicity_constraints(mesh_deformation_dof_handler,
                                                (*p).first.first, (*p).first.second, (*p).second, mass_matrix_constraints);
-
-      // What constraints do we want?
+      // TODO What constraints do we want?
       // For now just assume Neumann BC
+
+      // The list of boundary indicators for which we need to set
+      // no_normal_flux_constraints, which means all
+      // minus the diffusion mesh deformation boundary indicators.
+//      std::set< types::boundary_id > x_no_flux_boundary_indicators = this->get_geometry_model().get_used_boundary_indicators();
+//      for (std::set<types::boundary_id>::const_iterator p = x_no_flux_boundary_indicators.begin();
+//           p != x_no_flux_boundary_indicators.end(); ++p)
+//        if (boundary_ids.find(*p) != boundary_ids.end())
+//          {
+//            x_no_flux_boundary_indicators.erase(*p);
+//          }
+//
+//      // Make the no flux boundary constraints
+//      VectorTools::compute_no_normal_flux_constraints (mesh_deformation_dof_handler,
+//                                                       /* first_vector_component= */
+//                                                       0,
+//                                                       x_no_flux_boundary_indicators,
+//                                                       mass_matrix_constraints, this->get_mapping());
       mass_matrix_constraints.close();
 
       // Sparsity of the matrix
@@ -135,11 +140,7 @@ namespace aspect
       mass_matrix.reinit (sp);
 #endif
 
-      // stuff for iterating over the mesh
-
-      // What we need to get the displacments at the free surface
-      std::cout << "mesh def fe degree " << mesh_deformation_dof_handler.get_fe().degree << std::endl;
-      // Initialize Gauss-Legendre quadrature for degree+1 quadrature points
+      // Initialize Gauss-Legendre quadrature for degree+1 quadrature points of the surface faces
       QGauss<dim-1> face_quadrature(mesh_deformation_dof_handler.get_fe().degree+1);
       // Update shape function values and gradients, the quadrature points and the Jacobian x quadrature weights.
       UpdateFlags update_flags = UpdateFlags(update_values | update_gradients | update_quadrature_points | update_normal_vectors | update_JxW_values);
@@ -150,13 +151,9 @@ namespace aspect
       const unsigned int n_fs_face_q_points = fs_fe_face_values.n_quadrature_points;
 
       // What we need to build our system on the mesh deformation element
+
       // The nr of shape functions per mesh deformation element
       const unsigned int dofs_per_cell = mesh_deformation_dof_handler.get_fe().dofs_per_cell;
-
-      this->get_pcout() << "Nr of dofs per cell of the fs_fe_values " << dofs_per_cell << std::endl;
-      this->get_pcout() << "Nr of face_q_points of the fs_fe_face_values " << n_fs_face_q_points << std::endl;
-
-      // stuff for assembling system
 
       // Map of local to global cell doff indices
       std::vector<types::global_dof_index> cell_dof_indices (dofs_per_cell);
@@ -174,29 +171,28 @@ namespace aspect
 
       // The global displacements on the MeshDeformation FE
       LinearAlgebra::Vector displacements = this->get_mesh_deformation_handler().get_mesh_displacements();
-      std::cout << "The current displacements " << std::endl;
-      displacements.print(std::cout);
 
       // The global initial topography on the MeshDeformation FE
       LinearAlgebra::Vector initial_topography = this->get_mesh_deformation_handler().get_initial_topography();
-//      std::cout << "The current initial topography " << std::endl;
-//      initial_topography.print(std::cout);
-
+ 
+      // Do nothing at time zero
       if (this->get_timestep_number() == 0)
         return;
 
       // An extractor for the dim-valued displacement vectors
       // Later on we will compute the gravity-parallel displacement
-//      std::cout << "Nr of components on MeshDef FE " << mesh_deformation_dof_handler.get_fe().n_nonzero_components() << std::endl;
       FEValuesExtractors::Vector extract_vertical_displacements(0);
 
+      // An extractor for the dim-valued initial topography vectors
+      // Later on we will compute the gravity-parallel displacement
       FEValuesExtractors::Vector extract_initial_topography(0);
 
       // Cell iterator over the MeshDeformation FE
       typename DoFHandler<dim>::active_cell_iterator
-      fscell = mesh_deformation_dof_handler.begin_active(), fsendc= mesh_deformation_dof_handler.end();
+      fscell = mesh_deformation_dof_handler.begin_active(), 
+      fsendc= mesh_deformation_dof_handler.end();
 
-      // Iterate over all cells
+      // Iterate over all cells to find those at the mesh deformation boundary
       for (; fscell!=fsendc; ++fscell)
         if (fscell->at_boundary() && fscell->is_locally_owned())
           for (unsigned int face_no=0; face_no<GeometryInfo<dim>::faces_per_cell; ++face_no)
@@ -213,7 +209,7 @@ namespace aspect
                 // Get the global numbers of the local DoFs of the mesh deformation cell
                 fscell->get_dof_indices (cell_dof_indices);
 
-                // Recompute values, gradients, etc
+                // Recompute values, gradients, etc on the faces
                 fs_fe_face_values.reinit (fscell, face_no);
 
                 // Extract the displacement values
@@ -232,32 +228,15 @@ namespace aspect
                     // Get the gravity vector to compute the outward direction of displacement
                     Tensor<1,dim> direction = this->get_gravity_model().gravity_vector(fs_fe_face_values.quadrature_point(point));
                     // Normalize direction vector
-                    direction *= ( direction.norm() > 0.0 ? 1./direction.norm() : 0.0 );
+                    if (direction.norm() > 0.0)
+                       direction *= 1./direction.norm();
+                    // TODO this is only correct for box geometries
+                    else
+                       direction[dim-1] = 1.;
 
-                    // Project the displacement onto the direction vector
-                    // In case of initial topography, add it
-//                    Point<dim-1> surface_point;
-//                    if (include_initial_topography)
-//                    {
-//                      std::array<double, dim> natural_coord = this->get_geometry_model().cartesian_to_natural_coordinates(fs_fe_face_values.quadrature_point(point));
-//                      if (const GeometryModel::Box<dim> *geometry = dynamic_cast<const GeometryModel::Box<dim>*> (&this->get_geometry_model()))
-//                      {
-//                        for (unsigned int d=0; d<dim-1; ++d)
-//                        surface_point[d] = natural_coord[d];
-//                      }
-//                      else
-//                      {
-//                        for (unsigned int d=1; d<dim; ++d)
-//                        surface_point[d] = natural_coord[d];
-//                      }
-//                    }
-                    // TODO rename to elevation?
-//                    const double displacement = (displacement_values[point] * direction) + topo_model->value(surface_point);
+                    // Compute the total displacement in the gravity direction,
+                    // i.e. the initial topography + any additional mesh displacement.
                     const double displacement = (displacement_values[point] * direction) + (initial_topography_values[point] * direction);
-                    std::cout << "Total displacment " << displacement << " for qpoint " << point << std::endl;
-
-//                    std::cout << "Displacement + init topo " << displacement_values[point] * direction << " + " << topo_model->value(surface_point) << std::endl;
-
 
                     // Loop over the shape functions
                     for (unsigned int i=0; i<dofs_per_cell; ++i)
@@ -266,25 +245,24 @@ namespace aspect
                           {
                           // Assemble the RHS
                           // RHS = M*H_old
-                            // TODO Why originally not times another shape value?
-                            // Me = N^T*N
                             cell_vector(i) += displacement *
                                               fs_fe_face_values.shape_value (i, point) *
-                                              fs_fe_face_values.shape_value (j, point) *
+                                              /*fs_fe_face_values.shape_value (j, point) * */
                                               fs_fe_face_values.JxW(point);
 
-                            std::cout << "For vector entry " << i << " adding " << point << "*" << i << "*" << j << " is " << fs_fe_face_values.shape_value (i, point) << "*" << fs_fe_face_values.shape_value (j, point) << std::endl;
-
-                            // Assemble the matrix
-                            // Matrix = (M+dt*K) = (M+dt*B^T*kappa*B)
-                            // The diadic product of the normal vector gives a dimxdim tensor of ??
-                            const Tensor<2, dim, double> rotation = unit_symmetric_tensor<dim>() -
+                            // Assemble the matrix, for backward first order time discretization:
+                            // Matrix := (M+dt*K) = (M+dt*B^T*kappa*B)
+                            // To project onto the tangent space of the surface,
+                            // we define the projection P:= I- n x n,
+                            // with I the unit tensor and n the unit normal to the surface.
+                            // The surface gradient then is P times the usual gradient of the shape functions.
+                            const Tensor<2, dim, double> projection = unit_symmetric_tensor<dim>() -
                                 outer_product(fs_fe_face_values.normal_vector(point), fs_fe_face_values.normal_vector(point));
 
                             cell_matrix(i,j) +=
-                              (
+                              ( 
                                 this->get_timestep() * diffusivity *
-                                rotation * fs_fe_face_values.shape_grad(i, point) * rotation * fs_fe_face_values.shape_grad(j,point) +
+                                projection * fs_fe_face_values.shape_grad(i, point) * projection * fs_fe_face_values.shape_grad(j,point) +
                                 fs_fe_face_values.shape_value (i, point) * fs_fe_face_values.shape_value (j, point)
                               )
                               * fs_fe_face_values.JxW(point);
@@ -305,7 +283,6 @@ namespace aspect
       LinearAlgebra::PreconditionJacobi preconditioner_mass;
       preconditioner_mass.initialize(mass_matrix);
 
-      // TODO what tolerance?
       SolverControl solver_control(5*system_rhs.size(), this->get_parameters().linear_stokes_solver_tolerance*system_rhs.l2_norm());
       SolverCG<LinearAlgebra::Vector> cg(solver_control);
       cg.solve (mass_matrix, solution, system_rhs, preconditioner_mass);
@@ -313,25 +290,16 @@ namespace aspect
       // Distribute constraints on mass matrix
       mass_matrix_constraints.distribute (solution);
 
-      this->get_pcout() << "Computing velocities " << std::endl;
       // The solution contains the new displacements, we need to return a velocity.
       // Therefore, we compute v=d_displacement/d_t.
+      // d_displacement are the new mesh node locations 
+      // minus the old locations.
       LinearAlgebra::Vector d_displacement(mesh_locally_owned, this->get_mpi_communicator());
       d_displacement = solution;
       d_displacement -= displacements;
       d_displacement -= initial_topography;
-      this->get_pcout() << "dDisplacement " << std::endl;
-      d_displacement.print(std::cout);
+      // The velocity
       d_displacement /= this->get_timestep();
-
-      this->get_pcout() << "Solution " << std::endl;
-      solution.print(std::cout);
-      this->get_pcout() << "Initial topo " << std::endl;
-      initial_topography.print(std::cout);
-      this->get_pcout() << "Displacement " << std::endl;
-      displacements.print(std::cout);
-      this->get_pcout() << "Velocities " << std::endl;
-      d_displacement.print(std::cout);
 
       output = d_displacement;
     }
@@ -437,9 +405,7 @@ namespace aspect
     ASPECT_REGISTER_MESH_DEFORMATION_MODEL(Diffusion,
                                            "diffusion",
                                            "A plugin that computes the deformation of surface "
-                                           "vertices according to the solution of the flow problem. "
-                                           "In particular this means if the surface of the domain is "
-                                           "left open to flow, this flow will carry the mesh with it. "
+                                           "vertices according to the solution of the hillslope diffusion problem. "
                                            "TODO add more documentation.")
   }
 }

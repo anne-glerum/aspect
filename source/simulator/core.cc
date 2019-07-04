@@ -339,7 +339,6 @@ namespace aspect
     // Initialize the mesh deformation handler
     if (parameters.mesh_deformation_enabled)
       {
-      std::cout << "Initialize mesh def handler" << std::endl;
         // Allocate the MeshDeformationHandler object
         mesh_deformation = std_cxx14::make_unique<MeshDeformation::MeshDeformationHandler<dim>>(*this);
         mesh_deformation->initialize_simulator(*this);
@@ -1646,7 +1645,6 @@ namespace aspect
   Simulator<dim>::
   solve_timestep ()
   {
-    std::cout << "Solve" << std::endl;
     // start any scheme with an extrapolated value from the previous
     // two time steps if those are available
     current_linearization_point = old_solution;

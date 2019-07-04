@@ -92,8 +92,9 @@ namespace aspect
 
       private:
         /**
-         * Project the Stokes velocity solution onto the
-         * free surface. Called by make_constraints()
+         * Compute the surface velocity from a difference
+         * in surface height given by the solution of 
+         * the hillslope diffusion problem. 
          */
         void diffuse_boundary (const DoFHandler<dim> &free_surface_dof_handler,
                                const IndexSet &mesh_locally_owned,
@@ -104,30 +105,29 @@ namespace aspect
         /**
          * The hillslope transport coefficient or diffusivity [m2/yr]
          * used in the hillslope diffusion of the deformed
-         * surface. Reasonable values lie between X and X.
+         * surface. TODO Reasonable values lie between X and X.
          */
         double diffusivity;
 
         /**
-         * The diffusion timestep.
+         * TODO
+         * The diffusion timestep used in case the advection timestep
+         * is larger than this timestep.
          */
         double diffusion_time_step;
 
         /**
+         * TODO
          * The amount of model time between applying diffusion
          * of the free surface.
          */
         double time_between_diffusion;
 
-        double current_time;
-
         /**
-         * A pointer to the initial topography model.
+         * TODO
+         * Not used.
          */
-        InitialTopographyModel::Interface<dim> *topo_model;
-
-        bool include_initial_topography;
-
+        double current_time;
     };
   }
 }

@@ -634,8 +634,8 @@ namespace aspect
             fs_fe_values.reinit (cell);
             for (unsigned int j=0; j<n_q_points; ++j)
             {
-              // Project the displacement onto the direction vector
-              // In case of initial topography, add it
+              // In case of initial topography,
+              // add it
               if (include_initial_topography)
               {
                 Point<dim-1> surface_point;
@@ -650,15 +650,15 @@ namespace aspect
                   for (unsigned int d=1; d<dim; ++d)
                     surface_point[d] = natural_coord[d];
                 }
-                // TODO adapt to radial topography
+                    // TODO get the initial node displacement by
+                    // looping over the Stokes FE mesh. 
+                    // Get the topography at this point.
                     const double topo = topo_model->value(surface_point);
 
-//                    for (unsigned int d=1; d<dim; ++d)
-//                    {
+                // TODO adapt to radial topography
                     const unsigned int support_point_index
                     = mesh_deformation_fe.component_to_system_index(dim-1,/*dof index within component=*/ j);
                     distributed_initial_topography[cell_dof_indices[support_point_index]] = topo;
-//                    }
                 }
             }
           }
