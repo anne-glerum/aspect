@@ -89,8 +89,8 @@ namespace aspect
         /**
          * A switch to vary between different analytical solutions.
          */
-         int analytical_solution_example;
-       
+        int analytical_solution_example;
+
     };
   }
 }

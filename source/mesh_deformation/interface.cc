@@ -554,9 +554,9 @@ namespace aspect
               for (unsigned int i=0; i<dofs_per_cell; ++i)
                 {
                   for (unsigned int j=0; j<dofs_per_cell; ++j)
-                      cell_matrix(i,j) += scalar_product( fe_values[extract_vel].gradient(i,point),
-                                                          fe_values[extract_vel].gradient(j,point) ) *
-                                          fe_values.JxW(point);
+                    cell_matrix(i,j) += scalar_product( fe_values[extract_vel].gradient(i,point),
+                                                        fe_values[extract_vel].gradient(j,point) ) *
+                                        fe_values.JxW(point);
                 }
 
             mesh_velocity_constraints.distribute_local_to_global (cell_matrix, cell_vector,
@@ -624,7 +624,7 @@ namespace aspect
       std::vector<types::global_dof_index> cell_dof_indices (dofs_per_cell);
 
       typename DoFHandler<dim>::active_cell_iterator cell = mesh_deformation_dof_handler.begin_active(),
-         endc = mesh_deformation_dof_handler.end();
+                                                     endc = mesh_deformation_dof_handler.end();
 
       for (; cell!=endc; ++cell)
         if (cell->is_locally_owned())
@@ -633,34 +633,34 @@ namespace aspect
 
             fs_fe_values.reinit (cell);
             for (unsigned int j=0; j<n_q_points; ++j)
-            {
-              // In case of initial topography,
-              // add it
-              if (include_initial_topography)
               {
-                Point<dim-1> surface_point;
-                std::array<double, dim> natural_coord = this->get_geometry_model().cartesian_to_natural_coordinates(fs_fe_values.quadrature_point(j));
-                if (const GeometryModel::Box<dim> *geometry = dynamic_cast<const GeometryModel::Box<dim>*> (&this->get_geometry_model()))
-                {
-                  for (unsigned int d=0; d<dim-1; ++d)
-                    surface_point[d] = natural_coord[d];
-                }
-                else
-                {
-                  for (unsigned int d=1; d<dim; ++d)
-                    surface_point[d] = natural_coord[d];
-                }
+                // In case of initial topography,
+                // add it
+                if (include_initial_topography)
+                  {
+                    Point<dim-1> surface_point;
+                    std::array<double, dim> natural_coord = this->get_geometry_model().cartesian_to_natural_coordinates(fs_fe_values.quadrature_point(j));
+                    if (const GeometryModel::Box<dim> *geometry = dynamic_cast<const GeometryModel::Box<dim>*> (&this->get_geometry_model()))
+                      {
+                        for (unsigned int d=0; d<dim-1; ++d)
+                          surface_point[d] = natural_coord[d];
+                      }
+                    else
+                      {
+                        for (unsigned int d=1; d<dim; ++d)
+                          surface_point[d] = natural_coord[d];
+                      }
                     // TODO get the initial node displacement by
-                    // looping over the Stokes FE mesh. 
+                    // looping over the Stokes FE mesh.
                     // Get the topography at this point.
                     const double topo = topo_model->value(surface_point);
 
-                // TODO adapt to radial topography
+                    // TODO adapt to radial topography
                     const unsigned int support_point_index
-                    = mesh_deformation_fe.component_to_system_index(dim-1,/*dof index within component=*/ j);
+                      = mesh_deformation_fe.component_to_system_index(dim-1,/*dof index within component=*/ j);
                     distributed_initial_topography[cell_dof_indices[support_point_index]] = topo;
-                }
-            }
+                  }
+              }
           }
 
       distributed_initial_topography.compress(VectorOperation::insert);

@@ -93,8 +93,8 @@ namespace aspect
       private:
         /**
          * Compute the surface velocity from a difference
-         * in surface height given by the solution of 
-         * the hillslope diffusion problem. 
+         * in surface height given by the solution of
+         * the hillslope diffusion problem.
          */
         void diffuse_boundary (const DoFHandler<dim> &free_surface_dof_handler,
                                const IndexSet &mesh_locally_owned,

@@ -174,7 +174,7 @@ namespace aspect
 
       // The global initial topography on the MeshDeformation FE
       LinearAlgebra::Vector initial_topography = this->get_mesh_deformation_handler().get_initial_topography();
- 
+
       // Do nothing at time zero
       if (this->get_timestep_number() == 0)
         return;
@@ -189,7 +189,7 @@ namespace aspect
 
       // Cell iterator over the MeshDeformation FE
       typename DoFHandler<dim>::active_cell_iterator
-      fscell = mesh_deformation_dof_handler.begin_active(), 
+      fscell = mesh_deformation_dof_handler.begin_active(),
       fsendc= mesh_deformation_dof_handler.end();
 
       // Iterate over all cells to find those at the mesh deformation boundary
@@ -229,10 +229,10 @@ namespace aspect
                     Tensor<1,dim> direction = this->get_gravity_model().gravity_vector(fs_fe_face_values.quadrature_point(point));
                     // Normalize direction vector
                     if (direction.norm() > 0.0)
-                       direction *= 1./direction.norm();
+                      direction *= 1./direction.norm();
                     // TODO this is only correct for box geometries
                     else
-                       direction[dim-1] = 1.;
+                      direction[dim-1] = 1.;
 
                     // Compute the total displacement in the gravity direction,
                     // i.e. the initial topography + any additional mesh displacement.
@@ -241,15 +241,15 @@ namespace aspect
                     // Loop over the shape functions
                     for (unsigned int i=0; i<dofs_per_cell; ++i)
                       {
+                        // Assemble the RHS
+                        // RHS = M*H_old
+                        cell_vector(i) += displacement *
+                                          fs_fe_face_values.shape_value (i, point) *
+                                          /*fs_fe_face_values.shape_value (j, point) * */
+                                          fs_fe_face_values.JxW(point);
+
                         for (unsigned int j=0; j<dofs_per_cell; ++j)
                           {
-                          // Assemble the RHS
-                          // RHS = M*H_old
-                            cell_vector(i) += displacement *
-                                              fs_fe_face_values.shape_value (i, point) *
-                                              /*fs_fe_face_values.shape_value (j, point) * */
-                                              fs_fe_face_values.JxW(point);
-
                             // Assemble the matrix, for backward first order time discretization:
                             // Matrix := (M+dt*K) = (M+dt*B^T*kappa*B)
                             // To project onto the tangent space of the surface,
@@ -257,10 +257,10 @@ namespace aspect
                             // with I the unit tensor and n the unit normal to the surface.
                             // The surface gradient then is P times the usual gradient of the shape functions.
                             const Tensor<2, dim, double> projection = unit_symmetric_tensor<dim>() -
-                                outer_product(fs_fe_face_values.normal_vector(point), fs_fe_face_values.normal_vector(point));
+                                                                      outer_product(fs_fe_face_values.normal_vector(point), fs_fe_face_values.normal_vector(point));
 
                             cell_matrix(i,j) +=
-                              ( 
+                              (
                                 this->get_timestep() * diffusivity *
                                 projection * fs_fe_face_values.shape_grad(i, point) * projection * fs_fe_face_values.shape_grad(j,point) +
                                 fs_fe_face_values.shape_value (i, point) * fs_fe_face_values.shape_value (j, point)
@@ -292,7 +292,7 @@ namespace aspect
 
       // The solution contains the new displacements, we need to return a velocity.
       // Therefore, we compute v=d_displacement/d_t.
-      // d_displacement are the new mesh node locations 
+      // d_displacement are the new mesh node locations
       // minus the old locations.
       LinearAlgebra::Vector d_displacement(mesh_locally_owned, this->get_mpi_communicator());
       d_displacement = solution;
