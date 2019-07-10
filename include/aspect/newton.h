@@ -66,7 +66,7 @@ namespace aspect
       /**
        * This enum describes the type of stabilization is used
        * for the Newton solver. None represents no stabilization,
-       * SPD represent that the resulting matrix is made Symmetric
+       * SPD represents that the resulting matrix is made Symmetric
        * Positive Definite, symmetric represents that the matrix is
        * only symmetrized, and PD represents that we do the same as
        * what we do for SPD, but without the symmetrization.
@@ -219,7 +219,7 @@ namespace aspect
 
         /**
          * Attach Newton outputs. Since most Newton assemblers require the
-         * material model derivatives they are created in this base class
+         * material model derivatives, they are created in this base class
          * already.
          */
         virtual
@@ -258,7 +258,7 @@ namespace aspect
 
     /**
      * This class assembles the term that arises in the viscosity term of the Newton Stokes matrix for
-     * compressible models, because the divergence of the velocity is not longer zero.
+     * compressible models, because the divergence of the velocity is no longer zero.
      */
     template <int dim>
     class NewtonStokesCompressibleStrainRateViscosityTerm : public Assemblers::Interface<dim>,
@@ -296,7 +296,7 @@ namespace aspect
      * This class assembles the compressibility term of the Newton Stokes system
      * that is caused by the compressibility in the mass conservation equation.
      * It includes this term implicitly in the matrix,
-     * which is therefore not longer symmetric.
+     * which is therefore no longer symmetric.
      * This function approximates this term as
      * $ - \nabla \mathbf{u} - \frac{1}{\rho} \frac{\partial rho}{\partial z} \frac{\mathbf{g}}{||\mathbf{g}||} \cdot \mathbf{u} = 0$
      */

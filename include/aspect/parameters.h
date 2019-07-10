@@ -286,7 +286,7 @@ namespace aspect
 
     /**
      * This enum represents the different choices for the linear solver
-     * for the Stoke system. See @p stokes_solver_type.
+     * for the Stokes system. See @p stokes_solver_type.
      */
     struct StokesSolverType
     {
