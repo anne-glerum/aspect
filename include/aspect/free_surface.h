@@ -163,6 +163,11 @@ namespace aspect
       double free_surface_theta;
 
       /**
+       * Tolerance factor for the free surface.
+       */
+      double tol;
+
+      /**
        * BlockVector which stores the mesh velocity.
        * This is used for ALE corrections.
        */

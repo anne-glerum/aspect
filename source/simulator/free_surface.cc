@@ -198,6 +198,11 @@ namespace aspect
                         "the free surface is stabilized with this term, "
                         "where zero is no stabilization, and one is fully "
                         "implicit.");
+      prm.declare_entry("Free surface tolerance", "1.",
+                        Patterns::Double(0,1),
+                        "A factor used in setting the tolerance for the solve "
+                        "of the projection of velocity onto the surface "
+                        "and of the internal mesh velocity. ");
       prm.declare_entry("Surface velocity projection", "normal",
                         Patterns::Selection("normal|vertical"),
                         "After each time step the free surface must be "
@@ -238,6 +243,7 @@ namespace aspect
     prm.enter_subsection ("Free surface");
     {
       free_surface_theta = prm.get_double("Free surface stabilization theta");
+      tol = prm.get_double("Free surface tolerance");
       std::string advection_dir = prm.get("Surface velocity projection");
 
       if ( advection_dir == "normal")
@@ -523,7 +529,7 @@ namespace aspect
     LinearAlgebra::PreconditionJacobi preconditioner_mass;
     preconditioner_mass.initialize(mass_matrix);
 
-    SolverControl solver_control(5*rhs.size(), sim.parameters.linear_stokes_solver_tolerance*rhs.l2_norm());
+    SolverControl solver_control(5*rhs.size(), tol*sim.parameters.linear_stokes_solver_tolerance*rhs.l2_norm());
     SolverCG<LinearAlgebra::Vector> cg(solver_control);
     cg.solve (mass_matrix, dist_solution, rhs, preconditioner_mass);
 
@@ -633,7 +639,7 @@ namespace aspect
 #endif
     preconditioner_stiffness.initialize(mesh_matrix);
 
-    SolverControl solver_control(5*rhs.size(), sim.parameters.linear_stokes_solver_tolerance*rhs.l2_norm());
+    SolverControl solver_control(5*rhs.size(), tol * sim.parameters.linear_stokes_solver_tolerance*rhs.l2_norm());
     SolverCG<LinearAlgebra::Vector> cg(solver_control);
 
     cg.solve (mesh_matrix, velocity_solution, rhs, preconditioner_stiffness);
