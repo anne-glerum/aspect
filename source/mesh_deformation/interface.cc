@@ -28,7 +28,7 @@
 #include <deal.II/dofs/dof_tools.h>
 
 #include <deal.II/fe/fe_values.h>
-#include <deal.II/fe/mapping_q1_eulerian.h>
+#include <deal.II/fe/mapping_q_eulerian.h>
 
 #include <deal.II/lac/sparsity_tools.h>
 
@@ -66,7 +66,7 @@ namespace aspect
     template <int dim>
     MeshDeformationHandler<dim>::MeshDeformationHandler (Simulator<dim> &simulator)
       : sim(simulator),  // reference to the simulator that owns the MeshDeformationHandler
-        mesh_deformation_fe (FE_Q<dim>(1),dim), // Q1 elements which describe the mesh geometry
+        mesh_deformation_fe (FE_Q<dim>(2),dim), // Q2 elements which describe the mesh geometry
         mesh_deformation_dof_handler (sim.triangulation)
     {}
 
@@ -674,8 +674,9 @@ namespace aspect
       mesh_vertex_constraints.close();
 
       // Now reset the mapping of the simulator to be something that captures mesh deformation in time.
-      sim.mapping.reset (new MappingQ1Eulerian<dim, LinearAlgebra::Vector> (mesh_deformation_dof_handler,
-                                                                            mesh_displacements));
+      sim.mapping.reset (new MappingQEulerian<dim, LinearAlgebra::Vector> (2,
+    		                                         mesh_deformation_dof_handler,
+													 mesh_displacements));
     }
 
 
