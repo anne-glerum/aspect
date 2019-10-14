@@ -58,7 +58,7 @@ namespace aspect
                                                    .base_element(this->introspection().base_elements.pressure)
                                                    .degree+1);
 
-      FEFaceValues<dim> fe_face_values (this->get_mapping(),
+      FEFaceValues<dim> fe_face_vals (this->get_mapping(),
                                         this->get_fe(),
                                         quadrature_formula_face,
                                         update_values |
@@ -72,7 +72,7 @@ namespace aspect
       // later sent to processor 0
       std::ostringstream output_stats;
       std::ostringstream output_file;
-      std::vector<Tensor<1,dim> > velocity_vals( fe_face_values.n_quadrature_points );
+      std::vector<Tensor<1,dim> > velocity_vals( fe_face_vals.n_quadrature_points );
       // Choose stupidly large values for initialization
       double local_max_height = -std::numeric_limits<double>::max();
       double local_min_height = std::numeric_limits<double>::max();
@@ -90,7 +90,7 @@ namespace aspect
                   continue;
 
                 fe_face_vals.reinit( cell, face_no);
-                fe_face_values[this->introspection().extractors.velocities].get_function_values (this->get_solution(),
+                fe_face_vals[this->introspection().extractors.velocities].get_function_values (this->get_solution(),
                                                                                           velocity_vals);
 
                 for (unsigned int corner = 0; corner < quadrature_formula_face.size(); ++corner)
