@@ -572,7 +572,7 @@ namespace aspect
 
       if (((dynamic_cast<const GeometryModel::SphericalShell<dim>*> (&this->get_geometry_model())) != nullptr)
           || ((dynamic_cast<const GeometryModel::Chunk<dim>*> (&this->get_geometry_model())) != nullptr)
-      // TODO: add Assert for ellipticity = 0
+          // TODO: add Assert for ellipticity = 0
           || ((dynamic_cast<const GeometryModel::EllipsoidalChunk<dim>*> (&this->get_geometry_model())) != nullptr ))
         {
           lookup = std_cxx14::make_unique<internal::GPlatesLookup<dim>>(pointone, pointtwo);

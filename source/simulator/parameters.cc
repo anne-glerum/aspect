@@ -1530,7 +1530,7 @@ namespace aspect
                                   nullspace_removal | NullspaceRemoval::linear_momentum_x |
                                   NullspaceRemoval::linear_momentum_y | ( dim == 3 ?
                                                                           NullspaceRemoval::linear_momentum_z : 0) );
-           else if (nullspace_names[i]=="radial")
+          else if (nullspace_names[i]=="radial")
             nullspace_removal = typename NullspaceRemoval::Kind(
                                   nullspace_removal | NullspaceRemoval::radial);
           else

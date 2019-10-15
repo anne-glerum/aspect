@@ -19,8 +19,8 @@
 */
 
 
-#include "lithosphere_rift_comp.h"
-#include "lithosphere_rift.h"
+#include <aspect/initial_composition/lithosphere_rift.h>
+#include <aspect/initial_temperature/lithosphere_rift.h>
 #include <aspect/geometry_model/box.h>
 #include <aspect/utilities.h>
 
@@ -126,7 +126,7 @@ namespace aspect
       else
         {
           // spherical coordinates in radius [m], lon [rad], colat [rad] format
-          const std_cxx11::array<double,dim> spherical_point = Utilities::Coordinates::cartesian_to_spherical_coordinates(position);
+          const std::array<double,dim> spherical_point = Utilities::Coordinates::cartesian_to_spherical_coordinates(position);
           // return lon [degrees], lat [degrees]
           for (unsigned int d=0; d<dim-1; ++d)
             surface_point[d] = spherical_point[d+1]*180./numbers::PI;
@@ -293,19 +293,19 @@ namespace aspect
                   if (dim == 3)
                     {
                       AssertThrow(temp_point.size() == 2,ExcMessage ("The given coordinates of segment '" + temp_segment[i_points] + "' are not correct. "
-                                                                "It should only contain 2 parts: "
-                                                                "the two coordinates of the segment end point, separated by a ','."));
+                                                                     "It should only contain 2 parts: "
+                                                                     "the two coordinates of the segment end point, separated by a ','."));
                     }
                   else
                     {
                       AssertThrow(temp_point.size() == 1,ExcMessage ("The given coordinates of segment '" + temp_segment[i_points] + "' are not correct. "
-                                                                "It should only contain 1 part: "
-                                                                "the one coordinate of the segment end point."));
+                                                                     "It should only contain 1 part: "
+                                                                     "the one coordinate of the segment end point."));
                     }
 
-                      // Add the point to the list of points for this segment
-                      point_list[i_segment][i_points][0] = temp_point[0];
-                      point_list[i_segment][i_points][1] = temp_point[dim-2];
+                  // Add the point to the list of points for this segment
+                  point_list[i_segment][i_points][0] = temp_point[0];
+                  point_list[i_segment][i_points][1] = temp_point[dim-2];
                 }
             }
 
@@ -339,8 +339,8 @@ namespace aspect
                 {
                   const std::vector<double> temp_point = Utilities::string_to_double(Utilities::split_string_list(temp_points[i_points],','));
                   AssertThrow(temp_point.size() == dim-1,ExcMessage ("The given coordinates of point '" + temp_points[i_points] + "' are not correct. "
-                                                                "It should only contain 1 (2d) or 2 (in 3d) parts: "
-                                                                "the longitude/x (and latitude/y in 3d) coordinate (separated by a ',')."));
+                                                                     "It should only contain 1 (2d) or 2 (in 3d) parts: "
+                                                                     "the longitude/x (and latitude/y in 3d) coordinate (separated by a ',')."));
 
                   // Add the point to the list of points for this segment
                   polygon_point_list[i_polygons][i_points][0] = temp_point[0];

@@ -823,7 +823,7 @@ namespace aspect
     }
 
     template <int dim>
-    std_cxx11::array<Tensor<1,dim>,dim-1>
+    std::array<Tensor<1,dim>,dim-1>
     orthogonal_vectors (const Tensor<1,dim> &v)
     {
       Assert (v.norm() > 0,
