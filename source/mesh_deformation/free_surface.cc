@@ -348,6 +348,13 @@ namespace aspect
       cg.solve (mass_matrix, dist_solution, rhs, preconditioner_mass);
 
       mass_matrix_constraints.distribute (dist_solution);
+      LinearAlgebra::Vector output_solution = dist_solution;
+
+      if (this->convert_output_to_years() == true)
+        output_solution *= year_in_seconds;
+      if (this->get_timestep_number() == 0. || this->get_timestep_number() == 200. || this->get_timestep_number() == 400 || this->get_timestep_number() == 600 || this->get_timestep_number() == 800 || this->get_timestep_number() == 1000 || this->get_timestep_number() == 1200 || this->get_timestep_number() == 1400 || this->get_timestep_number() == 2000 || this->get_timestep_number() == 3000 || this->get_timestep_number() == 4000 || this->get_timestep_number() == 5000 || this->get_timestep_number() == 6000)
+        output_solution.print(std::cout); 
+
       output = dist_solution;
     }
 
