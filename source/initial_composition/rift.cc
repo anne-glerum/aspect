@@ -58,7 +58,8 @@ namespace aspect
             = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model());
 
           // Min and max of each direction (m)
-          extents_max = geometry_model->get_extents();
+          extents_min = geometry_model->get_origin();
+          extents_max = geometry_model->get_extents() + extents_min;
         }
       else if (const GeometryModel::Chunk<dim> *geometry_model
                = dynamic_cast<const GeometryModel::Chunk<dim> *>(&this->get_geometry_model()))
