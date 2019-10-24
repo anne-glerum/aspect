@@ -105,7 +105,7 @@ namespace aspect
         double sigma_polygon;
 
         /**
-         * Wheter or not to take the polygon thicknesses as dominant, or to smooth them
+         * Whether or not to take the polygon thicknesses as dominant, or to smooth them
          * gradually into rift areas.
          */
         bool blend_rift_and_polygon;
@@ -124,8 +124,8 @@ namespace aspect
         std::vector<std::array<Point<2>,2 > > point_list;
 
         /**
-         * The list of polygon points.
-         * The polygon represent an area of different lithospheric thicknesses.
+         * The list of lists of polygon points.
+         * The polygon represents an area of different lithospheric thicknesses.
          */
         std::vector<std::vector<Point<2> > > polygon_point_list;
 

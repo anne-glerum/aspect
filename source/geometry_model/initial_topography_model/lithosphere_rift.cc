@@ -235,9 +235,8 @@ namespace aspect
     ASPECT_REGISTER_INITIAL_TOPOGRAPHY_MODEL(LithosphereRift,
                                              "lithosphere with rift",
                                              "An initial topography model that defines the initial topography "
-                                             "as constant inside each of a set of polylineal parts of the "
-                                             "surface. The polylines, and their associated surface elevation, "
-                                             "are defined in the `Geometry model/Initial topography/Prm polyline' "
-                                             "section.")
+                                             "based on isostasy. It takes into account lithospheric thickness "
+                                             "variations as specified in the InitialComposition model lithosphere "
+                                             "with rift' as should only be used in conjunction with this model. ")
   }
 }

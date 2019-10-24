@@ -384,14 +384,13 @@ namespace aspect
   {
     ASPECT_REGISTER_INITIAL_COMPOSITION_MODEL(LithosphereRift,
                                               "lithosphere with rift",
-                                              "A class that implements initial conditions for the porosity field "
-                                              "by computing the equilibrium melt fraction for the given initial "
-                                              "condition and reference pressure profile. Note that this plugin only "
-                                              "works if there is a compositional field called `porosity', and the "
-                                              "used material model implements the 'MeltFractionModel' interface. "
-                                              "For all compositional fields except porosity this plugin returns 0.0, "
-                                              "and they are therefore not changed as long as the default `add' "
-                                              "operator is selected for this plugin. Note that the different polygons "
-											  "should not overlap. ")
+                                              "A class that implements initial conditions for a continental rift "
+                                              "by computing the thickness of the upper crust, lower crust and mantle "
+                                              "lithosphere layers. This thickness decreases towards the axis of the "
+                                              "rift according to a Gaussian distribution whose amplitude and standard "
+											  "deviation can be specified from the input file. "
+                                              "Additional variations in layer thicknesses can be introduced through the "
+											  "addition of polygons. Note that the different polygons "
+											  "are assumed not to overlap. ")
   }
 }
