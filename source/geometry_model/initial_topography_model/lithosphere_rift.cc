@@ -73,7 +73,7 @@ namespace aspect
       const double sum_rift_thicknesses = std::accumulate(rift_thicknesses.begin(), rift_thicknesses.end(),0);
 
       // The column at the polygon center
-      const double n_polygons = polygon_thicknesses.size();
+      const unsigned int n_polygons = polygon_thicknesses.size();
       std::vector<double> polygon_rgh(n_polygons);
       std::vector<double> sum_polygon_thicknesses(n_polygons);
       for (unsigned int i_polygons=0; i_polygons<n_polygons; ++i_polygons)
