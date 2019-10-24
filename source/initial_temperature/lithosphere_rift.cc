@@ -312,9 +312,9 @@ namespace aspect
                                               "Make sure the top and bottom temperatures of the lithosphere "
                                               "agree with temperatures set in for example the temperature "
                                               "boundary conditions. "
-											  "The thickness of the lithospheric layers is adapted for distance "
-											  "to the rift specified with the InitialComposition plugin `lithosphere "
-											  "with rift'. Additional variations in lithospheric thickness can be "
-											  "added through specifying polygonal areas of different thicknesses. ")
+                                              "The thickness of the lithospheric layers is adapted for distance "
+                                              "to the rift specified with the InitialComposition plugin `lithosphere "
+                                              "with rift'. Additional variations in lithospheric thickness can be "
+                                              "added through specifying polygonal areas of different thicknesses. ")
   }
 }

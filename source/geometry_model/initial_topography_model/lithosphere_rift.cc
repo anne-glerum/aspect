@@ -110,6 +110,14 @@ namespace aspect
     LithosphereRift<dim>::
     value (const Point<dim-1> &position) const
     {
+      // Check that the required initial composition model is used
+      // We have to do it here instead of in initialize() because
+      // the names are not available upon initialization of the
+      // initial topography model yet.
+      const std::vector<std::string> active_initial_composition_models = this->get_initial_composition_manager().get_active_initial_composition_names();
+      AssertThrow(std::find(active_initial_composition_models.begin(),active_initial_composition_models.end(), "lithosphere with rift") != active_initial_composition_models.end(),
+                  ExcMessage("The lithosphere with rift initial mesh refinement plugin requires the lithosphere with rift initial composition plugin."));
+
       // When cartesian, position contains x(,y); when spherical, position contains lon(,lat) (in degrees);
       // Turn into a Point<dim-1>
       Point<dim-1> surface_position;

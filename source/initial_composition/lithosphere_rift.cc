@@ -319,8 +319,8 @@ namespace aspect
           const unsigned int n_polygons = temp_polygons.size();
           AssertThrow(temp_thicknesses.size() == n_polygons,
                       ExcMessage("The number of polygons (" + Utilities::int_to_string(n_polygons) +
-                    		  ") does not correspond to the number of polygons for which a thickness is prescribed (" +
-							  Utilities::int_to_string(temp_thicknesses.size()) + ")."));
+                                 ") does not correspond to the number of polygons for which a thickness is prescribed (" +
+                                 Utilities::int_to_string(temp_thicknesses.size()) + ")."));
 
 
 
@@ -331,12 +331,12 @@ namespace aspect
             {
               polygon_thicknesses[i_polygons] = Utilities::string_to_double(Utilities::split_string_list(temp_thicknesses[i_polygons],','));
               AssertThrow(polygon_thicknesses[i_polygons].size()==3,
-						  ExcMessage ("The number of layer thicknesses should be equal to 3 for polygon: " + Utilities::int_to_string(i_polygons) +
-								  " but it is " + Utilities::int_to_string(polygon_thicknesses[i_polygons].size())));
+                          ExcMessage ("The number of layer thicknesses should be equal to 3 for polygon: " + Utilities::int_to_string(i_polygons) +
+                                      " but it is " + Utilities::int_to_string(polygon_thicknesses[i_polygons].size())));
 
               std::cout << "polygon thicknesses ";
               for (unsigned int q=0; q<polygon_thicknesses[i_polygons].size(); ++q)
-            	  std::cout << polygon_thicknesses[i_polygons][q] << " ";
+                std::cout << polygon_thicknesses[i_polygons][q] << " ";
               std::cout << std::endl;
 
               // Split the string into point strings
@@ -388,9 +388,9 @@ namespace aspect
                                               "by computing the thickness of the upper crust, lower crust and mantle "
                                               "lithosphere layers. This thickness decreases towards the axis of the "
                                               "rift according to a Gaussian distribution whose amplitude and standard "
-											  "deviation can be specified from the input file. "
+                                              "deviation can be specified from the input file. "
                                               "Additional variations in layer thicknesses can be introduced through the "
-											  "addition of polygons. Note that the different polygons "
-											  "are assumed not to overlap. ")
+                                              "addition of polygons. Note that the different polygons "
+                                              "are assumed not to overlap. ")
   }
 }
