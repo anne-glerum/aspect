@@ -80,15 +80,15 @@ namespace aspect
          * The coordinate representation to evaluate the function. Possible
          * choices are depth, cartesian and spherical.
          */
-         unsigned int rift_refinement_level;
+        unsigned int rift_refinement_level;
 
-         /**
-          * Width and depth around the rift polyline
-          * up to which the mesh will be refined.
-          */
-         double refinement_width;
+        /**
+         * Width and depth around the rift polyline
+         * up to which the mesh will be refined.
+         */
+        double refinement_width;
 
-         double refinement_depth;
+        double refinement_depth;
 
     };
   }

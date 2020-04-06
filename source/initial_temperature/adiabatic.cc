@@ -181,11 +181,11 @@ namespace aspect
             }
           else if (const GeometryModel::EllipsoidalChunk<dim> *
                    ell_chunk_geometry_model = dynamic_cast <const GeometryModel::EllipsoidalChunk<dim>*> (&this->get_geometry_model()))
-          {
-           AssertThrow(amplitude == 0., 
-                         ExcMessage ("Not a valid geometry model for the initial conditions model"
-                                     "adiabatic."));
-          }
+            {
+              AssertThrow(amplitude == 0.,
+                          ExcMessage ("Not a valid geometry model for the initial conditions model"
+                                      "adiabatic."));
+            }
           else
             AssertThrow (false,
                          ExcMessage ("Not a valid geometry model for the initial temperature model"

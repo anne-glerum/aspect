@@ -38,7 +38,7 @@ namespace aspect
     void
     Rift<dim>::initialize ()
     {
-     AssertThrow(dynamic_cast<const MaterialModel::ViscoPlasticStrain<dim> *>(&this->get_material_model()) != NULL,
+      AssertThrow(dynamic_cast<const MaterialModel::ViscoPlasticStrain<dim> *>(&this->get_material_model()) != NULL,
                   ExcMessage("This initial condition only makes sense in combination with the visco_plastic material model."));
 
       // From shear_bands.cc
@@ -55,7 +55,7 @@ namespace aspect
         {
           const GeometryModel::Box<dim> *
           geometry_model
-          = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model());
+            = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model());
 
           extents_max = geometry_model->get_extents();
         }
@@ -63,7 +63,7 @@ namespace aspect
         {
           const GeometryModel::Chunk<dim> *
           geometry_model
-          = dynamic_cast<const GeometryModel::Chunk<dim> *>(&this->get_geometry_model());
+            = dynamic_cast<const GeometryModel::Chunk<dim> *>(&this->get_geometry_model());
 
           extents_min[0] = geometry_model->inner_radius();
           extents_max[0] = geometry_model->outer_radius();

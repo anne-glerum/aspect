@@ -309,7 +309,7 @@ namespace aspect
                                     coh * std::cos(phi) + std::max(pressure,0.0) * std::sin(phi) );
 
           // If the viscous stress is greater than the yield strength, rescale the viscosity back to yield surface
-          // Also, we use a value of 1 to indicate we'er in the yielding regime. 
+          // Also, we use a value of 1 to indicate we'er in the yielding regime.
           double viscosity_drucker_prager;
           if ( viscous_stress >= yield_strength  )
             {
@@ -407,19 +407,19 @@ namespace aspect
       // changing the material model interface.)
       // However, since Outputs is calculated on the cell vertices, we can do:
       const double length_scale = 1;// in.cell
-/*                                  ?
-                                  1./((*in.cell)->minimum_vertex_distance()/reference_length_strain)
-                                  :
-                                  // The first time around for the calculation of the initial adiabatic profile
-                                  // there is only 1 point in Inputs
-                                  // To prevent an infinite length scale (even though it's not used),
-                                  // we set it to 1 in this case.
-                                  (in.strain_rate.size() == 0
-                                      ?
-                                      1.
-                                      :
-                                      1./((in.position[in.position.size()-1][0] - in.position[0][0])/reference_length_strain));
-*/
+      /*                                  ?
+                                        1./((*in.cell)->minimum_vertex_distance()/reference_length_strain)
+                                        :
+                                        // The first time around for the calculation of the initial adiabatic profile
+                                        // there is only 1 point in Inputs
+                                        // To prevent an infinite length scale (even though it's not used),
+                                        // we set it to 1 in this case.
+                                        (in.strain_rate.size() == 0
+                                            ?
+                                            1.
+                                            :
+                                            1./((in.position[in.position.size()-1][0] - in.position[0][0])/reference_length_strain));
+      */
       // Loop through points
       for (unsigned int i=0; i < in.temperature.size(); ++i)
         {
@@ -464,11 +464,11 @@ namespace aspect
               // isostrain amongst all compositions, allowing calculation of the viscosity ratio.
               // TODO: This is only consistent with viscosity averaging if the arithmetic averaging
               // scheme is chosen. It would be useful to have a function to calculate isostress viscosities.
-              const std::pair<std::vector<double>, std::vector<double> > calculate_viscosities = 
-                   calculate_isostrain_viscosities(volume_fractions, pressure, temperature, composition, in.strain_rate[i],viscous_flow_law,yield_mechanism, length_scale);
+              const std::pair<std::vector<double>, std::vector<double> > calculate_viscosities =
+                calculate_isostrain_viscosities(volume_fractions, pressure, temperature, composition, in.strain_rate[i],viscous_flow_law,yield_mechanism, length_scale);
               const std::vector<double> composition_viscosities = calculate_viscosities.first;
               const std::vector<double> composition_yielding = calculate_viscosities.second;
- 
+
               // The isostrain condition implies that the viscosity averaging should be arithmetic (see above).
               // We have given the user freedom to apply alternative bounds, because in diffusion-dominated
               // creep (where n_diff=1) viscosities are stress and strain-rate independent, so the calculation
@@ -509,11 +509,11 @@ namespace aspect
               if  ((use_plastic_strain_weakening == true && plastic_yielding == true) ||
                    (use_viscous_strain_weakening == true && plastic_yielding == false && use_plastic_strain_weakening == false) ||
                    (use_plastic_strain_weakening == false && use_viscous_strain_weakening == false))
-                 {
+                {
                   // Update reaction term of the first compositional field which represents the total, plastic or viscous strain
                   // (the latter only in case no plastic strain is tracked).
                   out.reaction_terms[i][0] = e_ii;
-                 }
+                }
               else if (use_viscous_strain_weakening == true && plastic_yielding == false && use_plastic_strain_weakening == true)
                 {
                   // Update reaction term of the second compositional field, which represents the viscous strain
@@ -912,17 +912,17 @@ namespace aspect
             AssertThrow(this->n_compositional_fields() >= s,
                         ExcMessage("There must be enough compositional fields to track all components of the finite strain tensor (4 in 2D, 9 in 3D). "));
           start_plastic_strain_weakening_intervals = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Start plastic strain weakening intervals"))),
-                                                                                     n_fields,
-                                                                                     "Start plastic strain weakening intervals");
+                                                     n_fields,
+                                                     "Start plastic strain weakening intervals");
           end_plastic_strain_weakening_intervals = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("End plastic strain weakening intervals"))),
-                                                                                   n_fields,
-                                                                                   "End plastic strain weakening intervals");
+                                                   n_fields,
+                                                   "End plastic strain weakening intervals");
           start_viscous_strain_weakening_intervals = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Start viscous strain weakening intervals"))),
-                                                                                     n_fields,
-                                                                                     "Start viscous strain weakening intervals");
+                                                     n_fields,
+                                                     "Start viscous strain weakening intervals");
           end_viscous_strain_weakening_intervals = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("End viscous strain weakening intervals"))),
-                                                                                   n_fields,
-                                                                                   "End viscous strain weakening intervals");
+                                                   n_fields,
+                                                   "End viscous strain weakening intervals");
           viscous_strain_weakening_factors = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Viscous strain weakening factors"))),
                                                                                      n_fields,
                                                                                      "Viscous strain weakening factors");
