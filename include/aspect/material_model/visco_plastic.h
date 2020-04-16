@@ -396,6 +396,13 @@ namespace aspect
          * Whether to include viscoelasticity in the constitutive formulation.
          */
         bool use_elasticity;
+
+        /**
+        * dynamic friction parameters
+        */
+        std::vector<double> dynamic_angles_of_internal_friction;
+        std::vector<double> dynamic_characteristic_strain_rate;
+        std::vector<double> dynamic_friction_smoothness_factor;
     };
 
   }
