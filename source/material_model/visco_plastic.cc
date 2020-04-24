@@ -245,7 +245,7 @@ namespace aspect
           // this is done as in the material_model dynamic_friction which is based on equation 13 in van Dinther et al., (2013, JGR).
           // const double mu  = mu_d[i] + (mu_s[i] - mu_d[i]) / ( (1 + strain_rate_dev_inv2/reference_strain_rate) );
           // which is the following using the variables in this material_model
-          const double current_friction = dynamic_angles_of_internal_friction[j] *numbers::PI/180.0+ (drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1] - dynamic_angles_of_internal_friction[j]*numbers::PI/180.0) / (1 + std::pow((current_edot_ii/dynamic_characteristic_strain_rate[j]),dynamic_friction_smoothness_factor[j]));
+          const double current_friction = dynamic_angles_of_internal_friction[j] *numbers::PI/180.0+ (drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1] - dynamic_angles_of_internal_friction[j]*numbers::PI/180.0) / (1 + std::pow((current_edot_ii/dynamic_characteristic_strain_rate[j]),dynamic_friction_smoothness_exponent[j]));
           viscosity_pre_yield *= weakening_factors[2];
 
           // Step 4: plastic yielding
@@ -359,7 +359,7 @@ namespace aspect
               const std::array<double, 3> weakening_factors = strain_rheology.compute_strain_weakening_factors(j, in.composition[i]);
               plastic_out->cohesions[i]   += volume_fractions[j] * (drucker_prager_parameters.cohesions[j] * weakening_factors[0]);
               // Also convert radians to degrees
-              plastic_out->friction_angles[i] += 180.0/numbers::PI * volume_fractions[j] * (dynamic_angles_of_internal_friction[j] *numbers::PI/180.0+ (drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1] - dynamic_angles_of_internal_friction[j]*numbers::PI/180.0) / (1 + std::pow((current_edot_ii/dynamic_characteristic_strain_rate[j]),dynamic_friction_smoothness_factor[j])));
+              plastic_out->friction_angles[i] += 180.0/numbers::PI * volume_fractions[j] * (dynamic_angles_of_internal_friction[j] *numbers::PI/180.0+ (drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1] - dynamic_angles_of_internal_friction[j]*numbers::PI/180.0) / (1 + std::pow((current_edot_ii/dynamic_characteristic_strain_rate[j]),dynamic_friction_smoothness_exponent[j])));
               // plastic_out->friction_angles[i] += 180.0/numbers::PI * volume_fractions[j] * (drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1]);
             }
         }
@@ -800,7 +800,7 @@ namespace aspect
                              "surpasses the dynamic characteristic strain rate. "
                              "Units: degrees.");
 
-          prm.declare_entry ("Dynamic friction smoothness factor", "1",
+          prm.declare_entry ("Dynamic friction smoothness exponent", "1",
                              Patterns::List(Patterns::Double(0)),
                              "An exponential factor in the equation for the calculation of the friction angle "
                              "when a static and a dynamic friction angle is specified. A factor =1 is equivalent"
@@ -941,9 +941,9 @@ namespace aspect
                                                                                         n_fields,
                                                                                         "Dynamic angles of internal friction");
 
-          dynamic_friction_smoothness_factor = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Dynamic friction smoothness factor"))),
+          dynamic_friction_smoothness_exponent = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Dynamic friction smoothness exponent"))),
                                                                                        n_fields,
-                                                                                       "Dynamic friction smoothness factor");
+                                                                                       "Dynamic friction smoothness exponent");
         }
         prm.leave_subsection();
       }

@@ -402,7 +402,7 @@ namespace aspect
         */
         std::vector<double> dynamic_angles_of_internal_friction;
         std::vector<double> dynamic_characteristic_strain_rate;
-        std::vector<double> dynamic_friction_smoothness_factor;
+        std::vector<double> dynamic_friction_smoothness_exponent;
     };
 
   }
