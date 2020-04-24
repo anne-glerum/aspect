@@ -24,9 +24,7 @@
 #include <aspect/initial_composition/lithosphere_rift.h>
 #include <aspect/geometry_model/box.h>
 #include <aspect/boundary_temperature/interface.h>
-#include <aspect/material_model/visco_plastic.h>
-//#include "/gfs1/work/bbpanneg/software/aspect/aspect/lib_plastic_strain/visco_plastic_strain.h"
-//#include "/gfs1/work/bbpsbrun/aspect/09_VictoriaBlock/_Plugin_StrainSoftening_2017-11-23/visco_plastic_strain.h"
+#include <aspect/material_model/visco_plastic_strain.h>
 #include <aspect/heating_model/interface.h>
 
 #include <cmath>
@@ -52,9 +50,8 @@ namespace aspect
                   ExcMessage("The lithosphere with rift initial temperature plugin requires the compositional heating plugin."));
 
       // Check that the required material model ("visco plastic") is used
-      //AssertThrow((dynamic_cast<MaterialModel::ViscoPlasticStrain<dim> *> (const_cast<MaterialModel::Interface<dim> *>(&this->get_material_model()))) != 0,
-      AssertThrow((dynamic_cast<MaterialModel::ViscoPlastic<dim> *> (const_cast<MaterialModel::Interface<dim> *>(&this->get_material_model()))) != 0,
-                  ExcMessage("The lithosphere with rift initial temperature plugin requires the viscoplastic material model plugin."));
+      AssertThrow((dynamic_cast<MaterialModel::ViscoPlasticStrain<dim> *> (const_cast<MaterialModel::Interface<dim> *>(&this->get_material_model()))) != 0,
+                  ExcMessage("The lithosphere with rift initial temperature plugin requires the viscoplastic strain material model plugin."));
     }
 
 
@@ -67,8 +64,6 @@ namespace aspect
       const bool cartesian_geometry = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()) != NULL ? true : false;
 
       // Get the distance to the line segments along a path parallel to the surface
-      //InitialComposition::LithosphereRift<dim> *ic = dynamic_cast<InitialComposition::LithosphereRift<dim> *> (const_cast<InitialComposition::Interface<dim> *>(&this->get_initial_composition()));
-
       double distance_to_rift_axis = 1e23;
       Point<dim-1> surface_position;
       std::pair<double, unsigned int> distance_to_L_polygon;

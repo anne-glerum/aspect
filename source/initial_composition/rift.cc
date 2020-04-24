@@ -24,7 +24,7 @@
 #include <aspect/geometry_model/box.h>
 #include <aspect/geometry_model/chunk.h>
 #include <aspect/geometry_model/ellipsoidal_chunk.h>
-#include <aspect/material_model/visco_plastic.h>
+#include <aspect/material_model/visco_plastic_strain.h>
 #include <aspect/utilities.h>
 
 namespace aspect
