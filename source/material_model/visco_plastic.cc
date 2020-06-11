@@ -942,8 +942,8 @@ namespace aspect
                                                                                         "Dynamic angles of internal friction");
 
           dynamic_friction_smoothness_exponent = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Dynamic friction smoothness exponent"))),
-                                                                                       n_fields,
-                                                                                       "Dynamic friction smoothness exponent");
+                                                                                         n_fields,
+                                                                                         "Dynamic friction smoothness exponent");
         }
         prm.leave_subsection();
       }
