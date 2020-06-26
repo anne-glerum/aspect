@@ -244,11 +244,11 @@ namespace aspect
           // This is done as in the material_model dynamic_friction which is based on equation 13 in van Dinther et al., (2013, JGR).
           // const double mu  = mu_d[i] + (mu_s[i] - mu_d[i]) / ( (1 + strain_rate_dev_inv2/reference_strain_rate) );
           // which is the following using the variables in this material_model
-          const double current_friction = dynamic_angles_of_internal_friction[j] 
-		                                                     + (drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1] 
-		                                                      - dynamic_angles_of_internal_friction[j]) 
-															  / (1 + std::pow((current_edot_ii/dynamic_characteristic_strain_rate[j]),
-															  dynamic_friction_smoothness_exponent[j]));
+          const double current_friction = dynamic_angles_of_internal_friction[j]
+                                          + (drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1]
+                                             - dynamic_angles_of_internal_friction[j])
+                                          / (1 + std::pow((current_edot_ii/dynamic_characteristic_strain_rate[j]),
+                                                          dynamic_friction_smoothness_exponent[j]));
           viscosity_pre_yield *= weakening_factors[2];
 
           // Step 4: plastic yielding
@@ -363,7 +363,7 @@ namespace aspect
               plastic_out->cohesions[i]   += volume_fractions[j] * (drucker_prager_parameters.cohesions[j] * weakening_factors[0]);
               // Also convert radians to degrees
               plastic_out->friction_angles[i] += 180.0/numbers::PI * volume_fractions[j] * (dynamic_angles_of_internal_friction[j] + (drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1] - dynamic_angles_of_internal_friction[j]) / (1 + std::pow((current_edot_ii/dynamic_characteristic_strain_rate[j]),dynamic_friction_smoothness_exponent[j])));
-             }
+            }
         }
     }
 
@@ -793,9 +793,9 @@ namespace aspect
                              "The characteristic strain rate value, where the angle of friction takes the middle "
                              "between the dynamic and the static angle of friction. When the effective strain rate "
                              "in a cell is very high the dynamic angle of friction is taken, when it is very low "
-							  "the static angle of internal friction is chosen. Around the dynamic characteristic "
-							  "strain rate, there is a smooth gradient from the static to the dynamic friction "
-							  "angle. "
+                             "the static angle of internal friction is chosen. Around the dynamic characteristic "
+                             "strain rate, there is a smooth gradient from the static to the dynamic friction "
+                             "angle. "
                              "Units: $1/s$.");
 
           prm.declare_entry ("Dynamic angles of internal friction", "0",
@@ -945,7 +945,7 @@ namespace aspect
                                                                                         n_fields,
                                                                                         "Dynamic angles of internal friction");
           // Convert angles from degrees to radians
-		  for (unsigned int i = 0; i<dynamic_angles_of_internal_friction.size(); ++i)
+          for (unsigned int i = 0; i<dynamic_angles_of_internal_friction.size(); ++i)
             dynamic_angles_of_internal_friction[i] *= numbers::PI/180.0;
 
           dynamic_friction_smoothness_exponent = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Dynamic friction smoothness exponent"))),
