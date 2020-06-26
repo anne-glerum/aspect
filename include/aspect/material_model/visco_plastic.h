@@ -398,10 +398,24 @@ namespace aspect
         bool use_elasticity;
 
         /**
-        * dynamic friction parameters
+        * Dynamic friction parameters: 
+        */
+		
+		/**
+        * Lowest friction angle that can be obtained with the dynamic friction equation.
         */
         std::vector<double> dynamic_angles_of_internal_friction;
+		
+		/**
+        * The characteristic strain rate value, where the angle of friction takes 
+		* a value equal to half of the dynamic plus the static angle of friction.
+        */
         std::vector<double> dynamic_characteristic_strain_rate;
+		
+		/**
+        * Exponent that influences the gradient from static to dynamic angle of friction, 
+		* if it is smooth or steplike.
+        */
         std::vector<double> dynamic_friction_smoothness_exponent;
     };
 
