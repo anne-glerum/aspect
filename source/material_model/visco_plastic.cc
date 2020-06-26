@@ -248,7 +248,7 @@ namespace aspect
                                           + (drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1]
                                              - dynamic_angles_of_internal_friction[j])
                                           / (1 + std::pow((current_edot_ii / dynamic_characteristic_strain_rate[j]),
-                                                          dynamic_friction_smoothness_exponent[j]));
+                                                          dynamic_friction_smoothness_exponent));
           viscosity_pre_yield *= weakening_factors[2];
 
           // Step 4: plastic yielding
@@ -366,7 +366,7 @@ namespace aspect
                                                                                             + (drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1]
                                                                                                 - dynamic_angles_of_internal_friction[j])
                                                                                             / (1 + std::pow((current_edot_ii / dynamic_characteristic_strain_rate[j]),
-                                                                                                dynamic_friction_smoothness_exponent[j])));
+                                                                                                dynamic_friction_smoothness_exponent)));
             }
         }
     }
@@ -962,9 +962,7 @@ namespace aspect
                 dynamic_angles_of_internal_friction[i] *= numbers::PI/180.0;
             }
 
-          dynamic_friction_smoothness_exponent = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Dynamic friction smoothness exponent"))),
-                                                                                         n_fields,
-                                                                                         "Dynamic friction smoothness exponent");
+          dynamic_friction_smoothness_exponent = prm.get_double("Dynamic friction smoothness exponent");
         }
         prm.leave_subsection();
       }

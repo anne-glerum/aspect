@@ -416,7 +416,7 @@ namespace aspect
         * Exponent that influences the gradient from static to dynamic angle of friction, 
 		* if it is smooth or steplike.
         */
-        std::vector<double> dynamic_friction_smoothness_exponent;
+        double dynamic_friction_smoothness_exponent;
     };
 
   }
