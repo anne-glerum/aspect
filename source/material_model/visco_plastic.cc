@@ -247,7 +247,7 @@ namespace aspect
           const double current_friction = dynamic_angles_of_internal_friction[j]
                                           + (drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1]
                                              - dynamic_angles_of_internal_friction[j])
-                                          / (1 + std::pow((current_edot_ii/dynamic_characteristic_strain_rate[j]),
+                                          / (1 + std::pow((current_edot_ii / dynamic_characteristic_strain_rate[j]),
                                                           dynamic_friction_smoothness_exponent[j]));
           viscosity_pre_yield *= weakening_factors[2];
 
@@ -362,7 +362,11 @@ namespace aspect
               const std::array<double, 3> weakening_factors = strain_rheology.compute_strain_weakening_factors(j, in.composition[i]);
               plastic_out->cohesions[i]   += volume_fractions[j] * (drucker_prager_parameters.cohesions[j] * weakening_factors[0]);
               // Also convert radians to degrees
-              plastic_out->friction_angles[i] += 180.0/numbers::PI * volume_fractions[j] * (dynamic_angles_of_internal_friction[j] + (drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1] - dynamic_angles_of_internal_friction[j]) / (1 + std::pow((current_edot_ii/dynamic_characteristic_strain_rate[j]),dynamic_friction_smoothness_exponent[j])));
+              plastic_out->friction_angles[i] += 180.0/numbers::PI * volume_fractions[j] * (dynamic_angles_of_internal_friction[j] 
+															  + (drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1] 
+															  - dynamic_angles_of_internal_friction[j]) 
+															  / (1 + std::pow((current_edot_ii / dynamic_characteristic_strain_rate[j]),
+															  dynamic_friction_smoothness_exponent[j])));
             }
         }
     }
@@ -798,10 +802,11 @@ namespace aspect
                              "angle. "
                              "Units: $1/s$.");
 
-          prm.declare_entry ("Dynamic angles of internal friction", "0",
+          prm.declare_entry ("Dynamic angles of internal friction", "None",
                              Patterns::List(Patterns::Double(0)),
                              "Dynamic angles of friction which are taken when the effective strain rate in a cell "
-                             "is well above the characteristic strain rate. "
+                             "is well above the characteristic strain rate. If not specified, the internal angles of "
+							 "friction are taken. "
                              "Units: degrees.");
 
           prm.declare_entry ("Dynamic friction smoothness exponent", "1",
@@ -940,13 +945,21 @@ namespace aspect
           dynamic_characteristic_strain_rate = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Dynamic characteristic strain rate"))),
                                                                                        n_fields,
                                                                                        "Dynamic characteristic strain rate");
-
-          dynamic_angles_of_internal_friction = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Dynamic angles of internal friction"))),
+ 
+		  if (prm.get ("Dynamic angles of internal friction") == "None")
+		  {
+            dynamic_angles_of_internal_friction = drucker_prager_parameters.angles_internal_friction;
+		  }
+		else 
+		{
+			dynamic_angles_of_internal_friction = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Dynamic angles of internal friction"))),
                                                                                         n_fields,
                                                                                         "Dynamic angles of internal friction");
-          // Convert angles from degrees to radians
+         
+			// Convert angles from degrees to radians
           for (unsigned int i = 0; i<dynamic_angles_of_internal_friction.size(); ++i)
             dynamic_angles_of_internal_friction[i] *= numbers::PI/180.0;
+		}
 
           dynamic_friction_smoothness_exponent = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Dynamic friction smoothness exponent"))),
                                                                                          n_fields,
