@@ -802,7 +802,7 @@ namespace aspect
                              "angle. "
                              "Units: $1/s$.");
 
-          prm.declare_entry ("Dynamic angles of internal friction", "None",
+          prm.declare_entry ("Dynamic angles of internal friction", "9999",
                              Patterns::List(Patterns::Double(0)),
                              "Dynamic angles of friction which are taken when the effective strain rate in a cell "
                              "is well above the characteristic strain rate. If not specified, the internal angles of "
@@ -946,7 +946,7 @@ namespace aspect
                                                                                        n_fields,
                                                                                        "Dynamic characteristic strain rate");
 
-          if (prm.get ("Dynamic angles of internal friction") == "None")
+          if (prm.get ("Dynamic angles of internal friction") == "9999")
             {
               // If not specified, the internal angles of friction are used, so there is no dynamic friction in the model
               dynamic_angles_of_internal_friction = drucker_prager_parameters.angles_internal_friction;
