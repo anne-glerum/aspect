@@ -956,10 +956,20 @@ namespace aspect
               dynamic_angles_of_internal_friction = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Dynamic angles of internal friction"))),
                                                                                             n_fields,
                                                                                             "Dynamic angles of internal friction");
+			
 
               // Convert angles from degrees to radians
               for (unsigned int i = 0; i<dynamic_angles_of_internal_friction.size(); ++i)
+			  {
+				  if (dynamic_angles_of_internal_friction[i] > 90)
+				  {
+					  AssertThrow(false, ExcMessage("Dynamic angles of friction must be <= 90 degrees"));
+				  }
+				  else
+				  {
                 dynamic_angles_of_internal_friction[i] *= numbers::PI/180.0;
+				  }
+			  }
             }
 
           dynamic_friction_smoothness_exponent = prm.get_double("Dynamic friction smoothness exponent");
