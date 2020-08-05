@@ -40,7 +40,7 @@ namespace aspect
       {
         prm.declare_entry ("Friction options", "default",
                            Patterns::Selection("none|dynamic friction|state dependent friction|default"),
-                           "Whether to apply a rate or state dependence of the friction angle. This can "
+                           "Whether to apply a rate and/or state dependence of the friction angle. This can "
                            "be used to obtain stick-slip motion to simulate earthquake-like behaviour, "
                            "where short periods of high-velocities are seperated by longer periods without "
                            "movement.  "
@@ -209,10 +209,10 @@ namespace aspect
                                        MaterialModel::MaterialModelOutputs<dim> &out) const
       /* what is j what is i? They came from different functions before. Do I need both? */
       {
-        /* do I have to declare current_friction here???? */
+        double current_friction = 0.0; 
 
         // compute current_edot_ii
-        const double current_edot_ii = compute_edot_ii ()
+        const double current_edot_ii = compute_edot_ii (&in, i, min_strain_rate, &out);
 
                                        switch (weakening_mechanism)
           {
@@ -234,7 +234,7 @@ namespace aspect
                                                  - std::tan(dynamic_angles_of_internal_friction[j]))
                                               / (1 + std::pow((current_edot_ii / dynamic_characteristic_strain_rate[j]),
                                                               dynamic_friction_smoothness_exponent));
-			   const double current_friction = std::atan (mu);
+			   current_friction = std::atan (mu);
               break;
             }
             case state_dependent_friction:
@@ -259,7 +259,7 @@ namespace aspect
               // calculate effective friction according to equation (4) in Sobolev and Muldashev 2017;
               // effective friction id calculated by multiplying the friction coefficient with 0.03 = (1-p_f/sigma_n)
               // their equation is for friction coefficient, while ASPECT takes friction angle in RAD, so conversion with tan/atan()
-              const double current_friction = atan(0.03*(tan(drucker_prager_parameters.angles_internal_friction[j])
+              current_friction = atan(0.03*(tan(drucker_prager_parameters.angles_internal_friction[j])
                                                          + rate_and_state_parameter_a[j] * log(current_edot_ii * cellsize
                                                              / steady_state_strain_rate[j]) + rate_and_state_parameter_b[j]
                                                          * log(theta * steady_state_strain_rate[j] / critical_slip_distance[j])));
