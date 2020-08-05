@@ -181,7 +181,7 @@ namespace aspect
       compute_dependent_friction_angle(const unsigned int j,
                                        const std::vector<double> &composition) const
       {
-		  /* do I have to declare current_friction_angle here???? */
+		  /* do I have to declare current_friction here???? */
 		  /*
         double viscous_weakening = 1.0;
         std::pair<double, double> brittle_weakening (1.0, 1.0);
@@ -198,7 +198,7 @@ namespace aspect
           // This is done as in the material_model dynamic_friction which is based on equation 13 in van Dinther et al., (2013, JGR).
           // const double mu  = mu_d[i] + (mu_s[i] - mu_d[i]) / ( (1 + strain_rate_dev_inv2/reference_strain_rate) );
           // which is the following using the variables in this material_model
-          const double current_friction_angle = dynamic_angles_of_internal_friction[j]
+          const double current_friction = dynamic_angles_of_internal_friction[j]
                                           + (drucker_prager_parameters.angles_internal_friction[j]   //    do I need these here?:  * weakening_factors[1]
                                              - dynamic_angles_of_internal_friction[j])
                                           / (1 + std::pow((current_edot_ii / dynamic_characteristic_strain_rate[j]),
@@ -219,6 +219,7 @@ namespace aspect
                                                                                              / critical_slip_distance[j] * cellsize);
 
           // calculate effective friction according to equation (4) in Sobolev and Muldashev 2017; 0.03 = (1-p_f/sigma_n)
+		  // their equation is for friction coefficient, while ASPECT takes friction angle in RAD, so conversion with tan/atan()
           const double current_friction = atan((tan(drucker_prager_parameters.angles_internal_friction[j])
                                                 + rate_and_state_parameter_a[j] * log(current_edot_ii * cellsize
                                                                                       / steady_state_strain_rate[j]) + rate_and_state_parameter_b[j]
@@ -235,7 +236,7 @@ namespace aspect
 /*
         std::array<double, 3> weakening_factors = {brittle_weakening.first,brittle_weakening.second,viscous_weakening};
 */
-        return current_friction_angle;
+        return current_friction;
       }
 
       template <int dim>
