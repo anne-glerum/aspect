@@ -204,7 +204,6 @@ namespace aspect
       compute_dependent_friction_angle(const unsigned int j,
                                        const std::vector<double> &composition
                                        const MaterialModel::MaterialModelInputs<dim> &in,
-                                       const int i,
                                        const double min_strain_rate,
                                        MaterialModel::MaterialModelOutputs<dim> &out) const
       /* what is j what is i? They came from different functions before. Do I need both? */
@@ -212,9 +211,9 @@ namespace aspect
         double current_friction = 0.0; 
 
         // compute current_edot_ii
-        const double current_edot_ii = compute_edot_ii (&in, i, min_strain_rate, &out);
+        const double current_edot_ii = compute_edot_ii (&in, min_strain_rate);
 
-                                       switch (weakening_mechanism)
+       switch (weakening_mechanism)
           {
             case none:
             {
@@ -314,9 +313,7 @@ namespace aspect
       void
       FrictionOptions<dim>::
       compute_edot_ii (const MaterialModel::MaterialModelInputs<dim> &in,
-                       const int i,
-                       const double min_strain_rate,
-                       MaterialModel::MaterialModelOutputs<dim> &out) const
+                                const double min_strain_rate) const
       {
         if (this->simulator_is_past_initialization() && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms) && in.current_cell.state() == IteratorState::valid)
           {
