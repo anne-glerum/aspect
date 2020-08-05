@@ -181,9 +181,11 @@ namespace aspect
       compute_dependent_friction_angle(const unsigned int j,
                                        const std::vector<double> &composition) const
       {
+		  /* do I have to declare current_friction_angle here???? */
+		  /*
         double viscous_weakening = 1.0;
         std::pair<double, double> brittle_weakening (1.0, 1.0);
-
+*/
         switch (weakening_mechanism)
           {
             case none:
@@ -192,17 +194,15 @@ namespace aspect
             }
             case dynamic_friction:
             {
-              // Calculate second invariant of left stretching tensor "L"
-			  /*
-              Tensor<2,dim> strain;
-              for (unsigned int q = 0; q < Tensor<2,dim>::n_independent_components ; ++q)
-                strain[Tensor<2,dim>::unrolled_to_component_indices(q)] = composition[q];
-              const SymmetricTensor<2,dim> L = symmetrize( strain * transpose(strain) );
-
-              const double strain_ii = std::fabs(second_invariant(L));
-              brittle_weakening = calculate_plastic_weakening(strain_ii, j);
-              viscous_weakening = calculate_viscous_weakening(strain_ii, j);
-			  */
+          // The dynamic characteristic strain rate is used to see if dynamic or static angle of internal friction should be used.
+          // This is done as in the material_model dynamic_friction which is based on equation 13 in van Dinther et al., (2013, JGR).
+          // const double mu  = mu_d[i] + (mu_s[i] - mu_d[i]) / ( (1 + strain_rate_dev_inv2/reference_strain_rate) );
+          // which is the following using the variables in this material_model
+          const double current_friction_angle = dynamic_angles_of_internal_friction[j]
+                                          + (drucker_prager_parameters.angles_internal_friction[j]   //    do I need these here?:  * weakening_factors[1]
+                                             - dynamic_angles_of_internal_friction[j])
+                                          / (1 + std::pow((current_edot_ii / dynamic_characteristic_strain_rate[j]),
+                                                          dynamic_friction_smoothness_exponent));
               break;
             }
             case state_dependent_friction:
@@ -249,9 +249,9 @@ namespace aspect
       {
 		   if  (this->simulator_is_past_initialization() && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms))
             {
-              const double edot_ii = std::max(sqrt(std::fabs(second_invariant(deviator(in.strain_rate[i])))),min_strain_rate);
+              const double current_edot_ii = std::max(sqrt(std::fabs(second_invariant(deviator(in.strain_rate[i])))),min_strain_rate);
 		    }
-          return edot_ii          
+          return current_edot_ii          
       }
 	  
     template <int dim>
