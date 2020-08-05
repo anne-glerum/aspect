@@ -296,7 +296,7 @@ namespace aspect
       void
       FrictionOptions<dim>::
       compute_edot_ii (const MaterialModel::MaterialModelInputs<dim> &in,
-                                const double min_strain_rate) const
+								const double min_strain_rate) const
       {
         if (this->simulator_is_past_initialization() && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms) && in.current_cell.state() == IteratorState::valid)
           {
@@ -347,7 +347,7 @@ namespace aspect
       void
       FrictionOptions<dim>::
       compute_theta_reaction_terms(const MaterialModel::MaterialModelInputs<dim> &in,
-                                   MaterialModel::MaterialModelOutputs<dim> &out) const
+								   MaterialModel::MaterialModelOutputs<dim> &out) const
       {
         //cellsize is needed for theta and the friction angle
         double cellsize = 1;
@@ -355,7 +355,11 @@ namespace aspect
           {
             cellsize = in.current_cell->extent_in_direction(0);
           }
-
+		  
+     if (this->simulator_is_past_initialization() && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms) && in.current_cell.state() == IteratorState::valid)
+        {
+			for (unsigned int q=0; q < in.n_evaluation_points(); ++q)
+            {
         // compute current_edot_ii
         const double current_edot_ii = compute_edot_ii ()
         const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
@@ -367,6 +371,7 @@ namespace aspect
                                         /cellsize/current_edot_ii)*exp(-(current_edot_ii*this->get_timestep())
                                                                        /critical_slip_distance[theta_position_tmp+1]*cellsize) - theta_old;
         out.reaction_terms[q][theta_position_tmp] = theta_increment;
+			}
       }
     }
   }
