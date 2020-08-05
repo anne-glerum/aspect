@@ -132,6 +132,7 @@ namespace aspect
           weakening_mechanism = state_dependent_friction;
         else if (prm.get ("Strain weakening mechanism") == "default")
           weakening_mechanism = none;
+	  /* would be nice for the future to have an option like rate and state friction with fixed point iteration */
         else
           AssertThrow(false, ExcMessage("Not a valid Strain weakening mechanism!"));
 
