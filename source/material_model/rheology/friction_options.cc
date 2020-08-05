@@ -82,11 +82,6 @@ namespace aspect
                            "friction are taken. "
                            "Units: degrees.");
 						   
-						           for (unsigned int i = 0; i<parameters.dynamic_angles_of_internal_friction.size(); ++i)
-          {
-            parameters.dynamic_angles_internal_friction[i] *= numbers::PI/180.0;
-          }
-
         prm.declare_entry ("Dynamic friction smoothness exponent", "1",
                            Patterns::List(Patterns::Double(0)),
                            "An exponential factor in the equation for the calculation of the friction angle "
@@ -142,20 +137,39 @@ namespace aspect
           weakening_mechanism = none;
 	  /* would be nice for the future to have an option like rate and state friction with fixed point iteration */
         else
-          AssertThrow(false, ExcMessage("Not a valid Strain weakening mechanism!"));
+          AssertThrow(false, ExcMessage("Not a valid friction dependence option!"));
 
-        // Dynamic friction parameters
-        dynamic_characteristic_strain_rate = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Dynamic characteristic strain rate"))),
-                                                                                     n_fields,
-                                                                                     "Dynamic characteristic strain rate");
-
-        dynamic_angles_of_internal_friction = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Dynamic angles of internal friction"))),
-                                                                                      n_fields,
-                                                                                      "Dynamic angles of internal friction");
-
-        dynamic_friction_smoothness_exponent = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Dynamic friction smoothness exponent"))),
+          // Dynamic friction parameters
+          dynamic_characteristic_strain_rate = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Dynamic characteristic strain rate"))),
                                                                                        n_fields,
-                                                                                       "Dynamic friction smoothness exponent");
+                                                                                       "Dynamic characteristic strain rate");
+
+          if (prm.get ("Dynamic angles of internal friction") == "9999")
+            {
+              // If not specified, the internal angles of friction are used, so there is no dynamic friction in the model
+              dynamic_angles_of_internal_friction = drucker_prager_parameters.angles_internal_friction;
+            }
+          else
+            {
+              dynamic_angles_of_internal_friction = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Dynamic angles of internal friction"))),
+                                                                                            n_fields,
+                                                                                            "Dynamic angles of internal friction");
+
+              // Convert angles from degrees to radians
+              for (unsigned int i = 0; i<dynamic_angles_of_internal_friction.size(); ++i)
+                {
+                  if (dynamic_angles_of_internal_friction[i] > 90)
+                    {
+                      AssertThrow(false, ExcMessage("Dynamic angles of friction must be <= 90 degrees"));
+                    }
+                  else
+                    {
+                      dynamic_angles_of_internal_friction[i] *= numbers::PI/180.0;
+                    }
+                }
+            }
+
+          dynamic_friction_smoothness_exponent = prm.get_double("Dynamic friction smoothness exponent");
 
         // Rate and state friction parameters
         if (weakening_mechanism == state_dependent_friction)
