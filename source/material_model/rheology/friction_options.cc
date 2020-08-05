@@ -61,11 +61,11 @@ namespace aspect
                            "\n\n"
                            "\\item ``default'': No rate or state dependence of the friction angle is applied. ");
 
-                  // Plasticity parameters
-          drucker_prager_parameters = drucker_prager_plasticity.parse_parameters(this->n_compositional_fields()+1,
-                                                                                 prm);
-																				 
-		// Dynamic friction paramters
+        // Plasticity parameters
+        drucker_prager_parameters = drucker_prager_plasticity.parse_parameters(this->n_compositional_fields()+1,
+                                                                               prm);
+
+        // Dynamic friction paramters
         prm.declare_entry ("Dynamic characteristic strain rate", "1e-12",
                            Patterns::Double (0),
                            "The characteristic strain rate value, where the angle of friction takes the middle "
@@ -297,8 +297,8 @@ namespace aspect
       void
       FrictionOptions<dim>::
       compute_edot_ii (const MaterialModel::MaterialModelInputs<dim> &in,
-	                    const double ref_strain_rate,
-						bool use_elasticity,
+                       const double ref_strain_rate,
+                       bool use_elasticity,
                        const double min_strain_rate) const
       {
         if (this->simulator_is_past_initialization() && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms) && in.current_cell.state() == IteratorState::valid)
@@ -340,7 +340,7 @@ namespace aspect
                       }
                     current_edot_ii /= 2.;
                   }
-        return current_edot_ii;
+                return current_edot_ii;
               }
           }
       }
@@ -350,9 +350,9 @@ namespace aspect
       void
       FrictionOptions<dim>::
       compute_theta_reaction_terms(const MaterialModel::MaterialModelInputs<dim> &in,
-                                           const double min_strain_rate,
-	                    const double ref_strain_rate,
-						bool use_elasticity,
+                                   const double min_strain_rate,
+                                   const double ref_strain_rate,
+                                   bool use_elasticity,
                                    MaterialModel::MaterialModelOutputs<dim> &out) const
       {
         //cellsize is needed for theta and the friction angle
@@ -368,7 +368,7 @@ namespace aspect
               {
                 // compute current_edot_ii
                 const double current_edot_ii = compute_edot_ii (in, ref_strain_rate, use_elasticity, min_strain_rate);
-                                               const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
+                const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
                 double theta_old = in.composition[q][theta_position_tmp];
                 // equation (7) from Sobolev and Muldashev 2017. Though here I had to add  "- theta_old"
                 // because I need the change in theta for reaction_terms
