@@ -61,7 +61,11 @@ namespace aspect
                            "\n\n"
                            "\\item ``default'': No rate or state dependence of the friction angle is applied. ");
 
-        // Dynamic friction paramters
+                  // Plasticity parameters
+          drucker_prager_parameters = drucker_prager_plasticity.parse_parameters(this->n_compositional_fields()+1,
+                                                                                 prm);
+																				 
+		// Dynamic friction paramters
         prm.declare_entry ("Dynamic characteristic strain rate", "1e-12",
                            Patterns::Double (0),
                            "The characteristic strain rate value, where the angle of friction takes the middle "
@@ -122,9 +126,6 @@ namespace aspect
       {
         // Get the number of fields for composition-dependent material properties
         const unsigned int n_fields = this->n_compositional_fields() + 1;
-
-        // number of required compositional fields for full finite strain tensor
-        const unsigned int s = Tensor<2,dim>::n_independent_components;
 
         // Friction dependence parameters
         if (prm.get ("Strain weakening mechanism") == "none")
@@ -199,7 +200,7 @@ namespace aspect
 
 
       template <int dim>
-      std::array<double, 3>
+      double
       FrictionOptions<dim>::
       compute_dependent_friction_angle(const unsigned int j,
                                        const std::vector<double> &composition
@@ -361,7 +362,7 @@ namespace aspect
             for (unsigned int q=0; q < in.n_evaluation_points(); ++q)
               {
                 // compute current_edot_ii
-                const double current_edot_ii = compute_edot_ii ()
+                const double current_edot_ii = compute_edot_ii (in, min_strain_rate)
                                                const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
                 double theta_old = in.composition[q][theta_position_tmp];
                 // equation (7) from Sobolev and Muldashev 2017. Though here I had to add  "- theta_old"

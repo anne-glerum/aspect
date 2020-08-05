@@ -81,7 +81,7 @@ namespace aspect
            * the index j and a vector of all compositional fields, it returns
            * the newly calculated friction angle.
            */
-          std::array<double, 3>
+          double
           compute_dependent_friction_angle(const unsigned int j,
                                            const std::vector<double> &composition
                                            const MaterialModel::MaterialModelInputs<dim> &in,
@@ -125,7 +125,7 @@ namespace aspect
           std::vector<double> critical_slip_distance;
           std::vector<double> steady_state_strain_rate;
 
-          // IS THERE MORE I NEED HERE OR IN PUBLIC?
+          // IS THERE MORE I NEED HERE OR IN PUBLIC? 
       };
     }
   }
