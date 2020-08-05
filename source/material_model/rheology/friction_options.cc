@@ -135,6 +135,19 @@ namespace aspect
         else
           AssertThrow(false, ExcMessage("Not a valid Strain weakening mechanism!"));
 
+          // Dynamic friction parameters
+          dynamic_characteristic_strain_rate = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Dynamic characteristic strain rate"))),
+                                                                                       n_fields,
+                                                                                       "Dynamic characteristic strain rate");
+
+          dynamic_angles_of_internal_friction = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Dynamic angles of internal friction"))),
+                                                                                        n_fields,
+                                                                                        "Dynamic angles of internal friction");
+
+          dynamic_friction_smoothness_exponent = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Dynamic friction smoothness exponent"))),
+                                                                                         n_fields,
+                                                                                         "Dynamic friction smoothness exponent");
+
           // Rate and state friction parameters
 		  if (weakening_mechanism == state_dependent_friction)
 		  {
@@ -144,35 +157,21 @@ namespace aspect
 		  }
 		  
 
+          rate_and_state_parameter_a = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Rate and state parameter a"))),
+                                                                               n_fields,
+                                                                               "Rate and state parameter a");
 
+          rate_and_state_parameter_b = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Rate and state parameter b"))),
+                                                                               n_fields,
+                                                                               "Rate and state parameter b");
 
-        start_plastic_strain_weakening_intervals = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Start plasticity strain weakening intervals"))),
-                                                   n_fields,
-                                                   "Start plasticity strain weakening intervals");
+          critical_slip_distance = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Critical slip distance"))),
+                                                                           n_fields,
+                                                                           "Critical slip distance");
 
-        end_plastic_strain_weakening_intervals = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("End plasticity strain weakening intervals"))),
-                                                 n_fields,
-                                                 "End plasticity strain weakening intervals");
-
-        start_viscous_strain_weakening_intervals = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Start prefactor strain weakening intervals"))),
-                                                   n_fields,
-                                                   "Start prefactor strain weakening intervals");
-
-        end_viscous_strain_weakening_intervals = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("End prefactor strain weakening intervals"))),
-                                                 n_fields,
-                                                 "End prefactor strain weakening intervals");
-
-        viscous_strain_weakening_factors = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Prefactor strain weakening factors"))),
-                                                                                   n_fields,
-                                                                                   "Prefactor strain weakening factors");
-
-        cohesion_strain_weakening_factors = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Cohesion strain weakening factors"))),
-                                                                                    n_fields,
-                                                                                    "Cohesion strain weakening factors");
-
-        friction_strain_weakening_factors = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Friction strain weakening factors"))),
-                                                                                    n_fields,
-                                                                                    "Friction strain weakening factors");
+          steady_state_strain_rate = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Steady state strain rate"))),
+                                                                             n_fields,
+                                                                             "Steady state strain rate");
       }
 
 
