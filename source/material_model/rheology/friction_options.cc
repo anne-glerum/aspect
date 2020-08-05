@@ -223,7 +223,6 @@ namespace aspect
 /*
         std::array<double, 3> weakening_factors = {brittle_weakening.first,brittle_weakening.second,viscous_weakening};
 */
-
         return current_friction_angle;
       }
 
@@ -236,16 +235,32 @@ namespace aspect
                              const bool plastic_yielding,
                              MaterialModel::MaterialModelOutputs<dim> &out) const
       {
-
-          }
+/* do I need this???? */
+          
       }
 
+      template <int dim>
+      void
+      FrictionOptions<dim>::
+      compute_edot_ii (const MaterialModel::MaterialModelInputs<dim> &in,
+                             const int i,
+                             const double min_strain_rate,
+                             MaterialModel::MaterialModelOutputs<dim> &out) const
+      {
+		   if  (this->simulator_is_past_initialization() && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms))
+            {
+              const double edot_ii = std::max(sqrt(std::fabs(second_invariant(deviator(in.strain_rate[i])))),min_strain_rate);
+		    }
+          return edot_ii          
+      }
+	  
     template <int dim>
     ComponentMask
-    ViscoPlastic<dim>::
+    FrictionOptions<dim>::
     get_volumetric_composition_mask() const
     {
       // Store which components to exclude during the volume fraction computation.
+	  /* copied from visco_plastic: check how to get that information!!!! */
       ComponentMask composition_mask = strain_rheology.get_strain_composition_mask();
 
       if (weakening_mechanism == state_dependent_friction)
@@ -262,7 +277,7 @@ namespace aspect
 	
       template <int dim>
       void
-      StrainDependent<dim>::
+      FrictionOptions<dim>::
       compute_finite_strain_reaction_terms(const MaterialModel::MaterialModelInputs<dim> &in,
                                            MaterialModel::MaterialModelOutputs<dim> &out) const
       {
