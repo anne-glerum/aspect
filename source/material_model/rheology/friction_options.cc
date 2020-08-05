@@ -208,7 +208,6 @@ namespace aspect
       {
         double current_friction = 0.0; 
 
-        // compute current_edot_ii
         const double current_edot_ii = compute_edot_ii (in, min_strain_rate);
 
        switch (weakening_mechanism)
@@ -269,9 +268,6 @@ namespace aspect
               break;
             }
           }
-        /*
-                std::array<double, 3> weakening_factors = {brittle_weakening.first,brittle_weakening.second,viscous_weakening};
-        */
         return current_friction;
       }
 
