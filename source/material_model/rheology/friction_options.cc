@@ -214,6 +214,7 @@ namespace aspect
           {
             case none:
             {
+				/* I guess here I need to say that current friction is simply the internal angle of friction. If not it will return 0.0 as its value?  */
               break;
             }
             case dynamic_friction:
@@ -357,9 +358,7 @@ namespace aspect
 
         // compute current_edot_ii
         const double current_edot_ii = compute_edot_ii ()
-
-
-                                       const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
+        const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
         double theta_old = in.composition[q][theta_position_tmp];
         // equation (7) from Sobolev and Muldashev 2017. Though here I had to add  "- theta_old"
         // because I need the change in theta for reaction_terms
@@ -368,69 +367,7 @@ namespace aspect
                                         /cellsize/current_edot_ii)*exp(-(current_edot_ii*this->get_timestep())
                                                                        /critical_slip_distance[theta_position_tmp+1]*cellsize) - theta_old;
         out.reaction_terms[q][theta_position_tmp] = theta_increment;
-
-        /*
-        if (in.current_cell.state() == IteratorState::valid && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms))
-          {
-            // We need the velocity gradient for the finite strain (they are not
-            // in material model inputs), so we get them from the finite element.
-            std::vector<Point<dim> > quadrature_positions(in.n_evaluation_points());
-            for (unsigned int i=0; i < in.n_evaluation_points(); ++i)
-              quadrature_positions[i] = this->get_mapping().transform_real_to_unit_cell(in.current_cell, in.position[i]);
-
-            FEValues<dim> fe_values (this->get_mapping(),
-                                     this->get_fe(),
-                                     Quadrature<dim>(quadrature_positions),
-                                     update_gradients);
-
-            std::vector<Tensor<2,dim> > velocity_gradients (quadrature_positions.size(), Tensor<2,dim>());
-
-            fe_values.reinit (in.current_cell);
-            fe_values[this->introspection().extractors.velocities].get_function_gradients (this->get_solution(),
-                                                                                           velocity_gradients);
-
-            // Assign the strain components to the compositional fields reaction terms.
-            // If there are too many fields, we simply fill only the first fields with the
-            // existing strain tensor components.
-
-            for (unsigned int q=0; q < in.n_evaluation_points(); ++q)
-              {
-                if (in.current_cell.state() == IteratorState::valid && weakening_mechanism == finite_strain_tensor
-                    && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms))
-
-                  {
-                    // Convert the compositional fields into the tensor quantity they represent.
-                    Tensor<2,dim> strain;
-                    const unsigned int n_first = this->introspection().compositional_index_for_name("s11");
-                    for (unsigned int i = n_first; i < n_first + Tensor<2,dim>::n_independent_components ; ++i)
-                      {
-                        strain[Tensor<2,dim>::unrolled_to_component_indices(i)] = in.composition[q][i];
-                      }
-
-                    // Compute the strain accumulated in this timestep.
-                    const Tensor<2,dim> strain_increment = this->get_timestep() * (velocity_gradients[q] * strain);
-
-                    // Output the strain increment component-wise to its respective compositional field's reaction terms.
-                    for (unsigned int i = n_first; i < n_first + Tensor<2,dim>::n_independent_components ; ++i)
-                      {
-                        out.reaction_terms[q][i] = strain_increment[Tensor<2,dim>::unrolled_to_component_indices(i)];
-                      }
-                  }
-              }
-          }
-        */
       }
-
-
-
-      template <int dim>
-      WeakeningMechanism
-      FrictionOptions<dim>::
-      get_weakening_mechanism() const
-      {
-        return weakening_mechanism;
-      }
-
     }
   }
 }
