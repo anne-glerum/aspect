@@ -179,14 +179,26 @@ namespace aspect
       std::array<double, 3>
       FrictionOptions<dim>::
       compute_dependent_friction_angle(const unsigned int j,
-                                       const std::vector<double> &composition) const
+                                       const std::vector<double> &composition
+									   const MaterialModel::MaterialModelInputs<dim> &in,
+                                       const int i,
+                                       const double min_strain_rate,
+                                       MaterialModel::MaterialModelOutputs<dim> &out) const
+									   /* what is j what is i? They came from different functions before. Do I need both? */
       {
 		  /* do I have to declare current_friction here???? */
 		  /*
         double viscous_weakening = 1.0;
         std::pair<double, double> brittle_weakening (1.0, 1.0);
-*/
-        switch (weakening_mechanism)
+*/ 
+
+		// compute current_edot_ii, which is the second invariant of strain rate tensor
+		   if  (this->simulator_is_past_initialization() && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms))
+            {
+              const double current_edot_ii = std::max(sqrt(std::fabs(second_invariant(deviator(in.strain_rate[i])))),min_strain_rate);
+		    }       
+        
+		switch (weakening_mechanism)
           {
             case none:
             {
@@ -207,6 +219,7 @@ namespace aspect
             }
             case state_dependent_friction:
             {
+				/* where do I get cellsize from?*/
 				
           // calculate the state variable theta
           // theta_old loads theta from previous time step
@@ -218,9 +231,10 @@ namespace aspect
                                                                                          / cellsize/current_edot_ii) * exp( - (current_edot_ii * this->get_timestep())
                                                                                              / critical_slip_distance[j] * cellsize);
 
-          // calculate effective friction according to equation (4) in Sobolev and Muldashev 2017; 0.03 = (1-p_f/sigma_n)
+          // calculate effective friction according to equation (4) in Sobolev and Muldashev 2017; 
+		  // effective friction id calculated by multiplying the friction coefficient with 0.03 = (1-p_f/sigma_n)
 		  // their equation is for friction coefficient, while ASPECT takes friction angle in RAD, so conversion with tan/atan()
-          const double current_friction = atan((tan(drucker_prager_parameters.angles_internal_friction[j])
+          const double current_friction = atan(0.03*(tan(drucker_prager_parameters.angles_internal_friction[j])
                                                 + rate_and_state_parameter_a[j] * log(current_edot_ii * cellsize
                                                                                       / steady_state_strain_rate[j]) + rate_and_state_parameter_b[j]
                                                 * log(theta * steady_state_strain_rate[j] / critical_slip_distance[j])));
@@ -249,21 +263,6 @@ namespace aspect
                              MaterialModel::MaterialModelOutputs<dim> &out) const
       {
 /* do I need this???? */
-      }
-
-      template <int dim>
-      void
-      FrictionOptions<dim>::
-      compute_edot_ii (const MaterialModel::MaterialModelInputs<dim> &in,
-                             const int i,
-                             const double min_strain_rate,
-                             MaterialModel::MaterialModelOutputs<dim> &out) const
-      {
-		   if  (this->simulator_is_past_initialization() && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms))
-            {
-              const double current_edot_ii = std::max(sqrt(std::fabs(second_invariant(deviator(in.strain_rate[i])))),min_strain_rate);
-		    }
-          return current_edot_ii          
       }
 	  
     template <int dim>
