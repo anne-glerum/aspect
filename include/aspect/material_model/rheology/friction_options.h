@@ -35,28 +35,18 @@ namespace aspect
 
     namespace Rheology
     {
-      /** DO I NEED THIS?
-       * Enumeration for selecting which type of weakening mechanism to use.
-       * For none, no strain weakening occurs.
-       * Otherwise, the material can be weakened based on the second
-       * invariant of the full finite strain tensor, the total accumulated
-       * strain, or the plastic strain and viscous strain can be tracked
-       * separately and used only for the corresponding (plastic or viscous)
-       * part of the viscosity computation.
+      /** 
+       * Enumeration for selecting which type of friction dependence to use.
+       * For none, internal angle of friction is used.
+       * Otherwise, the friction angle can be rate and/or state dependent.
        */
 
-      /* DO I NEED THIS?
-       enum WeakeningMechanism
+       enum FrictionDependenceMechanism
        {
          none,
-         finite_strain_tensor,
-         total_strain,
-         plastic_weakening_with_plastic_strain_only,
-         plastic_weakening_with_total_strain_only,
-         plastic_weakening_with_plastic_strain_and_viscous_weakening_with_viscous_strain,
-         viscous_weakening_with_viscous_strain_only
+         dynamic_friction,
+         state_dependent_friction
        };
-      */
 
       template <int dim>
       class FrictionOptions : public ::aspect::SimulatorAccess<dim>
@@ -83,7 +73,7 @@ namespace aspect
            */
           double
           compute_dependent_friction_angle(const unsigned int j,
-                                           const std::vector<double> &composition
+                                           const std::vector<double> &composition,
                                            const MaterialModel::MaterialModelInputs<dim> &in,
 	                    const double ref_strain_rate,
 						bool use_elasticity,
@@ -93,7 +83,7 @@ namespace aspect
            * A function that returns a ComponentMask, which indicates that the component
            * associated with theta should be excluded during the volume fraction computation.
            */
-          ComponentMask get_volumetric_composition_mask(weakening_mechanism) const;
+          ComponentMask get_volumetric_composition_mask() const;
 
           /**
            * A function that returns current_edot_ii, which is the current second invariant

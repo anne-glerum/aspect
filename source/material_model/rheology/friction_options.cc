@@ -62,6 +62,7 @@ namespace aspect
                            "\\item ``default'': No rate or state dependence of the friction angle is applied. ");
 
         // Plasticity parameters
+		/*should I do this or just read in the internal anlges of friction directly? */
         drucker_prager_parameters = drucker_prager_plasticity.parse_parameters(this->n_compositional_fields()+1,
                                                                                prm);
 
@@ -202,8 +203,10 @@ namespace aspect
       double
       FrictionOptions<dim>::
       compute_dependent_friction_angle(const unsigned int j,
-                                       const std::vector<double> &composition
+                                       const std::vector<double> &composition,
                                        const MaterialModel::MaterialModelInputs<dim> &in,
+	                    const double ref_strain_rate,
+						bool use_elasticity,
                                        const double min_strain_rate) const
       {
         double current_friction = 0.0;
@@ -275,7 +278,7 @@ namespace aspect
       template <int dim>
       ComponentMask
       FrictionOptions<dim>::
-      get_volumetric_composition_mask(weakening_mechanism) const
+      get_volumetric_composition_mask() const
       {
         // Store which components to exclude during the volume fraction computation.
         /* copied from visco_plastic: check how to get that information!!!! */
