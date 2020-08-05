@@ -187,10 +187,6 @@ namespace aspect
 									   /* what is j what is i? They came from different functions before. Do I need both? */
       {
 		  /* do I have to declare current_friction here???? */
-		  /*
-        double viscous_weakening = 1.0;
-        std::pair<double, double> brittle_weakening (1.0, 1.0);
-*/ 
 
 		// compute current_edot_ii
         const double current_edot_ii = compute_edot_ii ()
@@ -216,7 +212,12 @@ namespace aspect
             }
             case state_dependent_friction:
             {
-				/* where do I get cellsize from?*/
+			//cellsize is needed for theta and the friction angle
+      double cellsize = 1;
+      if (in.current_cell.state() == IteratorState::valid)
+        {
+          cellsize = in.current_cell->extent_in_direction(0);
+        }
 				
           // calculate the state variable theta
           // theta_old loads theta from previous time step
@@ -341,7 +342,15 @@ return current_edot_ii;
       compute_theta_reaction_terms(const MaterialModel::MaterialModelInputs<dim> &in,
                                            MaterialModel::MaterialModelOutputs<dim> &out) const
       {
-		  /* use this for theta increment reaction terms !! */
+		//cellsize is needed for theta and the friction angle
+      double cellsize = 1;
+      if (in.current_cell.state() == IteratorState::valid)
+        {
+          cellsize = in.current_cell->extent_in_direction(0);
+        }
+		  
+		// compute current_edot_ii
+        const double current_edot_ii = compute_edot_ii ()
 		  
 
               const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
