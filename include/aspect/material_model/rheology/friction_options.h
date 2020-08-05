@@ -35,7 +35,7 @@ namespace aspect
 
     namespace Rheology
     {
-      /**
+      /** DO I NEED THIS?
        * Enumeration for selecting which type of weakening mechanism to use.
        * For none, no strain weakening occurs.
        * Otherwise, the material can be weakened based on the second
@@ -44,16 +44,19 @@ namespace aspect
        * separately and used only for the corresponding (plastic or viscous)
        * part of the viscosity computation.
        */
-      enum WeakeningMechanism
-      {
-        none,
-        finite_strain_tensor,
-        total_strain,
-        plastic_weakening_with_plastic_strain_only,
-        plastic_weakening_with_total_strain_only,
-        plastic_weakening_with_plastic_strain_and_viscous_weakening_with_viscous_strain,
-        viscous_weakening_with_viscous_strain_only
-      };
+
+      /* DO I NEED THIS?
+       enum WeakeningMechanism
+       {
+         none,
+         finite_strain_tensor,
+         total_strain,
+         plastic_weakening_with_plastic_strain_only,
+         plastic_weakening_with_total_strain_only,
+         plastic_weakening_with_plastic_strain_and_viscous_weakening_with_viscous_strain,
+         viscous_weakening_with_viscous_strain_only
+       };
+      */
 
       template <int dim>
       class FrictionOptions : public ::aspect::SimulatorAccess<dim>
@@ -106,6 +109,23 @@ namespace aspect
 
         private:
 
+
+          /**
+          * dynamic friction input parameters
+          */
+          std::vector<double> dynamic_angles_of_internal_friction;
+          std::vector<double> dynamic_characteristic_strain_rate;
+          std::vector<double> dynamic_friction_smoothness_exponent;
+
+          /**
+          * rate and state friction input parameters
+          */
+          std::vector<double> rate_and_state_parameter_a;
+          std::vector<double> rate_and_state_parameter_b;
+          std::vector<double> critical_slip_distance;
+          std::vector<double> steady_state_strain_rate;
+
+          // IS THERE MORE I NEED HERE OR IN PUBLIC?
       };
     }
   }
