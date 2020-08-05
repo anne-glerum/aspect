@@ -204,14 +204,12 @@ namespace aspect
       compute_dependent_friction_angle(const unsigned int j,
                                        const std::vector<double> &composition
                                        const MaterialModel::MaterialModelInputs<dim> &in,
-                                       const double min_strain_rate,
-                                       MaterialModel::MaterialModelOutputs<dim> &out) const
-      /* what is j what is i? They came from different functions before. Do I need both? */
+                                       const double min_strain_rate) const
       {
         double current_friction = 0.0; 
 
         // compute current_edot_ii
-        const double current_edot_ii = compute_edot_ii (&in, min_strain_rate);
+        const double current_edot_ii = compute_edot_ii (in, min_strain_rate);
 
        switch (weakening_mechanism)
           {
