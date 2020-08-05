@@ -85,23 +85,23 @@ namespace aspect
           compute_dependent_friction_angle(const unsigned int j,
                                            const std::vector<double> &composition
                                            const MaterialModel::MaterialModelInputs<dim> &in,
-                                           const double ref_strain_rate,
-                                           bool use_elasticity,
+	                    const double ref_strain_rate,
+						bool use_elasticity,
                                            const double min_strain_rate) const;
 
           /**
            * A function that returns a ComponentMask, which indicates that the component
            * associated with theta should be excluded during the volume fraction computation.
            */
-          ComponentMask get_volumetric_composition_mask() const;
+          ComponentMask get_volumetric_composition_mask(weakening_mechanism) const;
 
           /**
            * A function that returns current_edot_ii, which is the current second invariant
           * of the strain rate tensor.
            */
-          void compute_edot_ii (const MaterialModel::MaterialModelInputs<dim> &in,
-                                const double ref_strain_rate,
-                                bool use_elasticity,
+          double compute_edot_ii (const MaterialModel::MaterialModelInputs<dim> &in,
+	                    const double ref_strain_rate,
+						bool use_elasticity,
                                 const double min_strain_rate) const;
 
           /**
@@ -109,11 +109,17 @@ namespace aspect
            * MaterialModelOutputs object that is handed over.
            */
           void compute_theta_reaction_terms(const MaterialModel::MaterialModelInputs<dim> &in,
-                                            const double min_strain_rate,
-                                            const double ref_strain_rate,
-                                            bool use_elasticity,
+                                           const double min_strain_rate,
+	                    const double ref_strain_rate,
+						bool use_elasticity,
                                             MaterialModel::MaterialModelOutputs<dim> &out) const;
 
+          /**
+           * A function that returns the selected type of friction dependence.
+           */
+          FrictionDependenceMechanism
+          get_dependence_mechanism () const;
+		  
         private:
 
 
@@ -132,7 +138,7 @@ namespace aspect
           std::vector<double> critical_slip_distance;
           std::vector<double> steady_state_strain_rate;
 
-          // IS THERE MORE I NEED HERE OR IN PUBLIC?
+          // IS THERE MORE I NEED HERE OR IN PUBLIC? 
       };
     }
   }

@@ -198,7 +198,6 @@ namespace aspect
                                                                            "Steady state strain rate");
       }
 
-
       template <int dim>
       double
       FrictionOptions<dim>::
@@ -276,7 +275,7 @@ namespace aspect
       template <int dim>
       ComponentMask
       FrictionOptions<dim>::
-      get_volumetric_composition_mask() const
+      get_volumetric_composition_mask(weakening_mechanism) const
       {
         // Store which components to exclude during the volume fraction computation.
         /* copied from visco_plastic: check how to get that information!!!! */
@@ -294,7 +293,7 @@ namespace aspect
 
 
       template <int dim>
-      void
+      double
       FrictionOptions<dim>::
       compute_edot_ii (const MaterialModel::MaterialModelInputs<dim> &in,
                        const double ref_strain_rate,
@@ -379,6 +378,14 @@ namespace aspect
                 out.reaction_terms[q][theta_position_tmp] = theta_increment;
               }
           }
+      }
+	  
+	  template <int dim>
+      FrictionDependenceMechanism
+      FrictionOptions<dim>::
+      get_friction_dependence_mechanism() const
+      {
+        return weakening_mechanism;
       }
     }
   }
