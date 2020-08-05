@@ -108,7 +108,7 @@ namespace aspect
            * A function that returns the selected type of friction dependence.
            */
           FrictionDependenceMechanism
-          get_dependence_mechanism () const;
+          get_friction_dependence_mechanism () const;
 		  
         private:
 
@@ -117,8 +117,8 @@ namespace aspect
           * dynamic friction input parameters
           */
           std::vector<double> dynamic_angles_of_internal_friction;
-          std::vector<double> dynamic_characteristic_strain_rate;
-          std::vector<double> dynamic_friction_smoothness_exponent;
+          double dynamic_characteristic_strain_rate;
+          double dynamic_friction_smoothness_exponent;
 
           /**
           * rate and state friction input parameters

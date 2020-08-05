@@ -59,7 +59,7 @@ namespace aspect
                            "\\item ``state dependent friction': A state variable theta is introduced. Method "
                            "is taken from Sobolev and Muldashev 2017. ....."
                            "\n\n"
-                           "\\item ``default'': No rate or state dependence of the friction angle is applied. ");
+						   "\\item ``default'': No rate or state dependence of the friction angle is applied. ");
 
         // Plasticity parameters
 		/*should I do this or just read in the internal anlges of friction directly? */
@@ -88,7 +88,7 @@ namespace aspect
                            "Units: degrees.");
 
         prm.declare_entry ("Dynamic friction smoothness exponent", "1",
-                           Patterns::List(Patterns::Double(0)),
+                           Patterns::Double (0),
                            "An exponential factor in the equation for the calculation of the friction angle "
                            "when a static and a dynamic friction angle is specified. A factor =1 is equivalent "
                            "to equation 13 in van Dinther et al., (2013, JGR). A factor between 0 and 1 makes the "
@@ -142,9 +142,7 @@ namespace aspect
           AssertThrow(false, ExcMessage("Not a valid friction dependence option!"));
 
         // Dynamic friction parameters
-        dynamic_characteristic_strain_rate = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Dynamic characteristic strain rate"))),
-                                                                                     n_fields,
-                                                                                     "Dynamic characteristic strain rate");
+        dynamic_characteristic_strain_rate = prm.get_double("Dynamic characteristic strain rate");
 
         if (prm.get ("Dynamic angles of internal friction") == "9999")
           {
@@ -294,7 +292,7 @@ namespace aspect
         return composition_mask;
       }
 
-
+// should this be here or be passed over from visco_plastic?
       template <int dim>
       double
       FrictionOptions<dim>::
