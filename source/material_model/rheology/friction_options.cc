@@ -177,8 +177,8 @@ namespace aspect
 
       template <int dim>
       std::array<double, 3>
-      StrainDependent<dim>::
-      compute_strain_weakening_factors(const unsigned int j,
+      FrictionOptions<dim>::
+      compute_dependent_friction_angle(const unsigned int j,
                                        const std::vector<double> &composition) const
       {
         double viscous_weakening = 1.0;
@@ -190,9 +190,10 @@ namespace aspect
             {
               break;
             }
-            case finite_strain_tensor:
+            case dynamic_friction:
             {
               // Calculate second invariant of left stretching tensor "L"
+			  /*
               Tensor<2,dim> strain;
               for (unsigned int q = 0; q < Tensor<2,dim>::n_independent_components ; ++q)
                 strain[Tensor<2,dim>::unrolled_to_component_indices(q)] = composition[q];
@@ -200,40 +201,17 @@ namespace aspect
 
               const double strain_ii = std::fabs(second_invariant(L));
               brittle_weakening = calculate_plastic_weakening(strain_ii, j);
+			  */
               viscous_weakening = calculate_viscous_weakening(strain_ii, j);
               break;
             }
-            case total_strain:
+            case state_dependent_friction:
             {
+				/*
               const unsigned int total_strain_index = this->introspection().compositional_index_for_name("total_strain");
               brittle_weakening = calculate_plastic_weakening(composition[total_strain_index], j);
               viscous_weakening = calculate_viscous_weakening(composition[total_strain_index], j);
-              break;
-            }
-            case plastic_weakening_with_total_strain_only:
-            {
-              const unsigned int total_strain_index = this->introspection().compositional_index_for_name("total_strain");
-              brittle_weakening = calculate_plastic_weakening(composition[total_strain_index], j);
-              break;
-            }
-            case plastic_weakening_with_plastic_strain_only:
-            {
-              const unsigned int plastic_strain_index = this->introspection().compositional_index_for_name("plastic_strain");
-              brittle_weakening = calculate_plastic_weakening(composition[plastic_strain_index], j);
-              break;
-            }
-            case plastic_weakening_with_plastic_strain_and_viscous_weakening_with_viscous_strain:
-            {
-              const unsigned int plastic_strain_index = this->introspection().compositional_index_for_name("plastic_strain");
-              brittle_weakening = calculate_plastic_weakening(composition[plastic_strain_index], j);
-              const unsigned int viscous_strain_index = this->introspection().compositional_index_for_name("viscous_strain");
-              viscous_weakening = calculate_viscous_weakening(composition[viscous_strain_index], j);
-              break;
-            }
-            case viscous_weakening_with_viscous_strain_only:
-            {
-              const unsigned int viscous_strain_index = this->introspection().compositional_index_for_name("viscous_strain");
-              viscous_weakening = calculate_viscous_weakening(composition[viscous_strain_index], j);
+			  */
               break;
             }
             default:
@@ -242,11 +220,11 @@ namespace aspect
               break;
             }
           }
-
+/*
         std::array<double, 3> weakening_factors = {brittle_weakening.first,brittle_weakening.second,viscous_weakening};
 
         return weakening_factors;
-
+*/
       }
 
 
