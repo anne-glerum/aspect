@@ -192,11 +192,8 @@ namespace aspect
         std::pair<double, double> brittle_weakening (1.0, 1.0);
 */ 
 
-		// compute current_edot_ii, which is the second invariant of strain rate tensor
-		   if  (this->simulator_is_past_initialization() && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms))
-            {
-              const double current_edot_ii = std::max(sqrt(std::fabs(second_invariant(deviator(in.strain_rate[i])))),min_strain_rate);
-		    }       
+		// compute current_edot_ii
+        const double current_edot_ii = compute_edot_ii ()
         
 		switch (weakening_mechanism)
           {
@@ -284,6 +281,60 @@ namespace aspect
       return composition_mask;
     }
 	
+	
+	   template <int dim>
+      void
+      FrictionOptions<dim>::
+      compute_edot_ii (const MaterialModel::MaterialModelInputs<dim> &in,
+                             const int i,
+                             const double min_strain_rate,
+                             MaterialModel::MaterialModelOutputs<dim> &out) const
+      {
+		         if (this->simulator_is_past_initialization() && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms) && in.current_cell.state() == IteratorState::valid)
+        {
+          for (unsigned int q=0; q < in.n_evaluation_points(); ++q)
+            {
+              const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
+                                                    ((in.strain_rate[q]).norm() <= std::numeric_limits<double>::min());
+              double edot_ii;
+              if (use_reference_strainrate)
+                edot_ii = ref_strain_rate;
+              else
+                edot_ii = std::max(std::sqrt(std::fabs(second_invariant(deviator(in.strain_rate[q])))),
+                                   min_strain_rate);
+
+              double current_edot_ii = numbers::signaling_nan<double>();
+              SymmetricTensor<2,dim> stress_old = numbers::signaling_nan<SymmetricTensor<2,dim>>();
+
+              if (use_elasticity == false)
+                {
+                  current_edot_ii = edot_ii;
+                }
+              else
+                {
+                  for (unsigned int j=0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
+                    {
+                      stress_old[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)] = in.composition[q][j];
+                      const std::vector<double> &elastic_shear_moduli = elastic_rheology.get_elastic_shear_moduli();
+                      if (use_reference_strainrate == true)
+                        current_edot_ii = ref_strain_rate;
+                      else
+                        {
+                          const double viscoelastic_strain_rate_invariant = elastic_rheology.calculate_viscoelastic_strain_rate(in.strain_rate[q],
+                                                                            stress_old,
+                                                                            elastic_shear_moduli[j]);
+                          current_edot_ii = std::max(viscoelastic_strain_rate_invariant,
+                                                     min_strain_rate);
+                        }
+                    }
+                  current_edot_ii /= 2.;
+                }
+			}
+		}
+return current_edot_ii;		
+      }
+	
+	
       template <int dim>
       void
       FrictionOptions<dim>::
@@ -292,8 +343,19 @@ namespace aspect
       {
 		  /* use this for theta increment reaction terms !! */
 		  
-/*
-        if (in.current_cell.state() == IteratorState::valid && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms))
+
+              const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
+              double theta_old = in.composition[q][theta_position_tmp];
+              // equation (7) from Sobolev and Muldashev 2017. Though here I had to add  "- theta_old"
+              // because I need the change in theta for reaction_terms
+              const double theta_increment = critical_slip_distance[theta_position_tmp+1] /cellsize/current_edot_ii +
+                                             (theta_old - critical_slip_distance[theta_position_tmp+1]
+                                              /cellsize/current_edot_ii)*exp(-(current_edot_ii*this->get_timestep())
+                                                                             /critical_slip_distance[theta_position_tmp+1]*cellsize) - theta_old;
+              out.reaction_terms[q][theta_position_tmp] = theta_increment;
+			  
+			  /*
+		if (in.current_cell.state() == IteratorState::valid && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms))
           {
             // We need the velocity gradient for the finite strain (they are not
             // in material model inputs), so we get them from the finite element.
