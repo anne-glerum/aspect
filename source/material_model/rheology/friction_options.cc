@@ -272,18 +272,6 @@ namespace aspect
       }
 
       template <int dim>
-      void
-      FrictionOptions<dim>::
-      fill_reaction_outputs (const MaterialModel::MaterialModelInputs<dim> &in,
-                             const int i,
-                             const double min_strain_rate,
-                             const bool plastic_yielding,
-                             MaterialModel::MaterialModelOutputs<dim> &out) const
-      {
-        /* do I need this???? */
-      }
-
-      template <int dim>
       ComponentMask
       FrictionOptions<dim>::
       get_volumetric_composition_mask() const
