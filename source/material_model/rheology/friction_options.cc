@@ -201,8 +201,8 @@ namespace aspect
 
               const double strain_ii = std::fabs(second_invariant(L));
               brittle_weakening = calculate_plastic_weakening(strain_ii, j);
-			  */
               viscous_weakening = calculate_viscous_weakening(strain_ii, j);
+			  */
               break;
             }
             case state_dependent_friction:
@@ -222,50 +222,14 @@ namespace aspect
           }
 /*
         std::array<double, 3> weakening_factors = {brittle_weakening.first,brittle_weakening.second,viscous_weakening};
-
-        return weakening_factors;
 */
-      }
 
-
-      template <int dim>
-      std::pair<double, double>
-      StrainDependent<dim>::
-      calculate_plastic_weakening(const double strain_ii,
-                                  const unsigned int j) const
-      {
-        // Constrain the second strain invariant of the previous timestep by the strain interval
-        const double cut_off_strain_ii = std::max(std::min(strain_ii,end_plastic_strain_weakening_intervals[j]),start_plastic_strain_weakening_intervals[j]);
-
-        // Linear strain weakening of cohesion and internal friction angle between specified strain values
-        const double strain_fraction = (cut_off_strain_ii - start_plastic_strain_weakening_intervals[j]) /
-                                       (start_plastic_strain_weakening_intervals[j] - end_plastic_strain_weakening_intervals[j]);
-
-        const double weakening_cohesion = 1. + (1. - cohesion_strain_weakening_factors[j]) * strain_fraction;
-        const double weakening_friction = 1. + (1. - friction_strain_weakening_factors[j]) * strain_fraction;
-
-        return std::make_pair (weakening_cohesion, weakening_friction);
-      }
-
-
-      template <int dim>
-      double
-      StrainDependent<dim>::
-      calculate_viscous_weakening(const double strain_ii,
-                                  const unsigned int j) const
-      {
-        // Constrain the second strain invariant of the previous timestep by the strain interval
-        const double cut_off_strain_ii = std::max(std::min(strain_ii,end_viscous_strain_weakening_intervals[j]),start_viscous_strain_weakening_intervals[j]);
-
-        // Linear strain weakening of the viscous flow law prefactors between specified strain values
-        const double strain_fraction = (cut_off_strain_ii - start_viscous_strain_weakening_intervals[j]) /
-                                       (start_viscous_strain_weakening_intervals[j] - end_viscous_strain_weakening_intervals[j]);
-        return 1. + ( 1. - viscous_strain_weakening_factors[j] ) * strain_fraction;
+        return current_friction_angle;
       }
 
       template <int dim>
       void
-      StrainDependent<dim>::
+      FrictionOptions<dim>::
       fill_reaction_outputs (const MaterialModel::MaterialModelInputs<dim> &in,
                              const int i,
                              const double min_strain_rate,
@@ -273,35 +237,29 @@ namespace aspect
                              MaterialModel::MaterialModelOutputs<dim> &out) const
       {
 
-        // If strain weakening is used, overwrite the first reaction term,
-        // which represents the second invariant of the (plastic) strain tensor.
-        // If plastic strain is tracked (so not the total strain), only overwrite
-        // when plastically yielding.
-        // If viscous strain is also tracked, overwrite the second reaction term as well.
-        // Calculate changes in strain and update the reaction terms
-        if  (this->simulator_is_past_initialization() && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms))
-          {
-            const double edot_ii = std::max(sqrt(std::fabs(second_invariant(deviator(in.strain_rate[i])))),min_strain_rate);
-            const double e_ii = edot_ii*this->get_timestep();
-            if (weakening_mechanism == plastic_weakening_with_plastic_strain_only && plastic_yielding == true)
-              out.reaction_terms[i][this->introspection().compositional_index_for_name("plastic_strain")] = e_ii;
-            if (weakening_mechanism == viscous_weakening_with_viscous_strain_only && plastic_yielding == false)
-              out.reaction_terms[i][this->introspection().compositional_index_for_name("viscous_strain")] = e_ii;
-            if (weakening_mechanism == total_strain || weakening_mechanism == plastic_weakening_with_total_strain_only)
-              out.reaction_terms[i][this->introspection().compositional_index_for_name("total_strain")] = e_ii;
-            if (weakening_mechanism == plastic_weakening_with_plastic_strain_and_viscous_weakening_with_viscous_strain)
-              {
-                if (plastic_yielding == true)
-                  out.reaction_terms[i][this->introspection().compositional_index_for_name("plastic_strain")] = e_ii;
-                else
-                  out.reaction_terms[i][this->introspection().compositional_index_for_name("viscous_strain")] = e_ii;
-              }
-            if (this->introspection().compositional_name_exists("noninitial_plastic_strain") && plastic_yielding == true)
-              out.reaction_terms[i][this->introspection().compositional_index_for_name("noninitial_plastic_strain")] = e_ii;
           }
       }
 
+    template <int dim>
+    ComponentMask
+    ViscoPlastic<dim>::
+    get_volumetric_composition_mask() const
+    {
+      // Store which components to exclude during the volume fraction computation.
+      ComponentMask composition_mask = strain_rheology.get_strain_composition_mask();
 
+      if (weakening_mechanism == state_dependent_friction)
+        {
+          // this is the compositional field used for theta in rate-and-state friction
+          int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
+          composition_mask.set(theta_position_tmp,false);
+        }
+
+      return composition_mask;
+    }
+	
+	
+	
       template <int dim>
       void
       StrainDependent<dim>::
