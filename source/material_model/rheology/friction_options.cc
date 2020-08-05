@@ -273,15 +273,15 @@ namespace aspect
       return composition_mask;
     }
 	
-	
-	
       template <int dim>
       void
       FrictionOptions<dim>::
-      compute_finite_strain_reaction_terms(const MaterialModel::MaterialModelInputs<dim> &in,
+      compute_theta_reaction_terms(const MaterialModel::MaterialModelInputs<dim> &in,
                                            MaterialModel::MaterialModelOutputs<dim> &out) const
       {
-
+		  /* use this for theta increment reaction terms !! */
+		  
+/*
         if (in.current_cell.state() == IteratorState::valid && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms))
           {
             // We need the velocity gradient for the finite strain (they are not
@@ -330,6 +330,7 @@ namespace aspect
                   }
               }
           }
+		  */
       }
 
 
