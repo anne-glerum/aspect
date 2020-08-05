@@ -74,10 +74,18 @@ namespace aspect
 
         prm.declare_entry ("Dynamic angles of internal friction", "9999",
                            Patterns::List(Patterns::Double(0)),
-                           "Dynamic angles of friction which are taken when the effective strain rate in a cell "
+						   "List of dynamic angles of internal friction, $\\phi$, for background material and compositional "
+                           "fields, for a total of N+1 values, where N is the number of compositional fields. "
+                           "For a value of zero, in 2D the von Mises criterion is retrieved. ''
+                           "Dynamic angles of friction are used for calculation when the effective strain rate in a cell "
                            "is well above the characteristic strain rate. If not specified, the internal angles of "
                            "friction are taken. "
                            "Units: degrees.");
+						   
+						           for (unsigned int i = 0; i<parameters.dynamic_angles_of_internal_friction.size(); ++i)
+          {
+            parameters.dynamic_angles_internal_friction[i] *= numbers::PI/180.0;
+          }
 
         prm.declare_entry ("Dynamic friction smoothness exponent", "1",
                            Patterns::List(Patterns::Double(0)),
@@ -201,14 +209,18 @@ namespace aspect
             case dynamic_friction:
             {
               // The dynamic characteristic strain rate is used to see if dynamic or static angle of internal friction should be used.
-              // This is done as in the material_model dynamic_friction which is based on equation 13 in van Dinther et al., (2013, JGR).
+              // This is done as in the material_model dynamic_friction which is based on equation 13 in van Dinther et al., (2013, JGR). 
               // const double mu  = mu_d[i] + (mu_s[i] - mu_d[i]) / ( (1 + strain_rate_dev_inv2/reference_strain_rate) );
-              // which is the following using the variables in this material_model
-              const double current_friction = dynamic_angles_of_internal_friction[j]
-                                              + (drucker_prager_parameters.angles_internal_friction[j]   //    do I need these here?:  * weakening_factors[1]
-                                                 - dynamic_angles_of_internal_friction[j])
+              // which is the following using the variables in this material_model. Although here the dynamic friction coefficient
+			  // is directly specified. The coefficient of friction is the tangent of the internal angle of friction. 
+			  // Furthermore a smoothness coefficient is added, which influences if the friction vs strain rate curve is rather 
+			  // step-like or more gradual.
+              const double mu = std::tan(dynamic_angles_of_internal_friction[j])
+                                              + (std::tan(drucker_prager_parameters.angles_internal_friction[j])   //    do I need the weakening factors here? I guess not:  * weakening_factors[1]
+                                                 - std::tan(dynamic_angles_of_internal_friction[j]))
                                               / (1 + std::pow((current_edot_ii / dynamic_characteristic_strain_rate[j]),
                                                               dynamic_friction_smoothness_exponent));
+			   const double current_friction = std::atan (mu);
               break;
             }
             case state_dependent_friction:
