@@ -317,43 +317,11 @@ namespace aspect
           }
       }
 
-      template <int dim>
-      ComponentMask
-      StrainDependent<dim>::
-      get_strain_composition_mask() const
-      {
 
-        // Store which components to exclude during volume fraction computation.
-        ComponentMask strain_mask(this->n_compositional_fields(),true);
-
-        if (weakening_mechanism != none)
-          {
-            if (weakening_mechanism == plastic_weakening_with_plastic_strain_only || weakening_mechanism == plastic_weakening_with_plastic_strain_and_viscous_weakening_with_viscous_strain)
-              strain_mask.set(this->introspection().compositional_index_for_name("plastic_strain"),false);
-
-            if (weakening_mechanism == viscous_weakening_with_viscous_strain_only || weakening_mechanism == plastic_weakening_with_plastic_strain_and_viscous_weakening_with_viscous_strain)
-              strain_mask.set(this->introspection().compositional_index_for_name("viscous_strain"),false);
-
-            if (weakening_mechanism == total_strain || weakening_mechanism == plastic_weakening_with_total_strain_only)
-              strain_mask.set(this->introspection().compositional_index_for_name("total_strain"),false);
-
-            if (weakening_mechanism == finite_strain_tensor)
-              {
-                const unsigned int n_start = this->introspection().compositional_index_for_name("s11");
-                for (unsigned int i = n_start; i < n_start + Tensor<2,dim>::n_independent_components ; ++i)
-                  strain_mask.set(i,false);
-              }
-          }
-
-        if (this->introspection().compositional_name_exists("noninitial_plastic_strain"))
-          strain_mask.set(this->introspection().compositional_index_for_name("noninitial_plastic_strain"),false);
-
-        return strain_mask;
-      }
 
       template <int dim>
       WeakeningMechanism
-      StrainDependent<dim>::
+      FrictionOptions<dim>::
       get_weakening_mechanism() const
       {
         return weakening_mechanism;
@@ -371,7 +339,7 @@ namespace aspect
 #define INSTANTIATE(dim) \
   namespace Rheology \
   { \
-    template class StrainDependent<dim>; \
+    template class FrictionOptions<dim>; \
   }
 
     ASPECT_INSTANTIATE(INSTANTIATE)
