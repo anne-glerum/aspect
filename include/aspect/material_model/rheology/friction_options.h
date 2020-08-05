@@ -18,8 +18,8 @@
   <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _aspect_material_model_rheology_strain_dependent_h
-#define _aspect_material_model_rheology_strain_dependent_h
+#ifndef _aspect_material_model_rheology_friction_options_h
+#define _aspect_material_model_rheology_friction_options_h
 
 #include <aspect/global.h>
 #include <aspect/material_model/interface.h>

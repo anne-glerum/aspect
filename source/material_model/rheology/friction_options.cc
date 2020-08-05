@@ -19,7 +19,7 @@
 */
 
 
-#include <aspect/material_model/rheology/strain_dependent.h>
+#include <aspect/material_model/rheology/friction_options.h>
 
 #include <deal.II/base/signaling_nan.h>
 #include <deal.II/base/parameter_handler.h>
