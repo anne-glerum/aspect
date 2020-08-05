@@ -351,6 +351,8 @@ namespace aspect
       FrictionOptions<dim>::
       compute_theta_reaction_terms(const MaterialModel::MaterialModelInputs<dim> &in,
                                            const double min_strain_rate,
+	                    const double ref_strain_rate,
+						bool use_elasticity,
                                    MaterialModel::MaterialModelOutputs<dim> &out) const
       {
         //cellsize is needed for theta and the friction angle
@@ -365,7 +367,7 @@ namespace aspect
             for (unsigned int q=0; q < in.n_evaluation_points(); ++q)
               {
                 // compute current_edot_ii
-                const double current_edot_ii = compute_edot_ii (in, ref_strain_rate, use_elasticity, min_strain_rate)
+                const double current_edot_ii = compute_edot_ii (in, ref_strain_rate, use_elasticity, min_strain_rate);
                                                const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
                 double theta_old = in.composition[q][theta_position_tmp];
                 // equation (7) from Sobolev and Muldashev 2017. Though here I had to add  "- theta_old"

@@ -110,6 +110,8 @@ namespace aspect
            */
           void compute_theta_reaction_terms(const MaterialModel::MaterialModelInputs<dim> &in,
                                            const double min_strain_rate,
+	                    const double ref_strain_rate,
+						bool use_elasticity,
                                             MaterialModel::MaterialModelOutputs<dim> &out) const;
 
         private:
