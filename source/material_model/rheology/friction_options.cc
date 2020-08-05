@@ -207,11 +207,23 @@ namespace aspect
             }
             case state_dependent_friction:
             {
-				/*
-              const unsigned int total_strain_index = this->introspection().compositional_index_for_name("total_strain");
-              brittle_weakening = calculate_plastic_weakening(composition[total_strain_index], j);
-              viscous_weakening = calculate_viscous_weakening(composition[total_strain_index], j);
-			  */
+				
+          // calculate the state variable theta
+          // theta_old loads theta from previous time step
+
+          const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
+          double theta_old = composition[theta_position_tmp];
+          // equation (7) from Sobolev and Muldashev 2017
+          const double theta = critical_slip_distance[j] / cellsize / current_edot_ii + (theta_old - critical_slip_distance[j]
+                                                                                         / cellsize/current_edot_ii) * exp( - (current_edot_ii * this->get_timestep())
+                                                                                             / critical_slip_distance[j] * cellsize);
+
+          // calculate effective friction according to equation (4) in Sobolev and Muldashev 2017; 0.03 = (1-p_f/sigma_n)
+          const double current_friction = atan((tan(drucker_prager_parameters.angles_internal_friction[j])
+                                                + rate_and_state_parameter_a[j] * log(current_edot_ii * cellsize
+                                                                                      / steady_state_strain_rate[j]) + rate_and_state_parameter_b[j]
+                                                * log(theta * steady_state_strain_rate[j] / critical_slip_distance[j])));
+
               break;
             }
             default:
@@ -236,7 +248,6 @@ namespace aspect
                              MaterialModel::MaterialModelOutputs<dim> &out) const
       {
 /* do I need this???? */
-          
       }
 
       template <int dim>
