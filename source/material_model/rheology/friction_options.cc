@@ -376,6 +376,7 @@ namespace aspect
                                  }
                                  }
                                  }
+                                 }
 
                                    // explicit instantiations
                                    namespace aspect
