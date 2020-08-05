@@ -76,322 +76,322 @@ namespace aspect
                            Patterns::List(Patterns::Double(0)),
                            "List of dynamic angles of internal friction, $\\phi$, for background material and compositional "
                            "fields, for a total of N+1 values, where N is the number of compositional fields. "
-                           "For a value of zero, in 2D the von Mises criterion is retrieved. ''
+                           "For a value of zero, in 2D the von Mises criterion is retrieved. "
                            "Dynamic angles of friction are used for calculation when the effective strain rate in a cell "
                            "is well above the characteristic strain rate. If not specified, the internal angles of "
                            "friction are taken. "
                            "Units: degrees.");
 
-                           prm.declare_entry ("Dynamic friction smoothness exponent", "1",
+        prm.declare_entry ("Dynamic friction smoothness exponent", "1",
                            Patterns::List(Patterns::Double(0)),
                            "An exponential factor in the equation for the calculation of the friction angle "
-                             "when a static and a dynamic friction angle is specified. A factor =1 is equivalent "
-                                 "to equation 13 in van Dinther et al., (2013, JGR). A factor between 0 and 1 makes the "
-                             "curve of the friction angle vs. the strain rate more smooth, while a factor <1 makes "
-                               "the change between static and dynamic friction angle more steplike. "
-                               "Units: none.");
+                           "when a static and a dynamic friction angle is specified. A factor =1 is equivalent "
+                           "to equation 13 in van Dinther et al., (2013, JGR). A factor between 0 and 1 makes the "
+                           "curve of the friction angle vs. the strain rate more smooth, while a factor <1 makes "
+                           "the change between static and dynamic friction angle more steplike. "
+                           "Units: none.");
 
-                               // rate and state parameters
-                               prm.declare_entry ("Rate and state parameter a", "0",
-                               Patterns::List(Patterns::Double(0)),
-                               "The rate and state parameter - the rate dependency. Positive (a-b) is velocity"
-                               " strengthening, negative (a-b) is velocity weakening. "
-                               "Units: none");
+        // rate and state parameters
+        prm.declare_entry ("Rate and state parameter a", "0",
+                           Patterns::List(Patterns::Double(0)),
+                           "The rate and state parameter - the rate dependency. Positive (a-b) is velocity"
+                           " strengthening, negative (a-b) is velocity weakening. "
+                           "Units: none");
 
-                               prm.declare_entry ("Rate and state parameter b", "0",
-                               Patterns::List(Patterns::Double(0)),
-                               "The rate and state parameter - the state dependency. Positive (a-b) is velocity"
-                               " strengthening, negative (a-b) is velocity weakening. "
-                               "Units: none");
+        prm.declare_entry ("Rate and state parameter b", "0",
+                           Patterns::List(Patterns::Double(0)),
+                           "The rate and state parameter - the state dependency. Positive (a-b) is velocity"
+                           " strengthening, negative (a-b) is velocity weakening. "
+                           "Units: none");
 
-                               prm.declare_entry ("Critical slip distance", "0.01",
-                               Patterns::List(Patterns::Double(0)),
-                               "The critical slip distance in rate and state friction. Used to calculate the state "
-                               "variable theta.   "
-                               "Units: m");
+        prm.declare_entry ("Critical slip distance", "0.01",
+                           Patterns::List(Patterns::Double(0)),
+                           "The critical slip distance in rate and state friction. Used to calculate the state "
+                           "variable theta.   "
+                           "Units: m");
 
-                               prm.declare_entry ("Steady state strain rate", "1e-14",
-                               Patterns::List(Patterns::Double(0)),
-                               "Arbitrary strain rate at which friction equals the reference friction angle in rate and state friction. "
-                               "Units: $1/s$");
-                             }
+        prm.declare_entry ("Steady state strain rate", "1e-14",
+                           Patterns::List(Patterns::Double(0)),
+                           "Arbitrary strain rate at which friction equals the reference friction angle in rate and state friction. "
+                           "Units: $1/s$");
+      }
 
-                               template <int dim>
-                               void
-                               FrictionOptions<dim>::parse_parameters (ParameterHandler &prm)
-                               {
-                               // Get the number of fields for composition-dependent material properties
-                               const unsigned int n_fields = this->n_compositional_fields() + 1;
+      template <int dim>
+      void
+      FrictionOptions<dim>::parse_parameters (ParameterHandler &prm)
+      {
+        // Get the number of fields for composition-dependent material properties
+        const unsigned int n_fields = this->n_compositional_fields() + 1;
 
-                               // number of required compositional fields for full finite strain tensor
-                               const unsigned int s = Tensor<2,dim>::n_independent_components;
+        // number of required compositional fields for full finite strain tensor
+        const unsigned int s = Tensor<2,dim>::n_independent_components;
 
-                               // Friction dependence parameters
-                               if (prm.get ("Strain weakening mechanism") == "none")
-                               weakening_mechanism = none;
-                               else if (prm.get ("Strain weakening mechanism") == "dynamic friction")
-                               weakening_mechanism = dynamic_friction;
-                               else if (prm.get ("Strain weakening mechanism") == "state dependent friction")
-                               weakening_mechanism = state_dependent_friction;
-                             else if (prm.get ("Strain weakening mechanism") == "default")
-                                 weakening_mechanism = none;
-                                 /* would be nice for the future to have an option like rate and state friction with fixed point iteration */
-                                 else
-                                 AssertThrow(false, ExcMessage("Not a valid friction dependence option!"));
+        // Friction dependence parameters
+        if (prm.get ("Strain weakening mechanism") == "none")
+          weakening_mechanism = none;
+        else if (prm.get ("Strain weakening mechanism") == "dynamic friction")
+          weakening_mechanism = dynamic_friction;
+        else if (prm.get ("Strain weakening mechanism") == "state dependent friction")
+          weakening_mechanism = state_dependent_friction;
+        else if (prm.get ("Strain weakening mechanism") == "default")
+          weakening_mechanism = none;
+        /* would be nice for the future to have an option like rate and state friction with fixed point iteration */
+        else
+          AssertThrow(false, ExcMessage("Not a valid friction dependence option!"));
 
-                                 // Dynamic friction parameters
-                                 dynamic_characteristic_strain_rate = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Dynamic characteristic strain rate"))),
-                                 n_fields,
-                                 "Dynamic characteristic strain rate");
+        // Dynamic friction parameters
+        dynamic_characteristic_strain_rate = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Dynamic characteristic strain rate"))),
+                                                                                     n_fields,
+                                                                                     "Dynamic characteristic strain rate");
 
-                                 if (prm.get ("Dynamic angles of internal friction") == "9999")
-                                 {
-                                 // If not specified, the internal angles of friction are used, so there is no dynamic friction in the model
-                                 dynamic_angles_of_internal_friction = drucker_prager_parameters.angles_internal_friction;
-                               }
-                                 else
-                                 {
-                                 dynamic_angles_of_internal_friction = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Dynamic angles of internal friction"))),
-                                 n_fields,
-                                 "Dynamic angles of internal friction");
+        if (prm.get ("Dynamic angles of internal friction") == "9999")
+          {
+            // If not specified, the internal angles of friction are used, so there is no dynamic friction in the model
+            dynamic_angles_of_internal_friction = drucker_prager_parameters.angles_internal_friction;
+          }
+        else
+          {
+            dynamic_angles_of_internal_friction = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Dynamic angles of internal friction"))),
+                                                                                          n_fields,
+                                                                                          "Dynamic angles of internal friction");
 
-                                 // Convert angles from degrees to radians
-                                 for (unsigned int i = 0; i<dynamic_angles_of_internal_friction.size(); ++i)
-                                 {
-                                 if (dynamic_angles_of_internal_friction[i] > 90)
-                                 {
-                                 AssertThrow(false, ExcMessage("Dynamic angles of friction must be <= 90 degrees"));
-                               }
-                                 else
-                                 {
-                                 dynamic_angles_of_internal_friction[i] *= numbers::PI/180.0;
-                               }
-                               }
-                               }
+            // Convert angles from degrees to radians
+            for (unsigned int i = 0; i<dynamic_angles_of_internal_friction.size(); ++i)
+              {
+                if (dynamic_angles_of_internal_friction[i] > 90)
+                  {
+                    AssertThrow(false, ExcMessage("Dynamic angles of friction must be <= 90 degrees"));
+                  }
+                else
+                  {
+                    dynamic_angles_of_internal_friction[i] *= numbers::PI/180.0;
+                  }
+              }
+          }
 
-                                 dynamic_friction_smoothness_exponent = prm.get_double("Dynamic friction smoothness exponent");
+        dynamic_friction_smoothness_exponent = prm.get_double("Dynamic friction smoothness exponent");
 
-                                 // Rate and state friction parameters
-                                 if (weakening_mechanism == state_dependent_friction)
-                                 {
-                                 AssertThrow(this->introspection().compositional_index_for_name("theta"),
-                                 ExcMessage("Material model with rate-and-state friction only works "
-                                 "if there is a compositional field that is called theta."));
-                                 }
-
-
-                                   rate_and_state_parameter_a = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Rate and state parameter a"))),
-                                   n_fields,
-                                   "Rate and state parameter a");
-
-                                   rate_and_state_parameter_b = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Rate and state parameter b"))),
-                                   n_fields,
-                                   "Rate and state parameter b");
-
-                                   critical_slip_distance = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Critical slip distance"))),
-                                   n_fields,
-                                   "Critical slip distance");
-
-                                   steady_state_strain_rate = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Steady state strain rate"))),
-                                   n_fields,
-                                   "Steady state strain rate");
-                                 }
+        // Rate and state friction parameters
+        if (weakening_mechanism == state_dependent_friction)
+          {
+            AssertThrow(this->introspection().compositional_index_for_name("theta"),
+                        ExcMessage("Material model with rate-and-state friction only works "
+                                   "if there is a compositional field that is called theta."));
+          }
 
 
-                                   template <int dim>
-                                   std::array<double, 3>
-                                   FrictionOptions<dim>::
-                                   compute_dependent_friction_angle(const unsigned int j,
-                                   const std::vector<double> &composition
-                                   const MaterialModel::MaterialModelInputs<dim> &in,
-                                   const double min_strain_rate) const
-                                   {
-                                   double current_friction = 0.0;
+        rate_and_state_parameter_a = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Rate and state parameter a"))),
+                                                                             n_fields,
+                                                                             "Rate and state parameter a");
 
-                                   const double current_edot_ii = compute_edot_ii (in, min_strain_rate);
+        rate_and_state_parameter_b = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Rate and state parameter b"))),
+                                                                             n_fields,
+                                                                             "Rate and state parameter b");
 
-                                   switch (weakening_mechanism)
-                                   {
-                                   case none:
-                                   {
-                                   /* I guess here I need to say that current friction is simply the internal angle of friction. If not it will return 0.0 as its value?  */
-                                   break;
-                                 }
-                                   case dynamic_friction:
-                                   {
-                                   // The dynamic characteristic strain rate is used to see if dynamic or static angle of internal friction should be used.
-                                   // This is done as in the material_model dynamic_friction which is based on equation 13 in van Dinther et al., (2013, JGR).
-                                   // const double mu  = mu_d[i] + (mu_s[i] - mu_d[i]) / ( (1 + strain_rate_dev_inv2/reference_strain_rate) );
-                                   // which is the following using the variables in this material_model. Although here the dynamic friction coefficient
-                                   // is directly specified. The coefficient of friction is the tangent of the internal angle of friction.
-                                   // Furthermore a smoothness coefficient is added, which influences if the friction vs strain rate curve is rather
-                                   // step-like or more gradual.
-                                   const double mu = std::tan(dynamic_angles_of_internal_friction[j])
-                                   + (std::tan(drucker_prager_parameters.angles_internal_friction[j])   //    do I need the weakening factors here? I guess not:  * weakening_factors[1]
+        critical_slip_distance = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Critical slip distance"))),
+                                                                         n_fields,
+                                                                         "Critical slip distance");
+
+        steady_state_strain_rate = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Steady state strain rate"))),
+                                                                           n_fields,
+                                                                           "Steady state strain rate");
+      }
+
+
+      template <int dim>
+      std::array<double, 3>
+      FrictionOptions<dim>::
+      compute_dependent_friction_angle(const unsigned int j,
+                                       const std::vector<double> &composition
+                                       const MaterialModel::MaterialModelInputs<dim> &in,
+                                       const double min_strain_rate) const
+      {
+        double current_friction = 0.0;
+
+        const double current_edot_ii = compute_edot_ii (in, min_strain_rate);
+
+        switch (weakening_mechanism)
+          {
+            case none:
+            {
+              /* I guess here I need to say that current friction is simply the internal angle of friction. If not it will return 0.0 as its value?  */
+              break;
+            }
+            case dynamic_friction:
+            {
+              // The dynamic characteristic strain rate is used to see if dynamic or static angle of internal friction should be used.
+              // This is done as in the material_model dynamic_friction which is based on equation 13 in van Dinther et al., (2013, JGR).
+              // const double mu  = mu_d[i] + (mu_s[i] - mu_d[i]) / ( (1 + strain_rate_dev_inv2/reference_strain_rate) );
+              // which is the following using the variables in this material_model. Although here the dynamic friction coefficient
+              // is directly specified. The coefficient of friction is the tangent of the internal angle of friction.
+              // Furthermore a smoothness coefficient is added, which influences if the friction vs strain rate curve is rather
+              // step-like or more gradual.
+              const double mu = std::tan(dynamic_angles_of_internal_friction[j])
+                                + (std::tan(drucker_prager_parameters.angles_internal_friction[j])   //    do I need the weakening factors here? I guess not:  * weakening_factors[1]
                                    - std::tan(dynamic_angles_of_internal_friction[j]))
-                                   / (1 + std::pow((current_edot_ii / dynamic_characteristic_strain_rate[j]),
-                                   dynamic_friction_smoothness_exponent));
-                                   current_friction = std::atan (mu);
-                                   break;
-                                 }
-                                   case state_dependent_friction:
-                                   {
-                                   //cellsize is needed for theta and the friction angle
-                                   double cellsize = 1;
-                                   if (in.current_cell.state() == IteratorState::valid)
-                                   {
-                                   cellsize = in.current_cell->extent_in_direction(0);
-                                 }
+                                / (1 + std::pow((current_edot_ii / dynamic_characteristic_strain_rate[j]),
+                                                dynamic_friction_smoothness_exponent));
+              current_friction = std::atan (mu);
+              break;
+            }
+            case state_dependent_friction:
+            {
+              //cellsize is needed for theta and the friction angle
+              double cellsize = 1;
+              if (in.current_cell.state() == IteratorState::valid)
+                {
+                  cellsize = in.current_cell->extent_in_direction(0);
+                }
 
-                                   // calculate the state variable theta
-                                   // theta_old loads theta from previous time step
+              // calculate the state variable theta
+              // theta_old loads theta from previous time step
 
-                                   const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
-                                   double theta_old = composition[theta_position_tmp];
-                                   // equation (7) from Sobolev and Muldashev 2017
-                                   const double theta = critical_slip_distance[j] / cellsize / current_edot_ii + (theta_old - critical_slip_distance[j]
-                                   / cellsize/current_edot_ii) * exp( - (current_edot_ii * this->get_timestep())
-                                   / critical_slip_distance[j] * cellsize);
+              const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
+              double theta_old = composition[theta_position_tmp];
+              // equation (7) from Sobolev and Muldashev 2017
+              const double theta = critical_slip_distance[j] / cellsize / current_edot_ii + (theta_old - critical_slip_distance[j]
+                                                                                             / cellsize/current_edot_ii) * exp( - (current_edot_ii * this->get_timestep())
+                                                                                                 / critical_slip_distance[j] * cellsize);
 
-                                   // calculate effective friction according to equation (4) in Sobolev and Muldashev 2017;
-                                   // effective friction id calculated by multiplying the friction coefficient with 0.03 = (1-p_f/sigma_n)
-                                   // their equation is for friction coefficient, while ASPECT takes friction angle in RAD, so conversion with tan/atan()
-                                   current_friction = atan(0.03*(tan(drucker_prager_parameters.angles_internal_friction[j])
-                                   + rate_and_state_parameter_a[j] * log(current_edot_ii * cellsize
-                                   / steady_state_strain_rate[j]) + rate_and_state_parameter_b[j]
-                                   * log(theta * steady_state_strain_rate[j] / critical_slip_distance[j])));
+              // calculate effective friction according to equation (4) in Sobolev and Muldashev 2017;
+              // effective friction id calculated by multiplying the friction coefficient with 0.03 = (1-p_f/sigma_n)
+              // their equation is for friction coefficient, while ASPECT takes friction angle in RAD, so conversion with tan/atan()
+              current_friction = atan(0.03*(tan(drucker_prager_parameters.angles_internal_friction[j])
+                                            + rate_and_state_parameter_a[j] * log(current_edot_ii * cellsize
+                                                                                  / steady_state_strain_rate[j]) + rate_and_state_parameter_b[j]
+                                            * log(theta * steady_state_strain_rate[j] / critical_slip_distance[j])));
 
-                                   break;
-                                 }
-                                   default:
-                                   {
-                                   AssertThrow(false, ExcNotImplemented());
-                                   break;
-                                 }
-                                 }
-                                   return current_friction;
-                                 }
+              break;
+            }
+            default:
+            {
+              AssertThrow(false, ExcNotImplemented());
+              break;
+            }
+          }
+        return current_friction;
+      }
 
-                                   template <int dim>
-                                   ComponentMask
-                                   FrictionOptions<dim>::
-                                   get_volumetric_composition_mask() const
-                                   {
-                                   // Store which components to exclude during the volume fraction computation.
-                                   /* copied from visco_plastic: check how to get that information!!!! */
-                                   ComponentMask composition_mask = strain_rheology.get_strain_composition_mask();
+      template <int dim>
+      ComponentMask
+      FrictionOptions<dim>::
+      get_volumetric_composition_mask() const
+      {
+        // Store which components to exclude during the volume fraction computation.
+        /* copied from visco_plastic: check how to get that information!!!! */
+        ComponentMask composition_mask = strain_rheology.get_strain_composition_mask();
 
-                                   if (weakening_mechanism == state_dependent_friction)
-                                   {
-                                   // this is the compositional field used for theta in rate-and-state friction
-                                   int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
-                                   composition_mask.set(theta_position_tmp,false);
-                                 }
+        if (weakening_mechanism == state_dependent_friction)
+          {
+            // this is the compositional field used for theta in rate-and-state friction
+            int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
+            composition_mask.set(theta_position_tmp,false);
+          }
 
-                                   return composition_mask;
-                                 }
-
-
-                                   template <int dim>
-                                   void
-                                   FrictionOptions<dim>::
-                                   compute_edot_ii (const MaterialModel::MaterialModelInputs<dim> &in,
-                                   const double min_strain_rate) const
-                                   {
-                                   if (this->simulator_is_past_initialization() && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms) && in.current_cell.state() == IteratorState::valid)
-                                   {
-                                   for (unsigned int q=0; q < in.n_evaluation_points(); ++q)
-                                   {
-                                   const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
-                                   ((in.strain_rate[q]).norm() <= std::numeric_limits<double>::min());
-                                   double edot_ii;
-                                   if (use_reference_strainrate)
-                                   edot_ii = ref_strain_rate;
-                                   else
-                                   edot_ii = std::max(std::sqrt(std::fabs(second_invariant(deviator(in.strain_rate[q])))),
-                                   min_strain_rate);
-
-                                   double current_edot_ii = numbers::signaling_nan<double>();
-                                   SymmetricTensor<2,dim> stress_old = numbers::signaling_nan<SymmetricTensor<2,dim>>();
-
-                                   if (use_elasticity == false)
-                                   {
-                                   current_edot_ii = edot_ii;
-                                 }
-                                   else
-                                   {
-                                   for (unsigned int j=0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
-                                   {
-                                   stress_old[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)] = in.composition[q][j];
-                                   const std::vector<double> &elastic_shear_moduli = elastic_rheology.get_elastic_shear_moduli();
-                                   if (use_reference_strainrate == true)
-                                   current_edot_ii = ref_strain_rate;
-                                   else
-                                   {
-                                   const double viscoelastic_strain_rate_invariant = elastic_rheology.calculate_viscoelastic_strain_rate(in.strain_rate[q],
-                                   stress_old,
-                                   elastic_shear_moduli[j]);
-                                   current_edot_ii = std::max(viscoelastic_strain_rate_invariant,
-                                   min_strain_rate);
-                                 }
-                                 }
-                                   current_edot_ii /= 2.;
-                                 }
-                                 }
-                                 }
-                                   return current_edot_ii;
-                                 }
+        return composition_mask;
+      }
 
 
-                                   template <int dim>
-                                   void
-                                   FrictionOptions<dim>::
-                                   compute_theta_reaction_terms(const MaterialModel::MaterialModelInputs<dim> &in,
+      template <int dim>
+      void
+      FrictionOptions<dim>::
+      compute_edot_ii (const MaterialModel::MaterialModelInputs<dim> &in,
+                       const double min_strain_rate) const
+      {
+        if (this->simulator_is_past_initialization() && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms) && in.current_cell.state() == IteratorState::valid)
+          {
+            for (unsigned int q=0; q < in.n_evaluation_points(); ++q)
+              {
+                const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
+                                                      ((in.strain_rate[q]).norm() <= std::numeric_limits<double>::min());
+                double edot_ii;
+                if (use_reference_strainrate)
+                  edot_ii = ref_strain_rate;
+                else
+                  edot_ii = std::max(std::sqrt(std::fabs(second_invariant(deviator(in.strain_rate[q])))),
+                                     min_strain_rate);
+
+                double current_edot_ii = numbers::signaling_nan<double>();
+                SymmetricTensor<2,dim> stress_old = numbers::signaling_nan<SymmetricTensor<2,dim>>();
+
+                if (use_elasticity == false)
+                  {
+                    current_edot_ii = edot_ii;
+                  }
+                else
+                  {
+                    for (unsigned int j=0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
+                      {
+                        stress_old[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)] = in.composition[q][j];
+                        const std::vector<double> &elastic_shear_moduli = elastic_rheology.get_elastic_shear_moduli();
+                        if (use_reference_strainrate == true)
+                          current_edot_ii = ref_strain_rate;
+                        else
+                          {
+                            const double viscoelastic_strain_rate_invariant = elastic_rheology.calculate_viscoelastic_strain_rate(in.strain_rate[q],
+                                                                              stress_old,
+                                                                              elastic_shear_moduli[j]);
+                            current_edot_ii = std::max(viscoelastic_strain_rate_invariant,
+                                                       min_strain_rate);
+                          }
+                      }
+                    current_edot_ii /= 2.;
+                  }
+              }
+          }
+        return current_edot_ii;
+      }
+
+
+      template <int dim>
+      void
+      FrictionOptions<dim>::
+      compute_theta_reaction_terms(const MaterialModel::MaterialModelInputs<dim> &in,
                                    MaterialModel::MaterialModelOutputs<dim> &out) const
-                                   {
-                                   //cellsize is needed for theta and the friction angle
-                                   double cellsize = 1;
-                                   if (in.current_cell.state() == IteratorState::valid)
-                                   {
-                                   cellsize = in.current_cell->extent_in_direction(0);
-                                 }
+      {
+        //cellsize is needed for theta and the friction angle
+        double cellsize = 1;
+        if (in.current_cell.state() == IteratorState::valid)
+          {
+            cellsize = in.current_cell->extent_in_direction(0);
+          }
 
-                                   if (this->simulator_is_past_initialization() && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms) && in.current_cell.state() == IteratorState::valid)
-                                   {
-                                   for (unsigned int q=0; q < in.n_evaluation_points(); ++q)
-                                   {
-                                   // compute current_edot_ii
-                                   const double current_edot_ii = compute_edot_ii ()
-                                   const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
-                                   double theta_old = in.composition[q][theta_position_tmp];
-                                   // equation (7) from Sobolev and Muldashev 2017. Though here I had to add  "- theta_old"
-                                   // because I need the change in theta for reaction_terms
-                                   const double theta_increment = critical_slip_distance[theta_position_tmp+1] /cellsize/current_edot_ii +
-                                   (theta_old - critical_slip_distance[theta_position_tmp+1]
-                                   /cellsize/current_edot_ii)*exp(-(current_edot_ii*this->get_timestep())
-                                   /critical_slip_distance[theta_position_tmp+1]*cellsize) - theta_old;
-                                   out.reaction_terms[q][theta_position_tmp] = theta_increment;
-                                 }
-                                 }
-                                 }
-                                 }
-                                 }
-                                 }
+        if (this->simulator_is_past_initialization() && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms) && in.current_cell.state() == IteratorState::valid)
+          {
+            for (unsigned int q=0; q < in.n_evaluation_points(); ++q)
+              {
+                // compute current_edot_ii
+                const double current_edot_ii = compute_edot_ii ()
+                                               const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
+                double theta_old = in.composition[q][theta_position_tmp];
+                // equation (7) from Sobolev and Muldashev 2017. Though here I had to add  "- theta_old"
+                // because I need the change in theta for reaction_terms
+                const double theta_increment = critical_slip_distance[theta_position_tmp+1] /cellsize/current_edot_ii +
+                                               (theta_old - critical_slip_distance[theta_position_tmp+1]
+                                                /cellsize/current_edot_ii)*exp(-(current_edot_ii*this->get_timestep())
+                                                                               /critical_slip_distance[theta_position_tmp+1]*cellsize) - theta_old;
+                out.reaction_terms[q][theta_position_tmp] = theta_increment;
+              }
+          }
+      }
+    }
+  }
+}
 
-                                   // explicit instantiations
-                                   namespace aspect
-                                   {
-                                   namespace MaterialModel
-                                   {
-                   #define INSTANTIATE(dim) \
+// explicit instantiations
+namespace aspect
+{
+  namespace MaterialModel
+  {
+#define INSTANTIATE(dim) \
   namespace Rheology \
   { \
     template class FrictionOptions<dim>; \
-}
+  }
 
-                                   ASPECT_INSTANTIATE(INSTANTIATE)
+    ASPECT_INSTANTIATE(INSTANTIATE)
 
 #undef INSTANTIATE
-                                 }
-                                 }
+  }
+}
 
