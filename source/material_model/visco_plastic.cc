@@ -545,6 +545,8 @@ namespace aspect
             composition_mask.set(i,false);
         }
 
+      // HERE I NEED TO CALL THE FUNCTION THAT SETS THE COMPOSITION MASK FOR THETA
+
       return composition_mask;
     }
 
@@ -704,6 +706,8 @@ namespace aspect
           elastic_rheology.fill_elastic_force_outputs(in, average_elastic_shear_moduli, out);
           elastic_rheology.fill_reaction_outputs(in, average_elastic_shear_moduli, out);
         }
+
+        // HERE I NEED TO CALL THE FUNCTION THAT FILLS IN THETA REACTION TERMS
     }
 
     template <int dim>
