@@ -88,7 +88,7 @@ namespace aspect
            * A function that returns a ComponentMask, which indicates that the component
            * associated with theta should be excluded during the volume fraction computation.
            */
-          ComponentMask get_volumetric_composition_mask() const;
+          ComponentMask get_theta_composition_mask(ComponentMask composition_mask) const;
 
           /**
            * A function that returns current_edot_ii, which is the current second invariant

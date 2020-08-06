@@ -319,7 +319,7 @@ namespace aspect
           viscosity_pre_yield *= weakening_factors[2];
 
           // Steb 3c: calculate friction angle dependent on rate and/or state if specified
-          current_friction = compute_dependent_friction_angle(j, composition, in, ref_strain_rate, min_strain_rate, current_friction);
+          current_friction = friction_options.compute_dependent_friction_angle(j, composition, in, ref_strain_rate, min_strain_rate, current_friction);
 
           // Step 4: plastic yielding
 
@@ -406,7 +406,7 @@ namespace aspect
               plastic_out->cohesions[i]   += volume_fractions[j] * (drucker_prager_parameters.cohesions[j] * weakening_factors[0]);
               // Also convert radians to degrees
               double current_friction = drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1];
-              current_friction = compute_dependent_friction_angle(j, composition, in, ref_strain_rate, min_strain_rate, current_friction);
+              current_friction = friction_options.compute_dependent_friction_angle(j, composition, in, ref_strain_rate, min_strain_rate, current_friction);
               plastic_out->friction_angles[i] += 180.0/numbers::PI * volume_fractions[j] * current_friction;
             }
         }
@@ -545,7 +545,7 @@ namespace aspect
             composition_mask.set(i,false);
         }
 
-      // HERE I NEED TO CALL THE FUNCTION THAT SETS THE COMPOSITION MASK FOR THETA
+      composition_mask = friction_options.get_theta_composition_mask(composition_mask);
 
       return composition_mask;
     }

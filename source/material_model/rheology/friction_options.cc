@@ -275,12 +275,10 @@ namespace aspect
       template <int dim>
       ComponentMask
       FrictionOptions<dim>::
-      get_volumetric_composition_mask() const
+      get_theta_composition_mask(ComponentMask composition_mask) const
       {
         // Store which components to exclude during the volume fraction computation.
-        /* copied from visco_plastic: check how to get that information!!!! */
-        ComponentMask composition_mask = strain_rheology.get_strain_composition_mask();
-
+        
         if (friction_dependence_mechanism == state_dependent_friction)
           {
             // this is the compositional field used for theta in rate-and-state friction
