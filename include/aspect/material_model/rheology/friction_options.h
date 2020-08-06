@@ -25,6 +25,11 @@
 #include <aspect/material_model/interface.h>
 #include <aspect/simulator_access.h>
 
+
+#include <aspect/material_model/rheology/strain_dependent.h>
+#include <aspect/material_model/rheology/drucker_prager.h>
+#include <aspect/material_model/rheology/elasticity.h>
+
 #include<deal.II/fe/component_mask.h>
 
 namespace aspect
@@ -35,18 +40,18 @@ namespace aspect
 
     namespace Rheology
     {
-      /** 
+      /**
        * Enumeration for selecting which type of friction dependence to use.
        * For none, internal angle of friction is used.
        * Otherwise, the friction angle can be rate and/or state dependent.
        */
 
-       enum FrictionDependenceMechanism
-       {
-         none,
-         dynamic_friction,
-         state_dependent_friction
-       };
+      enum FrictionDependenceMechanism
+      {
+        none,
+        dynamic_friction,
+        state_dependent_friction
+      };
 
       template <int dim>
       class FrictionOptions : public ::aspect::SimulatorAccess<dim>
@@ -55,7 +60,6 @@ namespace aspect
           /**
            * Declare the parameters this function takes through input files.
            */
-          static
           void
           declare_parameters (ParameterHandler &prm);
 
@@ -75,8 +79,8 @@ namespace aspect
           compute_dependent_friction_angle(const unsigned int j,
                                            const std::vector<double> &composition,
                                            const MaterialModel::MaterialModelInputs<dim> &in,
-	                    const double ref_strain_rate,
-						bool use_elasticity,
+                                           const double ref_strain_rate,
+                                           bool use_elasticity,
                                            const double min_strain_rate) const;
 
           /**
@@ -90,18 +94,18 @@ namespace aspect
           * of the strain rate tensor.
            */
           double compute_edot_ii (const MaterialModel::MaterialModelInputs<dim> &in,
-	                    const double ref_strain_rate,
-						bool use_elasticity,
-                                const double min_strain_rate) const;
+                                  const double ref_strain_rate,
+                                  bool use_elasticity,
+                                  const double min_strain_rate) const;
 
           /**
            * A function that fills the reaction terms for the state variable theta in
            * MaterialModelOutputs object that is handed over.
            */
           void compute_theta_reaction_terms(const MaterialModel::MaterialModelInputs<dim> &in,
-                                           const double min_strain_rate,
-	                    const double ref_strain_rate,
-						bool use_elasticity,
+                                            const double min_strain_rate,
+                                            const double ref_strain_rate,
+                                            bool use_elasticity,
                                             MaterialModel::MaterialModelOutputs<dim> &out) const;
 
           /**
@@ -109,9 +113,27 @@ namespace aspect
            */
           FrictionDependenceMechanism
           get_friction_dependence_mechanism () const;
-		  
+
         private:
 
+          FrictionDependenceMechanism friction_dependence_mechanism;
+
+
+          /*
+           * Objects for computing plastic stresses, viscosities, and additional outputs
+           */
+          Rheology::DruckerPrager<dim> drucker_prager_plasticity;
+          /**
+          * Input parameters for the drucker prager plasticity.
+          */
+          Rheology::DruckerPragerParameters drucker_prager_parameters;
+
+          /**
+          * Object for computing viscoelastic viscosities and stresses.
+          */
+          Rheology::Elasticity<dim> elastic_rheology;
+
+          Rheology::StrainDependent<dim> strain_rheology;
 
           /**
           * dynamic friction input parameters
@@ -128,7 +150,7 @@ namespace aspect
           std::vector<double> critical_slip_distance;
           std::vector<double> steady_state_strain_rate;
 
-          // IS THERE MORE I NEED HERE OR IN PUBLIC? 
+          // IS THERE MORE I NEED HERE OR IN PUBLIC?
       };
     }
   }

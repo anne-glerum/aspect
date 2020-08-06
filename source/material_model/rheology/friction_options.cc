@@ -38,7 +38,7 @@ namespace aspect
       void
       FrictionOptions<dim>::declare_parameters (ParameterHandler &prm)
       {
-        prm.declare_entry ("Friction options", "default",
+        prm.declare_entry ("Friction dependence mechanism", "default",
                            Patterns::Selection("none|dynamic friction|state dependent friction|default"),
                            "Whether to apply a rate and/or state dependence of the friction angle. This can "
                            "be used to obtain stick-slip motion to simulate earthquake-like behaviour, "
@@ -56,13 +56,13 @@ namespace aspect
                            "x controls how smooth or step-like the change from $\mu_s$ to $\mu_d$ is. "
                            "The equation is modified after equation 13 in van Dinther et al. 2013. "
                            "\n\n"
-                           "\\item ``state dependent friction': A state variable theta is introduced. Method "
+                           "\\item ``state dependent friction'': A state variable theta is introduced. Method "
                            "is taken from Sobolev and Muldashev 2017. ....."
                            "\n\n"
-						   "\\item ``default'': No rate or state dependence of the friction angle is applied. ");
+                           "\\item ``default'': No rate or state dependence of the friction angle is applied. ");
 
         // Plasticity parameters
-		/*should I do this or just read in the internal anlges of friction directly? */
+        /*should I do this or just read in the internal anlges of friction directly? */
         drucker_prager_parameters = drucker_prager_plasticity.parse_parameters(this->n_compositional_fields()+1,
                                                                                prm);
 
@@ -129,14 +129,14 @@ namespace aspect
         const unsigned int n_fields = this->n_compositional_fields() + 1;
 
         // Friction dependence parameters
-        if (prm.get ("Strain weakening mechanism") == "none")
-          weakening_mechanism = none;
-        else if (prm.get ("Strain weakening mechanism") == "dynamic friction")
-          weakening_mechanism = dynamic_friction;
-        else if (prm.get ("Strain weakening mechanism") == "state dependent friction")
-          weakening_mechanism = state_dependent_friction;
-        else if (prm.get ("Strain weakening mechanism") == "default")
-          weakening_mechanism = none;
+        if (prm.get ("Friction dependence mechanism") == "none")
+          friction_dependence_mechanism = none;
+        else if (prm.get ("Friction dependence mechanism") == "dynamic friction")
+          friction_dependence_mechanism = dynamic_friction;
+        else if (prm.get ("Friction dependence mechanism") == "state dependent friction")
+          friction_dependence_mechanism = state_dependent_friction;
+        else if (prm.get ("Friction dependence mechanism") == "default")
+          friction_dependence_mechanism = none;
         /* would be nice for the future to have an option like rate and state friction with fixed point iteration */
         else
           AssertThrow(false, ExcMessage("Not a valid friction dependence option!"));
@@ -172,7 +172,7 @@ namespace aspect
         dynamic_friction_smoothness_exponent = prm.get_double("Dynamic friction smoothness exponent");
 
         // Rate and state friction parameters
-        if (weakening_mechanism == state_dependent_friction)
+        if (friction_dependence_mechanism == state_dependent_friction)
           {
             AssertThrow(this->introspection().compositional_index_for_name("theta"),
                         ExcMessage("Material model with rate-and-state friction only works "
@@ -203,15 +203,15 @@ namespace aspect
       compute_dependent_friction_angle(const unsigned int j,
                                        const std::vector<double> &composition,
                                        const MaterialModel::MaterialModelInputs<dim> &in,
-	                    const double ref_strain_rate,
-						bool use_elasticity,
+                                       const double ref_strain_rate,
+                                       bool use_elasticity,
                                        const double min_strain_rate) const
       {
         double current_friction = 0.0;
 
         const double current_edot_ii = compute_edot_ii (in, ref_strain_rate, use_elasticity, min_strain_rate);
 
-        switch (weakening_mechanism)
+        switch (friction_dependence_mechanism)
           {
             case none:
             {
@@ -230,7 +230,7 @@ namespace aspect
               const double mu = std::tan(dynamic_angles_of_internal_friction[j])
                                 + (std::tan(drucker_prager_parameters.angles_internal_friction[j])   //    do I need the weakening factors here? I guess not:  * weakening_factors[1]
                                    - std::tan(dynamic_angles_of_internal_friction[j]))
-                                / (1 + std::pow((current_edot_ii / dynamic_characteristic_strain_rate[j]),
+                                / (1 + std::pow((current_edot_ii / dynamic_characteristic_strain_rate),
                                                 dynamic_friction_smoothness_exponent));
               current_friction = std::atan (mu);
               break;
@@ -282,7 +282,7 @@ namespace aspect
         /* copied from visco_plastic: check how to get that information!!!! */
         ComponentMask composition_mask = strain_rheology.get_strain_composition_mask();
 
-        if (weakening_mechanism == state_dependent_friction)
+        if (friction_dependence_mechanism == state_dependent_friction)
           {
             // this is the compositional field used for theta in rate-and-state friction
             int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
@@ -380,13 +380,13 @@ namespace aspect
               }
           }
       }
-	  
-	  template <int dim>
+
+      template <int dim>
       FrictionDependenceMechanism
       FrictionOptions<dim>::
       get_friction_dependence_mechanism() const
       {
-        return weakening_mechanism;
+        return friction_dependence_mechanism;
       }
     }
   }
