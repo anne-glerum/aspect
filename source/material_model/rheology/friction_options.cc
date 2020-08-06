@@ -200,8 +200,8 @@ namespace aspect
       template <int dim>
       double
       FrictionOptions<dim>::
-      compute_dependent_friction_angle(const unsigned int j,  // volume fraction 
-                                       const unsigned int i,  // n evaluation points
+      compute_dependent_friction_angle(const double current_edot_ii,
+                                       const unsigned int j,  // volume fraction 
                                        const std::vector<double> &composition,  // I GUESS I COULD CALL COMPOSITION VIA IN SO I ONLY NEED TO PASS ONE
                                        const MaterialModel::MaterialModelInputs<dim> &in,
                                        const double ref_strain_rate,
@@ -209,8 +209,7 @@ namespace aspect
                                        const double min_strain_rate,
                                        double current_friction) const
       {
-        const double current_edot_ii = compute_edot_ii (i, in, ref_strain_rate, use_elasticity, min_strain_rate);
-
+        
         switch (friction_dependence_mechanism)
           {
             case independent:

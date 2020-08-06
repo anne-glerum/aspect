@@ -76,8 +76,8 @@ namespace aspect
            * the newly calculated friction angle.
            */
           double
-          compute_dependent_friction_angle(const unsigned int j,
-                                           const unsigned int i,
+          compute_dependent_friction_angle(const double current_edot_ii,
+                                           const unsigned int j,
                                            const std::vector<double> &composition,
                                            const MaterialModel::MaterialModelInputs<dim> &in,
                                            const double ref_strain_rate,
