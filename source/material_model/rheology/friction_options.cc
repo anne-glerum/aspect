@@ -349,7 +349,7 @@ namespace aspect
       compute_theta_reaction_terms(const MaterialModel::MaterialModelInputs<dim> &in,
                                    const double min_strain_rate,
                                    const double ref_strain_rate,
-                                   bool use_elasticity,
+                                   bool use_elasticity,  // DO I NEED TO HAND IT OVER HERE OR IS IT ENOUGH TO INCLUDE ELASTICITY.CC?
                                    MaterialModel::MaterialModelOutputs<dim> &out) const
       {
         //cellsize is needed for theta and the friction angle

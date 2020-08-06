@@ -545,6 +545,8 @@ namespace aspect
             composition_mask.set(i,false);
         }
 
+      // If friction is defined state dependent, the material field for the state variable theta 
+      // must be excluded during volume fraction computation.
       composition_mask = friction_options.get_theta_composition_mask(composition_mask);
 
       return composition_mask;
@@ -707,7 +709,8 @@ namespace aspect
           elastic_rheology.fill_reaction_outputs(in, average_elastic_shear_moduli, out);
         }
 
-        // HERE I NEED TO CALL THE FUNCTION THAT FILLS IN THETA REACTION TERMS
+      // if friction is opted state dependent, we need to fill reaction_outputs for the state variable theta.
+      friction_options.compute_theta_reaction_terms(in, min_strain_rate, ref_strain_rate, use_elasticity, out);
     }
 
     template <int dim>
