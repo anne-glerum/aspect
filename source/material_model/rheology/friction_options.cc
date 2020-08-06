@@ -129,7 +129,7 @@ namespace aspect
         const unsigned int n_fields = this->n_compositional_fields() + 1;
 
         // Friction dependence parameters
-        if (prm.get ("Friction dependence mechanism") == "independent")  // BEFORE I HAD NAMED IT NONE LIKE IN STRAIN-DEPENDENT BUT THAT MADE ERRORS
+        if (prm.get ("Friction dependence mechanism") == "none")  // BEFORE I HAD NAMED IT NONE LIKE IN STRAIN-DEPENDENT BUT THAT MADE ERRORS
           friction_dependence_mechanism = independent;
         else if (prm.get ("Friction dependence mechanism") == "dynamic friction")
           friction_dependence_mechanism = dynamic_friction;
@@ -201,7 +201,7 @@ namespace aspect
       double
       FrictionOptions<dim>::
       compute_dependent_friction_angle(const unsigned int j,
-                                       const std::vector<double> &composition,
+                                       const std::vector<double> &composition,  // I GUESS I COULD CALL COMPOSITION VIA IN SO I ONLY NEED TO PASS ONE
                                        const MaterialModel::MaterialModelInputs<dim> &in,
                                        const double ref_strain_rate,
                                        bool use_elasticity,    // DO I NEED TO PASS THIS? oR IS IT ENOUGH THAT I INCLUDE ELASTICITY.CC?
