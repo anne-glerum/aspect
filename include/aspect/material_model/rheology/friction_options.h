@@ -80,9 +80,6 @@ namespace aspect
                                            const unsigned int j,
                                            const std::vector<double> &composition,
                                            const MaterialModel::MaterialModelInputs<dim> &in,
-                                           const double ref_strain_rate,
-                                           bool use_elasticity,
-                                           const double min_strain_rate,
                                            double current_friction) const;
 
           /**

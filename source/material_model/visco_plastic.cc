@@ -319,7 +319,7 @@ namespace aspect
           viscosity_pre_yield *= weakening_factors[2];
 
           // Steb 3c: calculate friction angle dependent on rate and/or state if specified
-          current_friction = friction_options.compute_dependent_friction_angle(current_edot_ii, j, composition, in, ref_strain_rate, min_strain_rate, current_friction);
+          current_friction = friction_options.compute_dependent_friction_angle(current_edot_ii, j, composition, in, current_friction);
 
           // Step 4: plastic yielding
 
@@ -392,7 +392,7 @@ namespace aspect
     {
       PlasticAdditionalOutputs<dim> *plastic_out = out.template get_additional_output<PlasticAdditionalOutputs<dim> >();
 
-      const double current_edot_ii = compute_edot_ii (i, in, ref_strain_rate, use_elasticity, min_strain_rate);
+      const double current_edot_ii = friction_options.compute_edot_ii (i, in, ref_strain_rate, use_elasticity, min_strain_rate);
 
       if (plastic_out != nullptr)
         {
@@ -408,7 +408,7 @@ namespace aspect
               plastic_out->cohesions[i]   += volume_fractions[j] * (drucker_prager_parameters.cohesions[j] * weakening_factors[0]);
               // Also convert radians to degrees
               double current_friction = drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1];
-              current_friction = friction_options.compute_dependent_friction_angle(current_edot_ii, j, composition, in, ref_strain_rate, min_strain_rate, current_friction);  // I HAD composition as in.composition[i][j] in my old script
+              current_friction = friction_options.compute_dependent_friction_angle(current_edot_ii, j, composition, in, current_friction);  // I HAD composition as in.composition[i][j] in my old script
               plastic_out->friction_angles[i] += 180.0/numbers::PI * volume_fractions[j] * current_friction;
             }
         }

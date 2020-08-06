@@ -204,9 +204,6 @@ namespace aspect
                                        const unsigned int j,  // volume fraction 
                                        const std::vector<double> &composition,  // I GUESS I COULD CALL COMPOSITION VIA IN SO I ONLY NEED TO PASS ONE
                                        const MaterialModel::MaterialModelInputs<dim> &in,
-                                       const double ref_strain_rate,
-                                       bool use_elasticity,    // DO I NEED TO PASS THIS? oR IS IT ENOUGH THAT I INCLUDE ELASTICITY.CC?
-                                       const double min_strain_rate,
                                        double current_friction) const
       {
         
