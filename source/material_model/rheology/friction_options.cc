@@ -129,14 +129,14 @@ namespace aspect
         const unsigned int n_fields = this->n_compositional_fields() + 1;
 
         // Friction dependence parameters
-        if (prm.get ("Friction dependence mechanism") == "none")
-          friction_dependence_mechanism = none;
+        if (prm.get ("Friction dependence mechanism") == "independent")  // BEFORE I HAD NAMED IT NONE LIKE IN STRAIN-DEPENDENT BUT THAT MADE ERRORS
+          friction_dependence_mechanism = independent;
         else if (prm.get ("Friction dependence mechanism") == "dynamic friction")
           friction_dependence_mechanism = dynamic_friction;
         else if (prm.get ("Friction dependence mechanism") == "state dependent friction")
           friction_dependence_mechanism = state_dependent_friction;
         else if (prm.get ("Friction dependence mechanism") == "default")
-          friction_dependence_mechanism = none;
+          friction_dependence_mechanism = independent;
         /* would be nice for the future to have an option like rate and state friction with fixed point iteration */
         else
           AssertThrow(false, ExcMessage("Not a valid friction dependence option!"));
@@ -212,7 +212,7 @@ namespace aspect
 
         switch (friction_dependence_mechanism)
           {
-            case none:
+            case independent:
             {
               /* I guess here I need to say that current friction is simply the internal angle of friction. If not it will return 0.0 as its value?  */
               break;

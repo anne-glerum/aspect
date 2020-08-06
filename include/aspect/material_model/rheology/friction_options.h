@@ -42,13 +42,13 @@ namespace aspect
     {
       /**
        * Enumeration for selecting which type of friction dependence to use.
-       * For none, internal angle of friction is used.
+       * For independent, internal angle of friction is used.
        * Otherwise, the friction angle can be rate and/or state dependent.
        */
 
       enum FrictionDependenceMechanism
       {
-        none,
+        independent,
         dynamic_friction,
         state_dependent_friction
       };
