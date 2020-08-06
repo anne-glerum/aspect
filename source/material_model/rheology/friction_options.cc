@@ -200,7 +200,8 @@ namespace aspect
       template <int dim>
       double
       FrictionOptions<dim>::
-      compute_dependent_friction_angle(const unsigned int j,
+      compute_dependent_friction_angle(const unsigned int j,  // volume fraction 
+                                       const unsigned int i,  // n evaluation points
                                        const std::vector<double> &composition,  // I GUESS I COULD CALL COMPOSITION VIA IN SO I ONLY NEED TO PASS ONE
                                        const MaterialModel::MaterialModelInputs<dim> &in,
                                        const double ref_strain_rate,
@@ -208,7 +209,7 @@ namespace aspect
                                        const double min_strain_rate,
                                        double current_friction) const
       {
-        const double current_edot_ii = compute_edot_ii (in, ref_strain_rate, use_elasticity, min_strain_rate);
+        const double current_edot_ii = compute_edot_ii (i, in, ref_strain_rate, use_elasticity, min_strain_rate);
 
         switch (friction_dependence_mechanism)
           {
@@ -293,15 +294,14 @@ namespace aspect
       template <int dim>
       double
       FrictionOptions<dim>::
-      compute_edot_ii (const MaterialModel::MaterialModelInputs<dim> &in,
+      compute_edot_ii (const unsigned int q,
+                       const MaterialModel::MaterialModelInputs<dim> &in,
                        const double ref_strain_rate,
                        bool use_elasticity,
                        const double min_strain_rate) const
       {
         if (this->simulator_is_past_initialization() && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms) && in.current_cell.state() == IteratorState::valid)
           {
-            for (unsigned int q=0; q < in.n_evaluation_points(); ++q)  // I have the feeling that q should be handed over
-              {
                 const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
                                                       ((in.strain_rate[q]).norm() <= std::numeric_limits<double>::min());
                 double edot_ii;
@@ -338,7 +338,6 @@ namespace aspect
                     current_edot_ii /= 2.;
                   }
                 return current_edot_ii;
-              }
           }
       }
 
@@ -364,7 +363,7 @@ namespace aspect
             for (unsigned int q=0; q < in.n_evaluation_points(); ++q)
               {
                 // compute current_edot_ii
-                const double current_edot_ii = compute_edot_ii (in, ref_strain_rate, use_elasticity, min_strain_rate);
+                const double current_edot_ii = compute_edot_ii (q, in, ref_strain_rate, use_elasticity, min_strain_rate);
                 const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
                 double theta_old = in.composition[q][theta_position_tmp];
                 // equation (7) from Sobolev and Muldashev 2017. Though here I had to add  "- theta_old"

@@ -77,6 +77,7 @@ namespace aspect
            */
           double
           compute_dependent_friction_angle(const unsigned int j,
+                                           const unsigned int i,
                                            const std::vector<double> &composition,
                                            const MaterialModel::MaterialModelInputs<dim> &in,
                                            const double ref_strain_rate,
@@ -94,7 +95,8 @@ namespace aspect
            * A function that returns current_edot_ii, which is the current second invariant
           * of the strain rate tensor.
            */
-          double compute_edot_ii (const MaterialModel::MaterialModelInputs<dim> &in,
+          double compute_edot_ii (const unsigned int q,
+                                  const MaterialModel::MaterialModelInputs<dim> &in,
                                   const double ref_strain_rate,
                                   bool use_elasticity,
                                   const double min_strain_rate) const;
