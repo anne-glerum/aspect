@@ -81,7 +81,8 @@ namespace aspect
                                            const MaterialModel::MaterialModelInputs<dim> &in,
                                            const double ref_strain_rate,
                                            bool use_elasticity,
-                                           const double min_strain_rate) const;
+                                           const double min_strain_rate,
+                                           double current_friction) const;
 
           /**
            * A function that returns a ComponentMask, which indicates that the component

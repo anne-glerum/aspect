@@ -315,8 +315,11 @@ namespace aspect
 
           // Step 3b: calculate weakened friction, cohesion, and pre-yield viscosity
           const double current_cohesion = drucker_prager_parameters.cohesions[j] * weakening_factors[0];
-          const double current_friction = drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1];
+          double current_friction = drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1];
           viscosity_pre_yield *= weakening_factors[2];
+
+          // Steb 3c: calculate friction angle dependent on rate and/or state if specified
+          current_friction = compute_dependent_friction_angle(j, composition, in, ref_strain_rate, min_strain_rate, current_friction);
 
           // Step 4: plastic yielding
 
@@ -402,7 +405,9 @@ namespace aspect
               const std::array<double, 3> weakening_factors = strain_rheology.compute_strain_weakening_factors(j, in.composition[i]);
               plastic_out->cohesions[i]   += volume_fractions[j] * (drucker_prager_parameters.cohesions[j] * weakening_factors[0]);
               // Also convert radians to degrees
-              plastic_out->friction_angles[i] += 180.0/numbers::PI * volume_fractions[j] * (drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1]);
+              double current_friction = drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1];
+              current_friction = compute_dependent_friction_angle(j, composition, in, ref_strain_rate, min_strain_rate, current_friction);
+              plastic_out->friction_angles[i] += 180.0/numbers::PI * volume_fractions[j] * current_friction;
             }
         }
     }

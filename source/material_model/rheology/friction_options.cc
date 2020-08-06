@@ -204,11 +204,10 @@ namespace aspect
                                        const std::vector<double> &composition,
                                        const MaterialModel::MaterialModelInputs<dim> &in,
                                        const double ref_strain_rate,
-                                       bool use_elasticity,
-                                       const double min_strain_rate) const
+                                       bool use_elasticity,    // DO I NEED TO PASS THIS? oR IS IT ENOUGH THAT I INCLUDE ELASTICITY.CC?
+                                       const double min_strain_rate,
+                                       double current_friction) const
       {
-        double current_friction = 0.0;
-
         const double current_edot_ii = compute_edot_ii (in, ref_strain_rate, use_elasticity, min_strain_rate);
 
         switch (friction_dependence_mechanism)
