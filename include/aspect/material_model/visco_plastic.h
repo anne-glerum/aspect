@@ -23,6 +23,7 @@
 
 #include <aspect/material_model/interface.h>
 #include <aspect/material_model/rheology/strain_dependent.h>
+#include <aspect/material_model/rheology/friction_options.h>
 #include <aspect/simulator_access.h>
 #include <aspect/material_model/rheology/diffusion_creep.h>
 #include <aspect/material_model/rheology/dislocation_creep.h>
