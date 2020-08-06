@@ -319,7 +319,7 @@ namespace aspect
           viscosity_pre_yield *= weakening_factors[2];
 
           // Steb 3c: calculate friction angle dependent on rate and/or state if specified
-          current_friction = friction_options.compute_dependent_friction_angle(current_edot_ii, j, composition, in, current_friction);
+          current_friction = friction_options.compute_dependent_friction_angle(current_edot_ii, j, composition, in, current_friction); // the in here does not work yet, but is needed for cellsize
 
           // Step 4: plastic yielding
 
