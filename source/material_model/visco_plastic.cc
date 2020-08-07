@@ -321,7 +321,7 @@ namespace aspect
           viscosity_pre_yield *= weakening_factors[2];
 
           // Steb 3c: calculate friction angle dependent on rate and/or state if specified
-          current_friction = friction_options.compute_dependent_friction_angle(current_edot_ii, j, composition, current_cell, current_friction); 
+          current_friction = friction_options.compute_dependent_friction_angle(current_edot_ii, j, composition, current_cell, current_friction);
 
           // Step 4: plastic yielding
 
@@ -551,7 +551,7 @@ namespace aspect
             composition_mask.set(i,false);
         }
 
-      // If friction is defined state dependent, the material field for the state variable theta 
+      // If friction is defined state dependent, the material field for the state variable theta
       // must be excluded during volume fraction computation.
       composition_mask = friction_options.get_theta_composition_mask(composition_mask);
 

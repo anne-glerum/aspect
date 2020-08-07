@@ -199,12 +199,12 @@ namespace aspect
       double
       FrictionOptions<dim>::
       compute_dependent_friction_angle(const double current_edot_ii,
-                                       const unsigned int j,  // volume fraction 
+                                       const unsigned int j,  // volume fraction
                                        const std::vector<double> &composition,  // I GUESS I COULD CALL COMPOSITION VIA IN SO I ONLY NEED TO PASS ONE
                                        typename DoFHandler<dim>::active_cell_iterator current_cell,
                                        double current_friction) const
       {
-        
+
         switch (friction_dependence_mechanism)
           {
             case independent:
@@ -222,7 +222,7 @@ namespace aspect
               // Furthermore a smoothness coefficient is added, which influences if the friction vs strain rate curve is rather
               // step-like or more gradual.
               const double mu = std::tan(dynamic_angles_of_internal_friction[j])
-                                + (std::tan(current_friction) 
+                                + (std::tan(current_friction)
                                    - std::tan(dynamic_angles_of_internal_friction[j]))
                                 / (1 + std::pow((current_edot_ii / dynamic_characteristic_strain_rate),
                                                 dynamic_friction_smoothness_exponent));
@@ -237,29 +237,29 @@ namespace aspect
                 {
                   cellsize = current_cell->extent_in_direction(0);
                   // calculate the state variable theta
-              // theta_old loads theta from previous time step
+                  // theta_old loads theta from previous time step
 
-              const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
-              double theta_old = composition[theta_position_tmp];
-              // equation (7) from Sobolev and Muldashev 2017
-              const double theta = critical_slip_distance / cellsize / 
-                                   current_edot_ii + (theta_old - critical_slip_distance
-                                   / cellsize / current_edot_ii) * exp( - (current_edot_ii * this->get_timestep())
-                                   / critical_slip_distance * cellsize);
+                  const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
+                  double theta_old = composition[theta_position_tmp];
+                  // equation (7) from Sobolev and Muldashev 2017
+                  const double theta = critical_slip_distance / cellsize /
+                                       current_edot_ii + (theta_old - critical_slip_distance
+                                                          / cellsize / current_edot_ii) * exp( - (current_edot_ii * this->get_timestep())
+                                                                                               / critical_slip_distance * cellsize);
 
-              // calculate effective friction according to equation (4) in Sobolev and Muldashev 2017;
-              // effective friction id calculated by multiplying the friction coefficient with 0.03 = (1-p_f/sigma_n)
-              // their equation is for friction coefficient, while ASPECT takes friction angle in RAD, so conversion with tan/atan()
-              current_friction = atan(0.03*(tan(current_friction)
-                                            + rate_and_state_parameter_a[j] * log(current_edot_ii * cellsize
-                                            / steady_state_strain_rate[j]) + rate_and_state_parameter_b[j]
-                                            * log(theta * steady_state_strain_rate[j] / critical_slip_distance)));
-              break;
+                  // calculate effective friction according to equation (4) in Sobolev and Muldashev 2017;
+                  // effective friction id calculated by multiplying the friction coefficient with 0.03 = (1-p_f/sigma_n)
+                  // their equation is for friction coefficient, while ASPECT takes friction angle in RAD, so conversion with tan/atan()
+                  current_friction = atan(0.03*(tan(current_friction)
+                                                + rate_and_state_parameter_a[j] * log(current_edot_ii * cellsize
+                                                                                      / steady_state_strain_rate[j]) + rate_and_state_parameter_b[j]
+                                                * log(theta * steady_state_strain_rate[j] / critical_slip_distance)));
+                  break;
                 }
               else
-              {
-                break;
-              }
+                {
+                  break;
+                }
             }
             default:
             {
@@ -276,7 +276,7 @@ namespace aspect
       get_theta_composition_mask(ComponentMask composition_mask) const
       {
         // Store which components to exclude during the volume fraction computation.
-        
+
         if (friction_dependence_mechanism == state_dependent_friction)
           {
             // this is the compositional field used for theta in rate-and-state friction
@@ -299,42 +299,42 @@ namespace aspect
       {
         if (this->simulator_is_past_initialization() && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms) && in.current_cell.state() == IteratorState::valid)
           {
-                const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
-                                                      ((in.strain_rate[q]).norm() <= std::numeric_limits<double>::min());
-                double edot_ii;
-                if (use_reference_strainrate)
-                  edot_ii = ref_strain_rate;
-                else
-                  edot_ii = std::max(std::sqrt(std::fabs(second_invariant(deviator(in.strain_rate[q])))),
-                                     min_strain_rate);
+            const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
+                                                  ((in.strain_rate[q]).norm() <= std::numeric_limits<double>::min());
+            double edot_ii;
+            if (use_reference_strainrate)
+              edot_ii = ref_strain_rate;
+            else
+              edot_ii = std::max(std::sqrt(std::fabs(second_invariant(deviator(in.strain_rate[q])))),
+                                 min_strain_rate);
 
-                double current_edot_ii = numbers::signaling_nan<double>();
-                SymmetricTensor<2,dim> stress_old = numbers::signaling_nan<SymmetricTensor<2,dim>>();
+            double current_edot_ii = numbers::signaling_nan<double>();
+            SymmetricTensor<2,dim> stress_old = numbers::signaling_nan<SymmetricTensor<2,dim>>();
 
-                if (use_elasticity == false)
+            if (use_elasticity == false)
+              {
+                current_edot_ii = edot_ii;
+              }
+            else
+              {
+                for (unsigned int j=0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
                   {
-                    current_edot_ii = edot_ii;
-                  }
-                else
-                  {
-                    for (unsigned int j=0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
+                    stress_old[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)] = in.composition[q][j];
+                    const std::vector<double> &elastic_shear_moduli = elastic_rheology.get_elastic_shear_moduli();
+                    if (use_reference_strainrate == true)
+                      current_edot_ii = ref_strain_rate;
+                    else
                       {
-                        stress_old[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)] = in.composition[q][j];
-                        const std::vector<double> &elastic_shear_moduli = elastic_rheology.get_elastic_shear_moduli();
-                        if (use_reference_strainrate == true)
-                          current_edot_ii = ref_strain_rate;
-                        else
-                          {
-                            const double viscoelastic_strain_rate_invariant = elastic_rheology.calculate_viscoelastic_strain_rate(in.strain_rate[q],
-                                                                              stress_old,
-                                                                              elastic_shear_moduli[j]);
-                            current_edot_ii = std::max(viscoelastic_strain_rate_invariant,
-                                                       min_strain_rate);
-                          }
+                        const double viscoelastic_strain_rate_invariant = elastic_rheology.calculate_viscoelastic_strain_rate(in.strain_rate[q],
+                                                                          stress_old,
+                                                                          elastic_shear_moduli[j]);
+                        current_edot_ii = std::max(viscoelastic_strain_rate_invariant,
+                                                   min_strain_rate);
                       }
-                    current_edot_ii /= 2.;
                   }
-                return current_edot_ii;
+                current_edot_ii /= 2.;
+              }
+            return current_edot_ii;
           }
       }
 
@@ -368,7 +368,7 @@ namespace aspect
                 const double theta_increment = critical_slip_distance /cellsize/current_edot_ii +
                                                (theta_old - critical_slip_distance
                                                 /cellsize/current_edot_ii)*exp(-(current_edot_ii*this->get_timestep())
-                                               /critical_slip_distance*cellsize) - theta_old;
+                                                                               /critical_slip_distance*cellsize) - theta_old;
                 out.reaction_terms[q][theta_position_tmp] = theta_increment;
               }
           }
