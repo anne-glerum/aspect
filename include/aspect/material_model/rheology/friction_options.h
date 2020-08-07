@@ -79,7 +79,7 @@ namespace aspect
           compute_dependent_friction_angle(const double current_edot_ii,
                                            const unsigned int j,
                                            const std::vector<double> &composition,
-                                           const MaterialModel::MaterialModelInputs<dim> &in,
+                                           typename DoFHandler<dim>::active_cell_iterator current_cell,
                                            double current_friction) const;
 
           /**

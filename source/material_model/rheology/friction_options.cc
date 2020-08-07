@@ -203,7 +203,7 @@ namespace aspect
       compute_dependent_friction_angle(const double current_edot_ii,
                                        const unsigned int j,  // volume fraction 
                                        const std::vector<double> &composition,  // I GUESS I COULD CALL COMPOSITION VIA IN SO I ONLY NEED TO PASS ONE
-                                       const MaterialModel::MaterialModelInputs<dim> &in,
+                                       typename DoFHandler<dim>::active_cell_iterator current_cell,
                                        double current_friction) const
       {
         
@@ -235,9 +235,9 @@ namespace aspect
             {
               //cellsize is needed for theta and the friction angle
               double cellsize = 1;
-              if (in.current_cell.state() == IteratorState::valid)
+              if (current_cell.state() == IteratorState::valid)
                 {
-                  cellsize = in.current_cell->extent_in_direction(0);
+                  cellsize = current_cell->extent_in_direction(0);
                 }
 
               // calculate the state variable theta

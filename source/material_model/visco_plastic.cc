@@ -49,7 +49,8 @@ namespace aspect
     is_yielding (const double &pressure,
                  const double &temperature,
                  const std::vector<double> &composition,
-                 const SymmetricTensor<2,dim> &strain_rate) const
+                 const SymmetricTensor<2,dim> &strain_rate,
+                 typename DoFHandler<dim>::active_cell_iterator current_cell) const
     {
       /* The following returns whether or not the material is plastically yielding
        * as documented in evaluate.
@@ -67,7 +68,7 @@ namespace aspect
       const std::vector<double> volume_fractions = MaterialUtilities::compute_volume_fractions(composition, get_volumetric_composition_mask());
 
       const std::pair<std::vector<double>, std::vector<bool> > calculate_viscosities =
-        calculate_isostrain_viscosities(in, i, volume_fractions, viscous_flow_law, yield_mechanism);
+        calculate_isostrain_viscosities(in, i, volume_fractions, viscous_flow_law, yield_mechanism, current_cell);
 
       std::vector<double>::const_iterator max_composition = std::max_element(volume_fractions.begin(),volume_fractions.end());
       plastic_yielding = calculate_viscosities.second[std::distance(volume_fractions.begin(),max_composition)];
@@ -127,7 +128,7 @@ namespace aspect
 
       const std::pair<std::vector<double>, std::vector<bool>> calculate_viscosities =
                                                              calculate_isostrain_viscosities(in, 0, volume_fractions, viscous_flow_law,
-                                                                 yield_mechanism, phase_function_values);
+                                                                 yield_mechanism, in.current_cell, phase_function_values);
 
       std::vector<double>::const_iterator max_composition = std::max_element(volume_fractions.begin(), volume_fractions.end());
       const bool plastic_yielding = calculate_viscosities.second[std::distance(volume_fractions.begin(), max_composition)];
@@ -179,6 +180,7 @@ namespace aspect
                                      const std::vector<double> &volume_fractions,
                                      const ViscosityScheme &viscous_type,
                                      const YieldScheme &yield_type,
+                                     typename DoFHandler<dim>::active_cell_iterator current_cell,
                                      const std::vector<double> &phase_function_values) const
     {
       // Initialize or fill variables used to calculate viscosities
@@ -319,7 +321,7 @@ namespace aspect
           viscosity_pre_yield *= weakening_factors[2];
 
           // Steb 3c: calculate friction angle dependent on rate and/or state if specified
-          current_friction = friction_options.compute_dependent_friction_angle(current_edot_ii, j, composition, in, current_friction); // the in here does not work yet, but is needed for cellsize
+          current_friction = friction_options.compute_dependent_friction_angle(current_edot_ii, j, composition, current_cell, current_friction); // the in here does not work yet, but is needed for cellsize
 
           // Step 4: plastic yielding
 
@@ -408,7 +410,7 @@ namespace aspect
               plastic_out->cohesions[i]   += volume_fractions[j] * (drucker_prager_parameters.cohesions[j] * weakening_factors[0]);
               // Also convert radians to degrees
               double current_friction = drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1];
-              current_friction = friction_options.compute_dependent_friction_angle(current_edot_ii, j, in.composition[i], in, current_friction);  // I HAD composition as in.composition[i][j] in my old script
+              current_friction = friction_options.compute_dependent_friction_angle(current_edot_ii, j, in.composition[i], in.current_cell, current_friction);  // I HAD composition as in.composition[i][j] in my old script
               plastic_out->friction_angles[i] += 180.0/numbers::PI * volume_fractions[j] * current_friction;
             }
         }
@@ -459,6 +461,7 @@ namespace aspect
               std::vector<double> eta_component =
                 calculate_isostrain_viscosities(in_derivatives, i, volume_fractions,
                                                 viscous_flow_law, yield_mechanism,
+                                                in.current_cell,
                                                 phase_function_values).first;
 
               // For each composition of the independent component, compute the derivative.
@@ -489,6 +492,7 @@ namespace aspect
           const std::vector<double> viscosity_difference =
             calculate_isostrain_viscosities(in_derivatives, i, volume_fractions,
                                             viscous_flow_law, yield_mechanism,
+                                            in.current_cell,
                                             phase_function_values).first;
 
           for (unsigned int composition_index = 0; composition_index < viscosity_difference.size(); ++composition_index)
@@ -656,7 +660,7 @@ namespace aspect
               // scheme is chosen. It would be useful to have a function to calculate isostress viscosities.
               const std::pair<std::vector<double>, std::vector<bool> > calculate_viscosities =
                 calculate_isostrain_viscosities(in, i, volume_fractions, viscous_flow_law,
-                                                yield_mechanism, phase_function_values);
+                                                yield_mechanism, in.current_cell, phase_function_values);
 
               // The isostrain condition implies that the viscosity averaging should be arithmetic (see above).
               // We have given the user freedom to apply alternative bounds, because in diffusion-dominated
