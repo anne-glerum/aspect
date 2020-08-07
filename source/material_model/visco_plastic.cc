@@ -797,6 +797,8 @@ namespace aspect
           EquationOfState::MulticomponentIncompressible<dim>::declare_parameters (prm);
 
           Rheology::StrainDependent<dim>::declare_parameters (prm);
+          
+          Rheology::FrictionOptions<dim>::declare_parameters (prm);
 
           Rheology::FrictionOptions<dim>::declare_parameters (prm);
 
