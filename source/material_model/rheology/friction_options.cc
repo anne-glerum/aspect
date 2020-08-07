@@ -63,8 +63,8 @@ namespace aspect
 
         // Plasticity parameters
         /*should I do this or just read in the internal anlges of friction directly? */
-        drucker_prager_parameters = drucker_prager_plasticity.parse_parameters(this->n_compositional_fields()+1,
-                                                                               prm);
+        /*drucker_prager_parameters = drucker_prager_plasticity.parse_parameters(this->n_compositional_fields()+1,
+                                                                               prm);*/
 
         // Dynamic friction paramters
         prm.declare_entry ("Dynamic characteristic strain rate", "1e-12",
@@ -224,7 +224,7 @@ namespace aspect
               // Furthermore a smoothness coefficient is added, which influences if the friction vs strain rate curve is rather
               // step-like or more gradual.
               const double mu = std::tan(dynamic_angles_of_internal_friction[j])
-                                + (std::tan(drucker_prager_parameters.angles_internal_friction[j])   //    do I need the weakening factors here? I guess not:  * weakening_factors[1]
+                                + (std::tan(current_friction)   //    do I need the weakening factors here? I guess not:  * weakening_factors[1]
                                    - std::tan(dynamic_angles_of_internal_friction[j]))
                                 / (1 + std::pow((current_edot_ii / dynamic_characteristic_strain_rate),
                                                 dynamic_friction_smoothness_exponent));
@@ -253,7 +253,7 @@ namespace aspect
               // calculate effective friction according to equation (4) in Sobolev and Muldashev 2017;
               // effective friction id calculated by multiplying the friction coefficient with 0.03 = (1-p_f/sigma_n)
               // their equation is for friction coefficient, while ASPECT takes friction angle in RAD, so conversion with tan/atan()
-              current_friction = atan(0.03*(tan(drucker_prager_parameters.angles_internal_friction[j])
+              current_friction = atan(0.03*(tan(current_friction)
                                             + rate_and_state_parameter_a[j] * log(current_edot_ii * cellsize
                                                                                   / steady_state_strain_rate[j]) + rate_and_state_parameter_b[j]
                                             * log(theta * steady_state_strain_rate[j] / critical_slip_distance[j])));

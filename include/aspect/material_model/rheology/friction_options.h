@@ -60,6 +60,7 @@ namespace aspect
           /**
            * Declare the parameters this function takes through input files.
            */
+          static
           void
           declare_parameters (ParameterHandler &prm);
 

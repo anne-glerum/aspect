@@ -755,7 +755,7 @@ namespace aspect
           EquationOfState::MulticomponentIncompressible<dim>::declare_parameters (prm);
 
           Rheology::StrainDependent<dim>::declare_parameters (prm);
-          
+
           Rheology::FrictionOptions<dim>::declare_parameters (prm);
 
           Rheology::Elasticity<dim>::declare_parameters (prm);
@@ -917,6 +917,9 @@ namespace aspect
 
           strain_rheology.initialize_simulator (this->get_simulator());
           strain_rheology.parse_parameters(prm);
+
+          friction_options.initialize_simulator (this->get_simulator());
+          friction_options.parse_parameters(prm);
 
           use_elasticity = prm.get_bool ("Include viscoelasticity");
 
