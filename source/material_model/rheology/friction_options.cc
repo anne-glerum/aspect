@@ -222,7 +222,7 @@ namespace aspect
               // Furthermore a smoothness coefficient is added, which influences if the friction vs strain rate curve is rather
               // step-like or more gradual.
               const double mu = std::tan(dynamic_angles_of_internal_friction[j])
-                                + (std::tan(current_friction)   //    do I need the weakening factors here? I guess not:  * weakening_factors[1]
+                                + (std::tan(current_friction) 
                                    - std::tan(dynamic_angles_of_internal_friction[j]))
                                 / (1 + std::pow((current_edot_ii / dynamic_characteristic_strain_rate),
                                                 dynamic_friction_smoothness_exponent));
