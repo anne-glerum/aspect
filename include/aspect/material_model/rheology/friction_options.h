@@ -148,7 +148,7 @@ namespace aspect
           */
           std::vector<double> rate_and_state_parameter_a;
           std::vector<double> rate_and_state_parameter_b;
-          std::vector<double> critical_slip_distance;
+          double critical_slip_distance;
           std::vector<double> steady_state_strain_rate;
 
           // IS THERE MORE I NEED HERE OR IN PUBLIC?
