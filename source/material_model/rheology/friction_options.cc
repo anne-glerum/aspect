@@ -291,25 +291,38 @@ namespace aspect
       template <int dim>
       double
       FrictionOptions<dim>::
-      compute_edot_ii (const unsigned int q,  // n_evaluation_points
+      compute_edot_ii (const unsigned int q,  // n_evaluation_points -> do I really need this? I do probably more need the volume fraction
                        const MaterialModel::MaterialModelInputs<dim> &in,
                        const double ref_strain_rate,
                        bool use_elasticity,
                        const double min_strain_rate) const
       {
-        if (this->simulator_is_past_initialization() && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms) && in.current_cell.state() == IteratorState::valid)
+        if (this->simulator_is_past_initialization() && this->get_timestep_number() > 0 &&
+            in.requests_property(MaterialProperties::reaction_terms) && in.current_cell.state() == IteratorState::valid)
           {
             const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
                                                   ((in.strain_rate[q]).norm() <= std::numeric_limits<double>::min());
+            
+            double current_edot_ii = numbers::signaling_nan<double>();
+            SymmetricTensor<2,dim> stress_old = numbers::signaling_nan<SymmetricTensor<2,dim>>();
+
+                  if (use_elasticity == true)
+        {
+          for (unsigned int j=0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
+            stress_old[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)] = composition[j];
+        }
+
             double edot_ii;
             if (use_reference_strainrate)
-              edot_ii = ref_strain_rate;
+              {
+                edot_ii = ref_strain_rate;
+                current_edot_ii = ref_strain_rate;
+              }
             else
               edot_ii = std::max(std::sqrt(std::fabs(second_invariant(deviator(in.strain_rate[q])))),
                                  min_strain_rate);
 
-            double current_edot_ii = numbers::signaling_nan<double>();
-            SymmetricTensor<2,dim> stress_old = numbers::signaling_nan<SymmetricTensor<2,dim>>();
+
 
             if (use_elasticity == false)
               {
@@ -317,21 +330,18 @@ namespace aspect
               }
             else
               {
-                for (unsigned int j=0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
+                //      for (unsigned int j=0; j < volume_fractions.size(); ++j)
+                const std::vector<double> &elastic_shear_moduli = elastic_rheology.get_elastic_shear_moduli();
+                if (use_reference_strainrate == false)
                   {
-                    stress_old[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)] = in.composition[q][j];
-                    const std::vector<double> &elastic_shear_moduli = elastic_rheology.get_elastic_shear_moduli();
-                    if (use_reference_strainrate == true)
-                      current_edot_ii = ref_strain_rate;
-                    else
-                      {
-                        const double viscoelastic_strain_rate_invariant = elastic_rheology.calculate_viscoelastic_strain_rate(in.strain_rate[q],
-                                                                          stress_old,
-                                                                          elastic_shear_moduli[j]);
-                        current_edot_ii = std::max(viscoelastic_strain_rate_invariant,
-                                                   min_strain_rate);
-                      }
+                    const double viscoelastic_strain_rate_invariant = elastic_rheology.calculate_viscoelastic_strain_rate(in.strain_rate[q],
+                                                                      stress_old,
+                                                                      elastic_shear_moduli[j]);
+                    current_edot_ii = std::max(viscoelastic_strain_rate_invariant,
+                                               min_strain_rate);
                   }
+
+
                 current_edot_ii /= 2.;
               }
             return current_edot_ii;
