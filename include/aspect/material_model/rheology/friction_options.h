@@ -95,13 +95,13 @@ namespace aspect
            * MaterialModelOutputs object that is handed over.
            */
           void compute_theta_reaction_terms(const MaterialModel::MaterialModelInputs<dim> &in,
-                                   const double min_strain_rate,
-                                   const double ref_strain_rate,
-                                   bool use_elasticity,
-                                   bool use_reference_strainrate,
-                                   const double elastic_shear_moduli,
-                                   const double dte,
-                                   MaterialModel::MaterialModelOutputs<dim> &out) const
+                                            const double min_strain_rate,
+                                            const double ref_strain_rate,
+                                            bool use_elasticity,
+                                            bool use_reference_strainrate,
+                                            const double elastic_shear_moduli,
+                                            const double dte,
+                                            MaterialModel::MaterialModelOutputs<dim> &out) const;
 
           /**
            * A function that returns the selected type of friction dependence.

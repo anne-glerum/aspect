@@ -282,7 +282,7 @@ namespace aspect
                                                                             ref_strain_rate,
                                                                             min_strain_rate,
                                                                             in.strain_rate[i],
-                                                                            elastic_shear_moduli,
+                                                                            elastic_shear_moduli[j],
                                                                             use_elasticity,
                                                                             use_reference_strainrate,
                                                                             dte);
@@ -392,7 +392,9 @@ namespace aspect
     {
       PlasticAdditionalOutputs<dim> *plastic_out = out.template get_additional_output<PlasticAdditionalOutputs<dim> >();
 
-      const double current_edot_ii = friction_options.compute_edot_ii (i, in, ref_strain_rate, use_elasticity, min_strain_rate);
+      const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
+                                            (in.strain_rate[i].norm() <= std::numeric_limits<double>::min());
+          const double dte = elastic_rheology.elastic_timestep();
 
       if (plastic_out != nullptr)
         {
@@ -403,6 +405,15 @@ namespace aspect
           // set to weakened values, or unweakened values when strain weakening is not used
           for (unsigned int j=0; j < volume_fractions.size(); ++j)
             {
+      const double current_edot_ii = Utilities::compute_current_edot_ii(i,
+                                                                            in.composition[i],
+                                                                            ref_strain_rate,
+                                                                            min_strain_rate,
+                                                                            in.strain_rate[i],
+                                                                            elastic_shear_moduli[j],
+                                                                            use_elasticity,
+                                                                            use_reference_strainrate,
+                                                                            dte);
               // Calculate the strain weakening factors and weakened values
               const std::array<double, 3> weakening_factors = strain_rheology.compute_strain_weakening_factors(j, in.composition[i]);
               plastic_out->cohesions[i]   += volume_fractions[j] * (drucker_prager_parameters.cohesions[j] * weakening_factors[0]);
@@ -713,9 +724,12 @@ namespace aspect
           elastic_rheology.fill_reaction_outputs(in, average_elastic_shear_moduli, out);
         }
 
+      const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
+                                            (in.strain_rate[i].norm() <= std::numeric_limits<double>::min());
+          const double dte = elastic_rheology.elastic_timestep();
       // if friction is opted state dependent, we need to fill reaction_outputs for the state variable theta.
       friction_options.compute_theta_reaction_terms(in, min_strain_rate, ref_strain_rate, use_elasticity, 
-                                                    use_reference_strainrate, elastic_shear_moduli[i], dte, out);
+                                                    use_reference_strainrate, elastic_shear_moduli, dte, out);
     }
 
     template <int dim>

@@ -200,7 +200,7 @@ namespace aspect
       FrictionOptions<dim>::
       compute_dependent_friction_angle(const double current_edot_ii,
                                        const unsigned int j,  // volume fraction
-                                       const std::vector<double> &composition,  // I GUESS I COULD CALL COMPOSITION VIA IN SO I ONLY NEED TO PASS ONE
+                                       const std::vector<double> &composition, 
                                        typename DoFHandler<dim>::active_cell_iterator current_cell,
                                        double current_friction) const
       {
@@ -294,7 +294,7 @@ namespace aspect
       compute_theta_reaction_terms(const MaterialModel::MaterialModelInputs<dim> &in,
                                    const double min_strain_rate,
                                    const double ref_strain_rate,
-                                   bool use_elasticity,  // DO I NEED TO HAND IT OVER HERE OR IS IT ENOUGH TO INCLUDE ELASTICITY.CC?
+                                   bool use_elasticity,
                                    bool use_reference_strainrate,
                                    const double elastic_shear_moduli,
                                    const double dte,
@@ -311,10 +311,13 @@ namespace aspect
           {
             for (unsigned int q=0; q < in.n_evaluation_points(); ++q)
               {
+                // I GUESS HERE I NEED SOME LOOP OVER THE VOLUME.FRACTIONS.SIZE(), BUT i DON'T KNOW WHERE TO END IT.
                 // compute current_edot_ii
                 const double current_edot_ii = 
-                                Utilities::compute_current_edot_ii (q, in.composition, ref_strain_rate, 
-                                min_strain_rate, in.strain_rate, elastic_shear_moduli, use_elasticity, 
+                                Utilities::compute_current_edot_ii (q, 
+                                // q is from n_evaluation_points, but I need it from volume_fractions.size!!!
+                                in.composition[q], ref_strain_rate, 
+                                min_strain_rate, in.strain_rate[q], elastic_shear_moduli[q], use_elasticity, 
                                 use_reference_strainrate, dte);
                 const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
                 double theta_old = in.composition[q][theta_position_tmp];
