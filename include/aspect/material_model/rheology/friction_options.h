@@ -89,25 +89,19 @@ namespace aspect
            */
           ComponentMask get_theta_composition_mask(ComponentMask composition_mask) const;
 
-          /**
-           * A function that returns current_edot_ii, which is the current second invariant
-          * of the strain rate tensor.
-           */
-          double compute_edot_ii (const unsigned int q,
-                                  const MaterialModel::MaterialModelInputs<dim> &in,
-                                  const double ref_strain_rate,
-                                  bool use_elasticity,
-                                  const double min_strain_rate) const;
 
           /**
            * A function that fills the reaction terms for the state variable theta in
            * MaterialModelOutputs object that is handed over.
            */
           void compute_theta_reaction_terms(const MaterialModel::MaterialModelInputs<dim> &in,
-                                            const double min_strain_rate,
-                                            const double ref_strain_rate,
-                                            bool use_elasticity,
-                                            MaterialModel::MaterialModelOutputs<dim> &out) const;
+                                   const double min_strain_rate,
+                                   const double ref_strain_rate,
+                                   bool use_elasticity,
+                                   bool use_reference_strainrate,
+                                   const double elastic_shear_moduli,
+                                   const double dte,
+                                   MaterialModel::MaterialModelOutputs<dim> &out) const
 
           /**
            * A function that returns the selected type of friction dependence.

@@ -297,7 +297,7 @@ namespace aspect
                 {
                   // Step 2a: calculate viscoelastic (effective) viscosity
                   viscosity_pre_yield = elastic_rheology.calculate_viscoelastic_viscosity(viscosity_pre_yield,
-                                                                                          elastic_shear_moduli[j]);
+                                                                                      elastic_shear_moduli[j]);
 
                   // Step 2b: calculate current (viscous + elastic) stress magnitude
                   current_stress = viscosity_pre_yield * current_edot_ii;
@@ -319,7 +319,7 @@ namespace aspect
           viscosity_pre_yield *= weakening_factors[2];
 
           // Steb 3c: calculate friction angle dependent on rate and/or state if specified
-          current_friction = friction_options.compute_dependent_friction_angle(current_edot_ii, j, composition, current_cell, current_friction);
+          current_friction = friction_options.compute_dependent_friction_angle(current_edot_ii, j, in.composition[i], current_cell, current_friction);
 
           // Step 4: plastic yielding
 
@@ -714,7 +714,8 @@ namespace aspect
         }
 
       // if friction is opted state dependent, we need to fill reaction_outputs for the state variable theta.
-      friction_options.compute_theta_reaction_terms(in, min_strain_rate, ref_strain_rate, use_elasticity, out);
+      friction_options.compute_theta_reaction_terms(in, min_strain_rate, ref_strain_rate, use_elasticity, 
+                                                    use_reference_strainrate, elastic_shear_moduli[i], dte, out);
     }
 
     template <int dim>
