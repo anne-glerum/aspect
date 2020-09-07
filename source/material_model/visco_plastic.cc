@@ -713,6 +713,19 @@ namespace aspect
                   elastic_out->elastic_shear_moduli[i] = average_elastic_shear_moduli[i];
                 }
             }
+
+          // Update the state variable theta if used
+          if (friction_options.get_theta_in_use())
+            {
+              const std::vector<double> volume_fractions = MaterialUtilities::compute_volume_fractions(in.composition[i], volumetric_compositions);
+              const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
+                                                    (in.strain_rate[i].norm() <= std::numeric_limits<double>::min());
+              const double dte = elastic_rheology.elastic_timestep();
+              const std::vector<double> &elastic_shear_moduli = elastic_rheology.get_elastic_shear_moduli();
+
+              friction_options.compute_theta_reaction_terms(i, in, volume_fractions, min_strain_rate, ref_strain_rate, use_elasticity,
+                                                            use_reference_strainrate, elastic_shear_moduli, dte, out);
+            }
         }
 
       // If we use the full strain tensor, compute the change in the individual tensor components.
@@ -722,19 +735,6 @@ namespace aspect
         {
           elastic_rheology.fill_elastic_force_outputs(in, average_elastic_shear_moduli, out);
           elastic_rheology.fill_reaction_outputs(in, average_elastic_shear_moduli, out);
-        }
-
-      // Update the state variable theta if used
-      if (friction_options.get_theta_in_use())
-        {
-          const std::vector<double> volume_fractions = MaterialUtilities::compute_volume_fractions(in.composition[i], volumetric_compositions);
-          const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
-                                                (in.strain_rate[i].norm() <= std::numeric_limits<double>::min());
-          const double dte = elastic_rheology.elastic_timestep();
-          const std::vector<double> &elastic_shear_moduli = elastic_rheology.get_elastic_shear_moduli();
-          
-          friction_options.compute_theta_reaction_terms(in, volume_fractions, min_strain_rate, ref_strain_rate, use_elasticity,
-                                                        use_reference_strainrate, elastic_shear_moduli, dte, out);
         }
     }
 

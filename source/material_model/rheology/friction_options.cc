@@ -242,18 +242,16 @@ namespace aspect
                   const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
                   double theta_old = composition[theta_position_tmp];
                   // equation (7) from Sobolev and Muldashev 2017
-                  const double theta = critical_slip_distance / cellsize /
-                                       current_edot_ii + (theta_old - critical_slip_distance
-                                                          / cellsize / current_edot_ii) * exp( - (current_edot_ii * this->get_timestep())
-                                                                                               / critical_slip_distance * cellsize);
+                  const double theta = compute_theta(theta_old, current_edot_ii, cellsize);
 
                   // calculate effective friction according to equation (4) in Sobolev and Muldashev 2017;
                   // effective friction id calculated by multiplying the friction coefficient with 0.03 = (1-p_f/sigma_n)
                   // their equation is for friction coefficient, while ASPECT takes friction angle in RAD, so conversion with tan/atan()
-                  current_friction = atan(0.03*(tan(current_friction)
-                                                + rate_and_state_parameter_a[j] * log(current_edot_ii * cellsize
-                                                                                      / steady_state_strain_rate[j]) + rate_and_state_parameter_b[j]
-                                                * log(theta * steady_state_strain_rate[j] / critical_slip_distance)));
+                  current_friction = atan(0.03 * (tan(current_friction)
+                                                  + rate_and_state_parameter_a[j]
+                                                  * log(current_edot_ii * cellsize
+                                                        / steady_state_strain_rate[j]) + rate_and_state_parameter_b[j]
+                                                  * log(theta * steady_state_strain_rate[j] / critical_slip_distance)));
                   break;
                 }
               else
@@ -289,9 +287,28 @@ namespace aspect
 
 
       template <int dim>
+      double
+      FrictionOptions<dim>::
+      compute_theta(const double theta_old,
+                    const double current_edot_ii,
+                    const double cellsize) const
+      {
+        // equation (7) from Sobolev and Muldashev 2017. Though here I had to add  "- theta_old"
+        // because I need the change in theta for reaction_terms
+        double current_theta = critical_slip_distance / cellsize / current_edot_ii +
+                               (theta_old - critical_slip_distance
+                                / cellsize / current_edot_ii)
+                               * exp( - (current_edot_ii * this->get_timestep())
+                                      / critical_slip_distance * cellsize);
+        return current_theta;
+      }
+
+
+      template <int dim>
       void
       FrictionOptions<dim>::
-      compute_theta_reaction_terms(const MaterialModel::MaterialModelInputs<dim> &in,
+      compute_theta_reaction_terms(const int q,
+                                   const MaterialModel::MaterialModelInputs<dim> &in,
                                    const std::vector<double> &volume_fractions,
                                    const double min_strain_rate,
                                    const double ref_strain_rate,
@@ -312,22 +329,16 @@ namespace aspect
           {
             for (unsigned int j=0; j < volume_fractions.size(); ++j)
               {
-                for (unsigned int q=0; q < in.n_evaluation_points(); ++q)
-                  {
-                    const double current_edot_ii =
-                      MaterialUtilities::compute_current_edot_ii (in.composition[q], ref_strain_rate,
-                                                                  min_strain_rate, in.strain_rate[q], elastic_shear_moduli[j], use_elasticity,
-                                                                  use_reference_strainrate, dte);
-                    const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
-                    double theta_old = in.composition[q][theta_position_tmp];
-                    // equation (7) from Sobolev and Muldashev 2017. Though here I had to add  "- theta_old"
-                    // because I need the change in theta for reaction_terms
-                    const double theta_increment = critical_slip_distance /cellsize/current_edot_ii +
-                                                   (theta_old - critical_slip_distance
-                                                    /cellsize/current_edot_ii)*exp(-(current_edot_ii*this->get_timestep())
-                                                                                   /critical_slip_distance*cellsize) - theta_old;
-                    out.reaction_terms[q][theta_position_tmp] = theta_increment;
-                  }
+                // q war n_evaluation_points
+                const double current_edot_ii =
+                  MaterialUtilities::compute_current_edot_ii (in.composition[q], ref_strain_rate,
+                                                              min_strain_rate, in.strain_rate[q], elastic_shear_moduli[j], use_elasticity,
+                                                              use_reference_strainrate, dte);
+                const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
+                double theta_old = in.composition[q][theta_position_tmp];
+                double current_theta = compute_theta(theta_old, current_edot_ii, cellsize);
+                const double theta_increment = current_theta - theta_old;
+                out.reaction_terms[q][theta_position_tmp] = theta_increment;
               }
           }
       }

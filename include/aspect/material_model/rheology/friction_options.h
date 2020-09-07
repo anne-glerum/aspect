@@ -91,10 +91,19 @@ namespace aspect
 
 
           /**
+           * A function that computes the current value for the state variable theta.
+           */
+          double compute_theta(const double theta_old,
+                               const double current_edot_ii,
+                               const double cellsize) const;
+
+
+          /**
            * A function that fills the reaction terms for the state variable theta in
            * MaterialModelOutputs object that is handed over.
            */
-          void compute_theta_reaction_terms(const MaterialModel::MaterialModelInputs<dim> &in,
+          void compute_theta_reaction_terms(const int q,
+                                            const MaterialModel::MaterialModelInputs<dim> &in,
                                             const std::vector<double> &volume_fractions,
                                             const double min_strain_rate,
                                             const double ref_strain_rate,
