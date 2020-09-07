@@ -319,6 +319,7 @@ namespace aspect
 
           // Steb 3c: calculate friction angle dependent on rate and/or state if specified
 
+          /**  THESE CHANGES ARE COOL, ONCE JOHNS PR REQUEST HAS BEEN TESTED I GUESS
           // Determine if the pressure used in Drucker Prager plasticity will be capped at 0 (default).
           // This may be necessary in models without gravity and the dynamic stresses are much higher
           // than the lithostatic prssure.
@@ -333,7 +334,12 @@ namespace aspect
                                                                   current_edot_ii,
                                                                   drucker_prager_parameters.damper_viscosity,
                                                                   viscosity_pre_yield);
+                                                                  
           current_friction = friction_options.compute_dependent_friction_angle(plastic_strain_rate, j, in.composition[i], current_cell, current_friction);
+
+          */
+
+          current_friction = friction_options.compute_dependent_friction_angle(current_edot_ii, j, in.composition[i], current_cell, current_friction);
 
           // Step 4: plastic yielding
 
