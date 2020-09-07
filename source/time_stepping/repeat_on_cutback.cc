@@ -77,7 +77,6 @@ namespace aspect
     }
 
 
-
     template <int dim>
     void
     RepeatOnCutback<dim>::parse_parameters (ParameterHandler &prm)
