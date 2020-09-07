@@ -200,7 +200,7 @@ namespace aspect
       FrictionOptions<dim>::
       compute_dependent_friction_angle(const double current_edot_ii,
                                        const unsigned int j,  // volume fraction
-                                       const std::vector<double> &composition, 
+                                       const std::vector<double> &composition,
                                        typename DoFHandler<dim>::active_cell_iterator current_cell,
                                        double current_friction) const
       {
@@ -313,12 +313,12 @@ namespace aspect
               {
                 // I GUESS HERE I NEED SOME LOOP OVER THE VOLUME.FRACTIONS.SIZE(), BUT i DON'T KNOW WHERE TO END IT.
                 // compute current_edot_ii
-                const double current_edot_ii = 
-                                MaterialUtilities::compute_current_edot_ii (q, 
-                                // q is from n_evaluation_points, but I need it from volume_fractions.size!!!
-                                in.composition[q], ref_strain_rate, 
-                                min_strain_rate, in.strain_rate[q], elastic_shear_moduli[q], use_elasticity, 
-                                use_reference_strainrate, dte);
+                const double current_edot_ii =
+                  MaterialUtilities::compute_current_edot_ii (q,
+                                                              // q is from n_evaluation_points, but I need it from volume_fractions.size!!!
+                                                              in.composition[q], ref_strain_rate,
+                                                              min_strain_rate, in.strain_rate[q], elastic_shear_moduli[q], use_elasticity,
+                                                              use_reference_strainrate, dte);
                 const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
                 double theta_old = in.composition[q][theta_position_tmp];
                 // equation (7) from Sobolev and Muldashev 2017. Though here I had to add  "- theta_old"

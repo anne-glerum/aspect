@@ -297,7 +297,7 @@ namespace aspect
                 {
                   // Step 2a: calculate viscoelastic (effective) viscosity
                   viscosity_pre_yield = elastic_rheology.calculate_viscoelastic_viscosity(viscosity_pre_yield,
-                                                                                      elastic_shear_moduli[j]);
+                                                                                          elastic_shear_moduli[j]);
 
                   // Step 2b: calculate current (viscous + elastic) stress magnitude
                   current_stress = viscosity_pre_yield * current_edot_ii;
@@ -394,7 +394,7 @@ namespace aspect
 
       const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
                                             (in.strain_rate[i].norm() <= std::numeric_limits<double>::min());
-          const double dte = elastic_rheology.elastic_timestep();
+      const double dte = elastic_rheology.elastic_timestep();
 
       if (plastic_out != nullptr)
         {
@@ -405,15 +405,15 @@ namespace aspect
           // set to weakened values, or unweakened values when strain weakening is not used
           for (unsigned int j=0; j < volume_fractions.size(); ++j)
             {
-      const double current_edot_ii = MaterialUtilities::compute_current_edot_ii(i,
-                                                                            in.composition[i],
-                                                                            ref_strain_rate,
-                                                                            min_strain_rate,
-                                                                            in.strain_rate[i],
-                                                                            elastic_shear_moduli[j],
-                                                                            use_elasticity,
-                                                                            use_reference_strainrate,
-                                                                            dte);
+              const double current_edot_ii = MaterialUtilities::compute_current_edot_ii(i,
+                                                                                        in.composition[i],
+                                                                                        ref_strain_rate,
+                                                                                        min_strain_rate,
+                                                                                        in.strain_rate[i],
+                                                                                        elastic_shear_moduli[j],
+                                                                                        use_elasticity,
+                                                                                        use_reference_strainrate,
+                                                                                        dte);
               // Calculate the strain weakening factors and weakened values
               const std::array<double, 3> weakening_factors = strain_rheology.compute_strain_weakening_factors(j, in.composition[i]);
               plastic_out->cohesions[i]   += volume_fractions[j] * (drucker_prager_parameters.cohesions[j] * weakening_factors[0]);
@@ -726,9 +726,9 @@ namespace aspect
 
       const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
                                             (in.strain_rate[i].norm() <= std::numeric_limits<double>::min());
-          const double dte = elastic_rheology.elastic_timestep();
+      const double dte = elastic_rheology.elastic_timestep();
       // if friction is opted state dependent, we need to fill reaction_outputs for the state variable theta.
-      friction_options.compute_theta_reaction_terms(in, min_strain_rate, ref_strain_rate, use_elasticity, 
+      friction_options.compute_theta_reaction_terms(in, min_strain_rate, ref_strain_rate, use_elasticity,
                                                     use_reference_strainrate, elastic_shear_moduli, dte, out);
     }
 
