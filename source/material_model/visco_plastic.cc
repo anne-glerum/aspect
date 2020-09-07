@@ -405,7 +405,7 @@ namespace aspect
           // set to weakened values, or unweakened values when strain weakening is not used
           for (unsigned int j=0; j < volume_fractions.size(); ++j)
             {
-      const double current_edot_ii = Utilities::compute_current_edot_ii(i,
+      const double current_edot_ii = MaterialUtilities::compute_current_edot_ii(i,
                                                                             in.composition[i],
                                                                             ref_strain_rate,
                                                                             min_strain_rate,

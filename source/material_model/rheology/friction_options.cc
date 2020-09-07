@@ -314,7 +314,7 @@ namespace aspect
                 // I GUESS HERE I NEED SOME LOOP OVER THE VOLUME.FRACTIONS.SIZE(), BUT i DON'T KNOW WHERE TO END IT.
                 // compute current_edot_ii
                 const double current_edot_ii = 
-                                Utilities::compute_current_edot_ii (q, 
+                                MaterialUtilities::compute_current_edot_ii (q, 
                                 // q is from n_evaluation_points, but I need it from volume_fractions.size!!!
                                 in.composition[q], ref_strain_rate, 
                                 min_strain_rate, in.strain_rate[q], elastic_shear_moduli[q], use_elasticity, 
