@@ -318,7 +318,22 @@ namespace aspect
           viscosity_pre_yield *= weakening_factors[2];
 
           // Steb 3c: calculate friction angle dependent on rate and/or state if specified
-          current_friction = friction_options.compute_dependent_friction_angle(current_edot_ii, j, in.composition[i], current_cell, current_friction);
+
+          // Determine if the pressure used in Drucker Prager plasticity will be capped at 0 (default).
+          // This may be necessary in models without gravity and the dynamic stresses are much higher
+          // than the lithostatic prssure.
+          double pressure_for_plasticity = in.pressure[i];
+          if (allow_negative_pressures_in_plasticity == false)
+            pressure_for_plasticity = std::max(in.pressure[i],0.0);
+
+          double plastic_strain_rate =
+            drucker_prager_plasticity.compute_plastic_strain_rate(current_cohesion,
+                                                                  current_friction,
+                                                                  pressure_for_plasticity,
+                                                                  current_edot_ii,
+                                                                  drucker_prager_parameters.damper_viscosity,
+                                                                  viscosity_pre_yield);
+          current_friction = friction_options.compute_dependent_friction_angle(plastic_strain_rate, j, in.composition[i], current_cell, current_friction);
 
           // Step 4: plastic yielding
 

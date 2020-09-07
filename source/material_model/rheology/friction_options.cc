@@ -334,10 +334,12 @@ namespace aspect
                   MaterialUtilities::compute_current_edot_ii (in.composition[q], ref_strain_rate,
                                                               min_strain_rate, in.strain_rate[q], elastic_shear_moduli[j], use_elasticity,
                                                               use_reference_strainrate, dte);
+
                 const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
                 double theta_old = in.composition[q][theta_position_tmp];
                 double current_theta = compute_theta(theta_old, current_edot_ii, cellsize);
                 const double theta_increment = current_theta - theta_old;
+
                 out.reaction_terms[q][theta_position_tmp] = theta_increment;
               }
           }
