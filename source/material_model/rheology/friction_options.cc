@@ -129,7 +129,7 @@ namespace aspect
         const unsigned int n_fields = this->n_compositional_fields() + 1;
 
         // Friction dependence parameters
-        if (prm.get ("Friction dependence mechanism") == "none")  // BEFORE I HAD NAMED IT NONE LIKE IN STRAIN-DEPENDENT BUT THAT MADE ERRORS
+        if (prm.get ("Friction dependence mechanism") == "none")
           friction_dependence_mechanism = independent;
         else if (prm.get ("Friction dependence mechanism") == "dynamic friction")
           friction_dependence_mechanism = dynamic_friction;
@@ -292,11 +292,12 @@ namespace aspect
       void
       FrictionOptions<dim>::
       compute_theta_reaction_terms(const MaterialModel::MaterialModelInputs<dim> &in,
+                                   const std::vector<double> &volume_fractions,
                                    const double min_strain_rate,
                                    const double ref_strain_rate,
                                    bool use_elasticity,
                                    bool use_reference_strainrate,
-                                   const double elastic_shear_moduli,
+                                   const std::vector<double> &elastic_shear_moduli,
                                    const double dte,
                                    MaterialModel::MaterialModelOutputs<dim> &out) const
       {
@@ -309,25 +310,24 @@ namespace aspect
 
         if (this->simulator_is_past_initialization() && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms) && in.current_cell.state() == IteratorState::valid)
           {
-            for (unsigned int q=0; q < in.n_evaluation_points(); ++q)
+            for (unsigned int j=0; j < volume_fractions.size(); ++j)
               {
-                // I GUESS HERE I NEED SOME LOOP OVER THE VOLUME.FRACTIONS.SIZE(), BUT i DON'T KNOW WHERE TO END IT.
-                // compute current_edot_ii
-                const double current_edot_ii =
-                  MaterialUtilities::compute_current_edot_ii (q,
-                                                              // q is from n_evaluation_points, but I need it from volume_fractions.size!!!
-                                                              in.composition[q], ref_strain_rate,
-                                                              min_strain_rate, in.strain_rate[q], elastic_shear_moduli[q], use_elasticity,
-                                                              use_reference_strainrate, dte);
-                const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
-                double theta_old = in.composition[q][theta_position_tmp];
-                // equation (7) from Sobolev and Muldashev 2017. Though here I had to add  "- theta_old"
-                // because I need the change in theta for reaction_terms
-                const double theta_increment = critical_slip_distance /cellsize/current_edot_ii +
-                                               (theta_old - critical_slip_distance
-                                                /cellsize/current_edot_ii)*exp(-(current_edot_ii*this->get_timestep())
-                                                                               /critical_slip_distance*cellsize) - theta_old;
-                out.reaction_terms[q][theta_position_tmp] = theta_increment;
+                for (unsigned int q=0; q < in.n_evaluation_points(); ++q)
+                  {
+                    const double current_edot_ii =
+                      MaterialUtilities::compute_current_edot_ii (in.composition[q], ref_strain_rate,
+                                                                  min_strain_rate, in.strain_rate[q], elastic_shear_moduli[j], use_elasticity,
+                                                                  use_reference_strainrate, dte);
+                    const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
+                    double theta_old = in.composition[q][theta_position_tmp];
+                    // equation (7) from Sobolev and Muldashev 2017. Though here I had to add  "- theta_old"
+                    // because I need the change in theta for reaction_terms
+                    const double theta_increment = critical_slip_distance /cellsize/current_edot_ii +
+                                                   (theta_old - critical_slip_distance
+                                                    /cellsize/current_edot_ii)*exp(-(current_edot_ii*this->get_timestep())
+                                                                                   /critical_slip_distance*cellsize) - theta_old;
+                    out.reaction_terms[q][theta_position_tmp] = theta_increment;
+                  }
               }
           }
       }
@@ -338,6 +338,18 @@ namespace aspect
       get_friction_dependence_mechanism() const
       {
         return friction_dependence_mechanism;
+      }
+
+      template <int dim>
+      bool
+      FrictionOptions<dim>::
+      get_theta_in_use() const
+      {
+        bool theta_in_use =false;
+        if (get_friction_dependence_mechanism() == state_dependent_friction)
+          theta_in_use =true;
+
+        return theta_in_use;
       }
     }
   }

@@ -95,11 +95,12 @@ namespace aspect
            * MaterialModelOutputs object that is handed over.
            */
           void compute_theta_reaction_terms(const MaterialModel::MaterialModelInputs<dim> &in,
+                                            const std::vector<double> &volume_fractions,
                                             const double min_strain_rate,
                                             const double ref_strain_rate,
                                             bool use_elasticity,
                                             bool use_reference_strainrate,
-                                            const double elastic_shear_moduli,
+                                            const std::vector<double> &elastic_shear_moduli,
                                             const double dte,
                                             MaterialModel::MaterialModelOutputs<dim> &out) const;
 
@@ -108,6 +109,11 @@ namespace aspect
            */
           FrictionDependenceMechanism
           get_friction_dependence_mechanism () const;
+
+          /**
+           * A function that returns if the state variable theta is used.
+           */
+          bool get_theta_in_use() const;
 
         private:
 

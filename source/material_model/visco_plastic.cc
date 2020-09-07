@@ -401,11 +401,12 @@ namespace aspect
           plastic_out->friction_angles[i] = 0;
           plastic_out->yielding[i] = plastic_yielding ? 1 : 0;
 
+          const std::vector<double> &elastic_shear_moduli = elastic_rheology.get_elastic_shear_moduli();
+
           // set to weakened values, or unweakened values when strain weakening is not used
           for (unsigned int j=0; j < volume_fractions.size(); ++j)
             {
-              const double current_edot_ii = MaterialUtilities::compute_current_edot_ii(i,
-                                                                                        in.composition[i],
+              const double current_edot_ii = MaterialUtilities::compute_current_edot_ii(in.composition[i],
                                                                                         ref_strain_rate,
                                                                                         min_strain_rate,
                                                                                         in.strain_rate[i],
@@ -723,12 +724,18 @@ namespace aspect
           elastic_rheology.fill_reaction_outputs(in, average_elastic_shear_moduli, out);
         }
 
-      const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
-                                            (in.strain_rate[i].norm() <= std::numeric_limits<double>::min());
-      const double dte = elastic_rheology.elastic_timestep();
-      // if friction is opted state dependent, we need to fill reaction_outputs for the state variable theta.
-      friction_options.compute_theta_reaction_terms(in, min_strain_rate, ref_strain_rate, use_elasticity,
-                                                    use_reference_strainrate, elastic_shear_moduli, dte, out);
+      // Update the state variable theta if used
+      if (friction_options.get_theta_in_use())
+        {
+          const std::vector<double> volume_fractions = MaterialUtilities::compute_volume_fractions(in.composition[i], volumetric_compositions);
+          const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
+                                                (in.strain_rate[i].norm() <= std::numeric_limits<double>::min());
+          const double dte = elastic_rheology.elastic_timestep();
+          const std::vector<double> &elastic_shear_moduli = elastic_rheology.get_elastic_shear_moduli();
+          
+          friction_options.compute_theta_reaction_terms(in, volume_fractions, min_strain_rate, ref_strain_rate, use_elasticity,
+                                                        use_reference_strainrate, elastic_shear_moduli, dte, out);
+        }
     }
 
     template <int dim>
