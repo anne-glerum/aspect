@@ -51,6 +51,40 @@ namespace aspect
       }
 
 
+      template <int dim>
+      double
+      DruckerPrager<dim>::compute_plastic_strain_rate (const double cohesion,
+                                                       const double angle_internal_friction,
+                                                       const double pressure,
+                                                       const double effective_strain_rate,
+                                                       const double max_yield_stress,
+                                                       const double damper_viscosity,
+                                                       const double pre_yield_viscosity) const
+      {
+        const double sin_phi = std::sin(angle_internal_friction);
+        const double cos_phi = std::cos(angle_internal_friction);
+        const double stress_inv_part = 1. / (std::sqrt(3.0) * (3.0 + sin_phi));
+
+        // Initial yield stress (no stabilization terms)
+        double yield_stress = ( (dim==3)
+                                ?
+                                ( 6.0 * cohesion * cos_phi + 6.0 * pressure * sin_phi) * stress_inv_part
+                                :
+                                cohesion * cos_phi + pressure * sin_phi);
+
+        // Calculate the plastic strain rate, which is needed to calculate the additional stress
+        // associated with the plastic damper.
+        const double total_stress = ( yield_stress + ( 2. * damper_viscosity * effective_strain_rate ) ) /
+                                    ( 1 + ( damper_viscosity / pre_yield_viscosity ) );
+
+        const double pre_yield_strain_rate = total_stress / ( 2. * pre_yield_viscosity);
+
+        const double plastic_strain_rate = effective_strain_rate - pre_yield_strain_rate;
+
+        return plastic_strain_rate;
+      }
+
+
 
       template <int dim>
       double

@@ -89,6 +89,18 @@ namespace aspect
                                 const double max_yield_stress) const;
 
           /**
+           * Compute the plastic strain rate (copied from PR #3473)
+           */
+          double
+          compute_plastic_strain_rate (const double cohesion,
+                                       const double angle_internal_friction,
+                                       const double pressure,
+                                       const double effective_strain_rate,
+                                       const double max_yield_stress,
+                                       const double damper_viscosity,
+                                       const double pre_yield_viscosity) const;
+
+          /**
            * Compute the plastic viscosity with the yield stress and effective strain rate.
            */
           double
