@@ -334,7 +334,7 @@ namespace aspect
                                                                   current_edot_ii,
                                                                   drucker_prager_parameters.damper_viscosity,
                                                                   viscosity_pre_yield);
-                                                                  
+
           current_friction = friction_options.compute_dependent_friction_angle(plastic_strain_rate, j, in.composition[i], current_cell, current_friction);
 
           */

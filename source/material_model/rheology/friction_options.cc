@@ -224,7 +224,7 @@ namespace aspect
               const double mu = std::tan(dynamic_angles_of_internal_friction[j])
                                 + (std::tan(current_friction) - std::tan(dynamic_angles_of_internal_friction[j]))
                                 / (1. + std::pow((current_edot_ii / dynamic_characteristic_strain_rate),
-                                                dynamic_friction_smoothness_exponent));
+                                                 dynamic_friction_smoothness_exponent));
               current_friction = std::atan (mu);
               break;
             }
@@ -247,9 +247,9 @@ namespace aspect
                   // effective friction id calculated by multiplying the friction coefficient with 0.03 = (1-p_f/sigma_n)
                   // their equation is for friction coefficient, while ASPECT takes friction angle in RAD, so conversion with tan/atan()
                   current_friction = atan(tan(current_friction)
-                                                  + rate_and_state_parameter_a[j]
-                                                  * log((current_edot_ii * cellsize ) / steady_state_strain_rate[j]) + rate_and_state_parameter_b[j]
-                                                  * log((theta * steady_state_strain_rate[j] ) / critical_slip_distance));
+                                          + rate_and_state_parameter_a[j]
+                                          * log((current_edot_ii * cellsize ) / steady_state_strain_rate[j]) + rate_and_state_parameter_b[j]
+                                          * log((theta * steady_state_strain_rate[j] ) / critical_slip_distance));
                   break;
                 }
               else
