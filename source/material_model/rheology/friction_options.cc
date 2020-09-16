@@ -252,7 +252,7 @@ namespace aspect
                   // theta_old loads theta from previous time step
 
                   const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
-                  double theta_old = composition[theta_position_tmp];
+                  const double theta_old = composition[theta_position_tmp];
                   // equation (7) from Sobolev and Muldashev 2017
                   const double theta = compute_theta(theta_old, current_edot_ii, cellsize);
 
@@ -286,10 +286,10 @@ namespace aspect
       {
         // Store which components to exclude during the volume fraction computation.
 
-        if (friction_dependence_mechanism == state_dependent_friction)
+        if (get_theta_in_use())
           {
             // this is the compositional field used for theta in rate-and-state friction
-            int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
+            const int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
             composition_mask.set(theta_position_tmp,false);
           }
 
@@ -306,7 +306,7 @@ namespace aspect
       {
         // equation (7) from Sobolev and Muldashev 2017. Though here I had to add  "- theta_old"
         // because I need the change in theta for reaction_terms
-        double current_theta = critical_slip_distance / ( cellsize * current_edot_ii ) +
+        const double current_theta = critical_slip_distance / ( cellsize * current_edot_ii ) +
                                (theta_old - critical_slip_distance / ( cellsize * current_edot_ii))
                                * exp( - ((current_edot_ii * cellsize) * this->get_timestep()) / critical_slip_distance);
         return current_theta;
@@ -321,8 +321,8 @@ namespace aspect
                                    const std::vector<double> &volume_fractions,
                                    const double min_strain_rate,
                                    const double ref_strain_rate,
-                                   bool use_elasticity,
-                                   bool use_reference_strainrate,
+                                   const bool use_elasticity,
+                                   const bool use_reference_strainrate,
                                    const std::vector<double> &elastic_shear_moduli,
                                    const double dte,
                                    MaterialModel::MaterialModelOutputs<dim> &out) const
@@ -345,8 +345,8 @@ namespace aspect
                                                               use_reference_strainrate, dte);
 
                 const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
-                double theta_old = in.composition[q][theta_position_tmp];
-                double current_theta = compute_theta(theta_old, current_edot_ii, cellsize);
+                const double theta_old = in.composition[q][theta_position_tmp];
+                const double current_theta = compute_theta(theta_old, current_edot_ii, cellsize);
                 const double theta_increment = current_theta - theta_old;
 
                 out.reaction_terms[q][theta_position_tmp] = theta_increment;
