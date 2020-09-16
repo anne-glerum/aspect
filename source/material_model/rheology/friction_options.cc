@@ -403,6 +403,8 @@ namespace aspect
             const Point<1> dpoint(depth);
             const double rate_and_state_parameter_a = rate_and_state_parameter_a_function.value(dpoint);
             const double rate_and_state_parameter_b = rate_and_state_parameter_b_function.value(dpoint);
+            
+            std::cout << " a is " << rate_and_state_parameter_a << " - and b is " << rate_and_state_parameter_b << std::endl;
             return std::pair<double,double>(rate_and_state_parameter_a,
                                             rate_and_state_parameter_b);
           }
@@ -412,7 +414,7 @@ namespace aspect
           }
         else
           {
-            Assert( false, ExcMessage("Invalid method for a_and_b depth dependence") );
+            Assert( false, ExcMessage("Invalid method for a and b depth dependence") );
             return std::pair<double,double>(0.0,0.0);
           }
       }
