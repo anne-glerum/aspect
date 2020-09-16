@@ -97,7 +97,14 @@ namespace aspect
                            "Units: none.");
 
         // rate and state parameters
-        prm.declare_entry ("Rate and state parameters a and b", "None",
+        prm.declare_entry ("Rate and state parameters a", "None",
+                           Patterns::Selection("Function|None"),
+                           "Method that is used to specify how the a and b should vary with depth."
+                           "The rate and state parameter a is the rate dependency. "
+                           "The rate and state parameter b is the state dependency. Positive (a-b) is velocity"
+                           " strengthening, negative (a-b) is velocity weakening. "
+                           "Units: none");
+        prm.declare_entry ("Rate and state parameters b", "None",
                            Patterns::Selection("Function|None"),
                            "Method that is used to specify how the a and b should vary with depth."
                            "The rate and state parameter a is the rate dependency. "
@@ -105,11 +112,16 @@ namespace aspect
                            " strengthening, negative (a-b) is velocity weakening. "
                            "Units: none");
 
-        prm.enter_subsection("a and b function");
+        prm.enter_subsection("a function");
         {
           Functions::ParsedFunction<1>::declare_parameters(prm,1);
-          prm.declare_entry("Function expression for a","0.0");
-          prm.declare_entry("Function expression for b","0.0");
+          prm.declare_entry("Function expression","0.0");
+        }
+        prm.leave_subsection();
+        prm.enter_subsection("b function");
+        {
+          Functions::ParsedFunction<1>::declare_parameters(prm,1);
+          prm.declare_entry("Function expression","0.0");
         }
         prm.leave_subsection();
 
@@ -203,10 +215,10 @@ namespace aspect
                                                                            n_fields,
                                                                            "Steady state strain rate");
 
-        if ( prm.get("Rate and state parameters a and b") == "Function" )
+        if ( prm.get("Rate and state parameters a") == "Function" )
           {
             a_and_b_source = Function;
-            prm.enter_subsection("a and b function");
+            prm.enter_subsection("a function");
             {
               try
                 {
@@ -215,11 +227,27 @@ namespace aspect
               catch (...)
                 {
                   std::cerr << "FunctionParser failed to parse\n"
-                            << "\t a and b function\n"
+                            << "\t a function\n"
                             << "with expression \n"
-                            << "\t' " << prm.get("Function expression for a") << "'";
+                            << "\t' " << prm.get("Function expression") << "'";
                   throw;
                 }
+            }
+            prm.leave_subsection();
+          }
+        else if (  prm.get("Rate and state parameters a") == "None" )
+          a_and_b_source = None;
+        else
+          {
+            AssertThrow(false, ExcMessage("Unknown method for Rate and state parameters a."));
+          }
+
+
+        if ( prm.get("Rate and state parameters b") == "Function" )
+          {
+            a_and_b_source = Function;
+            prm.enter_subsection("b function");
+            {
               try
                 {
                   rate_and_state_parameter_b_function.parse_parameters(prm);
@@ -227,19 +255,19 @@ namespace aspect
               catch (...)
                 {
                   std::cerr << "FunctionParser failed to parse\n"
-                            << "\t a and b depth function\n"
+                            << "\t a function\n"
                             << "with expression \n"
-                            << "\t' " << prm.get("Function expression for b") << "'";
+                            << "\t' " << prm.get("Function expression") << "'";
                   throw;
                 }
             }
             prm.leave_subsection();
           }
-        else if (  prm.get("Rate and state parameters a and b") == "None" )
+        else if (  prm.get("Rate and state parameters b") == "None" )
           a_and_b_source = None;
         else
           {
-            AssertThrow(false, ExcMessage("Unknown method for Rate and state parameters a and b."));
+            AssertThrow(false, ExcMessage("Unknown method for Rate and state parameters b."));
           }
       }
 
