@@ -250,7 +250,10 @@ namespace aspect
             {
               try
                 {
-                  rate_and_state_parameter_b_function.parse_parameters(prm);
+                  //rate_and_state_parameter_b_function.parse_parameters(prm);
+                  rate_and_state_parameter_b_function
+                    = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(this->n_compositional_fields());
+                  rate_and_state_parameter_b_function->parse_parameters (prm);
                 }
               catch (...)
                 {
@@ -431,7 +434,7 @@ namespace aspect
             const Point<1> dpoint(depth);
             const double rate_and_state_parameter_a = rate_and_state_parameter_a_function.value(dpoint);
             const double rate_and_state_parameter_b = rate_and_state_parameter_b_function.value(dpoint);
-            
+
             std::cout << " a is " << rate_and_state_parameter_a << " - and b is " << rate_and_state_parameter_b << std::endl;
             return std::pair<double,double>(rate_and_state_parameter_a,
                                             rate_and_state_parameter_b);
