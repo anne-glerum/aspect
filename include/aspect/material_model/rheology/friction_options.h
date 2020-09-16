@@ -159,18 +159,18 @@ namespace aspect
           double critical_slip_distance;
           std::vector<double> steady_state_strain_rate;
 
-        /**
-         * Parsed functions that specify a and b depth-dependence when using the Function
-         * method.
-         */
-        Functions::ParsedFunction<1> rate_and_state_parameter_a_function;
-        Functions::ParsedFunction<1> rate_and_state_parameter_b_function; 
-        
-        /**
-         * Function to calculate depth-dependent a and b values for state dependent friction.
-         */
-      std::pair<double,double>
-        calculate_depth_dependent_a_and_b(const double &depth) const;
+          /**
+           * Parsed functions that specify a and b depth-dependence when using the Function
+           * method.
+           */
+          Functions::ParsedFunction<1> rate_and_state_parameter_a_function;
+          Functions::ParsedFunction<1> rate_and_state_parameter_b_function;
+
+          /**
+           * Function to calculate depth-dependent a and b values for state dependent friction.
+           */
+          std::pair<double,double>
+          calculate_depth_dependent_a_and_b(const double &depth) const;
 
       };
     }

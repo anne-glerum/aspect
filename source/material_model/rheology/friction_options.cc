@@ -399,8 +399,8 @@ namespace aspect
             const Point<1> dpoint(depth);
             const double rate_and_state_parameter_a = rate_and_state_parameter_a_function.value(dpoint);
             const double rate_and_state_parameter_b = rate_and_state_parameter_b_function.value(dpoint);
-    return std::pair<double,double>(rate_and_state_parameter_a,
-                                    rate_and_state_parameter_b);
+            return std::pair<double,double>(rate_and_state_parameter_a,
+                                            rate_and_state_parameter_b);
           }
         else if (a_and_b_source == None)
           {
