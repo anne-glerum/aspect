@@ -109,6 +109,14 @@ namespace aspect
                            " strengthening, negative (a-b) is velocity weakening. "
                            "Units: none");
 
+        prm.declare_entry ("Effective friction factor", "1",
+                           Patterns::List(Patterns::Double(0)),
+                           "A number that is multiplied with the coefficient of friction to take into "
+                           "account the influence of pore fluid pressure. This makes the friction "
+                           "coefficient an effective friction coefficient as in Sobolev and "
+                           "Muldashev 2017. "
+                           "Units: none");
+
         prm.declare_entry ("Critical slip distance", "0.01",
                            Patterns::List(Patterns::Double(0)),
                            "The critical slip distance in rate and state friction. Used to calculate the state "
@@ -117,7 +125,8 @@ namespace aspect
 
         prm.declare_entry ("Steady state strain rate", "1e-14",
                            Patterns::List(Patterns::Double(0)),
-                           "Arbitrary strain rate at which friction equals the reference friction angle in rate and state friction. "
+                           "Arbitrary strain rate at which friction equals the reference friction angle in "
+                           "rate and state friction. "
                            "Units: $1/s$");
       }
 
@@ -188,6 +197,10 @@ namespace aspect
                                                                              n_fields,
                                                                              "Rate and state parameter b");
 
+        effective_friction_factor = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Effective friction factor"))),
+                                                                             n_fields,
+                                                                             "Effective friction factor");
+
         critical_slip_distance = prm.get_double("Critical slip distance");
 
         steady_state_strain_rate = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Steady state strain rate"))),
@@ -221,7 +234,7 @@ namespace aspect
               // is directly specified. The coefficient of friction is the tangent of the internal angle of friction.
               // Furthermore a smoothness coefficient is added, which influences if the friction vs strain rate curve is rather
               // step-like or more gradual.
-              const double mu = std::tan(dynamic_angles_of_internal_friction[j])
+              const double mu = effective_friction_factor[j] * std::tan(dynamic_angles_of_internal_friction[j])
                                 + (std::tan(current_friction) - std::tan(dynamic_angles_of_internal_friction[j]))
                                 / (1. + std::pow((current_edot_ii / dynamic_characteristic_strain_rate),
                                                  dynamic_friction_smoothness_exponent));
@@ -244,9 +257,9 @@ namespace aspect
                   const double theta = compute_theta(theta_old, current_edot_ii, cellsize);
 
                   // calculate effective friction according to equation (4) in Sobolev and Muldashev 2017;
-                  // effective friction id calculated by multiplying the friction coefficient with 0.03 = (1-p_f/sigma_n)
+                  // effective friction is calculated by multiplying the friction coefficient with 0.03 = (1-p_f/sigma_n)
                   // their equation is for friction coefficient, while ASPECT takes friction angle in RAD, so conversion with tan/atan()
-                  current_friction = atan(tan(current_friction)
+                  current_friction = atan(effective_friction_factor[j] * tan(current_friction)
                                           + rate_and_state_parameter_a[j]
                                           * log((current_edot_ii * cellsize ) / steady_state_strain_rate[j]) + rate_and_state_parameter_b[j]
                                           * log((theta * steady_state_strain_rate[j] ) / critical_slip_distance));
