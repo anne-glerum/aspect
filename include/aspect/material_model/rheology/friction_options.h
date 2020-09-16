@@ -24,6 +24,7 @@
 #include <aspect/global.h>
 #include <aspect/material_model/interface.h>
 #include <aspect/simulator_access.h>
+#include <deal.II/base/parsed_function.h>
 
 
 #include <aspect/material_model/rheology/strain_dependent.h>
@@ -81,7 +82,8 @@ namespace aspect
                                            const unsigned int j,
                                            const std::vector<double> &composition,
                                            typename DoFHandler<dim>::active_cell_iterator current_cell,
-                                           double current_friction) const;
+                                           double current_friction,
+                                           const double &depth) const;
 
           /**
            * A function that returns a ComponentMask, which indicates that the component

@@ -251,7 +251,8 @@ namespace aspect
                                        const unsigned int j,  // volume fraction
                                        const std::vector<double> &composition,
                                        typename DoFHandler<dim>::active_cell_iterator current_cell,
-                                       double current_friction) const
+                                       double current_friction,
+                                       const double &depth) const
       {
 
         switch (friction_dependence_mechanism)
@@ -286,18 +287,21 @@ namespace aspect
                   cellsize = current_cell->extent_in_direction(0);
                   // calculate the state variable theta
                   // theta_old loads theta from previous time step
-
                   const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
                   const double theta_old = composition[theta_position_tmp];
                   // equation (7) from Sobolev and Muldashev 2017
                   const double theta = compute_theta(theta_old, current_edot_ii, cellsize);
 
+                  // get the values for a and b
+                  const double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(depth).first;
+                  const double rate_and_state_parameter_b = calculate_depth_dependent_a_and_b(depth).second;
+
                   // calculate effective friction according to equation (4) in Sobolev and Muldashev 2017;
                   // effective friction is calculated by multiplying the friction coefficient with 0.03 = (1-p_f/sigma_n)
                   // their equation is for friction coefficient, while ASPECT takes friction angle in RAD, so conversion with tan/atan()
                   current_friction = atan(effective_friction_factor[j] * tan(current_friction)
-                                          + rate_and_state_parameter_a[j]
-                                          * log((current_edot_ii * cellsize ) / steady_state_strain_rate[j]) + rate_and_state_parameter_b[j]
+                                          + rate_and_state_parameter_a
+                                          * log((current_edot_ii * cellsize ) / steady_state_strain_rate[j]) + rate_and_state_parameter_b
                                           * log((theta * steady_state_strain_rate[j] ) / critical_slip_distance));
                   break;
                 }
@@ -404,12 +408,12 @@ namespace aspect
           }
         else if (a_and_b_source == None)
           {
-            return 1.0;
+            return std::pair<double,double>(0.0,0.0); // was return 1.0 in depth dependent for viscosity
           }
         else
           {
             Assert( false, ExcMessage("Invalid method for a_and_b depth dependence") );
-            return 0.0;
+            return std::pair<double,double>(0.0,0.0);
           }
       }
 
