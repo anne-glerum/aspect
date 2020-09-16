@@ -174,20 +174,20 @@ namespace aspect
           std::pair<double,double>
           calculate_depth_dependent_a_and_b(const double &depth) const;
 
-        /**
-         * An enum to describe where the depth dependency of the a and b value for
-         * rate and state friction is coming from.
-         */
-        enum AandBSource
-        {
-          Function,
-          None
-        };
+          /**
+           * An enum to describe where the depth dependency of the a and b value for
+           * rate and state friction is coming from.
+           */
+          enum AandBSource
+          {
+            Function,
+            None
+          };
 
-        /**
-         * Currently chosen source for the viscosity.
-         */
-        AandBSource a_and_b_source;
+          /**
+           * Currently chosen source for the viscosity.
+           */
+          AandBSource a_and_b_source;
 
       };
     }
