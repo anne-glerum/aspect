@@ -97,17 +97,21 @@ namespace aspect
                            "Units: none.");
 
         // rate and state parameters
-        prm.declare_entry ("Rate and state parameter a", "0",
-                           Patterns::List(Patterns::Double(0)),
-                           "The rate and state parameter - the rate dependency. Positive (a-b) is velocity"
+        prm.declare_entry ("Rate and state parameters a and b", "None",
+                           Patterns::Selection("Function|None"),
+                           "Method that is used to specify how the a and b should vary with depth."
+                           "The rate and state parameter a is the rate dependency. "
+                           "The rate and state parameter b is the state dependency. Positive (a-b) is velocity"
                            " strengthening, negative (a-b) is velocity weakening. "
                            "Units: none");
 
-        prm.declare_entry ("Rate and state parameter b", "0",
-                           Patterns::List(Patterns::Double(0)),
-                           "The rate and state parameter - the state dependency. Positive (a-b) is velocity"
-                           " strengthening, negative (a-b) is velocity weakening. "
-                           "Units: none");
+        prm.enter_subsection("a and b function");
+        {
+          Functions::ParsedFunction<1>::declare_parameters(prm,1);
+          prm.declare_entry("Function expression for a","0.0");
+          prm.declare_entry("Function expression for b","0.0");
+        }
+        prm.leave_subsection();
 
         prm.declare_entry ("Effective friction factor", "1",
                            Patterns::List(Patterns::Double(0)),
@@ -189,24 +193,56 @@ namespace aspect
           }
 
 
-        rate_and_state_parameter_a = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Rate and state parameter a"))),
-                                                                             n_fields,
-                                                                             "Rate and state parameter a");
-
-        rate_and_state_parameter_b = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Rate and state parameter b"))),
-                                                                             n_fields,
-                                                                             "Rate and state parameter b");
-
         effective_friction_factor = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Effective friction factor"))),
-                                                                             n_fields,
-                                                                             "Effective friction factor");
+                                                                            n_fields,
+                                                                            "Effective friction factor");
 
         critical_slip_distance = prm.get_double("Critical slip distance");
 
         steady_state_strain_rate = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Steady state strain rate"))),
                                                                            n_fields,
                                                                            "Steady state strain rate");
+
+        if ( prm.get("Rate and state parameters a and b") == "Function" )
+          {
+            a_and_b_source = Function;
+            prm.enter_subsection("a and b function");
+            {
+              try
+                {
+                  rate_and_state_parameter_a_function.parse_parameters(prm);
+                }
+              catch (...)
+                {
+                  std::cerr << "FunctionParser failed to parse\n"
+                            << "\t a and b function\n"
+                            << "with expression \n"
+                            << "\t' " << prm.get("Function expression for a") << "'";
+                  throw;
+                }
+              try
+                {
+                  rate_and_state_parameter_b_function.parse_parameters(prm);
+                }
+              catch (...)
+                {
+                  std::cerr << "FunctionParser failed to parse\n"
+                            << "\t a and b depth function\n"
+                            << "with expression \n"
+                            << "\t' " << prm.get("Function expression for b") << "'";
+                  throw;
+                }
+            }
+            prm.leave_subsection();
+          }
+        else if (  prm.get("Rate and state parameters a and b") == "None" )
+          a_and_b_source = None;
+        else
+          {
+            AssertThrow(false, ExcMessage("Unknown method for Rate and state parameters a and b."));
+          }
       }
+
 
       template <int dim>
       double
@@ -307,8 +343,8 @@ namespace aspect
         // equation (7) from Sobolev and Muldashev 2017. Though here I had to add  "- theta_old"
         // because I need the change in theta for reaction_terms
         const double current_theta = critical_slip_distance / ( cellsize * current_edot_ii ) +
-                               (theta_old - critical_slip_distance / ( cellsize * current_edot_ii))
-                               * exp( - ((current_edot_ii * cellsize) * this->get_timestep()) / critical_slip_distance);
+                                     (theta_old - critical_slip_distance / ( cellsize * current_edot_ii))
+                                     * exp( - ((current_edot_ii * cellsize) * this->get_timestep()) / critical_slip_distance);
         return current_theta;
       }
 
@@ -351,6 +387,29 @@ namespace aspect
 
                 out.reaction_terms[q][theta_position_tmp] = theta_increment;
               }
+          }
+      }
+
+      template <int dim>
+      std::pair<double,double>
+      FrictionOptions<dim>::calculate_depth_dependent_a_and_b(const double &depth) const
+      {
+        if ( a_and_b_source == Function )
+          {
+            const Point<1> dpoint(depth);
+            const double rate_and_state_parameter_a = rate_and_state_parameter_a_function.value(dpoint);
+            const double rate_and_state_parameter_b = rate_and_state_parameter_b_function.value(dpoint);
+    return std::pair<double,double>(rate_and_state_parameter_a,
+                                    rate_and_state_parameter_b);
+          }
+        else if (a_and_b_source == None)
+          {
+            return 1.0;
+          }
+        else
+          {
+            Assert( false, ExcMessage("Invalid method for a_and_b depth dependence") );
+            return 0.0;
           }
       }
 
