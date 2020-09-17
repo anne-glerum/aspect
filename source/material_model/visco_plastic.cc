@@ -339,8 +339,8 @@ namespace aspect
 
           */
 
-          const double depth = this->get_geometry_model().depth(in.position[i]);
-          current_friction = friction_options.compute_dependent_friction_angle(current_edot_ii, j, in.composition[i], current_cell, current_friction, depth);
+          //const double depth = this->get_geometry_model().depth(in.position[i]);
+          current_friction = friction_options.compute_dependent_friction_angle(current_edot_ii, j, in.composition[i], current_cell, current_friction, in.position[i]);
 
           // Step 4: plastic yielding
 

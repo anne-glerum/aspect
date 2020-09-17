@@ -83,7 +83,7 @@ namespace aspect
                                            const std::vector<double> &composition,
                                            typename DoFHandler<dim>::active_cell_iterator current_cell,
                                            double current_friction,
-                                           const double &depth) const;
+                                           const Point<dim> &position) const;
 
           /**
            * A function that returns a ComponentMask, which indicates that the component
@@ -165,14 +165,14 @@ namespace aspect
            * Parsed functions that specify a and b depth-dependence when using the Function
            * method.
            */
-          Functions::ParsedFunction<1> rate_and_state_parameter_a_function;
-          Functions::ParsedFunction<1> rate_and_state_parameter_b_function;
+          std::unique_ptr<Functions::ParsedFunction<dim> > rate_and_state_parameter_a_function;
+          std::unique_ptr<Functions::ParsedFunction<dim> > rate_and_state_parameter_b_function;
 
           /**
            * Function to calculate depth-dependent a and b values for state dependent friction.
            */
           std::pair<double,double>
-          calculate_depth_dependent_a_and_b(const double &depth) const;
+          calculate_depth_dependent_a_and_b(const Point<dim> &position, const int j) const;
 
           /**
            * An enum to describe where the depth dependency of the a and b value for

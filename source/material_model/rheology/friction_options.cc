@@ -114,14 +114,12 @@ namespace aspect
 
         prm.enter_subsection("a function");
         {
-          Functions::ParsedFunction<1>::declare_parameters(prm,1);
-          prm.declare_entry("Function expression","0.0");
+          Functions::ParsedFunction<dim>::declare_parameters(prm,1);
         }
         prm.leave_subsection();
         prm.enter_subsection("b function");
         {
-          Functions::ParsedFunction<1>::declare_parameters(prm,1);
-          prm.declare_entry("Function expression","0.0");
+          Functions::ParsedFunction<dim>::declare_parameters(prm,1);
         }
         prm.leave_subsection();
 
@@ -222,7 +220,10 @@ namespace aspect
             {
               try
                 {
-                  rate_and_state_parameter_a_function.parse_parameters(prm);
+                  //rate_and_state_parameter_a_function.parse_parameters(prm);
+                  rate_and_state_parameter_a_function
+                    = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(this->n_compositional_fields());
+                  rate_and_state_parameter_a_function->parse_parameters (prm);
                 }
               catch (...)
                 {
@@ -283,7 +284,7 @@ namespace aspect
                                        const std::vector<double> &composition,
                                        typename DoFHandler<dim>::active_cell_iterator current_cell,
                                        double current_friction,
-                                       const double &depth) const
+                                       const Point<dim> &position) const
       {
 
         switch (friction_dependence_mechanism)
@@ -324,8 +325,8 @@ namespace aspect
                   const double theta = compute_theta(theta_old, current_edot_ii, cellsize);
 
                   // get the values for a and b
-                  const double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(depth).first;
-                  const double rate_and_state_parameter_b = calculate_depth_dependent_a_and_b(depth).second;
+                  const double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(position,j).first;
+                  const double rate_and_state_parameter_b = calculate_depth_dependent_a_and_b(position,j).second;
 
                   // calculate effective friction according to equation (4) in Sobolev and Muldashev 2017;
                   // effective friction is calculated by multiplying the friction coefficient with 0.03 = (1-p_f/sigma_n)
@@ -427,13 +428,15 @@ namespace aspect
 
       template <int dim>
       std::pair<double,double>
-      FrictionOptions<dim>::calculate_depth_dependent_a_and_b(const double &depth) const
+      FrictionOptions<dim>::calculate_depth_dependent_a_and_b(const Point<dim> &position, const int j) const
       {
         if ( a_and_b_source == Function )
           {
-            const Point<1> dpoint(depth);
-            const double rate_and_state_parameter_a = rate_and_state_parameter_a_function.value(dpoint);
-            const double rate_and_state_parameter_b = rate_and_state_parameter_b_function.value(dpoint);
+            Utilities::NaturalCoordinate<dim> point =
+              this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system);
+
+            const double rate_and_state_parameter_a = rate_and_state_parameter_a_function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),j);
+            const double rate_and_state_parameter_b = rate_and_state_parameter_b_function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),j);
 
             std::cout << " a is " << rate_and_state_parameter_a << " - and b is " << rate_and_state_parameter_b << std::endl;
             return std::pair<double,double>(rate_and_state_parameter_a,
