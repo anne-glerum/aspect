@@ -432,6 +432,7 @@ namespace aspect
       {
         if ( a_and_b_source == Function )
           {
+            const Utilities::Coordinates::CoordinateSystem coordinate_system = this->get_geometry_model().natural_coordinate_system();
             Utilities::NaturalCoordinate<dim> point =
               this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system);
 
