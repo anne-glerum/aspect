@@ -331,6 +331,9 @@ namespace aspect
                   // calculate effective friction according to equation (4) in Sobolev and Muldashev 2017;
                   // effective friction is calculated by multiplying the friction coefficient with 0.03 = (1-p_f/sigma_n)
                   // their equation is for friction coefficient, while ASPECT takes friction angle in RAD, so conversion with tan/atan()
+                  std::cout << 'tan(30) = '<< tan(30) << ' - atan(tan(30)) = '<<atan(tan(30))<< std::endl;
+std::cout << 'tan(30*3.14165/180) = '<< tan(30*3.14165/180) << ' - atan(tan(30*3.14165/180)) = '<<atan(tan(30*3.14165/180))<< std::endl;
+
                   current_friction = atan(effective_friction_factor[j] * tan(current_friction)
                                           + rate_and_state_parameter_a
                                           * log((current_edot_ii * cellsize ) / steady_state_strain_rate[j]) + rate_and_state_parameter_b
