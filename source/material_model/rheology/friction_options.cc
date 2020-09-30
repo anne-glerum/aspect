@@ -54,11 +54,11 @@ namespace aspect
                            "respectively. $\dot{\epsilon}_{ii}$ is the second invariant of the strain rate and "
                            "$\dot{\epsilon}_C$ is the characterisitc strain rate where $\mu = (\mu_s+\mu_d)/2$. "
                            "x controls how smooth or step-like the change from $\mu_s$ to $\mu_d$ is. "
-                           "The equation is modified after Equation (13) in van Dinther et al. 2013. "
+                           "The equation is modified after Equation (13) in \cite{van_dinther_seismic_2013}. "
                            "\n\n"
                            "\\item ``rate and state dependent friction'': A state variable theta is introduced "
                            "and the friction angle is calculated using classic aging rate-and-state friction by "
-                           "Ruina (1983) as described by Equations (4--7) in Sobolev and Muldashev (2017).");
+                           "Ruina (1983) as described by Equations (4--7) in \cite{sobolev_modeling_2017}.");
 
         // Plasticity parameters
         /*should I do this or just read in the internal anlges of friction directly? */
@@ -89,7 +89,7 @@ namespace aspect
                            Patterns::Double (0),
                            "An exponential factor in the equation for the calculation of the friction angle "
                            "when a static and a dynamic friction angle are specified. A factor of 1 returns the equation "
-                           "to Equation (13) in van Dinther et al., (2013, JGR). A factor between 0 and 1 makes the "
+                           "to Equation (13) in \cite{van_dinther_seismic_2013}. A factor between 0 and 1 makes the "
                            "curve of the friction angle vs. the strain rate more smooth, while a factor >1 makes "
                            "the change between static and dynamic friction angle more steplike. "
                            "Units: none.");
@@ -125,9 +125,8 @@ namespace aspect
                            Patterns::List(Patterns::Double(0)),
                            "A number that is multiplied with the coefficient of friction to take into "
                            "account the influence of pore fluid pressure. This makes the friction "
-                           "coefficient an effective friction coefficient as in Sobolev and "
-                           "Muldashev (2017). "
-                           "Units: none");
+                           "coefficient an effective friction coefficient as in \cite{sobolev_modeling_2017}. "
+                           "Units: none.");
 
         prm.declare_entry ("Critical slip distance", "0.01",
                            Patterns::List(Patterns::Double(0)),
@@ -140,8 +139,8 @@ namespace aspect
                            "distance, a and b are parameters to describe the rate and state dependence, $\mu$ "
                            "is the friction coefficient, and $\sigma_n$ is the normal stress on the fault. "
                            "Laboratory values of the critical slip distance are on the "
-                           "order of microns. For geodynamic modelling Sobolev and Muldashev set this parameter "
-                           "to 1--10 cm. In the SEAS benchmark they use ??? . "
+                           "order of microns. For geodynamic modelling \cite{sobolev_modeling_2017} set this parameter "
+                           "to 1--10 cm. In the SEAS benchmark \citep{erickson_community_2020} they use 4 and 8 mm. "
                            "Units: m.");
 
         prm.declare_entry ("Quasi static strain rate", "1e-14",
