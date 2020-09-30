@@ -45,10 +45,10 @@ namespace aspect
        * Enumeration for selecting which type of friction dependence to use.
        * For the type 'independent', the user-supplied internal angle of friction is used.
        * For the type 'dynamic friction' the friction angle is rate dependent using
-       * Equation 13 from van Dinther et al. 2013.
+       * Equation 13 from van Dinther et al. (2013).
        * For the type 'rate and state dependent friction'  the friction angle is calculated
        * using classic aging rate-and-state friction by Ruina (1983) as described in
-       * Sobolev and Muldashev 2017.
+       * Equation 7 in Sobolev and Muldashev (2017).
        * Strain-weakening and friction dependence mechanisms other than rate or state
        * dependence are handled outside this functionality.
        */
@@ -183,7 +183,7 @@ namespace aspect
           /**
            * A number that is multiplied with the coefficient of friction to take into
            * account the influence of pore fluid pressure. This makes the friction
-           * coefficient an effective friction coefficient as in Sobolev and Muldashev 2017.
+           * coefficient an effective friction coefficient as in Sobolev and Muldashev (2017).
            */
           std::vector<double> effective_friction_factor;
 
@@ -226,7 +226,8 @@ namespace aspect
            * Currently chosen source for the depth dependency a and b parameters in rate
            * and state friction.
            */
-          AandBSource a_and_b_source;
+          AandBSource a_source;
+          AandBSource b_source;
 
       };
     }

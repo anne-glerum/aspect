@@ -66,10 +66,10 @@ namespace aspect
 
         // Initial yield stress (no stabilization terms)
         const double yield_stress = ( (dim==3)
-                                ?
-                                ( 6.0 * cohesion * cos_phi + 6.0 * pressure * sin_phi) * stress_inv_part
-                                :
-                                cohesion * cos_phi + pressure * sin_phi);
+                                      ?
+                                      ( 6.0 * cohesion * cos_phi + 6.0 * pressure * sin_phi) * stress_inv_part
+                                      :
+                                      cohesion * cos_phi + pressure * sin_phi);
 
         // Calculate the plastic strain rate, which is needed to calculate the additional stress
         // associated with the plastic damper.
