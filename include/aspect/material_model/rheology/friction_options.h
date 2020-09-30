@@ -43,15 +43,20 @@ namespace aspect
     {
       /**
        * Enumeration for selecting which type of friction dependence to use.
-       * For independent, internal angle of friction is used.
-       * Otherwise, the friction angle can be rate and/or state dependent.
+       * For the type 'independent', the user-supplied internal angle of friction is used.
+       * For the type 'dynamic friction' the friction angle is rate-dependent using
+       * Equation 13 from van Dinther et al. 2013.
+       * For the type 'rate and state dependent friction'  the friction angle is calculated
+       * using classic aging rate-and-state friction by Ruina (1983) as described in
+       * Sobolev and Muldashev 2017.
+       * Strain-weakening and friction dependence mechanisms other than rate or state
+       * dependence are handled outside this functionality.
        */
-
       enum FrictionDependenceMechanism
       {
         independent,
         dynamic_friction,
-        state_dependent_friction
+        rate_and_state_dependent_friction
       };
 
       template <int dim>
@@ -73,7 +78,7 @@ namespace aspect
 
           /**
            * A function that computes the new friction angle when rate and/or state
-          * dependence is taken into account. Given a compositional field with
+           * dependence is taken into account. Given a compositional field with
            * the index j and a vector of all compositional fields, it returns
            * the newly calculated friction angle.
            */
@@ -124,17 +129,17 @@ namespace aspect
           /**
            * A function that returns if the state variable theta is used.
            */
-          bool get_theta_in_use() const;
+          bool get_use_theta() const;
 
         private:
 
           FrictionDependenceMechanism friction_dependence_mechanism;
 
-
           /*
            * Objects for computing plastic stresses, viscosities, and additional outputs
            */
           Rheology::DruckerPrager<dim> drucker_prager_plasticity;
+
           /**
           * Input parameters for the drucker prager plasticity.
           */
@@ -148,18 +153,51 @@ namespace aspect
           Rheology::StrainDependent<dim> strain_rheology;
 
           /**
-          * dynamic friction input parameters
+          * Dynamic friction input parameters
           */
+
+          /**
+           * Dynamic angles of internal friction that are used at high strain rates.
+           */
           std::vector<double> dynamic_angles_of_internal_friction;
+
+          /**
+           * The characteristic strain rate value, where the angle of friction takes the mean
+           * of the dynamic and the static angle of friction. When the effective strain rate
+           * in a cell is very high the dynamic angle of friction is taken, when it is very low
+           * the static angle of internal friction is chosen.
+           */
           double dynamic_characteristic_strain_rate;
+
+          /**
+           * An exponential factor in the equation for the calculation of the friction angle
+           * to make the transition between static and dynamic friction angle more smooth or
+           * more step-like.
+           */
           double dynamic_friction_smoothness_exponent;
 
           /**
           * rate and state friction input parameters
           */
+
+          /**
+           * A number that is multiplied with the coefficient of friction to take into
+           * account the influence of pore fluid pressure. This makes the friction
+           * coefficient an effective friction coefficient as in Sobolev and Muldashev 2017.
+           */
           std::vector<double> effective_friction_factor;
+
+          /**
+           * The critical slip distance in rate and state friction. Used to calculate the state
+           * variable theta.
+           */
           double critical_slip_distance;
-          std::vector<double> steady_state_strain_rate;
+
+          /**
+           * Arbitrary strain rate at which friction equals the reference friction angle in
+           * rate and state friction.
+           */
+          double steady_state_strain_rate;
 
           /**
            * Parsed functions that specify a and b depth-dependence when using the Function
@@ -185,7 +223,8 @@ namespace aspect
           };
 
           /**
-           * Currently chosen source for the viscosity.
+           * Currently chosen source for the depth dependency a and b parameters in rate
+           * and state friction.
            */
           AandBSource a_and_b_source;
 

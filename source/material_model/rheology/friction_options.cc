@@ -138,7 +138,7 @@ namespace aspect
                            "Units: m");
 
         prm.declare_entry ("Steady state strain rate", "1e-14",
-                           Patterns::List(Patterns::Double(0)),
+                           Patterns::Double (0),
                            "Arbitrary strain rate at which friction equals the reference friction angle in "
                            "rate and state friction. "
                            "Units: $1/s$");
@@ -156,8 +156,8 @@ namespace aspect
           friction_dependence_mechanism = independent;
         else if (prm.get ("Friction dependence mechanism") == "dynamic friction")
           friction_dependence_mechanism = dynamic_friction;
-        else if (prm.get ("Friction dependence mechanism") == "state dependent friction")
-          friction_dependence_mechanism = state_dependent_friction;
+        else if (prm.get ("Friction dependence mechanism") == "rate and state dependent friction")
+          friction_dependence_mechanism = rate_and_state_dependent_friction;
         else if (prm.get ("Friction dependence mechanism") == "default")
           friction_dependence_mechanism = independent;
         /* would be nice for the future to have an option like rate and state friction with fixed point iteration */
@@ -195,7 +195,7 @@ namespace aspect
         dynamic_friction_smoothness_exponent = prm.get_double("Dynamic friction smoothness exponent");
 
         // Rate and state friction parameters
-        if (friction_dependence_mechanism == state_dependent_friction)
+        if (friction_dependence_mechanism == rate_and_state_dependent_friction)
           {
             AssertThrow(this->introspection().compositional_index_for_name("theta"),
                         ExcMessage("Material model with rate-and-state friction only works "
@@ -209,9 +209,7 @@ namespace aspect
 
         critical_slip_distance = prm.get_double("Critical slip distance");
 
-        steady_state_strain_rate = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Steady state strain rate"))),
-                                                                           n_fields,
-                                                                           "Steady state strain rate");
+        steady_state_strain_rate = prm.get_double("Steady state strain rate");
 
         if ( prm.get("Rate and state parameters a") == "Function" )
           {
@@ -310,7 +308,7 @@ namespace aspect
               current_friction = std::atan (mu);
               break;
             }
-            case state_dependent_friction:
+            case rate_and_state_dependent_friction:
             {
               //cellsize is needed for theta and the friction angle
               double cellsize = 1;
@@ -336,8 +334,8 @@ std::cout << 'tan(30*3.14165/180) = '<< tan(30*3.14165/180) << ' - atan(tan(30*3
 
                   current_friction = atan(effective_friction_factor[j] * tan(current_friction)
                                           + rate_and_state_parameter_a
-                                          * log((current_edot_ii * cellsize ) / steady_state_strain_rate[j]) + rate_and_state_parameter_b
-                                          * log((theta * steady_state_strain_rate[j] ) / critical_slip_distance));
+                                          * log((current_edot_ii * cellsize ) / steady_state_strain_rate) + rate_and_state_parameter_b
+                                          * log((theta * steady_state_strain_rate ) / critical_slip_distance));
                   break;
                 }
               else
@@ -361,7 +359,7 @@ std::cout << 'tan(30*3.14165/180) = '<< tan(30*3.14165/180) << ' - atan(tan(30*3
       {
         // Store which components to exclude during the volume fraction computation.
 
-        if (get_theta_in_use())
+        if (use_theta())
           {
             // this is the compositional field used for theta in rate-and-state friction
             const int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
@@ -468,13 +466,13 @@ std::cout << 'tan(30*3.14165/180) = '<< tan(30*3.14165/180) << ' - atan(tan(30*3
       template <int dim>
       bool
       FrictionOptions<dim>::
-      get_theta_in_use() const
+      get_use_theta() const
       {
-        bool theta_in_use =false;
-        if (get_friction_dependence_mechanism() == state_dependent_friction)
-          theta_in_use =true;
+        bool use_theta =false;
+        if (get_friction_dependence_mechanism() == rate_and_state_dependent_friction)
+          use_theta =true;
 
-        return theta_in_use;
+        return use_theta;
       }
     }
   }
