@@ -155,6 +155,8 @@ namespace aspect
                            "Units: $1/s$.");
       }
 
+
+
       template <int dim>
       void
       FrictionOptions<dim>::parse_parameters (ParameterHandler &prm)
@@ -283,6 +285,7 @@ namespace aspect
       }
 
 
+
       template <int dim>
       double
       FrictionOptions<dim>::
@@ -356,6 +359,8 @@ std::cout << 'tan(30*3.14165/180) = '<< tan(30*3.14165/180) << ' - atan(tan(30*3
         return current_friction;
       }
 
+
+
       template <int dim>
       ComponentMask
       FrictionOptions<dim>::
@@ -374,6 +379,7 @@ std::cout << 'tan(30*3.14165/180) = '<< tan(30*3.14165/180) << ' - atan(tan(30*3
       }
 
 
+
       template <int dim>
       double
       FrictionOptions<dim>::
@@ -388,6 +394,7 @@ std::cout << 'tan(30*3.14165/180) = '<< tan(30*3.14165/180) << ' - atan(tan(30*3
                                      * exp( - ((current_edot_ii * cellsize) * this->get_timestep()) / critical_slip_distance);
         return current_theta;
       }
+
 
 
       template <int dim>
@@ -431,6 +438,8 @@ std::cout << 'tan(30*3.14165/180) = '<< tan(30*3.14165/180) << ' - atan(tan(30*3
           }
       }
 
+
+
       template <int dim>
       std::pair<double,double>
       FrictionOptions<dim>::calculate_depth_dependent_a_and_b(const Point<dim> &position, const int j) const
@@ -459,6 +468,8 @@ std::cout << 'tan(30*3.14165/180) = '<< tan(30*3.14165/180) << ' - atan(tan(30*3
           }
       }
 
+
+
       template <int dim>
       FrictionDependenceMechanism
       FrictionOptions<dim>::
@@ -466,6 +477,8 @@ std::cout << 'tan(30*3.14165/180) = '<< tan(30*3.14165/180) << ' - atan(tan(30*3
       {
         return friction_dependence_mechanism;
       }
+
+
 
       template <int dim>
       bool
@@ -481,6 +494,8 @@ std::cout << 'tan(30*3.14165/180) = '<< tan(30*3.14165/180) << ' - atan(tan(30*3
     }
   }
 }
+
+
 
 // explicit instantiations
 namespace aspect
