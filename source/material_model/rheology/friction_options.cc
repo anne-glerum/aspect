@@ -272,7 +272,13 @@ namespace aspect
                            "\n\n"
                            "\\item ``rate and state dependent friction'': A state variable theta is introduced "
                            "and the friction angle is calculated using classic aging rate-and-state friction by "
-                           "Ruina (1983) as described by Equations (4--7) in \cite{sobolev_modeling_2017}.");
+                           "Ruina (1983) as described by Equations (4--7) in \cite{sobolev_modeling_2017}:\n"
+                           "$\mu = \mu_{st} + a \cdot ln\big( \frac{V}{V_{st}} \big) + b \cdot ln\big( \frac{\Theta V_{st}}{L} \big)$,\n"
+                           "$\frac{d\Theta}{dt} = 1-\frac{\Theta V}{L} $.\n"
+                           "Assuming that velocities are constant at any time step, this can be analytically integrated: \n"
+                           "$\Theta_{n+1} = \frac{L}{V_{n+1}} + \big(\Theta_n - \frac{L}{V_{n+1}}\big)*exp\big(-\frac{V_{n+1}\Delta t}{L}\big)$.\n"
+                           "Pore fluid pressure can be taken into account by specifying the 'Effective friction "
+                           "factor', which uses $\mu* = \mu\big(1-\frac{P_f}{\sigma_n} \big)$. ");
 
         // Plasticity parameters
         /*should I do this or just read in the internal anlges of friction directly? */

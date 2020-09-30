@@ -48,7 +48,7 @@ namespace aspect
        * Equation 13 from van Dinther et al. (2013).
        * For the type 'rate and state dependent friction'  the friction angle is calculated
        * using classic aging rate-and-state friction by Ruina (1983) as described in
-       * Equation 7 in Sobolev and Muldashev (2017).
+       * Equations (4--7) in Sobolev and Muldashev (2017).
        * Strain-weakening and friction dependence mechanisms other than rate or state
        * dependence are handled outside this functionality.
        */
