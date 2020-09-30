@@ -34,6 +34,220 @@ namespace aspect
     namespace Rheology
     {
       template <int dim>
+      double
+      FrictionOptions<dim>::
+      compute_dependent_friction_angle(const double current_edot_ii,
+                                       const unsigned int j,  // j is from a for-loop through volume fractions
+                                       const std::vector<double> &composition,
+                                       typename DoFHandler<dim>::active_cell_iterator current_cell,
+                                       double current_friction,
+                                       const Point<dim> &position) const
+      {
+
+        switch (friction_dependence_mechanism)
+          {
+            case independent:
+            {
+              /* I guess here I need to say that current friction is simply the internal angle of friction. If not it will return 0.0 as its value?  */
+              break;
+            }
+            case dynamic_friction:
+            {
+              // The dynamic characteristic strain rate is used to see what value between dynamic and static angle of internal friction should be used.
+              // This is done as in the material model dynamic friction which is based on Equation (13) in van Dinther et al., (2013, JGR). Although here
+              // the dynamic friction coefficient is directly specified. Furthermore a smoothness exponent X is added, which determines whether the
+              // friction vs strain rate curve is rather step-like or more gradual.
+              // mu  = mu_d + (mu_s - mu_d) / ( (1 + strain_rate_dev_inv2/dynamic_characteristic_strain_rate)^X );
+              // Angles of friction are used in radians within ASPECT. The coefficient of friction is the tangent of the internal angle of friction.
+              const double mu = effective_friction_factor[j] * std::tan(dynamic_angles_of_internal_friction[j])
+                                + (std::tan(current_friction) - std::tan(dynamic_angles_of_internal_friction[j]))
+                                / (1. + std::pow((current_edot_ii / dynamic_characteristic_strain_rate),
+                                                 dynamic_friction_smoothness_exponent));
+              current_friction = std::atan (mu);
+              break;
+            }
+            case rate_and_state_dependent_friction:
+            {
+              // Cellsize is needed for theta and the friction angle
+              double cellsize = 1;
+              if (current_cell.state() == IteratorState::valid)
+                {
+                  cellsize = current_cell->extent_in_direction(0);
+                  // Calculate the state variable theta
+                  // theta_old loads theta from previous time step
+                  const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
+                  const double theta_old = composition[theta_position_tmp];
+                  // Equation (7) from Sobolev and Muldashev (2017)
+                  const double theta = compute_theta(theta_old, current_edot_ii, cellsize);
+
+                  // Get the values for a and b
+                  const double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(position,j).first;
+                  const double rate_and_state_parameter_b = calculate_depth_dependent_a_and_b(position,j).second;
+
+                  // Calculate effective friction according to Equation (4) in Sobolev and Muldashev (2017):
+                  // mu = mu_st + a ln(V/V_st) + b ln((theta Vst)/L)
+                  // Effective friction is calculated by multiplying the friction coefficient with the
+                  // effective_friction_factor to account for effects of pore fluid pressure:
+                  // mu = mu(1-p_f/sigma_n) = mu*, with (1-p_f/sigma_n) = 0.03 for subduction zones.
+                  // Their equation is for friction coefficient, while ASPECT takes friction angle in radians,
+                  // so conversion with tan/atan().
+                  current_friction = atan(effective_friction_factor[j] * tan(current_friction)
+                                          + rate_and_state_parameter_a
+                                          * log((current_edot_ii * cellsize ) / quasi_static_strain_rate)
+                                          + rate_and_state_parameter_b
+                                          * log((theta * quasi_static_strain_rate ) / critical_slip_distance));
+                  break;
+                }
+              else
+                {
+                  break;
+                }
+            }
+          }
+        return current_friction;
+      }
+
+
+
+      template <int dim>
+      ComponentMask
+      FrictionOptions<dim>::
+      get_theta_composition_mask(ComponentMask composition_mask) const
+      {
+        // Store which components to exclude during the volume fraction computation.
+
+        if (get_use_theta())
+          {
+            // This is the compositional field used for theta in rate-and-state friction
+            const int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
+            composition_mask.set(theta_position_tmp,false);
+          }
+
+        return composition_mask;
+      }
+
+
+
+      template <int dim>
+      double
+      FrictionOptions<dim>::
+      compute_theta(const double theta_old,
+                    const double current_edot_ii,
+                    const double cellsize) const
+      {
+        // Equation (7) from Sobolev and Muldashev (2017):
+        // theta_{n+1} = L/V_{n+1} + (theta_n - L/V_{n+1})*exp(-(V_{n+1}dt)/L)
+        // This is obtained from Equation (5): dtheta/dt = 1 - (theta V)/L
+        // by integration using the assumption of that velocities are constant at any time step.
+        const double current_theta = critical_slip_distance / ( cellsize * current_edot_ii ) +
+                                     (theta_old - critical_slip_distance / ( cellsize * current_edot_ii))
+                                     * exp( - ((current_edot_ii * cellsize) * this->get_timestep()) / critical_slip_distance);
+        return current_theta;
+      }
+
+
+
+      template <int dim>
+      void
+      FrictionOptions<dim>::
+      compute_theta_reaction_terms(const int q,
+                                   const MaterialModel::MaterialModelInputs<dim> &in,
+                                   const std::vector<double> &volume_fractions,
+                                   const double min_strain_rate,
+                                   const double ref_strain_rate,
+                                   const bool use_elasticity,
+                                   const bool use_reference_strainrate,
+                                   const std::vector<double> &elastic_shear_moduli,
+                                   const double dte,
+                                   MaterialModel::MaterialModelOutputs<dim> &out) const
+      {
+        // Cellsize is needed for theta and the friction angle
+        double cellsize = 1.;
+        if (in.current_cell.state() == IteratorState::valid)
+          {
+            cellsize = in.current_cell->extent_in_direction(0);
+          }
+
+        if (this->simulator_is_past_initialization() && this->get_timestep_number() > 0
+            && in.requests_property(MaterialProperties::reaction_terms)
+            && in.current_cell.state() == IteratorState::valid)
+          {
+            for (unsigned int j=0; j < volume_fractions.size(); ++j)
+              {
+                // q is from a for-loop through n_evaluation_points
+                const double current_edot_ii =
+                  MaterialUtilities::compute_current_edot_ii (in.composition[q], ref_strain_rate,
+                                                              min_strain_rate, in.strain_rate[q],
+                                                              elastic_shear_moduli[j], use_elasticity,
+                                                              use_reference_strainrate, dte);
+
+                const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
+                const double theta_old = in.composition[q][theta_position_tmp];
+                const double current_theta = compute_theta(theta_old, current_edot_ii, cellsize);
+                const double theta_increment = current_theta - theta_old;
+
+                out.reaction_terms[q][theta_position_tmp] = theta_increment;
+              }
+          }
+      }
+
+
+
+      template <int dim>
+      std::pair<double,double>
+      FrictionOptions<dim>::calculate_depth_dependent_a_and_b(const Point<dim> &position, const int j) const
+      {
+        if ( a_and_b_source == Function )
+          {
+            const Utilities::Coordinates::CoordinateSystem coordinate_system = this->get_geometry_model().natural_coordinate_system();
+            Utilities::NaturalCoordinate<dim> point =
+              this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system);
+
+            const double rate_and_state_parameter_a = rate_and_state_parameter_a_function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),j);
+            const double rate_and_state_parameter_b = rate_and_state_parameter_b_function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),j);
+
+            std::cout << " a is " << rate_and_state_parameter_a << " - and b is " << rate_and_state_parameter_b << std::endl;
+            return std::pair<double,double>(rate_and_state_parameter_a,
+                                            rate_and_state_parameter_b);
+          }
+        else if (a_and_b_source == None)
+          {
+            return std::pair<double,double>(0.0,0.0); // was return 1.0 in depth dependent for viscosity
+          }
+        else
+          {
+            Assert( false, ExcMessage("Invalid method for a and b depth dependence") );
+            return std::pair<double,double>(0.0,0.0);
+          }
+      }
+
+
+
+      template <int dim>
+      FrictionDependenceMechanism
+      FrictionOptions<dim>::
+      get_friction_dependence_mechanism() const
+      {
+        return friction_dependence_mechanism;
+      }
+
+
+
+      template <int dim>
+      bool
+      FrictionOptions<dim>::
+      get_use_theta() const
+      {
+        bool use_theta ->=false;
+        if (get_friction_dependence_mechanism() == rate_and_state_dependent_friction)
+          use_theta =true;
+
+        return use_theta;
+      }
+
+
+
+      template <int dim>
       void
       FrictionOptions<dim>::declare_parameters (ParameterHandler &prm)
       {
@@ -278,220 +492,6 @@ namespace aspect
           {
             AssertThrow(false, ExcMessage("Unknown method for Rate and state parameters b."));
           }
-      }
-
-
-
-      template <int dim>
-      double
-      FrictionOptions<dim>::
-      compute_dependent_friction_angle(const double current_edot_ii,
-                                       const unsigned int j,  // j is from a for-loop through volume fractions
-                                       const std::vector<double> &composition,
-                                       typename DoFHandler<dim>::active_cell_iterator current_cell,
-                                       double current_friction,
-                                       const Point<dim> &position) const
-      {
-
-        switch (friction_dependence_mechanism)
-          {
-            case independent:
-            {
-              /* I guess here I need to say that current friction is simply the internal angle of friction. If not it will return 0.0 as its value?  */
-              break;
-            }
-            case dynamic_friction:
-            {
-              // The dynamic characteristic strain rate is used to see what value between dynamic and static angle of internal friction should be used.
-              // This is done as in the material model dynamic friction which is based on Equation (13) in van Dinther et al., (2013, JGR). Although here
-              // the dynamic friction coefficient is directly specified. Furthermore a smoothness exponent X is added, which determines whether the
-              // friction vs strain rate curve is rather step-like or more gradual.
-              // mu  = mu_d + (mu_s - mu_d) / ( (1 + strain_rate_dev_inv2/dynamic_characteristic_strain_rate)^X );
-              // Angles of friction are used in radians within ASPECT. The coefficient of friction is the tangent of the internal angle of friction.
-              const double mu = effective_friction_factor[j] * std::tan(dynamic_angles_of_internal_friction[j])
-                                + (std::tan(current_friction) - std::tan(dynamic_angles_of_internal_friction[j]))
-                                / (1. + std::pow((current_edot_ii / dynamic_characteristic_strain_rate),
-                                                 dynamic_friction_smoothness_exponent));
-              current_friction = std::atan (mu);
-              break;
-            }
-            case rate_and_state_dependent_friction:
-            {
-              // Cellsize is needed for theta and the friction angle
-              double cellsize = 1;
-              if (current_cell.state() == IteratorState::valid)
-                {
-                  cellsize = current_cell->extent_in_direction(0);
-                  // Calculate the state variable theta
-                  // theta_old loads theta from previous time step
-                  const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
-                  const double theta_old = composition[theta_position_tmp];
-                  // Equation (7) from Sobolev and Muldashev (2017)
-                  const double theta = compute_theta(theta_old, current_edot_ii, cellsize);
-
-                  // Get the values for a and b
-                  const double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(position,j).first;
-                  const double rate_and_state_parameter_b = calculate_depth_dependent_a_and_b(position,j).second;
-
-                  // Calculate effective friction according to Equation (4) in Sobolev and Muldashev (2017):
-                  // mu = mu_st + a ln(V/V_st) + b ln((theta Vst)/L)
-                  // Effective friction is calculated by multiplying the friction coefficient with the
-                  // effective_friction_factor to account for effects of pore fluid pressure:
-                  // mu = mu(1-p_f/sigma_n) = mu*, with (1-p_f/sigma_n) = 0.03 for subduction zones.
-                  // Their equation is for friction coefficient, while ASPECT takes friction angle in radians,
-                  // so conversion with tan/atan().
-                  current_friction = atan(effective_friction_factor[j] * tan(current_friction)
-                                          + rate_and_state_parameter_a
-                                          * log((current_edot_ii * cellsize ) / quasi_static_strain_rate)
-                                          + rate_and_state_parameter_b
-                                          * log((theta * quasi_static_strain_rate ) / critical_slip_distance));
-                  break;
-                }
-              else
-                {
-                  break;
-                }
-            }
-          }
-        return current_friction;
-      }
-
-
-
-      template <int dim>
-      ComponentMask
-      FrictionOptions<dim>::
-      get_theta_composition_mask(ComponentMask composition_mask) const
-      {
-        // Store which components to exclude during the volume fraction computation.
-
-        if (get_use_theta())
-          {
-            // This is the compositional field used for theta in rate-and-state friction
-            const int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
-            composition_mask.set(theta_position_tmp,false);
-          }
-
-        return composition_mask;
-      }
-
-
-
-      template <int dim>
-      double
-      FrictionOptions<dim>::
-      compute_theta(const double theta_old,
-                    const double current_edot_ii,
-                    const double cellsize) const
-      {
-        // Equation (7) from Sobolev and Muldashev (2017):
-        // theta_{n+1} = L/V_{n+1} + (theta_n - L/V_{n+1})*exp(-(V_{n+1}dt)/L)
-        // This is obtained from Equation (5): dtheta/dt = 1 - (theta V)/L
-        // by integration using the assumption of that velocities are constant at any time step.
-        const double current_theta = critical_slip_distance / ( cellsize * current_edot_ii ) +
-                                     (theta_old - critical_slip_distance / ( cellsize * current_edot_ii))
-                                     * exp( - ((current_edot_ii * cellsize) * this->get_timestep()) / critical_slip_distance);
-        return current_theta;
-      }
-
-
-
-      template <int dim>
-      void
-      FrictionOptions<dim>::
-      compute_theta_reaction_terms(const int q,
-                                   const MaterialModel::MaterialModelInputs<dim> &in,
-                                   const std::vector<double> &volume_fractions,
-                                   const double min_strain_rate,
-                                   const double ref_strain_rate,
-                                   const bool use_elasticity,
-                                   const bool use_reference_strainrate,
-                                   const std::vector<double> &elastic_shear_moduli,
-                                   const double dte,
-                                   MaterialModel::MaterialModelOutputs<dim> &out) const
-      {
-        // Cellsize is needed for theta and the friction angle
-        double cellsize = 1.;
-        if (in.current_cell.state() == IteratorState::valid)
-          {
-            cellsize = in.current_cell->extent_in_direction(0);
-          }
-
-        if (this->simulator_is_past_initialization() && this->get_timestep_number() > 0
-            && in.requests_property(MaterialProperties::reaction_terms)
-            && in.current_cell.state() == IteratorState::valid)
-          {
-            for (unsigned int j=0; j < volume_fractions.size(); ++j)
-              {
-                // q is from a for-loop through n_evaluation_points
-                const double current_edot_ii =
-                  MaterialUtilities::compute_current_edot_ii (in.composition[q], ref_strain_rate,
-                                                              min_strain_rate, in.strain_rate[q],
-                                                              elastic_shear_moduli[j], use_elasticity,
-                                                              use_reference_strainrate, dte);
-
-                const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
-                const double theta_old = in.composition[q][theta_position_tmp];
-                const double current_theta = compute_theta(theta_old, current_edot_ii, cellsize);
-                const double theta_increment = current_theta - theta_old;
-
-                out.reaction_terms[q][theta_position_tmp] = theta_increment;
-              }
-          }
-      }
-
-
-
-      template <int dim>
-      std::pair<double,double>
-      FrictionOptions<dim>::calculate_depth_dependent_a_and_b(const Point<dim> &position, const int j) const
-      {
-        if ( a_and_b_source == Function )
-          {
-            const Utilities::Coordinates::CoordinateSystem coordinate_system = this->get_geometry_model().natural_coordinate_system();
-            Utilities::NaturalCoordinate<dim> point =
-              this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system);
-
-            const double rate_and_state_parameter_a = rate_and_state_parameter_a_function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),j);
-            const double rate_and_state_parameter_b = rate_and_state_parameter_b_function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),j);
-
-            std::cout << " a is " << rate_and_state_parameter_a << " - and b is " << rate_and_state_parameter_b << std::endl;
-            return std::pair<double,double>(rate_and_state_parameter_a,
-                                            rate_and_state_parameter_b);
-          }
-        else if (a_and_b_source == None)
-          {
-            return std::pair<double,double>(0.0,0.0); // was return 1.0 in depth dependent for viscosity
-          }
-        else
-          {
-            Assert( false, ExcMessage("Invalid method for a and b depth dependence") );
-            return std::pair<double,double>(0.0,0.0);
-          }
-      }
-
-
-
-      template <int dim>
-      FrictionDependenceMechanism
-      FrictionOptions<dim>::
-      get_friction_dependence_mechanism() const
-      {
-        return friction_dependence_mechanism;
-      }
-
-
-
-      template <int dim>
-      bool
-      FrictionOptions<dim>::
-      get_use_theta() const
-      {
-        bool use_theta ->=false;
-        if (get_friction_dependence_mechanism() == rate_and_state_dependent_friction)
-          use_theta =true;
-
-        return use_theta;
       }
     }
   }
