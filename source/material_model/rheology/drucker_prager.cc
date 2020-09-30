@@ -65,7 +65,7 @@ namespace aspect
         const double stress_inv_part = 1. / (std::sqrt(3.0) * (3.0 + sin_phi));
 
         // Initial yield stress (no stabilization terms)
-        double yield_stress = ( (dim==3)
+        const double yield_stress = ( (dim==3)
                                 ?
                                 ( 6.0 * cohesion * cos_phi + 6.0 * pressure * sin_phi) * stress_inv_part
                                 :
@@ -74,7 +74,7 @@ namespace aspect
         // Calculate the plastic strain rate, which is needed to calculate the additional stress
         // associated with the plastic damper.
         const double total_stress = ( yield_stress + ( 2. * damper_viscosity * effective_strain_rate ) ) /
-                                    ( 1 + ( damper_viscosity / pre_yield_viscosity ) );
+                                    ( 1. + ( damper_viscosity / pre_yield_viscosity ) );
 
         const double pre_yield_strain_rate = total_stress / ( 2. * pre_yield_viscosity);
 

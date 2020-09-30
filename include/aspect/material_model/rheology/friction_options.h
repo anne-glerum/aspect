@@ -44,7 +44,7 @@ namespace aspect
       /**
        * Enumeration for selecting which type of friction dependence to use.
        * For the type 'independent', the user-supplied internal angle of friction is used.
-       * For the type 'dynamic friction' the friction angle is rate-dependent using
+       * For the type 'dynamic friction' the friction angle is rate dependent using
        * Equation 13 from van Dinther et al. 2013.
        * For the type 'rate and state dependent friction'  the friction angle is calculated
        * using classic aging rate-and-state friction by Ruina (1983) as described in
@@ -197,7 +197,7 @@ namespace aspect
            * Arbitrary strain rate at which friction equals the reference friction angle in
            * rate and state friction.
            */
-          double steady_state_strain_rate;
+          double quasi_static_strain_rate;
 
           /**
            * Parsed functions that specify a and b depth-dependence when using the Function

@@ -738,7 +738,7 @@ namespace aspect
             }
 
           // Update the state variable theta if used
-          if (friction_options.get_theta_in_use())
+          if (friction_options.get_use_theta())
             {
               const std::vector<double> volume_fractions = MaterialUtilities::compute_volume_fractions(in.composition[i], volumetric_compositions);
               const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&

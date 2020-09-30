@@ -18,7 +18,6 @@
   <http://www.gnu.org/licenses/>.
 */
 
-
 #include <aspect/material_model/rheology/friction_options.h>
 
 #include <deal.II/base/signaling_nan.h>
@@ -38,16 +37,17 @@ namespace aspect
       void
       FrictionOptions<dim>::declare_parameters (ParameterHandler &prm)
       {
-        prm.declare_entry ("Friction dependence mechanism", "default",
-                           Patterns::Selection("none|dynamic friction|state dependent friction|default"),
-                           "Whether to apply a rate and/or state dependence of the friction angle. This can "
+        prm.declare_entry ("Friction dependence mechanism", "none",
+                           Patterns::Selection("none|dynamic friction|rate and state dependent friction"),
+                           "Whether to apply a rate or rate and state dependence of the friction angle. This can "
                            "be used to obtain stick-slip motion to simulate earthquake-like behaviour, "
                            "where short periods of high-velocities are seperated by longer periods without "
-                           "movement.  "
+                           "movement."
                            "\n\n"
                            "\\item ``none'': No rate or state dependence of the friction angle is applied. "
                            "\n\n"
-                           "\\item ``dynamic friction'': When dynamic angles of friction are specified, "
+                           "\\item ``dynamic friction'': The friction angle is rate dependent."
+                           "When dynamic angles of friction are specified, "
                            "the friction angle will be weakened for high strain rates with: "
                            "$\mu = \mu_d + \frac(\mu_s-\mu_d)(1+(\frac(\dot{\epsilon}_{ii})(\dot{\epsilon}_C)))^x$  "
                            "where $\mu_s$ and $\mu_d$ are the friction angle at low and high strain rates, "
@@ -56,10 +56,9 @@ namespace aspect
                            "x controls how smooth or step-like the change from $\mu_s$ to $\mu_d$ is. "
                            "The equation is modified after equation 13 in van Dinther et al. 2013. "
                            "\n\n"
-                           "\\item ``state dependent friction'': A state variable theta is introduced. Method "
-                           "is taken from Sobolev and Muldashev 2017. ....."
-                           "\n\n"
-                           "\\item ``default'': No rate or state dependence of the friction angle is applied. ");
+                           "\\item ``rate and state dependent friction'': A state variable theta is introduced "
+                           "and the friction angle is calculated using classic aging rate-and-state friction by "
+                           "Ruina (1983) as described in Sobolev and Muldashev 2017.");
 
         // Plasticity parameters
         /*should I do this or just read in the internal anlges of friction directly? */
@@ -71,7 +70,7 @@ namespace aspect
                            Patterns::Double (0),
                            "The characteristic strain rate value, where the angle of friction takes the middle "
                            "between the dynamic and the static angle of friction. When the effective strain rate "
-                           "in a cell is very high the dynamic angle of friction is taken, when it is very low "
+                           "in a cell is very high, the dynamic angle of friction is taken, when it is very low "
                            "the static angle of internal friction is chosen. Around the dynamic characteristic "
                            "strain rate, there is a smooth gradient from the static to the dynamic friction "
                            "angle. "
@@ -81,36 +80,35 @@ namespace aspect
                            Patterns::List(Patterns::Double(0)),
                            "List of dynamic angles of internal friction, $\\phi$, for background material and compositional "
                            "fields, for a total of N+1 values, where N is the number of compositional fields. "
-                           "For a value of zero, in 2D the von Mises criterion is retrieved. "
-                           "Dynamic angles of friction are used for calculation when the effective strain rate in a cell "
-                           "is well above the characteristic strain rate. If not specified, the internal angles of "
-                           "friction are taken. "
+                           "Dynamic angles of friction are used as the current friction angle when the effective "
+                           "strain rate in a cell is well above the characteristic strain rate. If not specified, "
+                           "the internal angles of friction are taken. "
                            "Units: degrees.");
 
         prm.declare_entry ("Dynamic friction smoothness exponent", "1",
                            Patterns::Double (0),
                            "An exponential factor in the equation for the calculation of the friction angle "
-                           "when a static and a dynamic friction angle is specified. A factor =1 is equivalent "
+                           "when a static and a dynamic friction angle are specified. A factor of 1 returns the equation "
                            "to equation 13 in van Dinther et al., (2013, JGR). A factor between 0 and 1 makes the "
-                           "curve of the friction angle vs. the strain rate more smooth, while a factor <1 makes "
+                           "curve of the friction angle vs. the strain rate more smooth, while a factor >1 makes "
                            "the change between static and dynamic friction angle more steplike. "
                            "Units: none.");
 
         // rate and state parameters
-        prm.declare_entry ("Rate and state parameters a", "None",
+        prm.declare_entry ("Rate and state parameter a", "None",
                            Patterns::Selection("Function|None"),
-                           "Method that is used to specify how the a and b should vary with depth."
-                           "The rate and state parameter a is the rate dependency. "
-                           "The rate and state parameter b is the state dependency. Positive (a-b) is velocity"
-                           " strengthening, negative (a-b) is velocity weakening. "
-                           "Units: none");
-        prm.declare_entry ("Rate and state parameters b", "None",
+                           "Method that is used to specify how the parameter a should vary with depth. "
+                           "The rate and state parameter a describes the rate dependency. The rate "
+                           "and state parameter b describes the state dependency. Positive (a-b) corresponds "
+                           "to velocity strengthening, negative (a-b) corresponds to velocity weakening. "
+                           "Units: none.");
+        prm.declare_entry ("Rate and state parameter b", "None",
                            Patterns::Selection("Function|None"),
-                           "Method that is used to specify how the a and b should vary with depth."
-                           "The rate and state parameter a is the rate dependency. "
-                           "The rate and state parameter b is the state dependency. Positive (a-b) is velocity"
-                           " strengthening, negative (a-b) is velocity weakening. "
-                           "Units: none");
+                           "Method that is used to specify how the parameter b should vary with depth. "
+                           "The rate and state parameter a describes the rate dependency. The rate "
+                           "and state parameter b describes the state dependency. Positive (a-b) corresponds "
+                           "to velocity strengthening, negative (a-b) corresponds to velocity weakening. "
+                           "Units: none.");
 
         prm.enter_subsection("a function");
         {
@@ -133,15 +131,28 @@ namespace aspect
 
         prm.declare_entry ("Critical slip distance", "0.01",
                            Patterns::List(Patterns::Double(0)),
-                           "The critical slip distance in rate and state friction. Used to calculate the state "
-                           "variable theta.   "
-                           "Units: m");
+                           "The critical slip distance in rate and state friction. It is used to calculate the "
+                           "state variable theta using the aging law: $\frac{d\Theta}{dt}=1-\frac{\Theta V}{L}$. "
+                           "At steady state: $\Theta = \frac{L}{V} $. The critical slip distance "
+                           "is often interpreted as the sliding distance required to renew "
+                           "the contact population as it determines the critical nucleation size with: "
+                           "$h*=\frac{2}{\pi}\frac{\mu b L}{(b-a)^2 \sigma_n}, where L is the critical slip "
+                           "distance, a and b are parameters to describe the rate and state dependence, $\mu$ "
+                           "is the friction coefficient, and $\sigma_n$ is the normal stress on the fault. "
+                           "Laboratory values of the critical slip distance are on the "
+                           "order of microns. For geodynamic modelling Sobolev and Muldashev set this parameter "
+                           "to 1--10 cm. In the SEAS benchmark they use ??? . "
+                           "Units: m.");
 
-        prm.declare_entry ("Steady state strain rate", "1e-14",
+        prm.declare_entry ("Quasi static strain rate", "1e-14",
                            Patterns::Double (0),
-                           "Arbitrary strain rate at which friction equals the reference friction angle in "
-                           "rate and state friction. "
-                           "Units: $1/s$");
+                           "The quasi static or reference strain rate used in rate and state friction. It is an "
+                           "arbitrary strain rate at which friction equals the reference friction angle. "
+                           "This happens when slip rate (which is represented in ASPECT as strain rate) "
+                           "enters a steady state. Friction at this steady state is defined as: "
+                           "$\mu = \mu_{st} = \mu_0 + (a-b)ln\big( \frac{V}{V_0} \big). "
+                           "It should not be confused with the characteristic strain rate in dynamic friction. "
+                           "Units: $1/s$.");
       }
 
       template <int dim>
@@ -158,8 +169,6 @@ namespace aspect
           friction_dependence_mechanism = dynamic_friction;
         else if (prm.get ("Friction dependence mechanism") == "rate and state dependent friction")
           friction_dependence_mechanism = rate_and_state_dependent_friction;
-        else if (prm.get ("Friction dependence mechanism") == "default")
-          friction_dependence_mechanism = independent;
         /* would be nice for the future to have an option like rate and state friction with fixed point iteration */
         else
           AssertThrow(false, ExcMessage("Not a valid friction dependence option!"));
@@ -209,7 +218,7 @@ namespace aspect
 
         critical_slip_distance = prm.get_double("Critical slip distance");
 
-        steady_state_strain_rate = prm.get_double("Steady state strain rate");
+        quasi_static_strain_rate = prm.get_double("Quasi static strain rate");
 
         if ( prm.get("Rate and state parameters a") == "Function" )
           {
@@ -334,19 +343,14 @@ std::cout << 'tan(30*3.14165/180) = '<< tan(30*3.14165/180) << ' - atan(tan(30*3
 
                   current_friction = atan(effective_friction_factor[j] * tan(current_friction)
                                           + rate_and_state_parameter_a
-                                          * log((current_edot_ii * cellsize ) / steady_state_strain_rate) + rate_and_state_parameter_b
-                                          * log((theta * steady_state_strain_rate ) / critical_slip_distance));
+                                          * log((current_edot_ii * cellsize ) / quasi_static_strain_rate) + rate_and_state_parameter_b
+                                          * log((theta * quasi_static_strain_rate ) / critical_slip_distance));
                   break;
                 }
               else
                 {
                   break;
                 }
-            }
-            default:
-            {
-              AssertThrow(false, ExcNotImplemented());
-              break;
             }
           }
         return current_friction;
@@ -359,7 +363,7 @@ std::cout << 'tan(30*3.14165/180) = '<< tan(30*3.14165/180) << ' - atan(tan(30*3
       {
         // Store which components to exclude during the volume fraction computation.
 
-        if (use_theta())
+        if (get_use_theta())
           {
             // this is the compositional field used for theta in rate-and-state friction
             const int theta_position_tmp = this->introspection().compositional_index_for_name("theta");

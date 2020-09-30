@@ -462,7 +462,7 @@ namespace aspect
 
       /**
        * Computes the current_edot_ii and current_stress, with the option for
-       * viscous and viscoelastic contribution.
+       * viscous and viscoelastic contributions.
        */
       template <int dim>
       double compute_current_edot_ii (const std::vector<double> &composition,
