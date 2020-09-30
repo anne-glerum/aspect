@@ -69,7 +69,7 @@ namespace aspect
             case rate_and_state_dependent_friction:
             {
               // Cellsize is needed for theta and the friction angle
-              double cellsize = 1;
+              double cellsize = 1.;
               if (current_cell.state() == IteratorState::valid)
                 {
                   cellsize = current_cell->extent_in_direction(0);
