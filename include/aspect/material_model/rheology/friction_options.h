@@ -132,8 +132,6 @@ namespace aspect
           bool get_use_theta() const;
 
         private:
-          FrictionDependenceMechanism friction_dependence_mechanism;
-
           /*
            * Objects for computing plastic stresses, viscosities, and additional outputs
            */
@@ -150,6 +148,18 @@ namespace aspect
           Rheology::Elasticity<dim> elastic_rheology;
 
           Rheology::StrainDependent<dim> strain_rheology;
+
+          /**
+           * Function to calculate depth-dependent a and b values for state dependent friction.
+           */
+          std::pair<double,double>
+          calculate_depth_dependent_a_and_b(const Point<dim> &position, const int j) const;
+
+          /**
+           * Parameter about what mechanism should be used for the friction dependence. 
+           * Possible options: (rate-and-state) independent | dynamic friction | rate and state dependent
+           */
+          FrictionDependenceMechanism friction_dependence_mechanism;
 
           /**
           * Dynamic friction input parameters
@@ -204,12 +214,6 @@ namespace aspect
            */
           std::unique_ptr<Functions::ParsedFunction<dim> > rate_and_state_parameter_a_function;
           std::unique_ptr<Functions::ParsedFunction<dim> > rate_and_state_parameter_b_function;
-
-          /**
-           * Function to calculate depth-dependent a and b values for state dependent friction.
-           */
-          std::pair<double,double>
-          calculate_depth_dependent_a_and_b(const Point<dim> &position, const int j) const;
 
           /**
            * The coordinate representation to evaluate the function. Possible

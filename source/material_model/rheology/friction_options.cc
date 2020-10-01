@@ -272,11 +272,6 @@ namespace aspect
                            "Pore fluid pressure can be taken into account by specifying the 'Effective friction "
                            "factor', which uses $\mu* = \mu\big(1-\frac{P_f}{\sigma_n} \big)$. ");
 
-        // Plasticity parameters
-        /*should I do this or just read in the internal anlges of friction directly? */
-        /*drucker_prager_parameters = drucker_prager_plasticity.parse_parameters(this->n_compositional_fields()+1,
-                                                                               prm);*/
-
         // Dynamic friction paramters
         prm.declare_entry ("Dynamic characteristic strain rate", "1e-12",
                            Patterns::Double (0),
