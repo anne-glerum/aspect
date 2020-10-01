@@ -23,6 +23,7 @@
 #include <deal.II/base/signaling_nan.h>
 #include <deal.II/base/parameter_handler.h>
 #include <aspect/utilities.h>
+#include <aspect/geometry_model/interface.h>
 
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/base/quadrature_lib.h>
@@ -68,8 +69,8 @@ namespace aspect
             case rate_and_state_dependent_friction:
             {
               // Cellsize is needed for theta and the friction angle
-              // For now, the used cells are non-deforming squares, so the edge length in the 
-              // x-direction is representative of the cell size. 
+              // For now, the used cells are non-deforming squares, so the edge length in the
+              // x-direction is representative of the cell size.
               // TODO as the cell size is used to compute the slip velocity as cell_size * strain_rate,
               //  come up with a better representation of the slip length.
               double cellsize = 1.;
@@ -200,13 +201,15 @@ namespace aspect
       std::pair<double,double>
       FrictionOptions<dim>::calculate_depth_dependent_a_and_b(const Point<dim> &position, const int j) const
       {
-        Utilities::NaturalCoordinate<dim> point =
-          this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system);
+        Utilities::NaturalCoordinate<dim> point_a =
+          this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_a);
+        Utilities::NaturalCoordinate<dim> point_b =
+          this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_b);
 
         const double rate_and_state_parameter_a =
-          rate_and_state_parameter_a_function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),j);
+          rate_and_state_parameter_a_function->value(Utilities::convert_array_to_point<dim>(point_a.get_coordinates()),j);
         const double rate_and_state_parameter_b =
-          rate_and_state_parameter_b_function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),j);
+          rate_and_state_parameter_b_function->value(Utilities::convert_array_to_point<dim>(point_b.get_coordinates()),j);
 
         std::cout << " a is " << rate_and_state_parameter_a << " - and b is " << rate_and_state_parameter_b << std::endl;
         return std::pair<double,double>(rate_and_state_parameter_a,
@@ -270,7 +273,8 @@ namespace aspect
                            "Assuming that velocities are constant at any time step, this can be analytically integrated: \n"
                            "$\Theta_{n+1} = \frac{L}{V_{n+1}} + \big(\Theta_n - \frac{L}{V_{n+1}}\big)*exp\big(-\frac{V_{n+1}\Delta t}{L}\big)$.\n"
                            "Pore fluid pressure can be taken into account by specifying the 'Effective friction "
-                           "factor', which uses $\mu* = \mu\big(1-\frac{P_f}{\sigma_n} \big)$. ");
+                           "factor', which uses $\mu* = \mu\big(1-\frac{P_f}{\sigma_n} \big)$. "
+                           "Reasonable values for a and b are 0.01 and 0.015, respectively \citep{sobolev_modeling_2017}.");
 
         // Dynamic friction paramters
         prm.declare_entry ("Dynamic characteristic strain rate", "1e-12",
@@ -281,7 +285,7 @@ namespace aspect
                            "the static angle of internal friction is chosen. Around the dynamic characteristic "
                            "strain rate, there is a smooth gradient from the static to the dynamic friction "
                            "angle. "
-                           "Units: $1/s$.");
+                           "Units: \\si{\\per\\second}.");
 
         prm.declare_entry ("Dynamic angles of internal friction", "9999",
                            Patterns::List(Patterns::Double(0)),
@@ -290,7 +294,7 @@ namespace aspect
                            "Dynamic angles of friction are used as the current friction angle when the effective "
                            "strain rate in a cell is well above the characteristic strain rate. If not specified, "
                            "the internal angles of friction are taken. "
-                           "Units: degrees.");
+                           "Units: \\si{\\degree}.");
 
         prm.declare_entry ("Dynamic friction smoothness exponent", "1",
                            Patterns::Double (0),
@@ -366,7 +370,7 @@ namespace aspect
                            "Laboratory values of the critical slip distance are on the "
                            "order of microns. For geodynamic modelling \cite{sobolev_modeling_2017} set this parameter "
                            "to 1--10 cm. In the SEAS benchmark \citep{erickson_community_2020} they use 4 and 8 mm. "
-                           "Units: m.");
+                           "Units: \\si{\\meter}.");
 
         prm.declare_entry ("Quasi static strain rate", "1e-14",
                            Patterns::Double (0),
@@ -376,7 +380,7 @@ namespace aspect
                            "enters a steady state. Friction at this steady state is defined as: "
                            "$\mu = \mu_{st} = \mu_0 + (a-b)ln\big( \frac{V}{V_0} \big). "
                            "It should not be confused with the characteristic strain rate in dynamic friction. "
-                           "Units: $1/s$.");
+                           "Units: \\si{\\per\\second}.");
       }
 
 
@@ -445,60 +449,46 @@ namespace aspect
 
         quasi_static_strain_rate = prm.get_double("Quasi static strain rate");
 
-        if ( prm.get("Rate and state parameter a") == "Function" )
+        prm.enter_subsection("Rate and state parameter a function");
+        {
+          coordinate_system_a = Utilities::Coordinates::string_to_coordinate_system(prm.get("Coordinate system"));
+        }
+        try
           {
-            prm.enter_subsection("Rate and state parameter a function");
-            {
-              coordinate_system = Utilities::Coordinates::string_to_coordinate_system(prm.get("Coordinate system"));
-            }
-            try
-              {
-                rate_and_state_parameter_a_function
-                  = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(this->n_compositional_fields());
-                rate_and_state_parameter_a_function->parse_parameters (prm);
-              }
-            catch (...)
-              {
-                std::cerr << "FunctionParser failed to parse\n"
-                          << "\t a function\n"
-                          << "with expression \n"
-                          << "\t' " << prm.get("Rate and state parameter a") << "'";
-                throw;
-              }
-            prm.leave_subsection();
+            rate_and_state_parameter_a_function
+              = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(this->n_compositional_fields());
+            rate_and_state_parameter_a_function->parse_parameters (prm);
           }
-        else
+        catch (...)
           {
-            AssertThrow(false, ExcMessage("Unknown method for Rate and state parameters a."));
+            std::cerr << "FunctionParser failed to parse\n"
+                      << "\t a function\n"
+                      << "with expression \n"
+                      << "\t' " << prm.get("Rate and state parameter a") << "'";
+            throw;
           }
+        prm.leave_subsection();
 
 
-        if ( prm.get("Rate and state parameter b") == "Function" )
+        prm.enter_subsection("Rate and state parameter b function");
+        {
+          coordinate_system_b = Utilities::Coordinates::string_to_coordinate_system(prm.get("Coordinate system"));
+        }
+        try
           {
-            prm.enter_subsection("Rate and state parameter b function");
-            {
-              coordinate_system = Utilities::Coordinates::string_to_coordinate_system(prm.get("Coordinate system"));
-            }
-            try
-              {
-                rate_and_state_parameter_b_function
-                  = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(this->n_compositional_fields());
-                rate_and_state_parameter_b_function->parse_parameters (prm);
-              }
-            catch (...)
-              {
-                std::cerr << "FunctionParser failed to parse\n"
-                          << "\t a function\n"
-                          << "with expression \n"
-                          << "\t' " << prm.get("Rate and state parameter b") << "'";
-                throw;
-              }
-            prm.leave_subsection();
+            rate_and_state_parameter_b_function
+              = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(this->n_compositional_fields());
+            rate_and_state_parameter_b_function->parse_parameters (prm);
           }
-        else
+        catch (...)
           {
-            AssertThrow(false, ExcMessage("Unknown method for Rate and state parameters b."));
+            std::cerr << "FunctionParser failed to parse\n"
+                      << "\t a function\n"
+                      << "with expression \n"
+                      << "\t' " << prm.get("Rate and state parameter b") << "'";
+            throw;
           }
+        prm.leave_subsection();
       }
     }
   }

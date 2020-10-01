@@ -51,6 +51,7 @@ namespace aspect
        * Equations (4--7) in Sobolev and Muldashev (2017).
        * Strain-weakening and friction dependence mechanisms other than rate or state
        * dependence are handled outside this functionality.
+       * TODO: an option to use dynamic friction and rate and state friction together
        */
       enum FrictionDependenceMechanism
       {
@@ -156,7 +157,7 @@ namespace aspect
           calculate_depth_dependent_a_and_b(const Point<dim> &position, const int j) const;
 
           /**
-           * Parameter about what mechanism should be used for the friction dependence. 
+           * Parameter about what mechanism should be used for the friction dependence.
            * Possible options: (rate-and-state) independent | dynamic friction | rate and state dependent
            */
           FrictionDependenceMechanism friction_dependence_mechanism;
@@ -219,7 +220,8 @@ namespace aspect
            * The coordinate representation to evaluate the function. Possible
            * choices are depth, cartesian and spherical.
            */
-          Utilities::Coordinates::CoordinateSystem coordinate_system;
+          Utilities::Coordinates::CoordinateSystem coordinate_system_a;
+          Utilities::Coordinates::CoordinateSystem coordinate_system_b;
       };
     }
   }
