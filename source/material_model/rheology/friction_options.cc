@@ -48,7 +48,6 @@ namespace aspect
           {
             case independent:
             {
-              /* I guess here I need to say that current friction is simply the internal angle of friction. If not it will return 0.0 as its value?  */
               break;
             }
             case dynamic_friction:
@@ -69,6 +68,10 @@ namespace aspect
             case rate_and_state_dependent_friction:
             {
               // Cellsize is needed for theta and the friction angle
+              // For now, the used cells are non-deforming squares, so the edge length in the 
+              // x-direction is representative of the cell size. 
+              // TODO as the cell size is used to compute the slip velocity as cell_size * strain_rate,
+              //  come up with a better representation of the slip length.
               double cellsize = 1.;
               if (current_cell.state() == IteratorState::valid)
                 {
@@ -197,28 +200,17 @@ namespace aspect
       std::pair<double,double>
       FrictionOptions<dim>::calculate_depth_dependent_a_and_b(const Point<dim> &position, const int j) const
       {
-        if ( a_and_b_source == Function )
-          {
-            const Utilities::Coordinates::CoordinateSystem coordinate_system = this->get_geometry_model().natural_coordinate_system();
-            Utilities::NaturalCoordinate<dim> point =
-              this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system);
+        Utilities::NaturalCoordinate<dim> point =
+          this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system);
 
-            const double rate_and_state_parameter_a = rate_and_state_parameter_a_function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),j);
-            const double rate_and_state_parameter_b = rate_and_state_parameter_b_function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),j);
+        const double rate_and_state_parameter_a =
+          rate_and_state_parameter_a_function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),j);
+        const double rate_and_state_parameter_b =
+          rate_and_state_parameter_b_function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),j);
 
-            std::cout << " a is " << rate_and_state_parameter_a << " - and b is " << rate_and_state_parameter_b << std::endl;
-            return std::pair<double,double>(rate_and_state_parameter_a,
-                                            rate_and_state_parameter_b);
-          }
-        else if (a_and_b_source == None)
-          {
-            return std::pair<double,double>(0.0,0.0); // was return 1.0 in depth dependent for viscosity
-          }
-        else
-          {
-            Assert( false, ExcMessage("Invalid method for a and b depth dependence") );
-            return std::pair<double,double>(0.0,0.0);
-          }
+        std::cout << " a is " << rate_and_state_parameter_a << " - and b is " << rate_and_state_parameter_b << std::endl;
+        return std::pair<double,double>(rate_and_state_parameter_a,
+                                        rate_and_state_parameter_b);
       }
 
 
@@ -238,9 +230,9 @@ namespace aspect
       FrictionOptions<dim>::
       get_use_theta() const
       {
-        bool use_theta ->=false;
+        bool use_theta = false;
         if (get_friction_dependence_mechanism() == rate_and_state_dependent_friction)
-          use_theta =true;
+          use_theta = true;
 
         return use_theta;
       }
@@ -314,29 +306,47 @@ namespace aspect
                            "the change between static and dynamic friction angle more steplike. "
                            "Units: none.");
 
-        // Rate and state parameters
-        prm.declare_entry ("Rate and state parameter a", "None",
-                           Patterns::Selection("Function|None"),
-                           "Method that is used to specify how the parameter a should vary with depth. "
-                           "The rate and state parameter a describes the rate dependency. The rate "
-                           "and state parameter b describes the state dependency. Positive (a-b) corresponds "
-                           "to velocity strengthening, negative (a-b) corresponds to velocity weakening. "
-                           "Units: none.");
-        prm.declare_entry ("Rate and state parameter b", "None",
-                           Patterns::Selection("Function|None"),
-                           "Method that is used to specify how the parameter b should vary with depth. "
-                           "The rate and state parameter a describes the rate dependency. The rate "
-                           "and state parameter b describes the state dependency. Positive (a-b) corresponds "
-                           "to velocity strengthening, negative (a-b) corresponds to velocity weakening. "
-                           "Units: none.");
-
         prm.enter_subsection("Rate and state parameter a function");
         {
+          /**
+           * The function can be declared in dependence of depth,
+           * cartesian coordinates or spherical coordinates. Note that the order
+           * of spherical coordinates is r,phi,theta and not r,theta,phi, since
+           * this allows for dimension independent expressions.
+           */
+          prm.declare_entry ("Coordinate system", "cartesian",
+                             Patterns::Selection ("cartesian|spherical|depth"),
+                             "A selection that determines the assumed coordinate "
+                             "system for the function variables. Allowed values "
+                             "are `cartesian', `spherical', and `depth'. `spherical' coordinates "
+                             "are interpreted as r,phi or r,phi,theta in 2D/3D "
+                             "respectively with theta being the polar angle. `depth' "
+                             "will create a function, in which only the first "
+                             "parameter is non-zero, which is interpreted to "
+                             "be the depth of the point.");
+
           Functions::ParsedFunction<dim>::declare_parameters(prm,1);
         }
         prm.leave_subsection();
         prm.enter_subsection("Rate and state parameter b function");
         {
+          /**
+           * The function can be declared in dependence of depth,
+           * cartesian coordinates or spherical coordinates. Note that the order
+           * of spherical coordinates is r,phi,theta and not r,theta,phi, since
+           * this allows for dimension independent expressions.
+           */
+          prm.declare_entry ("Coordinate system", "cartesian",
+                             Patterns::Selection ("cartesian|spherical|depth"),
+                             "A selection that determines the assumed coordinate "
+                             "system for the function variables. Allowed values "
+                             "are `cartesian', `spherical', and `depth'. `spherical' coordinates "
+                             "are interpreted as r,phi or r,phi,theta in 2D/3D "
+                             "respectively with theta being the polar angle. `depth' "
+                             "will create a function, in which only the first "
+                             "parameter is non-zero, which is interpreted to "
+                             "be the depth of the point.");
+
           Functions::ParsedFunction<dim>::declare_parameters(prm,1);
         }
         prm.leave_subsection();
@@ -442,28 +452,26 @@ namespace aspect
 
         if ( prm.get("Rate and state parameter a") == "Function" )
           {
-            a_source = Function;
             prm.enter_subsection("Rate and state parameter a function");
             {
-              try
-                {
-                  rate_and_state_parameter_a_function
-                    = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(this->n_compositional_fields());
-                  rate_and_state_parameter_a_function->parse_parameters (prm);
-                }
-              catch (...)
-                {
-                  std::cerr << "FunctionParser failed to parse\n"
-                            << "\t a function\n"
-                            << "with expression \n"
-                            << "\t' " << prm.get("Function expression") << "'";
-                  throw;
-                }
+              coordinate_system = Utilities::Coordinates::string_to_coordinate_system(prm.get("Coordinate system"));
             }
+            try
+              {
+                rate_and_state_parameter_a_function
+                  = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(this->n_compositional_fields());
+                rate_and_state_parameter_a_function->parse_parameters (prm);
+              }
+            catch (...)
+              {
+                std::cerr << "FunctionParser failed to parse\n"
+                          << "\t a function\n"
+                          << "with expression \n"
+                          << "\t' " << prm.get("Rate and state parameter a") << "'";
+                throw;
+              }
             prm.leave_subsection();
           }
-        else if (  prm.get("Rate and state parameters a") == "None" )
-          a_source = None;
         else
           {
             AssertThrow(false, ExcMessage("Unknown method for Rate and state parameters a."));
@@ -472,28 +480,26 @@ namespace aspect
 
         if ( prm.get("Rate and state parameter b") == "Function" )
           {
-            b_source = Function;
             prm.enter_subsection("Rate and state parameter b function");
             {
-              try
-                {
-                  rate_and_state_parameter_b_function
-                    = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(this->n_compositional_fields());
-                  rate_and_state_parameter_b_function->parse_parameters (prm);
-                }
-              catch (...)
-                {
-                  std::cerr << "FunctionParser failed to parse\n"
-                            << "\t a function\n"
-                            << "with expression \n"
-                            << "\t' " << prm.get("Function expression") << "'";
-                  throw;
-                }
+              coordinate_system = Utilities::Coordinates::string_to_coordinate_system(prm.get("Coordinate system"));
             }
+            try
+              {
+                rate_and_state_parameter_b_function
+                  = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(this->n_compositional_fields());
+                rate_and_state_parameter_b_function->parse_parameters (prm);
+              }
+            catch (...)
+              {
+                std::cerr << "FunctionParser failed to parse\n"
+                          << "\t a function\n"
+                          << "with expression \n"
+                          << "\t' " << prm.get("Rate and state parameter b") << "'";
+                throw;
+              }
             prm.leave_subsection();
           }
-        else if (  prm.get("Rate and state parameters b") == "None" )
-          b_source = None;
         else
           {
             AssertThrow(false, ExcMessage("Unknown method for Rate and state parameters b."));

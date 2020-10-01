@@ -25,13 +25,13 @@
 #include <aspect/material_model/interface.h>
 #include <aspect/simulator_access.h>
 #include <deal.II/base/parsed_function.h>
-
+#include <aspect/utilities.h>
 
 #include <aspect/material_model/rheology/strain_dependent.h>
 #include <aspect/material_model/rheology/drucker_prager.h>
 #include <aspect/material_model/rheology/elasticity.h>
 
-#include<deal.II/fe/component_mask.h>
+#include <deal.II/fe/component_mask.h>
 
 namespace aspect
 {
@@ -132,7 +132,6 @@ namespace aspect
           bool get_use_theta() const;
 
         private:
-
           FrictionDependenceMechanism friction_dependence_mechanism;
 
           /*
@@ -213,22 +212,10 @@ namespace aspect
           calculate_depth_dependent_a_and_b(const Point<dim> &position, const int j) const;
 
           /**
-           * An enum to describe where the depth dependency of the a and b value for
-           * rate and state friction is coming from.
+           * The coordinate representation to evaluate the function. Possible
+           * choices are depth, cartesian and spherical.
            */
-          enum AandBSource
-          {
-            Function,
-            None
-          };
-
-          /**
-           * Currently chosen source for the depth dependency a and b parameters in rate
-           * and state friction.
-           */
-          AandBSource a_source;
-          AandBSource b_source;
-
+          Utilities::Coordinates::CoordinateSystem coordinate_system;
       };
     }
   }

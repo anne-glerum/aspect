@@ -441,8 +441,7 @@ namespace aspect
               plastic_out->cohesions[i]   += volume_fractions[j] * (drucker_prager_parameters.cohesions[j] * weakening_factors[0]);
               // Also convert radians to degrees
               double current_friction = drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1];
-              const double depth = this->get_geometry_model().depth(in.position[i]);
-              current_friction = friction_options.compute_dependent_friction_angle(current_edot_ii, j, in.composition[i], in.current_cell, current_friction, depth);  // I HAD composition as in.composition[i][j] in my old script
+              current_friction = friction_options.compute_dependent_friction_angle(current_edot_ii, j, in.composition[i], in.current_cell, current_friction, in.position[i]);
               plastic_out->friction_angles[i] += 180.0/numbers::PI * volume_fractions[j] * current_friction;
             }
         }
