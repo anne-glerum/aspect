@@ -464,7 +464,7 @@ namespace aspect
             std::cerr << "FunctionParser failed to parse\n"
                       << "\t a function\n"
                       << "with expression \n"
-                      << "\t' " << prm.get("Rate and state parameter a") << "'";
+                      << "\t' " << prm.get("Function expression") << "'";
             throw;
           }
         prm.leave_subsection();
@@ -485,7 +485,7 @@ namespace aspect
             std::cerr << "FunctionParser failed to parse\n"
                       << "\t a function\n"
                       << "with expression \n"
-                      << "\t' " << prm.get("Rate and state parameter b") << "'";
+                      << "\t' " << prm.get("Function expression") << "'";
             throw;
           }
         prm.leave_subsection();
