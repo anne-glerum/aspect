@@ -38,7 +38,7 @@ namespace aspect
       double
       FrictionOptions<dim>::
       compute_dependent_friction_angle(const double current_edot_ii,
-                                       const unsigned int j,  // j is from a for-loop through volume fractions
+                                       const unsigned int j,  // j is from a for-loop over volume fractions
                                        const std::vector<double> &composition,
                                        typename DoFHandler<dim>::active_cell_iterator current_cell,
                                        double current_friction,
@@ -211,7 +211,7 @@ namespace aspect
         const double rate_and_state_parameter_b =
           rate_and_state_parameter_b_function->value(Utilities::convert_array_to_point<dim>(point_b.get_coordinates()),j);
 
-        std::cout << " a is " << rate_and_state_parameter_a << " - and b is " << rate_and_state_parameter_b << std::endl;
+        // std::cout << " a is " << rate_and_state_parameter_a << " - and b is " << rate_and_state_parameter_b << std::endl;
         return std::pair<double,double>(rate_and_state_parameter_a,
                                         rate_and_state_parameter_b);
       }
@@ -456,7 +456,7 @@ namespace aspect
         try
           {
             rate_and_state_parameter_a_function
-              = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(this->n_compositional_fields());
+              = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(n_fields);
             rate_and_state_parameter_a_function->parse_parameters (prm);
           }
         catch (...)
@@ -477,7 +477,7 @@ namespace aspect
         try
           {
             rate_and_state_parameter_b_function
-              = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(this->n_compositional_fields());
+              = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(n_fields);
             rate_and_state_parameter_b_function->parse_parameters (prm);
           }
         catch (...)
