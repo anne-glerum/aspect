@@ -311,8 +311,9 @@ namespace aspect
       {
         prm.enter_subsection("Time stepping");
 
-        minimum_time_step_size = prm.get_double("Minimum time step size")
+        minimum_time_step_size = prm.get_double("Minimum time step size");
                                  * (this->convert_output_to_years() ? year_in_seconds : 1.0);
+
 
         std::vector<std::string>
         model_names
