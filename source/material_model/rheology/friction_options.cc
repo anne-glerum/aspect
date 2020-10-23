@@ -146,6 +146,7 @@ namespace aspect
         const double current_theta = critical_slip_distance / ( cellsize * current_edot_ii ) +
                                      (theta_old - critical_slip_distance / ( cellsize * current_edot_ii))
                                      * exp( - ((current_edot_ii * cellsize) * this->get_timestep()) / critical_slip_distance);
+
         return current_theta;
       }
 
