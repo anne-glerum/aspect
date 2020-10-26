@@ -43,7 +43,7 @@ namespace aspect
           && !info.reduced_by_termination_plugin)
         return
           std::make_pair<Reaction, double>(Reaction::repeat_step,
-                                           this->get_timestep()*this->cut_back_amount); // instead of this->get_timestep() put in the info.time
+                                           this->get_timestep()*this->cut_back_amount);
       else
         return
           std::make_pair<Reaction, double>(Reaction::advance,

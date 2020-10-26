@@ -143,6 +143,12 @@ namespace aspect
           const std::pair<Reaction, double> answer = plugin->determine_reaction(info);
           reaction = static_cast<Reaction>(std::min(reaction, answer.first));
           repeat_step_size = std::min(repeat_step_size, answer.second);
+
+          // take either the old timestep size times the cutback amount or the previously determined 
+          // timestep size if this is smaller. Prevents recalculating and recalculating with continuously
+          // decreasing timestep sizes and makes sure the minimum time step size is taken into account 
+          // also for the repeated timestep length.
+          repeat_step_size = std::min(repeat_step_size, info.next_time_step_size);
         }
 
       reaction = static_cast<Reaction>(Utilities::MPI::min(static_cast<int>(reaction), this->get_mpi_communicator()));
