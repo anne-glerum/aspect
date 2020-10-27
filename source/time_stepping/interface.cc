@@ -150,6 +150,9 @@ namespace aspect
       // decreasing timestep sizes and makes sure the minimum time step size is taken into account
       // also for the repeated timestep length.
       repeat_step_size = std::min(repeat_step_size, info.next_time_step_size);
+      // make sure to consider the minimum time step size
+      repeat_step_size = std::max(repeat_step_size, minimum_time_step_size);
+
 
       reaction = static_cast<Reaction>(Utilities::MPI::min(static_cast<int>(reaction), this->get_mpi_communicator()));
       repeat_step_size = Utilities::MPI::min(repeat_step_size, this->get_mpi_communicator());
