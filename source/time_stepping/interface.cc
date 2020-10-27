@@ -149,8 +149,9 @@ namespace aspect
       // timestep size if this is smaller. Prevents recalculating and recalculating with continuously
       // decreasing timestep sizes
       repeat_step_size = std::min(repeat_step_size, info.next_time_step_size);
-      // make sure to consider the minimum time step size also for the repeated timestep length.
-      if (info.reduced_by_termination_plugin = false):
+      // make sure to consider the minimum time step size also for the repeated timestep length. Do 
+      // only cosider this if we do not terminate after this time step
+      if (info.reduced_by_termination_plugin = false)
           repeat_step_size = std::max(repeat_step_size, minimum_time_step_size);
 
 
