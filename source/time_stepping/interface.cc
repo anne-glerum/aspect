@@ -149,10 +149,10 @@ namespace aspect
       // timestep size if this is smaller. Prevents recalculating and recalculating with continuously
       // decreasing timestep sizes
       repeat_step_size = std::min(repeat_step_size, info.next_time_step_size);
-      // make sure to consider the minimum time step size also for the repeated timestep length. Do 
+      // make sure to consider the minimum time step size also for the repeated timestep length. Do
       // only cosider this if we do not terminate after this time step
       if (info.reduced_by_termination_plugin = false)
-          repeat_step_size = std::max(repeat_step_size, minimum_time_step_size);
+        repeat_step_size = std::max(repeat_step_size, minimum_time_step_size);
 
 
       reaction = static_cast<Reaction>(Utilities::MPI::min(static_cast<int>(reaction), this->get_mpi_communicator()));
@@ -170,7 +170,7 @@ namespace aspect
     template <int dim>
     double
     Manager<dim>::get_next_time_step_size() const
-  {
+    {
       return next_time_step_size;
     }
 
