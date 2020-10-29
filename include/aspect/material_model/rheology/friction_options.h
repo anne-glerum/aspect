@@ -210,6 +210,12 @@ namespace aspect
           double quasi_static_strain_rate;
 
           /**
+           * Whether to include radiation damping as a representation of energy outflow due to
+           * seismic waves.
+           */
+          bool use_radiation_damping;
+
+          /**
            * Parsed functions that specify a and b depth-dependence when using the Function
            * method.
            */

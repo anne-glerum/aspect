@@ -382,6 +382,16 @@ namespace aspect
                            "$\\mu = \\mu_{st} = \\mu_0 + (a-b)ln\\big( \\frac{V}{V_0} \\big). "
                            "It should not be confused with the characteristic strain rate in dynamic friction. "
                            "Units: \\si{\\per\\second}.");
+
+        prm.declare_entry ("Use radiation damping", "false",
+                           Patterns::Bool (),
+                           "Whether to include radiation damping or not. Radiation damping adds the term "
+                           "$-\\etaV = \\frac{\\mu}{2c_s}$ to the yield stress, $\\mu$ is the elastic shear "
+                           "modulus, $c_s$ the shear wave speed and V the slip rate \\citep{rice_spatio-temporal_1993}. "
+                           "Radiation damping prevents velocities to increase to infinity at the small time steps of "
+                           "earthquakes. It therewith assures that the governing equations continue to have a solution "
+                           "during earthquakelike episodes. Unlike an inertial term it cannot be used to model rupture "
+                           "propagation as it approximates seismic waves as energy outflow only. ");
       }
 
 
@@ -455,6 +465,8 @@ namespace aspect
         quasi_static_strain_rate = prm.get_double("Quasi static strain rate");
         if (quasi_static_strain_rate <= 0.)
            AssertThrow(false, ExcMessage("Quasi static strain rate must be > 0."));
+
+        use_radiation_damping = prm.get_bool("Use radiation damping");
 
         prm.enter_subsection("Rate and state parameter a function");
         {
