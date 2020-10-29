@@ -439,7 +439,9 @@ namespace aspect
           {
             AssertThrow(this->introspection().compositional_name_exists("theta"),
                         ExcMessage("Material model with rate-and-state friction only works "
-                                   "if there is a compositional field that is called theta."));
+                                   "if there is a compositional field that is called theta. It is "
+                                   "used to store the state variable."));
+            // TODO: have an assert if theta is set to 0 as this will lead to friction angles of -inf
           }
 
         effective_friction_factor = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Effective friction factor"))),
@@ -447,8 +449,12 @@ namespace aspect
                                                                             "Effective friction factor");
 
         critical_slip_distance = prm.get_double("Critical slip distance");
+        if (critical_slip_distance <= 0.)
+           AssertThrow(false, ExcMessage("Critical slip distance must be > 0."));
 
         quasi_static_strain_rate = prm.get_double("Quasi static strain rate");
+        if (quasi_static_strain_rate <= 0.)
+           AssertThrow(false, ExcMessage("Quasi static strain rate must be > 0."));
 
         prm.enter_subsection("Rate and state parameter a function");
         {
@@ -459,6 +465,7 @@ namespace aspect
             rate_and_state_parameter_a_function
               = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(n_fields);
             rate_and_state_parameter_a_function->parse_parameters (prm);
+            // TODO: add an assert if a value for a is < 0
           }
         catch (...)
           {
@@ -480,6 +487,7 @@ namespace aspect
             rate_and_state_parameter_b_function
               = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(n_fields);
             rate_and_state_parameter_b_function->parse_parameters (prm);
+            // TODO: add an assert if a value for b is < 0
           }
         catch (...)
           {
