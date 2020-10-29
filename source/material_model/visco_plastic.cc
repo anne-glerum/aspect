@@ -313,7 +313,7 @@ namespace aspect
           const std::array<double, 3> weakening_factors = strain_rheology.compute_strain_weakening_factors(j, in.composition[i]);
 
           // Step 3b: calculate weakened friction, cohesion, and pre-yield viscosity
-          const double current_cohesion = drucker_prager_parameters.cohesions[j] * weakening_factors[0];
+          double current_cohesion = drucker_prager_parameters.cohesions[j] * weakening_factors[0];
           double current_friction = drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1];
           viscosity_pre_yield *= weakening_factors[2];
 
@@ -339,7 +339,6 @@ namespace aspect
 
           */
 
-          //const double depth = this->get_geometry_model().depth(in.position[i]);
           current_friction = friction_options.compute_dependent_friction_angle(current_edot_ii, j, in.composition[i], current_cell, current_friction, in.position[i]);
 
           // Step 4: plastic yielding
@@ -354,12 +353,25 @@ namespace aspect
 
 
           // Step 4a: calculate Drucker-Prager yield stress
+          // Step 4a: compute velocity-dependent cohesion if radiation damping is used
+          if (friction_options.get_use_radiation_damping())
+            {
+              // TODO: use the plastic strain rate instead of current_edot_ii
+              // TODO: more elaborate way to determine cellsize
+              // TODO: is that the right way to get the density?
+              const double reference_density = this->get_adiabatic_conditions().density(in.position[0]);
+              const double cellsize = current_cell->extent_in_direction(0);
+              current_cohesion = current_cohesion - current_edot_ii * cellsize * elastic_shear_moduli[j]
+                                 / (2 * sqrt(elastic_shear_moduli[j] / reference_density));
+            }
+
+          // Step 4b: calculate Drucker-Prager yield stress
           const double yield_stress = drucker_prager_plasticity.compute_yield_stress(current_cohesion,
                                                                                      current_friction,
                                                                                      pressure_for_plasticity,
                                                                                      drucker_prager_parameters.max_yield_stress);
 
-          // Step 4b: select if yield viscosity is based on Drucker Prager or stress limiter rheology
+          // Step 4c: select if yield viscosity is based on Drucker Prager or stress limiter rheology
           double viscosity_yield = viscosity_pre_yield;
           switch (yield_type)
             {

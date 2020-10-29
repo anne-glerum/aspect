@@ -132,6 +132,11 @@ namespace aspect
            */
           bool get_use_theta() const;
 
+          /**
+           * A function that returns if radiation damping is used.
+           */
+          bool get_use_radiation_damping() const;
+
         private:
           /*
            * Objects for computing plastic stresses, viscosities, and additional outputs

@@ -244,6 +244,16 @@ namespace aspect
 
 
       template <int dim>
+      bool
+      FrictionOptions<dim>::
+      get_use_radiation_damping() const
+      {
+        return use_radiation_damping;
+      }
+
+
+
+      template <int dim>
       void
       FrictionOptions<dim>::declare_parameters (ParameterHandler &prm)
       {
@@ -459,12 +469,8 @@ namespace aspect
                                                                             "Effective friction factor");
 
         critical_slip_distance = prm.get_double("Critical slip distance");
-        if (critical_slip_distance <= 0.)
-          AssertThrow(false, ExcMessage("Critical slip distance must be > 0."));
 
         quasi_static_strain_rate = prm.get_double("Quasi static strain rate");
-        if (quasi_static_strain_rate <= 0.)
-          AssertThrow(false, ExcMessage("Quasi static strain rate must be > 0."));
 
         use_radiation_damping = prm.get_bool("Use radiation damping");
 
