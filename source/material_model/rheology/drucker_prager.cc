@@ -42,13 +42,22 @@ namespace aspect
         const double stress_inv_part = 1. / (std::sqrt(3.0) * (3.0 + sin_phi));
 
         // Initial yield stress (no stabilization terms)
+        // std::cout << "this is the radiation damping term: "<< radiation_damping_term << std::endl ;
+
         double yield_stress = ( (dim==3)
                                 ?
                                 ( 6.0 * cohesion * cos_phi + 6.0 * pressure * sin_phi) * stress_inv_part
                                 :
                                 cohesion * cos_phi + pressure * sin_phi)
-                              - radiation_damping_term;
-
+                              + radiation_damping_term;
+        /*
+        double yield_stress_no_damping = ( (dim==3)
+          ?
+          ( 6.0 * cohesion * cos_phi + 6.0 * pressure * sin_phi) * stress_inv_part
+          :
+          cohesion * cos_phi + pressure * sin_phi);
+          std::cout << "this is yield stress without damping: "<< yield_stress_no_damping << " - while this is yield stress with damping: " << yield_stress << std::endl;
+        */
         return std::min(yield_stress, max_yield_stress);
       }
 

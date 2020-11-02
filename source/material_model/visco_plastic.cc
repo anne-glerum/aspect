@@ -363,6 +363,7 @@ namespace aspect
               // TODO: is that the right way to get the density?
               const double reference_density = this->get_adiabatic_conditions().density(in.position[0]);
               const double cellsize = current_cell->extent_in_direction(0);
+              //std::cout << " current edot_ii is " << current_edot_ii << std::endl;
               radiation_damping_term = current_edot_ii * cellsize * elastic_shear_moduli[j]
                                        / (2 * sqrt(elastic_shear_moduli[j] / reference_density));
             }
