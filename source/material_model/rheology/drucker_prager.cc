@@ -49,7 +49,7 @@ namespace aspect
                                 ( 6.0 * cohesion * cos_phi + 6.0 * pressure * sin_phi) * stress_inv_part
                                 :
                                 cohesion * cos_phi + pressure * sin_phi)
-                              + radiation_damping_term;
+                              - radiation_damping_term;
         /*
         double yield_stress_no_damping = ( (dim==3)
           ?
