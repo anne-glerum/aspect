@@ -97,7 +97,7 @@ namespace aspect
                                              const double pre_yield_viscosity,
                                              const double radiation_damping_term) const
       {
-        const double yield_stress = compute_yield_stress(cohesion, angle_internal_friction, pressure, max_yield_stressm, radiation_damping_term);
+        const double yield_stress = compute_yield_stress(cohesion, angle_internal_friction, pressure, max_yield_stress, radiation_damping_term);
 
         const double strain_rate_effective_inv = 1./(2.*effective_strain_rate);
 
