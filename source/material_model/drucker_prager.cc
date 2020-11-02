@@ -22,6 +22,7 @@
 #include <aspect/material_model/drucker_prager.h>
 #include <aspect/utilities.h>
 #include <aspect/newton.h>
+#include <aspect/material_model/rheology/friction_options.h>
 
 
 namespace aspect
@@ -105,11 +106,33 @@ namespace aspect
               else
                 {
                   // plasticity
+
+                  // compute radiation damping if it is used
+                  double radiation_damping_term = 0.0;
+                  if (friction_options.get_use_radiation_damping())
+                    {
+                      // TODO: use the plastic strain rate instead of current_edot_ii
+                      // TODO: more elaborate way to determine cellsize
+                      // TODO: is that the right way to get the density?
+                      const double reference_density = this->get_adiabatic_conditions().density(in.position[0]);
+                      const double cellsize = in.current_cell->extent_in_direction(0);
+                      const double current_edot_ii = MaterialUtilities::compute_current_edot_ii(in.composition[i],
+                                                                                                reference_strain_rate,
+                                                                                                min_strain_rate,
+                                                                                                in.strain_rate[i],
+                                                                                                elastic_rheology.get_elastic_shear_moduli[j],
+                                                                                                use_elasticity,
+                                                                                                use_reference_strainrate,
+                                                                                                elastic_rheology.elastic_timestep());
+                      radiation_damping_term = current_edot_ii * cellsize * elastic_rheology.get_elastic_shear_moduli[j]
+                                               / (2 * sqrt(elastic_rheology.get_elastic_shear_moduli[j] / reference_density));
+                    }
                   const double eta_plastic = drucker_prager_plasticity.compute_viscosity(cohesion,
                                                                                          angle_of_internal_friction,
                                                                                          pressure,
                                                                                          std::sqrt(strain_rate_effective),
-                                                                                         std::numeric_limits<double>::infinity());
+                                                                                         std::numeric_limits<double>::infinity(),
+                                                                                         radiation_damping_term);
 
                   const double viscosity_pressure_derivative = drucker_prager_plasticity.compute_derivative(angle_of_internal_friction,std::sqrt(strain_rate_effective));
 
@@ -246,6 +269,12 @@ namespace aspect
             prm.declare_entry ("Cohesion", "2e7",
                                Patterns::Double (0.),
                                "The value of the cohesion $C$. Units: \\si{\\pascal}.");
+                               // copied here from visco_plastic.cc because needed to calculate the radiation damping term
+          prm.declare_entry ("Minimum strain rate", "1.0e-20", Patterns::Double (0.),
+                             "Stabilizes strain dependent viscosity. Units: \\si{\\per\\second}.");
+          prm.declare_entry ("Include viscoelasticity", "false",
+                             Patterns::Bool (),
+                             "Whether to include elastic effects in the rheological formulation.");
           }
           prm.leave_subsection();
         }
@@ -277,6 +306,12 @@ namespace aspect
             // Convert degrees to radians
             angle_of_internal_friction = prm.get_double ("Angle of internal friction") * numbers::PI/180.0;
             cohesion                   = prm.get_double ("Cohesion");
+
+             const double min_strain_rate = prm.get_double("Minimum strain rate");
+          const bool use_elasticity = prm.get_bool ("Include viscoelasticity");
+          const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
+                                            (in.strain_rate[i].norm() <= std::numeric_limits<double>::min());
+      
           }
           prm.leave_subsection();
         }

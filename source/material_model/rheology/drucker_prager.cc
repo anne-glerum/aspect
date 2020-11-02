@@ -34,7 +34,8 @@ namespace aspect
       DruckerPrager<dim>::compute_yield_stress (const double cohesion,
                                                 const double angle_internal_friction,
                                                 const double pressure,
-                                                const double max_yield_stress) const
+                                                const double max_yield_stress,
+                                                const double radiation_damping_term) const
       {
         const double sin_phi = std::sin(angle_internal_friction);
         const double cos_phi = std::cos(angle_internal_friction);
@@ -45,7 +46,8 @@ namespace aspect
                                 ?
                                 ( 6.0 * cohesion * cos_phi + 6.0 * pressure * sin_phi) * stress_inv_part
                                 :
-                                cohesion * cos_phi + pressure * sin_phi);
+                                cohesion * cos_phi + pressure * sin_phi)
+                              - radiation_damping_term;
 
         return std::min(yield_stress, max_yield_stress);
       }
@@ -92,9 +94,10 @@ namespace aspect
                                              const double pressure,
                                              const double effective_strain_rate,
                                              const double max_yield_stress,
-                                             const double pre_yield_viscosity) const
+                                             const double pre_yield_viscosity,
+                                             const double radiation_damping_term) const
       {
-        const double yield_stress = compute_yield_stress(cohesion, angle_internal_friction, pressure, max_yield_stress);
+        const double yield_stress = compute_yield_stress(cohesion, angle_internal_friction, pressure, max_yield_stressm, radiation_damping_term);
 
         const double strain_rate_effective_inv = 1./(2.*effective_strain_rate);
 

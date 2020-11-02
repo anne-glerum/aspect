@@ -313,7 +313,7 @@ namespace aspect
           const std::array<double, 3> weakening_factors = strain_rheology.compute_strain_weakening_factors(j, in.composition[i]);
 
           // Step 3b: calculate weakened friction, cohesion, and pre-yield viscosity
-          double current_cohesion = drucker_prager_parameters.cohesions[j] * weakening_factors[0];
+          const double current_cohesion = drucker_prager_parameters.cohesions[j] * weakening_factors[0];
           double current_friction = drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1];
           viscosity_pre_yield *= weakening_factors[2];
 
@@ -354,6 +354,8 @@ namespace aspect
 
           // Step 4a: calculate Drucker-Prager yield stress
           // Step 4a: compute velocity-dependent cohesion if radiation damping is used
+          // compute radiation damping if it is used
+          double radiation_damping_term = 0.0;
           if (friction_options.get_use_radiation_damping())
             {
               // TODO: use the plastic strain rate instead of current_edot_ii
@@ -361,17 +363,18 @@ namespace aspect
               // TODO: is that the right way to get the density?
               const double reference_density = this->get_adiabatic_conditions().density(in.position[0]);
               const double cellsize = current_cell->extent_in_direction(0);
-              current_cohesion = current_cohesion - current_edot_ii * cellsize * elastic_shear_moduli[j]
-                                 / (2 * sqrt(elastic_shear_moduli[j] / reference_density));
+              radiation_damping_term = current_edot_ii * cellsize * elastic_shear_moduli[j]
+                                       / (2 * sqrt(elastic_shear_moduli[j] / reference_density));
             }
 
-          // Step 4b: calculate Drucker-Prager yield stress
+          // Step 4a: calculate Drucker-Prager yield stress
           const double yield_stress = drucker_prager_plasticity.compute_yield_stress(current_cohesion,
                                                                                      current_friction,
                                                                                      pressure_for_plasticity,
-                                                                                     drucker_prager_parameters.max_yield_stress);
+                                                                                     drucker_prager_parameters.max_yield_stress,
+                                                                                     radiation_damping_term);
 
-          // Step 4c: select if yield viscosity is based on Drucker Prager or stress limiter rheology
+          // Step 4b: select if yield viscosity is based on Drucker Prager or stress limiter rheology
           double viscosity_yield = viscosity_pre_yield;
           switch (yield_type)
             {
@@ -395,7 +398,8 @@ namespace aspect
                                                                                   pressure_for_plasticity,
                                                                                   current_edot_ii,
                                                                                   drucker_prager_parameters.max_yield_stress,
-                                                                                  viscosity_pre_yield);
+                                                                                  viscosity_pre_yield,
+                                                                                  radiation_damping_term);
                     composition_yielding[j] = true;
                   }
                 break;

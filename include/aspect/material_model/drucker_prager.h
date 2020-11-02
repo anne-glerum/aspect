@@ -25,6 +25,8 @@
 #include <aspect/material_model/rheology/drucker_prager.h>
 #include <aspect/material_model/equation_of_state/linearized_incompressible.h>
 #include <aspect/simulator_access.h>
+#include <aspect/material_model/rheology/friction_options.h>
+#include <aspect/material_model/rheology/elasticity.h>
 
 namespace aspect
 {
@@ -172,6 +174,20 @@ namespace aspect
          * The reference strain rate used as a first estimate
          */
         double reference_strain_rate;
+
+        /**
+         * parameters read in from visco_plastic subsection
+         */
+         const double min_strain_rate;
+          const double use_elasticity;
+          const bool use_reference_strainrate;
+
+        Rheology::FrictionOptions<dim> friction_options;
+
+        /**
+         * Object for computing viscoelastic viscosities and stresses.
+         */
+        Rheology::Elasticity<dim> elastic_rheology;
     };
 
   }
