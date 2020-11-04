@@ -39,7 +39,7 @@ namespace aspect
 
       if ((n_comp == this->introspection().compositional_index_for_name("theta")) &&
           (function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),n_comp) <= 0))
-        AssertThrow(false, ExcMessage("The initial value for the state variable theta for rata-and-state friction must be > 0."));
+        AssertThrow(false, ExcMessage("The initial value for the state variable theta for rate-and-state friction must be > 0."));
 
       return function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),n_comp);
     }

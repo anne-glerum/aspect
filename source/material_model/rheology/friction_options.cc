@@ -211,6 +211,10 @@ namespace aspect
           rate_and_state_parameter_a_function->value(Utilities::convert_array_to_point<dim>(point_a.get_coordinates()),j);
         const double rate_and_state_parameter_b =
           rate_and_state_parameter_b_function->value(Utilities::convert_array_to_point<dim>(point_b.get_coordinates()),j);
+        if (rate_and_state_parameter_a <0)
+          AssertThrow(false, ExcMessage("The rate-and-state parameter a must be >= 0."));
+        if (rate_and_state_parameter_b <0)
+          AssertThrow(false, ExcMessage("The rate-and-state parameter b must be >= 0."));
 
         // std::cout << " a is " << rate_and_state_parameter_a << " - and b is " << rate_and_state_parameter_b << std::endl;
         return std::pair<double,double>(rate_and_state_parameter_a,
@@ -461,7 +465,6 @@ namespace aspect
                         ExcMessage("Material model with rate-and-state friction only works "
                                    "if there is a compositional field that is called theta. It is "
                                    "used to store the state variable."));
-            // TODO: have an assert if theta is set to 0 as this will lead to friction angles of -inf
           }
 
         effective_friction_factor = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Effective friction factor"))),
@@ -483,7 +486,6 @@ namespace aspect
             rate_and_state_parameter_a_function
               = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(n_fields);
             rate_and_state_parameter_a_function->parse_parameters (prm);
-            // TODO: add an assert if a value for a is < 0
           }
         catch (...)
           {
@@ -505,7 +507,6 @@ namespace aspect
             rate_and_state_parameter_b_function
               = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(n_fields);
             rate_and_state_parameter_b_function->parse_parameters (prm);
-            // TODO: add an assert if a value for b is < 0
           }
         catch (...)
           {
