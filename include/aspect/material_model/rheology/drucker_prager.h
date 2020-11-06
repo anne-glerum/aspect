@@ -86,8 +86,7 @@ namespace aspect
           compute_yield_stress (const double cohesion,
                                 const double angle_internal_friction,
                                 const double pressure,
-                                const double max_yield_stress,
-                                const double radiation_damping_term) const;
+                                const double max_yield_stress) const;
 
           /**
            * Compute the plastic strain rate (copied from PR #3473)
@@ -109,8 +108,7 @@ namespace aspect
                              const double pressure,
                              const double effective_strain_rate,
                              const double max_yield_stress,
-                             const double pre_yield_viscosity = std::numeric_limits<double>::infinity(),
-                             const double radiation_damping_term) const;
+                             const double pre_yield_viscosity = std::numeric_limits<double>::infinity()) const;
 
           /**
            * Compute the derivative of the plastic viscosity with respect to pressure.

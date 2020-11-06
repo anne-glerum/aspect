@@ -366,14 +366,14 @@ namespace aspect
               //std::cout << " current edot_ii is " << current_edot_ii << std::endl;
               radiation_damping_term = current_edot_ii * cellsize * elastic_shear_moduli[j]
                                        / (2 * sqrt(elastic_shear_moduli[j] / reference_density));
+              current_stress = current_stress - radiation_damping_term;
             }
 
           // Step 4a: calculate Drucker-Prager yield stress
           const double yield_stress = drucker_prager_plasticity.compute_yield_stress(current_cohesion,
                                                                                      current_friction,
                                                                                      pressure_for_plasticity,
-                                                                                     drucker_prager_parameters.max_yield_stress,
-                                                                                     radiation_damping_term);
+                                                                                     drucker_prager_parameters.max_yield_stress);
 
           // Step 4b: select if yield viscosity is based on Drucker Prager or stress limiter rheology
           double viscosity_yield = viscosity_pre_yield;
@@ -399,8 +399,7 @@ namespace aspect
                                                                                   pressure_for_plasticity,
                                                                                   current_edot_ii,
                                                                                   drucker_prager_parameters.max_yield_stress,
-                                                                                  viscosity_pre_yield,
-                                                                                  radiation_damping_term);
+                                                                                  viscosity_pre_yield);
                     composition_yielding[j] = true;
                   }
                 break;
