@@ -351,6 +351,7 @@ namespace aspect
         void fill_plastic_outputs (const unsigned int point_index,
                                    const std::vector<double> &volume_fractions,
                                    const bool plastic_yielding,
+                                   const std::vector<double> &phase_function_values,
                                    const MaterialModel::MaterialModelInputs<dim> &in,
                                    MaterialModel::MaterialModelOutputs<dim> &out) const;
 
