@@ -277,7 +277,7 @@ namespace aspect
           // and strain rate. If requested compute visco-elastic contributions.
           const double dte = elastic_rheology.elastic_timestep();
           const std::vector<double> &elastic_shear_moduli = elastic_rheology.get_elastic_shear_moduli();
-          const double current_edot_ii = MaterialUtilities::compute_current_edot_ii(in.composition[i],
+          double current_edot_ii = MaterialUtilities::compute_current_edot_ii(in.composition[i],
                                                                                     ref_strain_rate,
                                                                                     min_strain_rate,
                                                                                     in.strain_rate[i],
@@ -316,6 +316,26 @@ namespace aspect
           const double current_cohesion = drucker_prager_parameters.cohesions[j] * weakening_factors[0];
           double current_friction = drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1];
           viscosity_pre_yield *= weakening_factors[2];
+          
+
+          // compute radiation damping if it is used
+          // radiation damping is normally substracted from the shear stress. Here we use current stress instead.
+          // As current stress is only used to compare to yield stress but does not affect material properties, 
+          // it is used here to modify current_edot_ii
+          double radiation_damping_term = 0.0;
+          if (friction_options.get_use_radiation_damping())
+            {
+              // TODO: use the plastic strain rate instead of current_edot_ii
+              // TODO: more elaborate way to determine cellsize
+              // TODO: is that the right way to get the density?
+              const double reference_density = this->get_adiabatic_conditions().density(in.position[0]);
+              const double cellsize = current_cell->extent_in_direction(0);
+              //std::cout << " current edot_ii is " << current_edot_ii << std::endl;
+              radiation_damping_term = current_edot_ii * cellsize * elastic_shear_moduli[j]
+                                       / (2 * sqrt(elastic_shear_moduli[j] / reference_density));
+              current_stress = current_stress - radiation_damping_term;
+              current_edot_ii = current_stress / viscosity_pre_yield;
+            }
 
           // Steb 3c: calculate friction angle dependent on rate and/or state if specified
 
@@ -350,24 +370,6 @@ namespace aspect
           double pressure_for_plasticity = in.pressure[i];
           if (allow_negative_pressures_in_plasticity == false)
             pressure_for_plasticity = std::max(in.pressure[i],0.0);
-
-
-          // Step 4a: calculate Drucker-Prager yield stress
-          // Step 4a: compute velocity-dependent cohesion if radiation damping is used
-          // compute radiation damping if it is used
-          double radiation_damping_term = 0.0;
-          if (friction_options.get_use_radiation_damping())
-            {
-              // TODO: use the plastic strain rate instead of current_edot_ii
-              // TODO: more elaborate way to determine cellsize
-              // TODO: is that the right way to get the density?
-              const double reference_density = this->get_adiabatic_conditions().density(in.position[0]);
-              const double cellsize = current_cell->extent_in_direction(0);
-              //std::cout << " current edot_ii is " << current_edot_ii << std::endl;
-              radiation_damping_term = current_edot_ii * cellsize * elastic_shear_moduli[j]
-                                       / (2 * sqrt(elastic_shear_moduli[j] / reference_density));
-              current_stress = current_stress - radiation_damping_term;
-            }
 
           // Step 4a: calculate Drucker-Prager yield stress
           const double yield_stress = drucker_prager_plasticity.compute_yield_stress(current_cohesion,
