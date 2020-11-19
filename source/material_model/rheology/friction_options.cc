@@ -100,6 +100,31 @@ namespace aspect
                                           * log((current_edot_ii * cellsize ) / quasi_static_strain_rate)
                                           + rate_and_state_parameter_b
                                           * log((theta * quasi_static_strain_rate ) / critical_slip_distance));
+
+                  // chasing the origin of negative friction angles
+                  if (theta <= 0)
+                    {
+                      std::cout << "Theta is zero/negative: " << theta << " at time " << this->get_time() << std::endl;
+                      std::cout << "Previous theta was: " << theta_old << std::endl;
+                      std::cout << "the friction coeff at this time is: " << current_friction << " and the friction angle is " << effective_friction_factor[j] * tan(current_friction)
+                                + rate_and_state_parameter_a
+                                * log((current_edot_ii * cellsize ) / quasi_static_strain_rate)
+                                + rate_and_state_parameter_b
+                                * log((theta * quasi_static_strain_rate ) / critical_slip_distance) << std::endl;
+
+                    }
+                    if (current_friction <= 0)
+                    {
+                      std::cout << "current_friction is zero/negative!"<<std::endl;
+                      std::cout << "Theta is " << theta << " at time " << this->get_time() << std::endl;
+                      std::cout << "Previous theta was: " << theta_old << std::endl;
+                      std::cout << "the friction coeff at this time is: " << current_friction << " and the friction angle is " << effective_friction_factor[j] * tan(current_friction)
+                                + rate_and_state_parameter_a
+                                * log((current_edot_ii * cellsize ) / quasi_static_strain_rate)
+                                + rate_and_state_parameter_b
+                                * log((theta * quasi_static_strain_rate ) / critical_slip_distance) << std::endl;
+
+                    }
                   break;
                 }
               else
