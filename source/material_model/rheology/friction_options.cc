@@ -113,7 +113,7 @@ namespace aspect
                                 * log((theta * quasi_static_strain_rate ) / critical_slip_distance) << std::endl;
 
                     }
-                    if (current_friction <= 0)
+                  if (current_friction <= 0)
                     {
                       std::cout << "current_friction is zero/negative!"<<std::endl;
                       std::cout << "Theta is " << theta << " at time " << this->get_time() << std::endl;
@@ -448,8 +448,26 @@ namespace aspect
         else if (prm.get ("Friction dependence mechanism") == "dynamic friction")
           friction_dependence_mechanism = dynamic_friction;
         else if (prm.get ("Friction dependence mechanism") == "rate and state dependent friction")
-          friction_dependence_mechanism = rate_and_state_dependent_friction;
-        /* would be nice for the future to have an option like rate and state friction with fixed point iteration */
+          {
+            friction_dependence_mechanism = rate_and_state_dependent_friction;
+
+            // Currently, it only makes sense to use a state variable when the nonlinear solver
+            // scheme does a single Advection iteration and at minimum one Stokes iteration, as
+            // the state variable is implemented as a material field. More
+            // than one nonlinear Advection iteration will produce an unrealistic values
+            // for the state variable.
+            AssertThrow((this->get_parameters().nonlinear_solver ==
+                         Parameters<dim>::NonlinearSolver::single_Advection_single_Stokes
+                         ||
+                         this->get_parameters().nonlinear_solver ==
+                         Parameters<dim>::NonlinearSolver::single_Advection_iterated_Stokes
+                         ||
+                         this->get_parameters().nonlinear_solver ==
+                         Parameters<dim>::NonlinearSolver::single_Advection_iterated_Newton_Stokes),
+                        ExcMessage("The rate and state friction will only work with the nonlinear "
+                                   "solver schemes 'single Advection, single Stokes' and "
+                                   "'single Advection, iterated Stokes'"));
+          }
         else
           AssertThrow(false, ExcMessage("Not a valid friction dependence option!"));
 
