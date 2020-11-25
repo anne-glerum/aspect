@@ -544,6 +544,16 @@ namespace aspect
               double current_friction = drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1];
               current_friction = friction_options.compute_dependent_friction_angle(current_edot_ii, j, in.composition[i], in.current_cell, current_friction, in.position[i]);
               plastic_out->friction_angles[i] += 180.0/numbers::PI * volume_fractions[j] * current_friction;
+
+              // chasing the origin of negative friction angles
+              if (current_friction <= 0)
+                {
+                  std::cout << "additional outputs!" << std::endl << "current_friction is zero/negative!"<<std::endl;
+                  std::cout << " at time " << this->get_time() << std::endl;
+                  std::cout << "current edot ii is " << current_edot_ii<< std::endl;
+                  std::cout << "the friction coeff at this time is: " << tan(current_friction) << " and the friction angle in RAD is " << current_friction << std::endl;
+                  std::cout << "the friction angle in degree is: " << current_friction*180/3.1516 << std::endl;
+                }
             }
         }
     }
@@ -840,14 +850,11 @@ namespace aspect
           // Update the state variable theta if used
           if (friction_options.get_use_theta())
             {
-              const std::vector<double> volume_fractions = MaterialUtilities::compute_volume_fractions(in.composition[i], volumetric_compositions);
               const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
                                                     (in.strain_rate[i].norm() <= std::numeric_limits<double>::min());
               const double dte = elastic_rheology.elastic_timestep();
-              const std::vector<double> &elastic_shear_moduli = elastic_rheology.get_elastic_shear_moduli();
-
               friction_options.compute_theta_reaction_terms(i, in, volume_fractions, min_strain_rate, ref_strain_rate, use_elasticity,
-                                                            use_reference_strainrate, elastic_shear_moduli, dte, out);
+                                                            use_reference_strainrate, elastic_rheology.get_elastic_shear_moduli(), dte, out);
             }
         }
 

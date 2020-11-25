@@ -106,24 +106,53 @@ namespace aspect
                     {
                       std::cout << "Theta is zero/negative: " << theta << " at time " << this->get_time() << std::endl;
                       std::cout << "Previous theta was: " << theta_old << std::endl;
-                      std::cout << "the friction coeff at this time is: " << current_friction << " and the friction angle is " << effective_friction_factor[j] * tan(current_friction)
+                      std::cout << "current edot ii * cellsize is " << current_edot_ii *cellsize << std::endl;
+                      std::cout << "current edot ii is " << current_edot_ii<< std::endl;
+                      std::cout << "the friction coeff at this time is: " << tan(current_friction) << " and the friction angle in RAD is " << current_friction << std::endl;
+                      std::cout << "the friction angle in degree is: " << current_friction*180/3.1516 << std::endl;
+                      std::cout << "the effective friction factor is: " << effective_friction_factor[j] << std::endl;
+                      std::cout << "putting the effective friction factor before atan() the current friction becomes: "<<effective_friction_factor[j] *atan( tan(current_friction)
                                 + rate_and_state_parameter_a
                                 * log((current_edot_ii * cellsize ) / quasi_static_strain_rate)
                                 + rate_and_state_parameter_b
-                                * log((theta * quasi_static_strain_rate ) / critical_slip_distance) << std::endl;
-
+                                * log((theta * quasi_static_strain_rate ) / critical_slip_distance)) << std::endl;
+                      std::cout << "putting the effective friction factor into tan() the current friction becomes: "<<atan( tan(effective_friction_factor[j] *current_friction)
+                                + rate_and_state_parameter_a
+                                * log((current_edot_ii * cellsize ) / quasi_static_strain_rate)
+                                + rate_and_state_parameter_b
+                                * log((theta * quasi_static_strain_rate ) / critical_slip_distance)) << std::endl;
+                      std::cout << "leaving the effective friction factor out completely the current friction becomes: "<<atan( tan(current_friction)
+                                + rate_and_state_parameter_a
+                                * log((current_edot_ii * cellsize ) / quasi_static_strain_rate)
+                                + rate_and_state_parameter_b
+                                * log((theta * quasi_static_strain_rate ) / critical_slip_distance)) << std::endl;
+                      //AssertThrow(false, ExcMessage("Theta negative."));
                     }
                   if (current_friction <= 0)
                     {
                       std::cout << "current_friction is zero/negative!"<<std::endl;
                       std::cout << "Theta is " << theta << " at time " << this->get_time() << std::endl;
                       std::cout << "Previous theta was: " << theta_old << std::endl;
-                      std::cout << "the friction coeff at this time is: " << current_friction << " and the friction angle is " << effective_friction_factor[j] * tan(current_friction)
+                      std::cout << "current edot ii * cellsize is " << current_edot_ii *cellsize << std::endl;
+                      std::cout << "current edot ii is " << current_edot_ii<< std::endl;
+                      std::cout << "the friction coeff at this time is: " << tan(current_friction) << " and the friction angle in RAD is " << current_friction << std::endl;
+                      std::cout << "the friction angle in degree is: " << current_friction*180/3.1516 << std::endl;
+                      std::cout << "the effective friction factor is: " << effective_friction_factor[j] << std::endl;
+                      std::cout << "putting the effective friction factor before atan() the current friction becomes: "<<effective_friction_factor[j] *atan( tan(current_friction)
                                 + rate_and_state_parameter_a
                                 * log((current_edot_ii * cellsize ) / quasi_static_strain_rate)
                                 + rate_and_state_parameter_b
-                                * log((theta * quasi_static_strain_rate ) / critical_slip_distance) << std::endl;
-
+                                * log((theta * quasi_static_strain_rate ) / critical_slip_distance)) << std::endl;
+                      std::cout << "putting the effective friction factor into tan() the current friction becomes: "<<atan( tan(effective_friction_factor[j] *current_friction)
+                                + rate_and_state_parameter_a
+                                * log((current_edot_ii * cellsize ) / quasi_static_strain_rate)
+                                + rate_and_state_parameter_b
+                                * log((theta * quasi_static_strain_rate ) / critical_slip_distance)) << std::endl;
+                      std::cout << "leaving the effective friction factor out completely the current friction becomes: "<<atan( tan(current_friction)
+                                + rate_and_state_parameter_a
+                                * log((current_edot_ii * cellsize ) / quasi_static_strain_rate)
+                                + rate_and_state_parameter_b
+                                * log((theta * quasi_static_strain_rate ) / critical_slip_distance)) << std::endl;
                     }
                   break;
                 }
@@ -202,22 +231,34 @@ namespace aspect
             && in.requests_property(MaterialProperties::reaction_terms)
             && in.current_cell.state() == IteratorState::valid)
           {
+            double current_edot_ii = 1;
             for (unsigned int j=0; j < volume_fractions.size(); ++j)
               {
                 // q is from a for-loop through n_evaluation_points
-                const double current_edot_ii =
+                current_edot_ii =
                   MaterialUtilities::compute_current_edot_ii (in.composition[q], ref_strain_rate,
                                                               min_strain_rate, in.strain_rate[q],
                                                               elastic_shear_moduli[j], use_elasticity,
                                                               use_reference_strainrate, dte);
-
-                const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
-                const double theta_old = in.composition[q][theta_position_tmp];
-                const double current_theta = compute_theta(theta_old, current_edot_ii, cellsize);
-                const double theta_increment = current_theta - theta_old;
-
-                out.reaction_terms[q][theta_position_tmp] = theta_increment;
+                //std::cout << "q: " << q << " j: "<< j << " in.composition[q][j] " << in.composition[q][j] << std::endl;
               }
+            const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
+            const double theta_old = in.composition[q][theta_position_tmp];
+            const double current_theta = compute_theta(theta_old, current_edot_ii, cellsize);
+            const double theta_increment = current_theta - theta_old;
+            if (current_theta <= 0)
+              {
+                std::cout << "Reaction terms!"<< std::endl << "Theta is zero/negative: " << current_theta << " at time " << this->get_time() << std::endl;
+                std::cout << "Previous theta was: " << theta_old << std::endl;
+                std::cout << "current edot ii * cellsize is " << current_edot_ii *cellsize << std::endl;
+                std::cout << "current edot ii is " << current_edot_ii<< std::endl;
+              }
+            std::cout << "Reaction terms!"<< std::endl << "Theta is: " << current_theta << " at time " << this->get_time() << std::endl;
+            std::cout << "Previous theta was: " << theta_old << std::endl;
+            //std::cout << "q: " << q << " j: "<< j << " in.composition[q][j] " << in.composition[q][j] << std::endl;
+
+            out.reaction_terms[q][theta_position_tmp] = theta_increment;
+
           }
       }
 
