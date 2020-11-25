@@ -695,7 +695,8 @@ namespace aspect
 
       // If friction is defined state dependent, the material field for the state variable theta
       // must be excluded during volume fraction computation.
-      composition_mask = friction_options.get_theta_composition_mask(composition_mask);
+      if (friction_options.get_use_theta())
+        composition_mask = friction_options.get_theta_composition_mask(composition_mask);
 
       return composition_mask;
     }

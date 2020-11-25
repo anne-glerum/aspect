@@ -174,12 +174,9 @@ namespace aspect
       {
         // Store which components to exclude during the volume fraction computation.
 
-        if (get_use_theta())
-          {
             // This is the compositional field used for theta in rate-and-state friction
             const int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
             composition_mask.set(theta_position_tmp,false);
-          }
 
         return composition_mask;
       }
@@ -241,7 +238,7 @@ namespace aspect
                                                               elastic_shear_moduli[j], use_elasticity,
                                                               use_reference_strainrate, dte);
                 //std::cout << "q: " << q << " j: "<< j << " in.composition[q][j] " << in.composition[q][j] << std::endl;
-              }
+              //}
             const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
             const double theta_old = in.composition[q][theta_position_tmp];
             const double current_theta = compute_theta(theta_old, current_edot_ii, cellsize);
@@ -253,12 +250,13 @@ namespace aspect
                 std::cout << "current edot ii * cellsize is " << current_edot_ii *cellsize << std::endl;
                 std::cout << "current edot ii is " << current_edot_ii<< std::endl;
               }
-            std::cout << "Reaction terms!"<< std::endl << "Theta is: " << current_theta << " at time " << this->get_time() << std::endl;
-            std::cout << "Previous theta was: " << theta_old << std::endl;
+            //std::cout << "Reaction terms!"<< std::endl << "Theta is: " << current_theta << " at time " << this->get_time() << std::endl;
+            //std::cout << "Previous theta was: " << theta_old << std::endl;
+             //   std::cout << "current edot ii * cellsize is " << current_edot_ii *cellsize << std::endl;
             //std::cout << "q: " << q << " j: "<< j << " in.composition[q][j] " << in.composition[q][j] << std::endl;
 
             out.reaction_terms[q][theta_position_tmp] = theta_increment;
-
+              }
           }
       }
 
