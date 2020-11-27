@@ -37,8 +37,9 @@ namespace aspect
       Utilities::NaturalCoordinate<dim> point =
         this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system);
 
-      if ((n_comp == this->introspection().compositional_index_for_name("theta")) &&
-          (function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),n_comp) <= 0))
+      if (this->introspection().compositional_name_exists("theta")
+          && (n_comp == this->introspection().compositional_index_for_name("theta"))
+          && (function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),n_comp) <= 0))
         AssertThrow(false, ExcMessage("The initial value for the state variable theta for rate-and-state friction must be > 0."));
 
       return function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),n_comp);
