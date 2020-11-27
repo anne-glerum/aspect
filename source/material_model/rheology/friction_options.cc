@@ -180,12 +180,11 @@ namespace aspect
       FrictionOptions<dim>::
       compute_theta_reaction_terms(const int q,
                                    const MaterialModel::MaterialModelInputs<dim> &in,
-                                   const std::vector<double> &volume_fractions,
                                    const double min_strain_rate,
                                    const double ref_strain_rate,
                                    const bool use_elasticity,
                                    const bool use_reference_strainrate,
-                                   const std::vector<double> &elastic_shear_moduli,
+                                   const double &average_elastic_shear_moduli,
                                    MaterialModel::MaterialModelOutputs<dim> &out) const
       {
         const double dte = elastic_rheology.elastic_timestep();
@@ -201,35 +200,31 @@ namespace aspect
             && in.requests_property(MaterialProperties::reaction_terms)
             && in.current_cell.state() == IteratorState::valid)
           {
-            double current_edot_ii = 1;
-            for (unsigned int j=0; j < volume_fractions.size(); ++j)
+            // q is from a for-loop through n_evaluation_points
+            const double current_edot_ii =
+              MaterialUtilities::compute_current_edot_ii (in.composition[q], ref_strain_rate,
+                                                          min_strain_rate, in.strain_rate[q],
+                                                          average_elastic_shear_moduli, use_elasticity,
+                                                          use_reference_strainrate, dte);
+            //std::cout << "q: " << q << " j: "<< j << " in.composition[q][j] " << in.composition[q][j] << std::endl;
+            //}
+            const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
+            const double theta_old = in.composition[q][theta_position_tmp];
+            const double current_theta = compute_theta(theta_old, current_edot_ii, cellsize);
+            const double theta_increment = current_theta - theta_old;
+            if (current_theta <= 0)
               {
-                // q is from a for-loop through n_evaluation_points
-                current_edot_ii =
-                  MaterialUtilities::compute_current_edot_ii (in.composition[q], ref_strain_rate,
-                                                              min_strain_rate, in.strain_rate[q],
-                                                              elastic_shear_moduli[j], use_elasticity,
-                                                              use_reference_strainrate, dte);
-                //std::cout << "q: " << q << " j: "<< j << " in.composition[q][j] " << in.composition[q][j] << std::endl;
-                //}
-                const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
-                const double theta_old = in.composition[q][theta_position_tmp];
-                const double current_theta = compute_theta(theta_old, current_edot_ii, cellsize);
-                const double theta_increment = current_theta - theta_old;
-                if (current_theta <= 0)
-                  {
-                    std::cout << "Reaction terms!"<< std::endl << "Theta is zero/negative: " << current_theta << " at time " << this->get_time() << std::endl;
-                    std::cout << "Previous theta was: " << theta_old << std::endl;
-                    std::cout << "current edot ii * cellsize is " << current_edot_ii *cellsize << std::endl;
-                    std::cout << "current edot ii is " << current_edot_ii<< std::endl;
-                  }
-                //std::cout << "Reaction terms!"<< std::endl << "Theta is: " << current_theta << " at time " << this->get_time() << std::endl;
-                //std::cout << "Previous theta was: " << theta_old << std::endl;
-                //   std::cout << "current edot ii * cellsize is " << current_edot_ii *cellsize << std::endl;
-                //std::cout << "q: " << q << " j: "<< j << " in.composition[q][j] " << in.composition[q][j] << std::endl;
-
-                out.reaction_terms[q][theta_position_tmp] = theta_increment;
+                std::cout << "Reaction terms!"<< std::endl << "Theta is zero/negative: " << current_theta << " at time " << this->get_time() << std::endl;
+                std::cout << "Previous theta was: " << theta_old << std::endl;
+                std::cout << "current edot ii * cellsize is " << current_edot_ii *cellsize << std::endl;
+                std::cout << "current edot ii is " << current_edot_ii<< std::endl;
               }
+            //std::cout << "Reaction terms!"<< std::endl << "Theta is: " << current_theta << " at time " << this->get_time() << std::endl;
+            //std::cout << "Previous theta was: " << theta_old << std::endl;
+            //   std::cout << "current edot ii * cellsize is " << current_edot_ii *cellsize << std::endl;
+            //std::cout << "q: " << q << " j: "<< j << " in.composition[q][j] " << in.composition[q][j] << std::endl;
+
+            out.reaction_terms[q][theta_position_tmp] = theta_increment;
           }
       }
 

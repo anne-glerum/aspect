@@ -111,12 +111,11 @@ namespace aspect
            */
           void compute_theta_reaction_terms(const int q,
                                             const MaterialModel::MaterialModelInputs<dim> &in,
-                                            const std::vector<double> &volume_fractions,
                                             const double min_strain_rate,
                                             const double ref_strain_rate,
                                             bool use_elasticity,
                                             bool use_reference_strainrate,
-                                            const std::vector<double> &elastic_shear_moduli,
+                                            const double &elastic_shear_moduli,
                                             MaterialModel::MaterialModelOutputs<dim> &out) const;
 
           /**

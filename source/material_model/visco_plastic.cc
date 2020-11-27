@@ -451,9 +451,9 @@ namespace aspect
 
           const std::vector<double> &elastic_shear_moduli = elastic_rheology.get_elastic_shear_moduli();
 
-          // set to weakened values, or unweakened values when strain weakening is not used
           for (unsigned int j=0; j < volume_fractions.size(); ++j)
             {
+              // edot_ii  needed for the rate and state dependence of the friction angle
               double current_edot_ii = MaterialUtilities::compute_current_edot_ii(in.composition[i],
                                                                                   ref_strain_rate,
                                                                                   min_strain_rate,
@@ -462,6 +462,7 @@ namespace aspect
                                                                                   use_elasticity,
                                                                                   use_reference_strainrate,
                                                                                   dte);
+              // all this is copied from within calculate_isostrain_viscosities because it is needed to calcualte the radiation damping term
               if (friction_options.get_use_radiation_damping())
                 {
                   const double reference_density = this->get_adiabatic_conditions().density(in.position[0]);
@@ -544,6 +545,8 @@ namespace aspect
                   current_stress = current_stress - radiation_damping_term;
                   current_edot_ii = current_stress / viscosity_pre_yield;
                 }
+
+              // set to weakened values, or unweakened values when strain weakening is not used
               // Calculate the strain weakening factors and weakened values
               const std::array<double, 3> weakening_factors = strain_rheology.compute_strain_weakening_factors(j, in.composition[i]);
               plastic_out->cohesions[i]   += volume_fractions[j] * (drucker_prager_parameters.cohesions[j] * weakening_factors[0]);
@@ -860,8 +863,8 @@ namespace aspect
             {
               const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
                                                     (in.strain_rate[i].norm() <= std::numeric_limits<double>::min());
-              friction_options.compute_theta_reaction_terms(i, in, volume_fractions, min_strain_rate, ref_strain_rate, use_elasticity,
-                                                            use_reference_strainrate, elastic_rheology.get_elastic_shear_moduli(), out);
+              friction_options.compute_theta_reaction_terms(i, in, min_strain_rate, ref_strain_rate, use_elasticity,
+                                                            use_reference_strainrate, average_elastic_shear_moduli[i], out);
             }
         }
 
