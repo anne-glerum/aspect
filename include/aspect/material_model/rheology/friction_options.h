@@ -27,10 +27,7 @@
 #include <deal.II/base/parsed_function.h>
 #include <aspect/utilities.h>
 
-#include <aspect/material_model/rheology/strain_dependent.h>
 #include <aspect/material_model/rheology/drucker_prager.h>
-#include <aspect/material_model/rheology/elasticity.h>
-
 #include <deal.II/fe/component_mask.h>
 
 namespace aspect
@@ -137,22 +134,10 @@ namespace aspect
           bool get_use_radiation_damping() const;
 
         private:
-          /*
-           * Objects for computing plastic stresses, viscosities, and additional outputs
-           */
-          Rheology::DruckerPrager<dim> drucker_prager_plasticity;
-
           /**
           * Input parameters for the drucker prager plasticity.
           */
           Rheology::DruckerPragerParameters drucker_prager_parameters;
-
-          /**
-          * Object for computing viscoelastic viscosities and stresses.
-          */
-          Rheology::Elasticity<dim> elastic_rheology;
-
-          Rheology::StrainDependent<dim> strain_rheology;
 
           /**
            * Function to calculate depth-dependent a and b values for state dependent friction.

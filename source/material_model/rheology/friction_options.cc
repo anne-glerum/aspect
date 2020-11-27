@@ -184,12 +184,8 @@ namespace aspect
                                    const double ref_strain_rate,
                                    const bool use_elasticity,
                                    const bool use_reference_strainrate,
-<<<<<<< HEAD
                                    const double &average_elastic_shear_moduli,
-=======
-                                   const std::vector<double> &elastic_shear_moduli,
                                    const double dte,
->>>>>>> parent of a6f89db27... cleaned up some usage of elastic and strain rheology in frictionOptions
                                    MaterialModel::MaterialModelOutputs<dim> &out) const
       {
         // Cellsize is needed for theta and the friction angle
