@@ -325,16 +325,23 @@ namespace aspect
           double radiation_damping_term = 0.0;
           if (friction_options.get_use_radiation_damping())
             {
-              // TODO: use the plastic strain rate instead of current_edot_ii
-              // TODO: more elaborate way to determine cellsize
-              // TODO: is that the right way to get the density?
-              const double reference_density = this->get_adiabatic_conditions().density(in.position[0]);
-              const double cellsize = current_cell->extent_in_direction(0);
-              //std::cout << " current edot_ii is " << current_edot_ii << std::endl;
-              radiation_damping_term = current_edot_ii * cellsize * elastic_shear_moduli[j]
-                                       / (2 * sqrt(elastic_shear_moduli[j] / reference_density));
-              current_stress = current_stress - radiation_damping_term;
-              current_edot_ii = current_stress / viscosity_pre_yield;
+              if (use_elasticity == false)
+                {
+                  AssertThrow(false, ExcMessage("Usage of radiation damping only makes sense when elasticity is enabled."));
+                }
+              else
+                {
+                  // TODO: use the plastic strain rate instead of current_edot_ii
+                  // TODO: more elaborate way to determine cellsize
+                  // TODO: is that the right way to get the density?
+                  const double reference_density = this->get_adiabatic_conditions().density(in.position[0]);
+                  const double cellsize = current_cell->extent_in_direction(0);
+                  //std::cout << " current edot_ii is " << current_edot_ii << std::endl;
+                  radiation_damping_term = current_edot_ii * cellsize * elastic_shear_moduli[j]
+                                           / (2 * sqrt(elastic_shear_moduli[j] / reference_density));
+                  current_stress = current_stress - radiation_damping_term;
+                  current_edot_ii = current_stress / viscosity_pre_yield;
+                }
             }
 
           // Steb 3c: calculate friction angle dependent on rate and/or state if specified
