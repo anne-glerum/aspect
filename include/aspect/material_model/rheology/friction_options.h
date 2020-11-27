@@ -27,7 +27,6 @@
 #include <deal.II/base/parsed_function.h>
 #include <aspect/utilities.h>
 
-#include <aspect/material_model/rheology/strain_dependent.h>
 #include <aspect/material_model/rheology/drucker_prager.h>
 #include <aspect/material_model/rheology/elasticity.h>
 
@@ -118,7 +117,6 @@ namespace aspect
                                             bool use_elasticity,
                                             bool use_reference_strainrate,
                                             const std::vector<double> &elastic_shear_moduli,
-                                            const double dte,
                                             MaterialModel::MaterialModelOutputs<dim> &out) const;
 
           /**
@@ -149,11 +147,9 @@ namespace aspect
           Rheology::DruckerPragerParameters drucker_prager_parameters;
 
           /**
-          * Object for computing viscoelastic viscosities and stresses.
+          * Object for computing elasticity parameters.
           */
           Rheology::Elasticity<dim> elastic_rheology;
-
-          Rheology::StrainDependent<dim> strain_rheology;
 
           /**
            * Function to calculate depth-dependent a and b values for state dependent friction.

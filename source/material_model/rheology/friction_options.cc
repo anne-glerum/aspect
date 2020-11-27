@@ -186,9 +186,10 @@ namespace aspect
                                    const bool use_elasticity,
                                    const bool use_reference_strainrate,
                                    const std::vector<double> &elastic_shear_moduli,
-                                   const double dte,
                                    MaterialModel::MaterialModelOutputs<dim> &out) const
       {
+        const double dte = elastic_rheology.elastic_timestep();
+
         // Cellsize is needed for theta and the friction angle
         double cellsize = 1.;
         if (in.current_cell.state() == IteratorState::valid)
