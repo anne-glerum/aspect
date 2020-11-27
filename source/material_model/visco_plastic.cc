@@ -187,6 +187,10 @@ namespace aspect
       std::vector<bool> composition_yielding(volume_fractions.size(), false);
       std::vector<double> composition_viscosities(volume_fractions.size(), numbers::signaling_nan<double>());
 
+      // Initialize or fill variables needed to calculate current_edot_ii
+      const double dte = elastic_rheology.elastic_timestep();
+      const std::vector<double> &elastic_shear_moduli = elastic_rheology.get_elastic_shear_moduli();
+
       // The first time this function is called (first iteration of first time step)
       // a specified "reference" strain rate is used as the returned value would
       // otherwise be zero.
@@ -275,8 +279,6 @@ namespace aspect
 
           // Step 2: calculate the viscous stress magnitude
           // and strain rate. If requested compute visco-elastic contributions.
-          const double dte = elastic_rheology.elastic_timestep();
-          const std::vector<double> &elastic_shear_moduli = elastic_rheology.get_elastic_shear_moduli();
           double current_edot_ii = MaterialUtilities::compute_current_edot_ii(in.composition[i],
                                                                               ref_strain_rate,
                                                                               min_strain_rate,
@@ -856,15 +858,15 @@ namespace aspect
                 {
                   elastic_out->elastic_shear_moduli[i] = average_elastic_shear_moduli[i];
                 }
-            }
 
-          // Update the state variable theta if used
-          if (friction_options.get_use_theta())
-            {
-              const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
-                                                    (in.strain_rate[i].norm() <= std::numeric_limits<double>::min());
-              friction_options.compute_theta_reaction_terms(i, in, min_strain_rate, ref_strain_rate, use_elasticity,
-                                                            use_reference_strainrate, average_elastic_shear_moduli[i], out);
+              // Update the state variable theta if used
+              if (friction_options.get_use_theta())
+                {
+                  const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
+                                                        (in.strain_rate[i].norm() <= std::numeric_limits<double>::min());
+                  friction_options.compute_theta_reaction_terms(i, in, min_strain_rate, ref_strain_rate, use_elasticity,
+                                                                use_reference_strainrate, average_elastic_shear_moduli[i], out);
+                }
             }
         }
 
