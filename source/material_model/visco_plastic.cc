@@ -191,6 +191,14 @@ namespace aspect
       const double dte = elastic_rheology.elastic_timestep();
       const std::vector<double> &elastic_shear_moduli = elastic_rheology.get_elastic_shear_moduli();
 
+      // Assemble stress tensor if elastic behavior is enabled
+      SymmetricTensor<2,dim> stress_old = numbers::signaling_nan<SymmetricTensor<2,dim>>();
+      if (use_elasticity == true)
+        {
+          for (unsigned int j=0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
+            stress_old[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
+        }
+
       // The first time this function is called (first iteration of first time step)
       // a specified "reference" strain rate is used as the returned value would
       // otherwise be zero.
@@ -279,34 +287,68 @@ namespace aspect
 
           // Step 2: calculate the viscous stress magnitude
           // and strain rate. If requested compute visco-elastic contributions.
-          double current_edot_ii = MaterialUtilities::compute_current_edot_ii(in.composition[i],
-                                                                              ref_strain_rate,
-                                                                              min_strain_rate,
-                                                                              in.strain_rate[i],
-                                                                              elastic_shear_moduli[j],
-                                                                              use_elasticity,
-                                                                              use_reference_strainrate,
-                                                                              dte);
+          /*    double current_edot_ii = MaterialUtilities::compute_current_edot_ii(in.composition[i],
+                                                                                  ref_strain_rate,
+                                                                                  min_strain_rate,
+                                                                                  in.strain_rate[i],
+                                                                                  elastic_shear_moduli[j],
+                                                                                  use_elasticity,
+                                                                                  use_reference_strainrate,
+                                                                                  dte);
+          */
 
+          /* current edot stuff from before
+                    // Step 2: calculate the viscous stress magnitude
+                    // and strain rate. If requested compute visco-elastic contributions.
+                    double current_edot_ii = edot_ii;
+                    //double current_stress = numbers::signaling_nan<double>();
+                    if (use_elasticity == false)
+                      current_stress = 2. * viscosity_pre_yield * current_edot_ii;
+                    else
+                      {
+                        if (use_reference_strainrate == false)
+                          {
+                            // Step 2a: calculate viscoelastic (effective) viscosity
+                            viscosity_pre_yield = elastic_rheology.calculate_viscoelastic_viscosity(viscosity_pre_yield,
+                                                                                                    elastic_shear_moduli[j]);
 
-          double current_stress = numbers::signaling_nan<double>();
-          if (use_elasticity == false)
-            current_stress = 2. * viscosity_pre_yield * current_edot_ii;
-          else
+                            // Step 2b: calculate current (viscous + elastic) stress magnitude
+                            current_stress = viscosity_pre_yield * current_edot_ii;
+                          }
+                      }
+
+                    // Step 2b: calculate current (viscous or viscous + elastic) stress magnitude
+                    current_stress = 2. * viscosity_pre_yield * current_edot_ii;
+          //double current_stress = 2. * viscosity_pre_yield * current_edot_ii;
+          */
+
+          // Step 2: calculate the viscous stress magnitude
+          // and strain rate. If requested compute visco-elastic contributions.
+          double current_edot_ii = edot_ii;
+
+          if (use_elasticity)
             {
-              if (use_reference_strainrate == false)
-                {
-                  // Step 2a: calculate viscoelastic (effective) viscosity
-                  viscosity_pre_yield = elastic_rheology.calculate_viscoelastic_viscosity(viscosity_pre_yield,
-                                                                                          elastic_shear_moduli[j]);
+              const std::vector<double> &elastic_shear_moduli = elastic_rheology.get_elastic_shear_moduli();
 
-                  // Step 2b: calculate current (viscous + elastic) stress magnitude
-                  current_stress = viscosity_pre_yield * current_edot_ii;
+              if (use_reference_strainrate == true)
+                current_edot_ii = ref_strain_rate;
+              else
+                {
+                  const double viscoelastic_strain_rate_invariant = elastic_rheology.calculate_viscoelastic_strain_rate(in.strain_rate[i],
+                                                                    stress_old,
+                                                                    elastic_shear_moduli[j]);
+
+                  current_edot_ii = std::max(viscoelastic_strain_rate_invariant,
+                                             min_strain_rate);
                 }
+
+              // Step 2a: calculate viscoelastic (effective) viscosity
+              viscosity_pre_yield = elastic_rheology.calculate_viscoelastic_viscosity(viscosity_pre_yield,
+                                                                                      elastic_shear_moduli[j]);
             }
 
           // Step 2b: calculate current (viscous or viscous + elastic) stress magnitude
-          const double current_stress = 2. * viscosity_pre_yield * current_edot_ii;
+          double current_stress = 2. * viscosity_pre_yield * current_edot_ii;
 
           // Step 3: strain weakening
 
@@ -335,8 +377,8 @@ namespace aspect
                 {
                   // TODO: use the plastic strain rate instead of current_edot_ii
                   // TODO: more elaborate way to determine cellsize
-                  // TODO: this is not exactly the right way to get the density, as it i only reference densities. 
-                  // ideally, you would take the actual densities from out.densities[I], 
+                  // TODO: this is not exactly the right way to get the density, as it i only reference densities.
+                  // ideally, you would take the actual densities from out.densities[I],
                   // i.e. computed as out.densities[i] = MaterialUtilities::average_value (volume_fractions, eos_outputs.densities, MaterialUtilities::arithmetic);
                   // but at the moment I don't have access to out in this function
                   const double reference_density = this->get_adiabatic_conditions().density(in.position[0]);
