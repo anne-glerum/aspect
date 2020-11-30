@@ -362,11 +362,26 @@ namespace aspect
           viscosity_pre_yield *= weakening_factors[2];
 
 
+          // Determine if the pressure used in Drucker Prager plasticity will be capped at 0 (default).
+          // This may be necessary in models without gravity and the dynamic stresses are much higher
+          // than the lithostatic pressure.
+
+          double pressure_for_plasticity = in.pressure[i];
+          if (allow_negative_pressures_in_plasticity == false)
+            pressure_for_plasticity = std::max(in.pressure[i],0.0);
+
           // compute radiation damping if it is used
           // radiation damping is normally substracted from the shear stress. Here we use current stress instead.
           // As current stress is only used to compare to yield stress but does not affect material properties,
           // it is used here to modify current_edot_ii
           double radiation_damping_term = 0.0;
+          // plastic strain rate is needed for rate and state friction as an approximation to slip rate on the fault
+          const double plastic_strain_rate = drucker_prager_plasticity.compute_plastic_strain_rate (current_cohesion,
+                                             current_friction,
+                                             pressure_for_plasticity,
+                                             current_edot_ii,
+                                             viscosity_pre_yield);
+
           if (friction_options.get_use_radiation_damping())
             {
               if (use_elasticity == false)
@@ -392,39 +407,9 @@ namespace aspect
             }
 
           // Steb 3c: calculate friction angle dependent on rate and/or state if specified
-
-          /**  THESE CHANGES ARE COOL, ONCE JOHNS PR REQUEST HAS BEEN TESTED I GUESS
-          // Determine if the pressure used in Drucker Prager plasticity will be capped at 0 (default).
-          // This may be necessary in models without gravity and the dynamic stresses are much higher
-          // than the lithostatic prssure.
-          double pressure_for_plasticity = in.pressure[i];
-          if (allow_negative_pressures_in_plasticity == false)
-            pressure_for_plasticity = std::max(in.pressure[i],0.0);
-
-          double plastic_strain_rate =
-            drucker_prager_plasticity.compute_plastic_strain_rate(current_cohesion,
-                                                                  current_friction,
-                                                                  pressure_for_plasticity,
-                                                                  current_edot_ii,
-                                                                  drucker_prager_parameters.damper_viscosity,
-                                                                  viscosity_pre_yield);
-
-          current_friction = friction_options.compute_dependent_friction_angle(plastic_strain_rate, j, in.composition[i], current_cell, current_friction);
-
-          */
-
           current_friction = friction_options.compute_dependent_friction_angle(current_edot_ii, j, in.composition[i], current_cell, current_friction, in.position[i]);
 
           // Step 4: plastic yielding
-
-          // Determine if the pressure used in Drucker Prager plasticity will be capped at 0 (default).
-          // This may be necessary in models without gravity and the dynamic stresses are much higher
-          // than the lithostatic pressure.
-
-          double pressure_for_plasticity = in.pressure[i];
-          if (allow_negative_pressures_in_plasticity == false)
-            pressure_for_plasticity = std::max(in.pressure[i],0.0);
-
           // Step 4a: calculate Drucker-Prager yield stress
           const double yield_stress = drucker_prager_plasticity.compute_yield_stress(current_cohesion,
                                                                                      current_friction,

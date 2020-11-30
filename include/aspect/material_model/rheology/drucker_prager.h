@@ -96,7 +96,6 @@ namespace aspect
                                        const double angle_internal_friction,
                                        const double pressure,
                                        const double effective_strain_rate,
-                                       const double damper_viscosity,
                                        const double pre_yield_viscosity) const;
 
           /**
