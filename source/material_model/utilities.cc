@@ -1046,13 +1046,9 @@ namespace aspect
 
         // Step 2: calculate the viscous stress magnitude
         // and strain rate. If requested compute visco-elastic contribution
-        double current_edot_ii = numbers::signaling_nan<double>();
+        double current_edot_ii = edot_ii;
 
-        if (use_elasticity == false)
-          {
-            current_edot_ii = edot_ii;
-          }
-        else
+        if (use_elasticity)
           {
             if (use_reference_strainrate == true)
               current_edot_ii = ref_strain_rate;
@@ -1066,17 +1062,12 @@ namespace aspect
                 current_edot_ii = std::max(viscoelastic_strain_rate_invariant,
                                            min_strain_rate);
               }
-
-            // The viscoelastic strain rate is divided by 2 here as the Drucker Prager
-            // viscosity calculation below assumes stress = 2 * viscosity * strain_rate_invariant,
-            // whereas the combined viscoelastic + viscous stresses already include the
-            // 2x factor (see computation of edot inside elastic_rheology).
-            current_edot_ii /= 2.;
           }
 
         return current_edot_ii;
       }
 
+      // this function is a copy of the function in rheology/drucker_prager. It is just here for the function compute_current_edot_ii
       template <int dim>
       double calculate_viscoelastic_strain_rate(const SymmetricTensor<2,dim> &strain_rate,
                                                 const SymmetricTensor<2,dim> &stress,

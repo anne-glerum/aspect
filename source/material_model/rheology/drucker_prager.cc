@@ -208,6 +208,8 @@ namespace aspect
 
         // Whether to include a plastic damper when computing the drucker-prager plastic viscosity
         use_plastic_damper = prm.get_bool("Use plastic damper");
+        // Esther: I need to access this parameter from visco_plastic, but didn want to change everything in here
+        parameters.use_plastic_damper = prm.get_bool("Use plastic damper");
 
         // Stabalize plasticity through a viscous damper
         damper_viscosity = prm.get_double("Plastic damper viscosity");

@@ -287,43 +287,6 @@ namespace aspect
 
           // Step 2: calculate the viscous stress magnitude
           // and strain rate. If requested compute visco-elastic contributions.
-          /*    double current_edot_ii = MaterialUtilities::compute_current_edot_ii(in.composition[i],
-                                                                                  ref_strain_rate,
-                                                                                  min_strain_rate,
-                                                                                  in.strain_rate[i],
-                                                                                  elastic_shear_moduli[j],
-                                                                                  use_elasticity,
-                                                                                  use_reference_strainrate,
-                                                                                  dte);
-          */
-
-          /* current edot stuff from before
-                    // Step 2: calculate the viscous stress magnitude
-                    // and strain rate. If requested compute visco-elastic contributions.
-                    double current_edot_ii = edot_ii;
-                    //double current_stress = numbers::signaling_nan<double>();
-                    if (use_elasticity == false)
-                      current_stress = 2. * viscosity_pre_yield * current_edot_ii;
-                    else
-                      {
-                        if (use_reference_strainrate == false)
-                          {
-                            // Step 2a: calculate viscoelastic (effective) viscosity
-                            viscosity_pre_yield = elastic_rheology.calculate_viscoelastic_viscosity(viscosity_pre_yield,
-                                                                                                    elastic_shear_moduli[j]);
-
-                            // Step 2b: calculate current (viscous + elastic) stress magnitude
-                            current_stress = viscosity_pre_yield * current_edot_ii;
-                          }
-                      }
-
-                    // Step 2b: calculate current (viscous or viscous + elastic) stress magnitude
-                    current_stress = 2. * viscosity_pre_yield * current_edot_ii;
-          //double current_stress = 2. * viscosity_pre_yield * current_edot_ii;
-          */
-
-          // Step 2: calculate the viscous stress magnitude
-          // and strain rate. If requested compute visco-elastic contributions.
           double current_edot_ii = edot_ii;
 
           if (use_elasticity)
@@ -365,7 +328,6 @@ namespace aspect
           // Determine if the pressure used in Drucker Prager plasticity will be capped at 0 (default).
           // This may be necessary in models without gravity and the dynamic stresses are much higher
           // than the lithostatic pressure.
-
           double pressure_for_plasticity = in.pressure[i];
           if (allow_negative_pressures_in_plasticity == false)
             pressure_for_plasticity = std::max(in.pressure[i],0.0);
@@ -375,12 +337,23 @@ namespace aspect
           // As current stress is only used to compare to yield stress but does not affect material properties,
           // it is used here to modify current_edot_ii
           double radiation_damping_term = 0.0;
-          // plastic strain rate is needed for rate and state friction as an approximation to slip rate on the fault
-          const double plastic_strain_rate = drucker_prager_plasticity.compute_plastic_strain_rate (current_cohesion,
-                                             current_friction,
-                                             pressure_for_plasticity,
-                                             current_edot_ii,
-                                             viscosity_pre_yield);
+
+          // plastic strain rate is needed for rate and state friction (RSF) as an approximation to slip rate on the fault
+          // TODO: find a formulation for plastic strain rate outside of the damped plasticity framework, as now it
+          // is not actually plastic strain rate, but just strain rate that is used if plasticity damper is not used
+          double plastic_strain_rate_for_RSF = 0.0;
+          if (drucker_prager_parameters.use_plastic_damper == true)
+            {
+              plastic_strain_rate_for_RSF = drucker_prager_plasticity.compute_plastic_strain_rate (current_cohesion,
+                                            current_friction,
+                                            pressure_for_plasticity,
+                                            current_edot_ii,
+                                            viscosity_pre_yield);
+            }
+          else
+            {
+              plastic_strain_rate_for_RSF = current_edot_ii;
+            }
 
           if (friction_options.get_use_radiation_damping())
             {
@@ -390,7 +363,6 @@ namespace aspect
                 }
               else
                 {
-                  // TODO: use the plastic strain rate instead of current_edot_ii
                   // TODO: more elaborate way to determine cellsize
                   // TODO: this is not exactly the right way to get the density, as it i only reference densities.
                   // ideally, you would take the actual densities from out.densities[I],
@@ -398,16 +370,30 @@ namespace aspect
                   // but at the moment I don't have access to out in this function
                   const double reference_density = this->get_adiabatic_conditions().density(in.position[0]);
                   const double cellsize = current_cell->extent_in_direction(0);
-                  //std::cout << " current edot_ii is " << current_edot_ii << std::endl;
-                  radiation_damping_term = current_edot_ii * cellsize * elastic_shear_moduli[j]
+                  //std::cout << " current edot_ii is " << plastic_strain_rate_for_RSF << std::endl;
+                  radiation_damping_term = plastic_strain_rate_for_RSF * cellsize * elastic_shear_moduli[j]
                                            / (2 * sqrt(elastic_shear_moduli[j] / reference_density));
                   current_stress = current_stress - radiation_damping_term;
                   current_edot_ii = current_stress / viscosity_pre_yield;
+
+                  // recalculate the plastic strain rate
+                  if (drucker_prager_parameters.use_plastic_damper == true)
+                    {
+                      plastic_strain_rate_for_RSF = drucker_prager_plasticity.compute_plastic_strain_rate (current_cohesion,
+                                                    current_friction,
+                                                    pressure_for_plasticity,
+                                                    current_edot_ii,
+                                                    viscosity_pre_yield);
+                    }
+                  else
+                    {
+                      plastic_strain_rate_for_RSF = current_edot_ii;
+                    }
                 }
             }
 
           // Steb 3c: calculate friction angle dependent on rate and/or state if specified
-          current_friction = friction_options.compute_dependent_friction_angle(current_edot_ii, j, in.composition[i], current_cell, current_friction, in.position[i]);
+          current_friction = friction_options.compute_dependent_friction_angle(plastic_strain_rate_for_RSF, j, in.composition[i], current_cell, current_friction, in.position[i]);
 
           // Step 4: plastic yielding
           // Step 4a: calculate Drucker-Prager yield stress
@@ -494,97 +480,142 @@ namespace aspect
                                                                                   use_elasticity,
                                                                                   use_reference_strainrate,
                                                                                   dte);
+
+              double pressure_for_plasticity = in.pressure[i];
+              if (allow_negative_pressures_in_plasticity == false)
+                pressure_for_plasticity = std::max(in.pressure[i],0.0);
+
+              // Calculate the strain weakening factors and weakened values
+              const std::array<double, 3> weakening_factors = strain_rheology.compute_strain_weakening_factors(j, in.composition[i]);
+              double current_friction = drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1];
+              const double current_cohesion = drucker_prager_parameters.cohesions[j] * weakening_factors[0];
+
               // all this is copied from within calculate_isostrain_viscosities because it is needed to calcualte the radiation damping term
-              if (friction_options.get_use_radiation_damping())
-                {
-                  const double reference_density = this->get_adiabatic_conditions().density(in.position[0]);
-                  const double cellsize = in.current_cell->extent_in_direction(0);
-                  const double radiation_damping_term = current_edot_ii * cellsize * elastic_shear_moduli[j]
-                                                        / (2 * sqrt(elastic_shear_moduli[j] / reference_density));
-                  double current_stress = numbers::signaling_nan<double>();
-                  double viscosity_pre_yield = 0;
-                  const double temperature_for_viscosity = in.temperature[i] + adiabatic_temperature_gradient_for_viscosity*in.pressure[i];
-                  // Step 1a: compute viscosity from diffusion creep law
-                  const double viscosity_diffusion = diffusion_creep.compute_viscosity(in.pressure[i], temperature_for_viscosity, j,
+              const double reference_density = this->get_adiabatic_conditions().density(in.position[0]);
+              const double cellsize = in.current_cell->extent_in_direction(0);
+
+              double current_stress = numbers::signaling_nan<double>();
+              double viscosity_pre_yield = 0;
+              const double temperature_for_viscosity = in.temperature[i] + adiabatic_temperature_gradient_for_viscosity*in.pressure[i];
+
+              double edot_ii;
+              if (use_reference_strainrate)
+                edot_ii = ref_strain_rate;
+              else
+                // Calculate the square root of the second moment invariant for the deviatoric strain rate tensor.
+                edot_ii = std::max(std::sqrt(std::fabs(second_invariant(deviator(in.strain_rate[i])))),
+                                   min_strain_rate);
+
+              // Step 1a: compute viscosity from diffusion creep law
+              const double viscosity_diffusion = diffusion_creep.compute_viscosity(in.pressure[i], temperature_for_viscosity, j,
+                                                                                   phase_function_values,
+                                                                                   phase_function.n_phase_transitions_for_each_composition());
+
+
+
+              // Step 1b: compute viscosity from dislocation creep law
+              const double viscosity_dislocation = dislocation_creep.compute_viscosity(edot_ii, in.pressure[i], temperature_for_viscosity, j,
                                                                                        phase_function_values,
                                                                                        phase_function.n_phase_transitions_for_each_composition());
 
-                  double edot_ii;
-                  if (use_reference_strainrate)
-                    edot_ii = ref_strain_rate;
-                  else
-                    // Calculate the square root of the second moment invariant for the deviatoric strain rate tensor.
-                    edot_ii = std::max(std::sqrt(std::fabs(second_invariant(deviator(in.strain_rate[i])))),
-                                       min_strain_rate);
+              switch (viscous_flow_law)
+                {
+                  case diffusion:
+                  {
+                    viscosity_pre_yield = viscosity_diffusion;
+                    break;
+                  }
+                  case dislocation:
+                  {
+                    viscosity_pre_yield = viscosity_dislocation;
+                    break;
+                  }
+                  case frank_kamenetskii:
+                  {
+                    viscosity_pre_yield = frank_kamenetskii_rheology->compute_viscosity(in.temperature[i], j);
+                    break;
+                  }
+                  case composite:
+                  {
+                    viscosity_pre_yield = (viscosity_diffusion * viscosity_dislocation)/
+                                          (viscosity_diffusion + viscosity_dislocation);
+                    break;
+                  }
+                  default:
+                  {
+                    AssertThrow(false, ExcNotImplemented());
+                    break;
+                  }
+                }
 
-                  // Step 1b: compute viscosity from dislocation creep law
-                  const double viscosity_dislocation = dislocation_creep.compute_viscosity(edot_ii, in.pressure[i], temperature_for_viscosity, j,
-                                                                                           phase_function_values,
-                                                                                           phase_function.n_phase_transitions_for_each_composition());
-                  switch (viscous_flow_law)
-                    {
-                      case diffusion:
-                      {
-                        viscosity_pre_yield = viscosity_diffusion;
-                        break;
-                      }
-                      case dislocation:
-                      {
-                        viscosity_pre_yield = viscosity_dislocation;
-                        break;
-                      }
-                      case frank_kamenetskii:
-                      {
-                        viscosity_pre_yield = frank_kamenetskii_rheology->compute_viscosity(in.temperature[i], j);
-                        break;
-                      }
-                      case composite:
-                      {
-                        viscosity_pre_yield = (viscosity_diffusion * viscosity_dislocation)/
-                                              (viscosity_diffusion + viscosity_dislocation);
-                        break;
-                      }
-                      default:
-                      {
-                        AssertThrow(false, ExcNotImplemented());
-                        break;
-                      }
-                    }
+              // Step 1d: compute viscosity from Peierls creep law and harmonically average with current viscosities
+              if (use_peierls_creep)
+                {
+                  const double viscosity_peierls = peierls_creep->compute_viscosity(edot_ii, in.pressure[i], temperature_for_viscosity, j,
+                                                                                    phase_function_values,
+                                                                                    phase_function.n_phase_transitions_for_each_composition());
+                  viscosity_pre_yield = (viscosity_pre_yield * viscosity_peierls) / (viscosity_pre_yield + viscosity_peierls);
+                }
 
-                  // Step 1d: compute viscosity from Peierls creep law and harmonically average with current viscosities
-                  if (use_peierls_creep)
-                    {
-                      const double viscosity_peierls = peierls_creep->compute_viscosity(edot_ii, in.pressure[i], temperature_for_viscosity, j);
-                      viscosity_pre_yield = (viscosity_pre_yield * viscosity_peierls) / (viscosity_pre_yield + viscosity_peierls);
-                    }
+              // Step 1e: multiply the viscosity by a constant (default value is 1)
+              viscosity_pre_yield = constant_viscosity_prefactors.compute_viscosity(viscosity_pre_yield, j);
+              if (use_elasticity)
+                {
+                  // Step 2a: calculate viscoelastic (effective) viscosity
+                  viscosity_pre_yield = elastic_rheology.calculate_viscoelastic_viscosity(viscosity_pre_yield,
+                                                                                          elastic_shear_moduli[j]);
 
-                  // Step 1e: multiply the viscosity by a constant (default value is 1)
-                  viscosity_pre_yield = constant_viscosity_prefactors.compute_viscosity(viscosity_pre_yield, j);
-                  if (use_elasticity == false)
-                    current_stress = 2. * viscosity_pre_yield * current_edot_ii;
-                  else
-                    {
-                      if (use_reference_strainrate == false)
-                        {
-                          // Step 2a: calculate viscoelastic (effective) viscosity
-                          viscosity_pre_yield = elastic_rheology.calculate_viscoelastic_viscosity(viscosity_pre_yield,
-                                                                                                  elastic_shear_moduli[j]);
+                  // Step 2b: calculate current (viscous + elastic) stress magnitude
+                  current_stress = 2 *  viscosity_pre_yield * current_edot_ii;
+                }
 
-                          // Step 2b: calculate current (viscous + elastic) stress magnitude
-                          current_stress = viscosity_pre_yield * current_edot_ii;
-                        }
-                    }
+              double plastic_strain_rate_for_RSF = 0.0;
+              if (drucker_prager_parameters.use_plastic_damper == true)
+                {
+                  plastic_strain_rate_for_RSF = drucker_prager_plasticity.compute_plastic_strain_rate (current_cohesion,
+                                                current_friction,
+                                                pressure_for_plasticity,
+                                                current_edot_ii,
+                                                viscosity_pre_yield);
+                }
+              else
+                {
+                  plastic_strain_rate_for_RSF = current_edot_ii;
+                }
+
+              if (friction_options.get_use_radiation_damping())
+                {
+                  // TODO: more elaborate way to determine cellsize
+                  // TODO: this is not exactly the right way to get the density, as it i only reference densities.
+                  // ideally, you would take the actual densities from out.densities[I],
+                  // i.e. computed as out.densities[i] = MaterialUtilities::average_value (volume_fractions, eos_outputs.densities, MaterialUtilities::arithmetic);
+                  // but at the moment I don't have access to out in this function
+
+                  //std::cout << " current edot_ii is " << plastic_strain_rate_for_RSF << std::endl;
+                  const double radiation_damping_term = plastic_strain_rate_for_RSF * cellsize * elastic_shear_moduli[j]
+                                                        / (2 * sqrt(elastic_shear_moduli[j] / reference_density));
                   current_stress = current_stress - radiation_damping_term;
                   current_edot_ii = current_stress / viscosity_pre_yield;
+
+                  // recalculate the plastic strain rate
+                  if (drucker_prager_parameters.use_plastic_damper == true)
+                    {
+                      plastic_strain_rate_for_RSF = drucker_prager_plasticity.compute_plastic_strain_rate (current_cohesion,
+                                                    current_friction,
+                                                    pressure_for_plasticity,
+                                                    current_edot_ii,
+                                                    viscosity_pre_yield);
+                    }
+                  else
+                    {
+                      plastic_strain_rate_for_RSF = current_edot_ii;
+                    }
                 }
 
               // set to weakened values, or unweakened values when strain weakening is not used
-              // Calculate the strain weakening factors and weakened values
-              const std::array<double, 3> weakening_factors = strain_rheology.compute_strain_weakening_factors(j, in.composition[i]);
               plastic_out->cohesions[i]   += volume_fractions[j] * (drucker_prager_parameters.cohesions[j] * weakening_factors[0]);
               // Also convert radians to degrees
-              double current_friction = drucker_prager_parameters.angles_internal_friction[j] * weakening_factors[1];
-              current_friction = friction_options.compute_dependent_friction_angle(current_edot_ii, j, in.composition[i], in.current_cell, current_friction, in.position[i]);
+              current_friction = friction_options.compute_dependent_friction_angle(plastic_strain_rate_for_RSF, j, in.composition[i], in.current_cell, current_friction, in.position[i]);
               plastic_out->friction_angles[i] += 180.0/numbers::PI * volume_fractions[j] * current_friction;
 
               // chasing the origin of negative friction angles
@@ -592,7 +623,7 @@ namespace aspect
                 {
                   std::cout << "additional outputs!" << std::endl << "current_friction is zero/negative!"<<std::endl;
                   std::cout << " at time " << this->get_time() << std::endl;
-                  std::cout << "current edot ii is " << current_edot_ii<< std::endl;
+                  std::cout << "current edot ii is " << plastic_strain_rate_for_RSF<< std::endl;
                   std::cout << "the friction coeff at this time is: " << tan(current_friction) << " and the friction angle in RAD is " << current_friction << std::endl;
                   std::cout << "the friction angle in degree is: " << current_friction*180/3.1516 << std::endl;
                 }

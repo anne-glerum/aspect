@@ -51,6 +51,11 @@ namespace aspect
          * Limit maximum yield stress from drucker prager yield criterion.
          */
         double max_yield_stress;
+
+        /**
+         * this one here is copied from the private section, so in a way it exists twice now.
+         */
+        double use_plastic_damper;
       };
 
       template <int dim>
