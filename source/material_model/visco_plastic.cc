@@ -188,7 +188,6 @@ namespace aspect
       std::vector<double> composition_viscosities(volume_fractions.size(), numbers::signaling_nan<double>());
 
       // Initialize or fill variables needed to calculate current_edot_ii
-      const double dte = elastic_rheology.elastic_timestep();
       const std::vector<double> &elastic_shear_moduli = elastic_rheology.get_elastic_shear_moduli();
 
       // Assemble stress tensor if elastic behavior is enabled
@@ -376,7 +375,7 @@ namespace aspect
                   current_stress = current_stress - radiation_damping_term;
                   current_edot_ii = current_stress / viscosity_pre_yield;
 
-                  // recalculate the plastic strain rate
+                  // recalculate the plastic strain rate ny taking into account the radiation damping term
                   if (drucker_prager_parameters.use_plastic_damper == true)
                     {
                       plastic_strain_rate_for_RSF = drucker_prager_plasticity.compute_plastic_strain_rate (current_cohesion,
@@ -391,6 +390,12 @@ namespace aspect
                     }
                 }
             }
+
+                // If the fault is not yielding, the plastic strain rate will return 0. However, when V = 0 is used in RSF, the
+                // friction angle will return nan, because ln(0). So we set the plastic_strain_rate equal to the smallest allowed
+                // strain rate in the model.
+            if (plastic_strain_rate_for_RSF <= 0.)
+            plastic_strain_rate_for_RSF = min_strain_rate;
 
           // Steb 3c: calculate friction angle dependent on rate and/or state if specified
           current_friction = friction_options.compute_dependent_friction_angle(plastic_strain_rate_for_RSF, j, in.composition[i], current_cell, current_friction, in.position[i]);
@@ -611,6 +616,12 @@ namespace aspect
                       plastic_strain_rate_for_RSF = current_edot_ii;
                     }
                 }
+                
+                // If the fault is not yielding, the plastic strain rate will return 0. However, when V = 0 is used in RSF, the
+                // friction angle will return nan, because ln(0). So we set the plastic_strain_rate equal to the smallest allowed
+                // strain rate in the model.
+            if (plastic_strain_rate_for_RSF <= 0.)
+            plastic_strain_rate_for_RSF = min_strain_rate;
 
               // set to weakened values, or unweakened values when strain weakening is not used
               plastic_out->cohesions[i]   += volume_fractions[j] * (drucker_prager_parameters.cohesions[j] * weakening_factors[0]);
