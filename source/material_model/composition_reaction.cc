@@ -113,6 +113,8 @@ namespace aspect
                 }
             }
 
+          std::cout << "Composition_3 " << in.composition[i][this->n_compositional_fields()-1] << std::endl;
+          out.reaction_terms[i][this->n_compositional_fields()-1] = 0.2;
           out.thermal_expansion_coefficients[i] = eos_outputs.thermal_expansion_coefficients[0];
           out.specific_heat[i] = eos_outputs.specific_heat_capacities[0];
           out.thermal_conductivities[i] = k_value;

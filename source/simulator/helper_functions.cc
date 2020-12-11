@@ -1592,7 +1592,7 @@ namespace aspect
             {
               // Loop over composition element
               material_model->fill_additional_material_model_inputs(in_C, solution, fe_values_C, introspection);
-
+              std::cout << "compute reaction steps: evaluate mm" << std::endl;
               material_model->evaluate(in_C, out_C);
               heating_model_manager.evaluate(in_C, out_C, heating_model_outputs_C);
 
@@ -1794,7 +1794,7 @@ namespace aspect
           fe_values.reinit (cell);
           cell->get_dof_indices (local_dof_indices);
           in.reinit(fe_values, cell, introspection, solution);
-
+          std::cout << "Interpolate material output into adv field: evaluate mm" << std::endl;
           material_model->evaluate(in, out);
 
           // Interpolate material properties onto the advection fields

@@ -513,7 +513,11 @@ namespace aspect
             scratch.material_model_inputs.pressure_gradient[q] = (scratch.old_pressure_gradients[q] + scratch.old_old_pressure_gradients[q]) / 2;
 
             for (unsigned int c=0; c<introspection.n_compositional_fields; ++c)
-              scratch.material_model_inputs.composition[q][c] = (scratch.old_composition_values[c][q] + scratch.old_old_composition_values[c][q]) / 2;
+              {
+                scratch.material_model_inputs.composition[q][c] = (scratch.old_composition_values[c][q] + scratch.old_old_composition_values[c][q]) / 2;
+                std::cout << "Nr of q points for c: " << c << " = " << scratch.old_composition_values[c].size() << std::endl;
+                std::cout << "Old value of c: " << c << " for q " << q << " = " << scratch.old_composition_values[c][q] << std::endl;
+              } 
             scratch.material_model_inputs.strain_rate[q] = (scratch.old_strain_rates[q] + scratch.old_old_strain_rates[q]) / 2;
           }
         scratch.material_model_inputs.current_cell = cell;
@@ -527,6 +531,7 @@ namespace aspect
                                                               solution,
                                                               scratch.finite_element_values,
                                                               introspection);
+        std::cout << "get artificial viscosity: evaluate mm" << std::endl;
         material_model->evaluate(scratch.material_model_inputs,scratch.material_model_outputs);
         heating_model_manager.evaluate(scratch.material_model_inputs,scratch.material_model_outputs,scratch.heating_model_outputs);
 

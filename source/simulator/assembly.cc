@@ -330,6 +330,7 @@ namespace aspect
     for (unsigned int i=0; i<assemblers->stokes_preconditioner.size(); ++i)
       assemblers->stokes_preconditioner[i]->create_additional_material_model_outputs(scratch.material_model_outputs);
 
+    std::cout << "local assemble stokes preconditioner: evaluate mm" << std::endl;
     material_model->evaluate(scratch.material_model_inputs,
                              scratch.material_model_outputs);
     MaterialModel::MaterialAveraging::average (parameters.material_averaging,
@@ -577,6 +578,7 @@ namespace aspect
     for (unsigned int i=0; i<assemblers->stokes_system.size(); ++i)
       assemblers->stokes_system[i]->create_additional_material_model_outputs(scratch.material_model_outputs);
 
+    std::cout << "local assemble stokes : evaluate mm" << std::endl;
     material_model->evaluate(scratch.material_model_inputs,
                              scratch.material_model_outputs);
     MaterialModel::MaterialAveraging::average (parameters.material_averaging,
@@ -926,7 +928,7 @@ namespace aspect
                                                           current_linearization_point,
                                                           scratch.finite_element_values,
                                                           introspection);
-
+    std::cout << "local advection assembly: evaluate mm" << std::endl;
     material_model->evaluate(scratch.material_model_inputs,
                              scratch.material_model_outputs);
     if (parameters.formulation_temperature_equation ==
@@ -1042,6 +1044,7 @@ namespace aspect
                                                                       *scratch.face_finite_element_values,
                                                                       introspection);
 
+                std::cout << "local advection assembly face: evaluate mm" << std::endl;
                 material_model->evaluate(scratch.face_material_model_inputs,
                                          scratch.face_material_model_outputs);
 
