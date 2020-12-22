@@ -1060,7 +1060,7 @@ namespace aspect
         prm.declare_entry ("Phase transition temperatures", "",
                            Patterns::Anything(),
                            "A list of temperatures where phase transitions occur. Higher or lower "
-                           "temperatures lead to phase transition occurring in smaller or greater "
+                           "temperatures lead to phase transition occurring at smaller or greater "
                            "depths than given in Phase transition depths, depending on the "
                            "Clapeyron slope given in Phase transition Clapeyron slopes. "
                            "List must have the same number of entries as Phase transition depths. "
@@ -1068,11 +1068,11 @@ namespace aspect
         prm.declare_entry ("Phase transition Clapeyron slopes", "",
                            Patterns::Anything(),
                            "A list of Clapeyron slopes for each phase transition. A positive "
-                           "Clapeyron slope indicates that the phase transition will occur in "
+                           "Clapeyron slope indicates that the phase transition will occur at "
                            "a greater depth, if the temperature is higher than the one given in "
-                           "Phase transition temperatures and in a smaller depth, if the "
-                           "temperature is smaller than the one given in Phase transition temperatures. "
-                           "For negative slopes the other way round. "
+                           "Phase transition temperatures and at a smaller depth, if the "
+                           "temperature is lower than the one given in Phase transition temperatures. "
+                           "For negative slopes it's the other way round. "
                            "List must have the same number of entries as Phase transition depths. "
                            "Units: \\si{\\pascal\\per\\kelvin}.");
       }
