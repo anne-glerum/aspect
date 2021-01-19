@@ -37,7 +37,8 @@ namespace aspect
     is_yielding (const double pressure,
                  const double temperature,
                  const std::vector<double> &composition,
-                 const SymmetricTensor<2,dim> &strain_rate) const
+                 const SymmetricTensor<2,dim> &strain_rate,
+                 typename DoFHandler<dim>::active_cell_iterator current_cell) const
     {
       /* The following returns whether or not the material is plastically yielding
        * as documented in evaluate.
@@ -57,8 +58,8 @@ namespace aspect
         = MaterialUtilities::compute_composition_fractions(composition,
                                                            rheology->get_volumetric_composition_mask());
 
-      const IsostrainViscosities isostrain_viscosities
-        = rheology->calculate_isostrain_viscosities(in, i, volume_fractions);
+      const IsostrainViscosities isostrain_viscosities =
+        rheology->calculate_isostrain_viscosities(in, i, volume_fractions, current_cell);
 
       std::vector<double>::const_iterator max_composition
         = std::max_element(volume_fractions.begin(),volume_fractions.end());
@@ -117,7 +118,7 @@ namespace aspect
       /* The following returns whether or not the material is plastically yielding
        * as documented in evaluate.
        */
-      const IsostrainViscosities isostrain_viscosities = rheology->calculate_isostrain_viscosities(in, 0, volume_fractions, phase_function_values, phase_function.n_phase_transitions_for_each_composition());
+      const IsostrainViscosities isostrain_viscosities = rheology->calculate_isostrain_viscosities(in, 0, volume_fractions, in.current_cell, phase_function_values, phase_function.n_phase_transitions_for_each_composition());
 
       std::vector<double>::const_iterator max_composition = std::max_element(volume_fractions.begin(), volume_fractions.end());
       const bool plastic_yielding = isostrain_viscosities.composition_yielding[std::distance(volume_fractions.begin(), max_composition)];
@@ -232,7 +233,7 @@ namespace aspect
               // TODO: This is only consistent with viscosity averaging if the arithmetic averaging
               // scheme is chosen. It would be useful to have a function to calculate isostress viscosities.
               isostrain_viscosities =
-                rheology->calculate_isostrain_viscosities(in, i, volume_fractions_for_rheology, phase_function_values, phase_function.n_phase_transitions_for_each_composition());
+                rheology->calculate_isostrain_viscosities(in, i, volume_fractions_for_rheology, in.current_cell, phase_function_values, phase_function.n_phase_transitions_for_each_composition());
 
               // The isostrain condition implies that the viscosity averaging should be arithmetic (see above).
               // We have given the user freedom to apply alternative bounds, because in diffusion-dominated
@@ -301,11 +302,20 @@ namespace aspect
                 {
                   elastic_out->elastic_shear_moduli[i] = average_elastic_shear_moduli[i];
                 }
-            }
-        }
 
-      // If we use the full strain tensor, compute the change in the individual tensor components.
-      rheology->strain_rheology.compute_finite_strain_reaction_terms(in, out);
+              // Update the state variable theta if used
+              if (rheology->friction_options.get_use_theta())
+                {
+                  const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
+                                                        (in.strain_rate[i].norm() <= std::numeric_limits<double>::min());
+                  const double dte = rheology->elastic_rheology.elastic_timestep();
+                  rheology->friction_options.compute_theta_reaction_terms(i, in, get_min_strain_rate(), rheology->ref_strain_rate, rheology->use_elasticity,
+                                                                use_reference_strainrate, average_elastic_shear_moduli[i], dte, out);
+                }
+            }
+
+          // If we use the full strain tensor, compute the change in the individual tensor components.
+          rheology->strain_rheology.compute_finite_strain_reaction_terms(in, out);
 
       if (this->get_parameters().enable_elasticity)
         {
@@ -369,52 +379,52 @@ namespace aspect
 
 
 
-    template <int dim>
-    double ViscoPlastic<dim>::
-    get_min_strain_rate () const
-    {
-      return rheology->min_strain_rate;
-    }
-
-
-
-    template <int dim>
-    void
-    ViscoPlastic<dim>::declare_parameters (ParameterHandler &prm)
-    {
-      prm.enter_subsection("Material model");
+      template <int dim>
+      double ViscoPlastic<dim>::
+      get_min_strain_rate () const
       {
-        prm.enter_subsection ("Visco Plastic");
+        return rheology->min_strain_rate;
+      }
+
+
+
+      template <int dim>
+      void
+      ViscoPlastic<dim>::declare_parameters (ParameterHandler &prm)
+      {
+        prm.enter_subsection("Material model");
         {
-          MaterialUtilities::PhaseFunction<dim>::declare_parameters(prm);
+          prm.enter_subsection ("Visco Plastic");
+          {
+            MaterialUtilities::PhaseFunction<dim>::declare_parameters(prm);
 
-          EquationOfState::MulticomponentIncompressible<dim>::declare_parameters (prm);
+            EquationOfState::MulticomponentIncompressible<dim>::declare_parameters (prm);
 
-          Rheology::ViscoPlastic<dim>::declare_parameters(prm);
+            Rheology::ViscoPlastic<dim>::declare_parameters(prm);
 
-          // Equation of state parameters
-          prm.declare_entry ("Thermal diffusivities", "0.8e-6",
-                             Patterns::List(Patterns::Double (0.)),
-                             "List of thermal diffusivities, for background material and compositional fields, "
-                             "for a total of N+1 values, where N is the number of compositional fields. "
-                             "If only one value is given, then all use the same value.  "
-                             "Units: \\si{\\meter\\squared\\per\\second}.");
-          prm.declare_entry ("Define thermal conductivities","false",
-                             Patterns::Bool (),
-                             "Whether to directly define thermal conductivities for each compositional field "
-                             "instead of calculating the values through the specified thermal diffusivities, "
-                             "densities, and heat capacities. ");
-          prm.declare_entry ("Thermal conductivities", "3.0",
-                             Patterns::List(Patterns::Double(0)),
-                             "List of thermal conductivities, for background material and compositional fields, "
-                             "for a total of N+1 values, where N is the number of compositional fields. "
-                             "If only one value is given, then all use the same value. "
-                             "Units: \\si{\\watt\\per\\meter\\per\\kelvin}.");
+            // Equation of state parameters
+            prm.declare_entry ("Thermal diffusivities", "0.8e-6",
+                               Patterns::List(Patterns::Double (0.)),
+                               "List of thermal diffusivities, for background material and compositional fields, "
+                               "for a total of N+1 values, where N is the number of compositional fields. "
+                               "If only one value is given, then all use the same value.  "
+                               "Units: \\si{\\meter\\squared\\per\\second}.");
+            prm.declare_entry ("Define thermal conductivities","false",
+                               Patterns::Bool (),
+                               "Whether to directly define thermal conductivities for each compositional field "
+                               "instead of calculating the values through the specified thermal diffusivities, "
+                               "densities, and heat capacities. ");
+            prm.declare_entry ("Thermal conductivities", "3.0",
+                               Patterns::List(Patterns::Double(0)),
+                               "List of thermal conductivities, for background material and compositional fields, "
+                               "for a total of N+1 values, where N is the number of compositional fields. "
+                               "If only one value is given, then all use the same value. "
+                               "Units: \\si{\\watt\\per\\meter\\per\\kelvin}.");
+          }
+          prm.leave_subsection();
         }
         prm.leave_subsection();
       }
-      prm.leave_subsection();
-    }
 
 
 
@@ -424,11 +434,16 @@ namespace aspect
     {
       prm.enter_subsection("Material model");
       {
-        prm.enter_subsection ("Visco Plastic");
+        // increment by one for background:
+        const unsigned int n_fields = this->n_compositional_fields() + 1;
+
+        prm.enter_subsection("Material model");
         {
-          // Phase transition parameters
-          phase_function.initialize_simulator (this->get_simulator());
-          phase_function.parse_parameters (prm);
+          prm.enter_subsection ("Visco Plastic");
+          {
+            // Phase transition parameters
+            phase_function.initialize_simulator (this->get_simulator());
+            phase_function.parse_parameters (prm);
 
           std::vector<unsigned int> n_phases_for_each_composition = phase_function.n_phases_for_each_composition();
 
@@ -484,36 +499,32 @@ namespace aspect
           rheology->parse_parameters(prm, std::make_unique<std::vector<unsigned int>>(phase_function.n_phases_for_each_composition()));
         }
         prm.leave_subsection();
+
+        // Declare dependencies on solution variables
+        this->model_dependence.viscosity = NonlinearDependence::temperature | NonlinearDependence::pressure | NonlinearDependence::strain_rate | NonlinearDependence::compositional_fields;
+        this->model_dependence.density = NonlinearDependence::temperature | NonlinearDependence::pressure | NonlinearDependence::compositional_fields;
+        this->model_dependence.compressibility = NonlinearDependence::none;
+        this->model_dependence.specific_heat = NonlinearDependence::none;
+        this->model_dependence.thermal_conductivity = NonlinearDependence::temperature | NonlinearDependence::pressure | NonlinearDependence::compositional_fields;
       }
-      prm.leave_subsection();
-
-      // Declare dependencies on solution variables
-      this->model_dependence.viscosity = NonlinearDependence::temperature | NonlinearDependence::pressure | NonlinearDependence::strain_rate | NonlinearDependence::compositional_fields;
-      this->model_dependence.density = NonlinearDependence::temperature | NonlinearDependence::pressure | NonlinearDependence::compositional_fields;
-      this->model_dependence.compressibility = NonlinearDependence::none;
-      this->model_dependence.specific_heat = NonlinearDependence::none;
-      this->model_dependence.thermal_conductivity = NonlinearDependence::temperature | NonlinearDependence::pressure | NonlinearDependence::compositional_fields;
-    }
 
 
 
-    template <int dim>
-    void
-    ViscoPlastic<dim>::create_additional_named_outputs (MaterialModel::MaterialModelOutputs<dim> &out) const
-    {
-      rheology->create_plastic_outputs(out);
+      template <int dim>
+      void
+      ViscoPlastic<dim>::create_additional_named_outputs (MaterialModel::MaterialModelOutputs<dim> &out) const
+      {
+        rheology->create_plastic_outputs(out);
 
       if (this->get_parameters().enable_elasticity)
         rheology->elastic_rheology.create_elastic_outputs(out);
     }
 
+    }
   }
-}
 
 // explicit instantiations
-namespace aspect
-{
-  namespace MaterialModel
+  namespace aspect
   {
     ASPECT_REGISTER_MATERIAL_MODEL(ViscoPlastic,
                                    "visco plastic",
@@ -729,4 +740,3 @@ namespace aspect
                                    "parameters are read from the parameter file in subsection "
                                    " 'Material model/Visco Plastic'.")
   }
-}

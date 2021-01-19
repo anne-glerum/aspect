@@ -230,10 +230,11 @@ namespace aspect
          */
         DEAL_II_DEPRECATED
         bool
-        is_yielding (const double pressure,
-                     const double temperature,
-                     const std::vector<double> &composition,
-                     const SymmetricTensor<2,dim> &strain_rate) const;
+        is_yielding ( const double &pressure,
+                      const double &temperature,
+                      const std::vector<double> &composition,
+                      const SymmetricTensor<2,dim> &strain_rate,
+                      typename DoFHandler<dim>::active_cell_iterator current_cell) const;
 
         /**
          * A function that returns whether the material is plastically

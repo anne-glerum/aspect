@@ -215,8 +215,8 @@ namespace aspect
               break;
             }
           }
-          // if friction negative, that does not make sense and will get rate and state friction 
-          // into trouble, so return some very small value
+        // if friction negative, that does not make sense and will get rate and state friction
+        // into trouble, so return some very small value
         if (current_friction < 1e-30)
           current_friction = 1e-30;
         return current_friction;

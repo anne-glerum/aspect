@@ -99,6 +99,7 @@ namespace aspect
       calculate_isostrain_viscosities (const MaterialModel::MaterialModelInputs<dim> &in,
                                        const unsigned int i,
                                        const std::vector<double> &volume_fractions,
+                                       typename DoFHandler<dim>::active_cell_iterator current_cell,
                                        const std::vector<double> &phase_function_values,
                                        const std::vector<unsigned int> &n_phase_transitions_per_composition) const
       {
@@ -152,6 +153,22 @@ namespace aspect
           // Calculate the square root of the second moment invariant for the deviatoric strain rate tensor.
           edot_ii = std::max(std::sqrt(std::max(-second_invariant(deviator(in.strain_rate[i])), 0.)),
                              min_strain_rate);
+
+        // if rate and state friction is used, this index is needed, as it will be used to always assume yielding
+        // conditions inside the fault. default is so high it should never unintentionally be reached.
+        unsigned int fault_material_index = 1000;
+        if (friction_options.get_use_theta())
+          {
+            // TODO: make this a bit more flexible name-wise, like let the user define which materials should be
+            // considered. Or which strategy. Could also be all, or take a and b as a proxy.
+            // TODO: should be done if this is > 70 or so %. Can be circumvented right now by using max
+            // composition for viscosity averaging
+            AssertThrow(this->introspection().compositional_name_exists("fault"),
+                        ExcMessage("Material model with rate-and-state friction only works "
+                                   "if there is a compositional field that is called fault. For this composition "
+                                   "yielding is always assumed due to the rate and state framework."));
+            fault_material_index = this->introspection().compositional_index_for_name("fault");
+          }
 
         // Calculate viscosities for each of the individual compositional phases
         for (unsigned int j=0; j < volume_fractions.size(); ++j)
@@ -325,6 +342,41 @@ namespace aspect
             output_parameters.current_friction_angles[j] = current_friction;
             output_parameters.current_cohesions[j] = current_cohesion;
 
+            // compute radiation damping if it is used
+            // radiation damping is normally substracted from the shear stress. Here we use current stress instead.
+            // As current stress is only used to compare to yield stress but does not affect material properties,
+            // it is used here to modify effective_edot_ii
+            double radiation_damping_term = 0.0;
+            if (friction_options.get_use_radiation_damping())
+              {
+                if (use_elasticity == false)
+                  {
+                    AssertThrow(false, ExcMessage("Usage of radiation damping only makes sense when elasticity is enabled."));
+                  }
+                else
+                  {
+                    // TODO: use the plastic strain rate instead of effective_edot_ii
+                    // TODO: more elaborate way to determine cellsize
+                    // TODO: this is not exactly the right way to get the density, as it i only reference densities.
+                    // ideally, you would take the actual densities from out.densities[I],
+                    // i.e. computed as out.densities[i] = MaterialUtilities::average_value (volume_fractions, eos_outputs.densities, MaterialUtilities::arithmetic);
+                    // but at the moment I don't have access to out in this function
+                    const double reference_density = this->get_adiabatic_conditions().density(in.position[0]);
+                    const double cellsize = current_cell->extent_in_direction(0);
+                    //std::cout << " current edot_ii is " << effective_edot_ii << std::endl;
+                    radiation_damping_term = effective_edot_ii * cellsize * elastic_shear_moduli[j]
+                                             / (2 * sqrt(elastic_shear_moduli[j] / reference_density));
+                    non_yielding_stress = non_yielding_stress - radiation_damping_term;
+                    effective_edot_ii = non_yielding_stress / viscosity_pre_yield;
+                  }
+              }
+
+            // Steb 4c: calculate friction angle dependent on rate and/or state if specified
+            output_parameters.current_friction_angles[j] = friction_options.compute_dependent_friction_angle(effective_edot_ii,
+                                                           j, in.composition[i], current_cell,
+                                                           output_parameters.current_friction_angles[j],
+                                                           in.position[i]);
+
             // Step 5: plastic yielding
 
             // Determine if the pressure used in Drucker Prager plasticity will be capped at 0 (default).
@@ -337,7 +389,7 @@ namespace aspect
 
             // Step 5a: calculate the Drucker-Prager yield stress
             const double yield_stress = drucker_prager_plasticity.compute_yield_stress(current_cohesion,
-                                                                                       current_friction,
+                                                                                       output_parameters.current_friction_angles[j],
                                                                                        pressure_for_plasticity,
                                                                                        drucker_prager_parameters.max_yield_stress);
 
@@ -358,7 +410,10 @@ namespace aspect
                 {
                   // Step 5b-2: if the non-yielding stress is greater than the yield stress,
                   // rescale the viscosity back to yield surface
-                  if (non_yielding_stress >= yield_stress)
+                  // if this is the fault material and rate-and-state friction is used,
+                  // assume that we are always yielding
+                  if (non_yielding_stress >= yield_stress) |
+                      ((friction_options.get_use_theta()) && (j== fault_material_index)))
                     {
                       // The following uses the effective_edot_ii
                       // (which has been modified for elastic effects, above),
@@ -453,6 +508,7 @@ namespace aspect
 
                 std::vector<double> eta_component =
                   calculate_isostrain_viscosities(in_derivatives, i, volume_fractions,
+                                                  in.current_cell,
                                                   phase_function_values, n_phase_transitions_per_composition).composition_viscosities;
 
                 // For each composition of the independent component, compute the derivative.
@@ -480,6 +536,7 @@ namespace aspect
 
             const std::vector<double> viscosity_difference =
               calculate_isostrain_viscosities(in_derivatives, i, volume_fractions,
+                                              in.current_cell,
                                               phase_function_values, n_phase_transitions_per_composition).composition_viscosities;
 
             for (unsigned int composition_index = 0; composition_index < viscosity_difference.size(); ++composition_index)
@@ -539,6 +596,11 @@ namespace aspect
             for (unsigned int i = 0; i < 2*SymmetricTensor<2,dim>::n_independent_components ; ++i)
               composition_mask.set(i,false);
           }
+
+        // If friction is defined state dependent, the material field for the state variable theta
+        // must be excluded during volume fraction computation.
+        if (friction_options.get_use_theta())
+          composition_mask = friction_options.get_theta_composition_mask(composition_mask);
 
         return composition_mask;
       }
@@ -802,6 +864,7 @@ namespace aspect
       fill_plastic_outputs(const unsigned int i,
                            const std::vector<double> &volume_fractions,
                            const bool plastic_yielding,
+                           const std::vector<double> &phase_function_values,
                            const MaterialModel::MaterialModelInputs<dim> &in,
                            MaterialModel::MaterialModelOutputs<dim> &out,
                            const IsostrainViscosities &isostrain_viscosities) const

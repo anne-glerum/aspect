@@ -133,6 +133,7 @@ namespace aspect
           calculate_isostrain_viscosities ( const MaterialModel::MaterialModelInputs<dim> &in,
                                             const unsigned int i,
                                             const std::vector<double> &volume_fractions,
+                                            typename DoFHandler<dim>::active_cell_iterator current_cell,
                                             const std::vector<double> &phase_function_values = std::vector<double>(),
                                             const std::vector<unsigned int> &n_phase_transitions_per_composition =
                                               std::vector<unsigned int>()) const;
@@ -206,6 +207,12 @@ namespace aspect
           double min_strain_rate;
 
           /**
+           * Reference strain rate for the first non-linear iteration
+           * in the first time step.
+           */
+          double ref_strain_rate;
+
+          /**
            * Enumeration for selecting which viscosity averaging scheme to use.
            */
           MaterialUtilities::CompositionalAveragingOperation viscosity_averaging;
@@ -227,12 +234,6 @@ namespace aspect
 
 
         private:
-
-          /**
-           * Reference strain rate for the first non-linear iteration
-           * in the first time step.
-           */
-          double ref_strain_rate;
 
           /**
            * Minimum and maximum viscosities used to improve the
