@@ -309,8 +309,8 @@ namespace aspect
                   const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
                                                         (in.strain_rate[i].norm() <= std::numeric_limits<double>::min());
                   const double dte = rheology->elastic_rheology.elastic_timestep();
-                  rheology->friction_options.compute_theta_reaction_terms(i, in, get_min_strain_rate(), rheology->ref_strain_rate, rheology->use_elasticity,
-                                                                use_reference_strainrate, average_elastic_shear_moduli[i], dte, out);
+                  rheology->friction_options.compute_theta_reaction_terms(i, volume_fractions, in, get_min_strain_rate(), rheology->ref_strain_rate, rheology->use_elasticity,
+                                                                          use_reference_strainrate, average_elastic_shear_moduli[i], dte, out);
                 }
             }
 
@@ -379,52 +379,52 @@ namespace aspect
 
 
 
-      template <int dim>
-      double ViscoPlastic<dim>::
-      get_min_strain_rate () const
+    template <int dim>
+    double ViscoPlastic<dim>::
+    get_min_strain_rate () const
+    {
+      return rheology->min_strain_rate;
+    }
+
+
+
+    template <int dim>
+    void
+    ViscoPlastic<dim>::declare_parameters (ParameterHandler &prm)
+    {
+      prm.enter_subsection("Material model");
       {
-        return rheology->min_strain_rate;
-      }
-
-
-
-      template <int dim>
-      void
-      ViscoPlastic<dim>::declare_parameters (ParameterHandler &prm)
-      {
-        prm.enter_subsection("Material model");
+        prm.enter_subsection ("Visco Plastic");
         {
-          prm.enter_subsection ("Visco Plastic");
-          {
-            MaterialUtilities::PhaseFunction<dim>::declare_parameters(prm);
+          MaterialUtilities::PhaseFunction<dim>::declare_parameters(prm);
 
-            EquationOfState::MulticomponentIncompressible<dim>::declare_parameters (prm);
+          EquationOfState::MulticomponentIncompressible<dim>::declare_parameters (prm);
 
-            Rheology::ViscoPlastic<dim>::declare_parameters(prm);
+          Rheology::ViscoPlastic<dim>::declare_parameters(prm);
 
-            // Equation of state parameters
-            prm.declare_entry ("Thermal diffusivities", "0.8e-6",
-                               Patterns::List(Patterns::Double (0.)),
-                               "List of thermal diffusivities, for background material and compositional fields, "
-                               "for a total of N+1 values, where N is the number of compositional fields. "
-                               "If only one value is given, then all use the same value.  "
-                               "Units: \\si{\\meter\\squared\\per\\second}.");
-            prm.declare_entry ("Define thermal conductivities","false",
-                               Patterns::Bool (),
-                               "Whether to directly define thermal conductivities for each compositional field "
-                               "instead of calculating the values through the specified thermal diffusivities, "
-                               "densities, and heat capacities. ");
-            prm.declare_entry ("Thermal conductivities", "3.0",
-                               Patterns::List(Patterns::Double(0)),
-                               "List of thermal conductivities, for background material and compositional fields, "
-                               "for a total of N+1 values, where N is the number of compositional fields. "
-                               "If only one value is given, then all use the same value. "
-                               "Units: \\si{\\watt\\per\\meter\\per\\kelvin}.");
-          }
-          prm.leave_subsection();
+          // Equation of state parameters
+          prm.declare_entry ("Thermal diffusivities", "0.8e-6",
+                             Patterns::List(Patterns::Double (0.)),
+                             "List of thermal diffusivities, for background material and compositional fields, "
+                             "for a total of N+1 values, where N is the number of compositional fields. "
+                             "If only one value is given, then all use the same value.  "
+                             "Units: \\si{\\meter\\squared\\per\\second}.");
+          prm.declare_entry ("Define thermal conductivities","false",
+                             Patterns::Bool (),
+                             "Whether to directly define thermal conductivities for each compositional field "
+                             "instead of calculating the values through the specified thermal diffusivities, "
+                             "densities, and heat capacities. ");
+          prm.declare_entry ("Thermal conductivities", "3.0",
+                             Patterns::List(Patterns::Double(0)),
+                             "List of thermal conductivities, for background material and compositional fields, "
+                             "for a total of N+1 values, where N is the number of compositional fields. "
+                             "If only one value is given, then all use the same value. "
+                             "Units: \\si{\\watt\\per\\meter\\per\\kelvin}.");
         }
         prm.leave_subsection();
       }
+      prm.leave_subsection();
+    }
 
 
 
@@ -437,13 +437,13 @@ namespace aspect
         // increment by one for background:
         const unsigned int n_fields = this->n_compositional_fields() + 1;
 
-        prm.enter_subsection("Material model");
+      prm.enter_subsection("Material model");
+      {
+        prm.enter_subsection ("Visco Plastic");
         {
-          prm.enter_subsection ("Visco Plastic");
-          {
-            // Phase transition parameters
-            phase_function.initialize_simulator (this->get_simulator());
-            phase_function.parse_parameters (prm);
+          // Phase transition parameters
+          phase_function.initialize_simulator (this->get_simulator());
+          phase_function.parse_parameters (prm);
 
           std::vector<unsigned int> n_phases_for_each_composition = phase_function.n_phases_for_each_composition();
 
@@ -499,14 +499,16 @@ namespace aspect
           rheology->parse_parameters(prm, std::make_unique<std::vector<unsigned int>>(phase_function.n_phases_for_each_composition()));
         }
         prm.leave_subsection();
-
-        // Declare dependencies on solution variables
-        this->model_dependence.viscosity = NonlinearDependence::temperature | NonlinearDependence::pressure | NonlinearDependence::strain_rate | NonlinearDependence::compositional_fields;
-        this->model_dependence.density = NonlinearDependence::temperature | NonlinearDependence::pressure | NonlinearDependence::compositional_fields;
-        this->model_dependence.compressibility = NonlinearDependence::none;
-        this->model_dependence.specific_heat = NonlinearDependence::none;
-        this->model_dependence.thermal_conductivity = NonlinearDependence::temperature | NonlinearDependence::pressure | NonlinearDependence::compositional_fields;
       }
+      prm.leave_subsection();
+
+      // Declare dependencies on solution variables
+      this->model_dependence.viscosity = NonlinearDependence::temperature | NonlinearDependence::pressure | NonlinearDependence::strain_rate | NonlinearDependence::compositional_fields;
+      this->model_dependence.density = NonlinearDependence::temperature | NonlinearDependence::pressure | NonlinearDependence::compositional_fields;
+      this->model_dependence.compressibility = NonlinearDependence::none;
+      this->model_dependence.specific_heat = NonlinearDependence::none;
+      this->model_dependence.thermal_conductivity = NonlinearDependence::temperature | NonlinearDependence::pressure | NonlinearDependence::compositional_fields;
+    }
 
 
 
@@ -520,11 +522,17 @@ namespace aspect
         rheology->elastic_rheology.create_elastic_outputs(out);
     }
 
+      if (rheology->use_elasticity)
+        rheology->elastic_rheology.create_elastic_outputs(out);
     }
+
   }
+}
 
 // explicit instantiations
-  namespace aspect
+namespace aspect
+{
+  namespace MaterialModel
   {
     ASPECT_REGISTER_MATERIAL_MODEL(ViscoPlastic,
                                    "visco plastic",
@@ -740,3 +748,4 @@ namespace aspect
                                    "parameters are read from the parameter file in subsection "
                                    " 'Material model/Visco Plastic'.")
   }
+}

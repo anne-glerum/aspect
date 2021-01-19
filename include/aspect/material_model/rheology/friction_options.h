@@ -103,7 +103,8 @@ namespace aspect
            */
           double compute_theta(const double theta_old,
                                const double current_edot_ii,
-                               const double cellsize) const;
+                               const double cellsize,
+                               const double critical_slip_distance) const;
 
 
           /**
@@ -111,6 +112,7 @@ namespace aspect
            * MaterialModelOutputs object that is handed over.
            */
           void compute_theta_reaction_terms(const int q,
+                                            const std::vector<double> &volume_fractions,
                                             const MaterialModel::MaterialModelInputs<dim> &in,
                                             const double min_strain_rate,
                                             const double ref_strain_rate,
@@ -147,6 +149,11 @@ namespace aspect
            */
           std::pair<double,double>
           calculate_depth_dependent_a_and_b(const Point<dim> &position, const int j) const;
+
+          /**
+          * Function that gets the critical slip distance at a certain position.
+          */
+          double get_critical_slip_distance(const Point<dim> &position, const int j) const;
 
           /**
            * Parameter about what mechanism should be used for the friction dependence.
@@ -193,7 +200,8 @@ namespace aspect
            * The critical slip distance in rate and state friction. Used to calculate the state
            * variable theta.
            */
-          double critical_slip_distance;
+          //double critical_slip_distance;
+          std::unique_ptr<Functions::ParsedFunction<dim> > critical_slip_distance_function;
 
           /**
            * Arbitrary strain rate at which friction equals the reference friction angle in
@@ -220,6 +228,7 @@ namespace aspect
            */
           Utilities::Coordinates::CoordinateSystem coordinate_system_a;
           Utilities::Coordinates::CoordinateSystem coordinate_system_b;
+          Utilities::Coordinates::CoordinateSystem coordinate_system_L;
 
           /**
            * Slip rate dependent rate and state friction

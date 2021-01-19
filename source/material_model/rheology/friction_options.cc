@@ -81,12 +81,14 @@ namespace aspect
                   // theta_old loads theta from previous time step
                   const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
                   const double theta_old = composition[theta_position_tmp];
-                  // Equation (7) from Sobolev and Muldashev (2017)
-                  const double theta = compute_theta(theta_old, current_edot_ii, cellsize);
 
                   // Get the values for a and b
                   const double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(position,j).first;
                   const double rate_and_state_parameter_b = calculate_depth_dependent_a_and_b(position,j).second;
+                  const double critical_slip_distance = get_critical_slip_distance(position,j);
+
+                  // Equation (7) from Sobolev and Muldashev (2017)
+                  const double theta = compute_theta(theta_old, current_edot_ii, cellsize, critical_slip_distance);
 
                   // Calculate effective friction according to Equation (4) in Sobolev and Muldashev (2017):
                   // mu = mu_st + a ln(V/V_st) + b ln((theta Vst)/L)
@@ -149,12 +151,14 @@ namespace aspect
                   // theta_old loads theta from previous time step
                   const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
                   const double theta_old = composition[theta_position_tmp];
-                  // Equation (7) from Sobolev and Muldashev (2017)
-                  const double theta = compute_theta(theta_old, current_edot_ii, cellsize);
 
                   // Get the values for a and b
                   double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(position,j).first;
                   double rate_and_state_parameter_b = calculate_depth_dependent_a_and_b(position,j).second;
+                  const double critical_slip_distance = get_critical_slip_distance(position,j);
+
+                  // Equation (7) from Sobolev and Muldashev (2017)
+                  const double theta = compute_theta(theta_old, current_edot_ii, cellsize, critical_slip_distance);
 
                   rate_and_state_parameter_a = rate_and_state_parameter_a + slope_s_for_a
                                                * log10((ref_v_for_a + current_edot_ii * cellsize)/ref_v_for_a);
@@ -190,12 +194,14 @@ namespace aspect
                   // theta_old loads theta from previous time step
                   const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
                   const double theta_old = composition[theta_position_tmp];
-                  // Equation (7) from Sobolev and Muldashev (2017)
-                  const double theta = compute_theta(theta_old, current_edot_ii, cellsize);
 
                   // Get the values for a and b
                   const double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(position,j).first;
                   const double rate_and_state_parameter_b = calculate_depth_dependent_a_and_b(position,j).second;
+                  const double critical_slip_distance = get_critical_slip_distance(position,j);
+
+                  // Equation (7) from Sobolev and Muldashev (2017)
+                  const double theta = compute_theta(theta_old, current_edot_ii, cellsize, critical_slip_distance);
 
                   // Calculate regularized rate and state friction (e.g. Herrendörfer 2018) with
                   // mu = a sinh^{-1}[V/(2V_0)exp((mu_0 + b ln(V_0 theta/L))/a)]
@@ -245,7 +251,8 @@ namespace aspect
       FrictionOptions<dim>::
       compute_theta(const double theta_old,
                     const double current_edot_ii,
-                    const double cellsize) const
+                    const double cellsize,
+                    const double critical_slip_distance) const
       {
         // Equation (7) from Sobolev and Muldashev (2017):
         // theta_{n+1} = L/V_{n+1} + (theta_n - L/V_{n+1})*exp(-(V_{n+1}dt)/L)
@@ -267,6 +274,7 @@ namespace aspect
       void
       FrictionOptions<dim>::
       compute_theta_reaction_terms(const int q,
+                                   const std::vector<double> &volume_fractions,
                                    const MaterialModel::MaterialModelInputs<dim> &in,
                                    const double min_strain_rate,
                                    const double ref_strain_rate,
@@ -293,23 +301,17 @@ namespace aspect
                                                           min_strain_rate, in.strain_rate[q],
                                                           average_elastic_shear_moduli, use_elasticity,
                                                           use_reference_strainrate, dte);
-            //std::cout << "q: " << q << " j: "<< j << " in.composition[q][j] " << in.composition[q][j] << std::endl;
-            //}
+
             const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
             const double theta_old = in.composition[q][theta_position_tmp];
-            const double current_theta = compute_theta(theta_old, current_edot_ii, cellsize);
-            const double theta_increment = current_theta - theta_old;
-            /*if (current_theta <= 0)
+            double current_theta = 0;
+
+            for (unsigned int j=0; j < volume_fractions.size(); ++j)
               {
-                std::cout << "Reaction terms!"<< std::endl << "Theta is zero/negative: " << current_theta << " at time " << this->get_time() << std::endl;
-                std::cout << "Previous theta was: " << theta_old << std::endl;
-                std::cout << "current edot ii * cellsize is " << current_edot_ii *cellsize << std::endl;
-                std::cout << "current edot ii is " << current_edot_ii<< std::endl;
+                const double critical_slip_distance = get_critical_slip_distance(in.position[q], j);
+                current_theta += volume_fractions[j] * compute_theta(theta_old, current_edot_ii, cellsize, critical_slip_distance);
               }
-            //std::cout << "Reaction terms!"<< std::endl << "Theta is: " << current_theta << " at time " << this->get_time() << std::endl;
-            //std::cout << "Previous theta was: " << theta_old << std::endl;
-            //   std::cout << "current edot ii * cellsize is " << current_edot_ii *cellsize << std::endl;
-            //std::cout << "q: " << q << " j: "<< j << " in.composition[q][j] " << in.composition[q][j] << std::endl; */
+            const double theta_increment = current_theta - theta_old;
 
             out.reaction_terms[q][theta_position_tmp] = theta_increment;
           }
@@ -330,14 +332,27 @@ namespace aspect
           rate_and_state_parameter_a_function->value(Utilities::convert_array_to_point<dim>(point_a.get_coordinates()),j);
         const double rate_and_state_parameter_b =
           rate_and_state_parameter_b_function->value(Utilities::convert_array_to_point<dim>(point_b.get_coordinates()),j);
-        if (rate_and_state_parameter_a <0)
-          AssertThrow(false, ExcMessage("The rate-and-state parameter a must be >= 0."));
-        if (rate_and_state_parameter_b <0)
-          AssertThrow(false, ExcMessage("The rate-and-state parameter b must be >= 0."));
 
-        // std::cout << " a is " << rate_and_state_parameter_a << " - and b is " << rate_and_state_parameter_b << std::endl;
         return std::pair<double,double>(rate_and_state_parameter_a,
                                         rate_and_state_parameter_b);
+      }
+
+
+
+      template <int dim>
+      double
+      FrictionOptions<dim>::get_critical_slip_distance(const Point<dim> &position, const int j) const
+      {
+        Utilities::NaturalCoordinate<dim> point =
+          this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_L);
+
+        const double critical_slip_distance =
+          critical_slip_distance_function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),j);
+
+        if (critical_slip_distance <= 0)
+          AssertThrow(false, ExcMessage("Critical slip distance in a rate-and-state material must be > 0."));
+
+        return critical_slip_distance;
       }
 
 
@@ -520,21 +535,45 @@ namespace aspect
                            "account the influence of pore fluid pressure. This makes the friction "
                            "coefficient an effective friction coefficient as in \\cite{sobolev_modeling_2017}. "
                            "Units: none.");
+        /*
+                prm.declare_entry ("Critical slip distance", "0.01",
+                                   Patterns::List(Patterns::Double(0)),
+                                   "The critical slip distance in rate and state friction. It is used to calculate the "
+                                   "state variable theta using the aging law: $\\frac{d\\Theta}{dt}=1-\\frac{\\Theta V}{L}$. "
+                                   "At steady state: $\\Theta = \\frac{L}{V} $. The critical slip distance "
+                                   "is often interpreted as the sliding distance required to renew "
+                                   "the contact population as it determines the critical nucleation size with: "
+                                   "$h*=\\frac{2}{\\pi}\\frac{\\mu b L}{(b-a)^2 \\sigma_n}, where L is the critical slip "
+                                   "distance, a and b are parameters to describe the rate and state dependence, $\\mu$ "
+                                   "is the friction coefficient, and $\\sigma_n$ is the normal stress on the fault. "
+                                   "Laboratory values of the critical slip distance are on the "
+                                   "order of microns. For geodynamic modelling \\cite{sobolev_modeling_2017} set this parameter "
+                                   "to 1--10 cm. In the SEAS benchmark \\citep{erickson_community_2020} they use 4 and 8 mm. "
+                                   "This parameter should be changed when the level of mesh refinement de- or increases. "
+                                   "Units: \\si{\\meter}.");
+        */
+        prm.enter_subsection("Critical slip distance function");
+        {
+          /**
+           * The function can be declared in dependence of depth,
+           * cartesian coordinates or spherical coordinates. Note that the order
+           * of spherical coordinates is r,phi,theta and not r,theta,phi, since
+           * this allows for dimension independent expressions.
+           */
+          prm.declare_entry ("Coordinate system", "cartesian",
+                             Patterns::Selection ("cartesian|spherical|depth"),
+                             "A selection that determines the assumed coordinate "
+                             "system for the function variables. Allowed values "
+                             "are `cartesian', `spherical', and `depth'. `spherical' coordinates "
+                             "are interpreted as r,phi or r,phi,theta in 2D/3D "
+                             "respectively with theta being the polar angle. `depth' "
+                             "will create a function, in which only the first "
+                             "parameter is non-zero, which is interpreted to "
+                             "be the depth of the point.");
 
-        prm.declare_entry ("Critical slip distance", "0.01",
-                           Patterns::List(Patterns::Double(0)),
-                           "The critical slip distance in rate and state friction. It is used to calculate the "
-                           "state variable theta using the aging law: $\\frac{d\\Theta}{dt}=1-\\frac{\\Theta V}{L}$. "
-                           "At steady state: $\\Theta = \\frac{L}{V} $. The critical slip distance "
-                           "is often interpreted as the sliding distance required to renew "
-                           "the contact population as it determines the critical nucleation size with: "
-                           "$h*=\\frac{2}{\\pi}\\frac{\\mu b L}{(b-a)^2 \\sigma_n}, where L is the critical slip "
-                           "distance, a and b are parameters to describe the rate and state dependence, $\\mu$ "
-                           "is the friction coefficient, and $\\sigma_n$ is the normal stress on the fault. "
-                           "Laboratory values of the critical slip distance are on the "
-                           "order of microns. For geodynamic modelling \\cite{sobolev_modeling_2017} set this parameter "
-                           "to 1--10 cm. In the SEAS benchmark \\citep{erickson_community_2020} they use 4 and 8 mm. "
-                           "Units: \\si{\\meter}.");
+          Functions::ParsedFunction<dim>::declare_parameters(prm,1);
+        }
+        prm.leave_subsection();
 
         prm.declare_entry ("Quasi static strain rate", "1e-14",
                            Patterns::Double (0),
@@ -687,7 +726,26 @@ namespace aspect
                                                                             n_fields,
                                                                             "Effective friction factor");
 
-        critical_slip_distance = prm.get_double("Critical slip distance");
+        //critical_slip_distance = prm.get_double("Critical slip distance");
+        prm.enter_subsection("Critical slip distance function");
+        {
+          coordinate_system_L = Utilities::Coordinates::string_to_coordinate_system(prm.get("Coordinate system"));
+        }
+        try
+          {
+            critical_slip_distance_function
+              = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(n_fields);
+            critical_slip_distance_function->parse_parameters (prm);
+          }
+        catch (...)
+          {
+            std::cerr << "FunctionParser failed to parse\n"
+                      << "\t a function\n"
+                      << "with expression \n"
+                      << "\t' " << prm.get("Function expression") << "'";
+            throw;
+          }
+        prm.leave_subsection();
 
         quasi_static_strain_rate = prm.get_double("Quasi static strain rate");
 
@@ -712,7 +770,6 @@ namespace aspect
             throw;
           }
         prm.leave_subsection();
-
 
         prm.enter_subsection("Rate and state parameter b function");
         {
