@@ -41,6 +41,18 @@ namespace aspect
         names.emplace_back("current_friction_angles");
         names.emplace_back("current_yield_stresses");
         names.emplace_back("plastic_yielding");
+
+        // if rate and state friction is used make more additional outputs
+// TODO: how can I only create these when RSF is used? I tried:
+//        if (rheology->friction_options.get_use_theta())
+// but then the error occured: rheology was not declared in this scope
+// when I declare it with:
+//       Rheology::FrictionOptions<dim>::declare_parameters (prm);
+// then I get dim was not declared in this scope
+        names.emplace_back("RSF_a");
+        names.emplace_back("RSF_b");
+        names.emplace_back("RSF_L");
+
         return names;
       }
     }
@@ -52,6 +64,9 @@ namespace aspect
         friction_angles(n_points, numbers::signaling_nan<double>()),
         yield_stresses(n_points, numbers::signaling_nan<double>()),
         yielding(n_points, numbers::signaling_nan<double>())
+        RSF_a(n_points, numbers::signaling_nan<double>()),
+        RSF_b(n_points, numbers::signaling_nan<double>()),
+        RSF_L(n_points, numbers::signaling_nan<double>())
     {}
 
 
@@ -60,7 +75,15 @@ namespace aspect
     std::vector<double>
     PlasticAdditionalOutputs<dim>::get_nth_output(const unsigned int idx) const
     {
-      AssertIndexRange (idx, 4);
+      // TODO: is there a more elegant way to only get those outputs when RSF is used and still maintain the asserts?
+      // TODO: this should have been the following, but that gave me: error: 'else' without a previous 'if'
+      /*
+            if (friction_options.get_use_theta())
+              AssertIndexRange (idx, 6);
+            else
+              AssertIndexRange (idx, 3);
+      */
+      AssertIndexRange (idx, 7);
       switch (idx)
         {
           case 0:
@@ -74,6 +97,30 @@ namespace aspect
 
           case 3:
             return yielding;
+
+          case 4:
+          {
+            if (friction_options.get_use_theta())
+              return RSF_a;
+            else
+              AssertThrow(false, ExcInternalError());
+          }
+
+          case 5:
+          {
+            if (friction_options.get_use_theta())
+              return RSF_b;
+            else
+              AssertThrow(false, ExcInternalError());
+          }
+
+          case 6:
+          {
+            if (friction_options.get_use_theta())
+              return RSF_L;
+            else
+              AssertThrow(false, ExcInternalError());
+          }
 
           default:
             AssertThrow(false, ExcInternalError());
@@ -900,6 +947,21 @@ namespace aspect
                                                   friction_angles_RAD[j],
                                                   pressure_for_plasticity,
                                                   max_yield_stress);
+              }
+
+            // if rate and state friction is used, the additional output fields must be filled
+            if (friction_options.get_use_theta())
+              {
+                plastic_out->RSF_a[i] = 0;
+                plastic_out->RSF_b[i] = 0;
+                plastic_out->RSF_L[i] = 0;
+
+                for (unsigned int j=0; j < volume_fractions.size(); ++j)
+                  {
+                    plastic_out->RSF_a[i] += volume_fractions[j] * friction_options.calculate_depth_dependent_a_and_b(in.position[i], j).first;
+                    plastic_out->RSF_b[i] += volume_fractions[j] * friction_options.calculate_depth_dependent_a_and_b(in.position[i], j).second;
+                    plastic_out->RSF_L[i] += volume_fractions[j] * friction_options.get_critical_slip_distance(in.position[i], j);
+                  }
               }
           }
       }

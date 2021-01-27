@@ -122,7 +122,8 @@ namespace aspect
                                             const double dte,
                                             MaterialModel::MaterialModelOutputs<dim> &out) const;
 
-          /**
+          /**for (unsigned int j=0; j < volume_fractions.size(); ++j)
+              {
            * A function that returns the selected type of friction dependence.
            */
           FrictionDependenceMechanism
@@ -138,12 +139,6 @@ namespace aspect
            */
           bool get_use_radiation_damping() const;
 
-        private:
-          /**
-          * Input parameters for the drucker prager plasticity.
-          */
-          Rheology::DruckerPragerParameters drucker_prager_parameters;
-
           /**
            * Function to calculate depth-dependent a and b values for state dependent friction.
            */
@@ -154,6 +149,12 @@ namespace aspect
           * Function that gets the critical slip distance at a certain position.
           */
           double get_critical_slip_distance(const Point<dim> &position, const int j) const;
+
+        private:
+          /**
+          * Input parameters for the drucker prager plasticity.
+          */
+          Rheology::DruckerPragerParameters drucker_prager_parameters;
 
           /**
            * Parameter about what mechanism should be used for the friction dependence.

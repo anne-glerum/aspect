@@ -81,6 +81,26 @@ namespace aspect
          */
         std::vector<double> yielding;
 
+        /**
+         * The value of the rate and state friction parameter a.
+         */
+        std::vector<double> RSF_a;
+
+        /**
+         * The value of the rate and state friction parameter b.
+         */
+        std::vector<double> RSF_b;
+
+        /**
+         * The value of the rate and state friction parameter L, the critical
+         * slip distance.
+         */
+        std::vector<double> RSF_L;
+
+        /**
+         * Object for computing the friction dependence of the rheology model.
+         */
+        Rheology::FrictionOptions<dim> friction_options;
     };
 
     /**
