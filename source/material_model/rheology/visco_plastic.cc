@@ -99,6 +99,18 @@ namespace aspect
             return yielding;
 
           case 4:
+            return RSF_a;
+
+          case 5:
+            return RSF_b;
+
+          case 6:
+            return RSF_L;
+
+          // this is probably how it should be, but that got me an error...
+          /*
+
+          case 3:
           {
             if (friction_options.get_use_theta())
               return RSF_a;
@@ -121,7 +133,7 @@ namespace aspect
             else
               AssertThrow(false, ExcInternalError());
           }
-
+          */
           default:
             AssertThrow(false, ExcInternalError());
         }
