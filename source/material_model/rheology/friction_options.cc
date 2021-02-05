@@ -740,7 +740,7 @@ namespace aspect
         catch (...)
           {
             std::cerr << "FunctionParser failed to parse\n"
-                      << "\t a function\n"
+                      << "\t RSF L function\n"
                       << "with expression \n"
                       << "\t' " << prm.get("Function expression") << "'";
             throw;
@@ -764,7 +764,7 @@ namespace aspect
         catch (...)
           {
             std::cerr << "FunctionParser failed to parse\n"
-                      << "\t a function\n"
+                      << "\t RSF a function\n"
                       << "with expression \n"
                       << "\t' " << prm.get("Function expression") << "'";
             throw;
@@ -784,7 +784,7 @@ namespace aspect
         catch (...)
           {
             std::cerr << "FunctionParser failed to parse\n"
-                      << "\t a function\n"
+                      << "\t RSF b function\n"
                       << "with expression \n"
                       << "\t' " << prm.get("Function expression") << "'";
             throw;
