@@ -426,7 +426,7 @@ namespace aspect
                     radiation_damping_term = effective_edot_ii * cellsize * elastic_shear_moduli[j]
                                              / (2 * sqrt(elastic_shear_moduli[j] / reference_density));
                     non_yielding_stress = non_yielding_stress - radiation_damping_term;
-                    effective_edot_ii = non_yielding_stress / viscosity_pre_yield;
+                    effective_edot_ii = std::max(current_stress / viscosity_pre_yield, min_strain_rate);
                   }
               }
 
