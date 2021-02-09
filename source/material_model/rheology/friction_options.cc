@@ -203,20 +203,24 @@ namespace aspect
                   // Equation (7) from Sobolev and Muldashev (2017)
                   const double theta = compute_theta(theta_old, current_edot_ii, cellsize, critical_slip_distance);
 
-                  // Calculate regularized rate and state friction (e.g. Herrendörfer 2018) with
-                  // mu = a sinh^{-1}[V/(2V_0)exp((mu_0 + b ln(V_0 theta/L))/a)]
-                  // Effective friction is calculated by multiplying the friction coefficient with the
-                  // effective_friction_factor to account for effects of pore fluid pressure:
-                  // mu = mu(1-p_f/sigma_n) = mu*, with (1-p_f/sigma_n) = 0.03 for subduction zones.
-                  // Their equation is for friction coefficient, while ASPECT takes friction angle in radians,
-                  // so conversion with tan/atan().
-                  current_friction = atan(effective_friction_factor[j]
-                                          * (rate_and_state_parameter_a
-                                             * asinh((current_edot_ii * cellsize ) / (2 * quasi_static_strain_rate)
-                                                     * exp((tan(current_friction)
-                                                            + rate_and_state_parameter_b
-                                                            * log((theta * quasi_static_strain_rate ) / critical_slip_distance))
-                                                           / rate_and_state_parameter_a))));
+                  // as RSF parameter a is used to divide current_friction will be nan without this if
+                  if (rate_and_state_parameter_a > 0)
+                    {
+                      // Calculate regularized rate and state friction (e.g. Herrendörfer 2018) with
+                      // mu = a sinh^{-1}[V/(2V_0)exp((mu_0 + b ln(V_0 theta/L))/a)]
+                      // Effective friction is calculated by multiplying the friction coefficient with the
+                      // effective_friction_factor to account for effects of pore fluid pressure:
+                      // mu = mu(1-p_f/sigma_n) = mu*, with (1-p_f/sigma_n) = 0.03 for subduction zones.
+                      // Their equation is for friction coefficient, while ASPECT takes friction angle in radians,
+                      // so conversion with tan/atan().
+                      current_friction = atan(effective_friction_factor[j]
+                                              * (rate_and_state_parameter_a
+                                                 * asinh((current_edot_ii * cellsize ) / (2 * quasi_static_strain_rate)
+                                                         * exp((tan(current_friction)
+                                                                + rate_and_state_parameter_b
+                                                                * log((theta * quasi_static_strain_rate ) / critical_slip_distance))
+                                                               / rate_and_state_parameter_a))));
+                    }
                 }
               break;
             }
