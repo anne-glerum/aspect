@@ -378,7 +378,9 @@ namespace aspect
       {
         bool use_theta = false;
         // TODO add the RSF options
-        if (get_friction_dependence_mechanism() == rate_and_state_dependent_friction)
+        if ((get_friction_dependence_mechanism() == rate_and_state_dependent_friction) 
+        | (get_friction_dependence_mechanism() == regularized_rate_and_state_friction)
+        | (get_friction_dependence_mechanism() == slip_rate_dependent_rate_and_state_dependent_friction))
           use_theta = true;
 
         return use_theta;
