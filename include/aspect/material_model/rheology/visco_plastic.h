@@ -97,6 +97,11 @@ namespace aspect
          */
         std::vector<double> RSF_L;
 
+      /**
+       * the current edot ii - second invariant of the deviatoric stress tensor
+       */
+        std::vector<double> edot_ii;
+
         /**
          * Object for computing the friction dependence of the rheology model.
          */
@@ -127,6 +132,11 @@ namespace aspect
        * The current cohesion.
        */
       std::vector<double> current_cohesions;
+
+      /**
+       * the current edot ii - second invariant of the deviatoric stress tensor
+       */
+      std::vector<double> current_edot_ii;
     };
 
     namespace Rheology

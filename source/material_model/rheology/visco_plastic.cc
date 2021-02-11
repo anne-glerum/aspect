@@ -52,6 +52,7 @@ namespace aspect
         names.emplace_back("RSF_a");
         names.emplace_back("RSF_b");
         names.emplace_back("RSF_L");
+        names.emplace_back("edot_ii");
 
         return names;
       }
@@ -67,6 +68,7 @@ namespace aspect
         RSF_a(n_points, numbers::signaling_nan<double>()),
         RSF_b(n_points, numbers::signaling_nan<double>()),
         RSF_L(n_points, numbers::signaling_nan<double>())
+        edot_ii(n_points, numbers::signaling_nan<double>())
     {}
 
 
@@ -106,6 +108,9 @@ namespace aspect
 
           case 6:
             return RSF_L;
+
+          case 6:
+            return edot_ii;
 
           // this is probably how it should be, but that got me an error...
           /*
@@ -169,6 +174,7 @@ namespace aspect
         output_parameters.composition_viscosities.resize(volume_fractions.size(), numbers::signaling_nan<double>());
         output_parameters.current_friction_angles.resize(volume_fractions.size(), numbers::signaling_nan<double>());
         output_parameters.current_cohesions.resize(volume_fractions.size(), numbers::signaling_nan<double>());
+        output_parameters.current_edot_ii.resize(volume_fractions.size(), numbers::signaling_nan<double>());
 
         // Assemble current and old stress tensor if elastic behavior is enabled
         SymmetricTensor<2, dim> stress_0_advected = numbers::signaling_nan<SymmetricTensor<2, dim>>();
@@ -429,6 +435,7 @@ namespace aspect
                     effective_edot_ii = std::max(non_yielding_stress / (2 * viscosity_pre_yield), min_strain_rate);
                   }
               }
+            output_parameters.current_edot_ii[j] = current_edot_ii;
 
             // Steb 4c: calculate friction angle dependent on rate and/or state if specified
             output_parameters.current_friction_angles[j] = friction_options.compute_dependent_friction_angle(effective_edot_ii,
@@ -982,12 +989,16 @@ namespace aspect
                 plastic_out->RSF_a[i] = 0;
                 plastic_out->RSF_b[i] = 0;
                 plastic_out->RSF_L[i] = 0;
+                plastic_out->edot_ii[i] = 0;
 
                 for (unsigned int j=0; j < volume_fractions.size(); ++j)
                   {
                     plastic_out->RSF_a[i] += volume_fractions[j] * friction_options.calculate_depth_dependent_a_and_b(in.position[i], j).first;
                     plastic_out->RSF_b[i] += volume_fractions[j] * friction_options.calculate_depth_dependent_a_and_b(in.position[i], j).second;
                     plastic_out->RSF_L[i] += volume_fractions[j] * friction_options.get_critical_slip_distance(in.position[i], j);
+                    plastic_out->edot_ii[i] += volume_fractions[j] * calculate_isostrain_viscosities(in, i, volume_fractions,
+                                                                          in.current_cell,
+                                                                          phase_function_values).current_edot_ii[j];
                   }
               }
           }
