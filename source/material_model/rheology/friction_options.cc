@@ -378,9 +378,9 @@ namespace aspect
       {
         bool use_theta = false;
         // TODO add the RSF options
-        if ((get_friction_dependence_mechanism() == rate_and_state_dependent_friction) 
-        | (get_friction_dependence_mechanism() == regularized_rate_and_state_friction)
-        | (get_friction_dependence_mechanism() == slip_rate_dependent_rate_and_state_dependent_friction))
+        if ((get_friction_dependence_mechanism() == rate_and_state_dependent_friction)
+            | (get_friction_dependence_mechanism() == regularized_rate_and_state_friction)
+            | (get_friction_dependence_mechanism() == slip_rate_dependent_rate_and_state_dependent_friction))
           use_theta = true;
 
         return use_theta;
@@ -541,6 +541,12 @@ namespace aspect
                            "account the influence of pore fluid pressure. This makes the friction "
                            "coefficient an effective friction coefficient as in \\cite{sobolev_modeling_2017}. "
                            "Units: none.");
+
+        prm.declare_entry ("Effective normal stress on fault", "1",
+                           Patterns::List(Patterns::Double(0)),
+                           "ADD DESCRIPTION AND CITATION. "
+                           "Units: none.");
+
         /*
                 prm.declare_entry ("Critical slip distance", "0.01",
                                    Patterns::List(Patterns::Double(0)),
@@ -754,6 +760,8 @@ namespace aspect
         prm.leave_subsection();
 
         quasi_static_strain_rate = prm.get_double("Quasi static strain rate");
+
+        effective_normal_stress_on_fault = prm.get_double("Effective normal stress on fault");
 
         use_radiation_damping = prm.get_bool("Use radiation damping");
 

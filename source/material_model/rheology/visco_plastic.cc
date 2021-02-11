@@ -490,6 +490,19 @@ namespace aspect
                     }
                   break;
                 }
+                case rate_and_state_benchmark:
+                {
+                  // This is according to Erickson et al. 2020. They state state that
+                  // the fault strength is equal to the shear stress on the fault
+                  double fault_strength = friction_options.effective_normal_stress_on_fault
+                                          * output_parameters.current_friction_angles[j] * current_edot_ii
+                                          * current_cell->extent_in_direction(0);
+
+                  // these two lines are from drucker_prager_plasticity.compute_viscosity() 
+                  const double strain_rate_effective_inv = 1./(2.*current_edot_ii);
+                  viscosity_yield = fault_strength * strain_rate_effective_inv;
+                  break;
+                }
                 default:
                 {
                   AssertThrow(false, ExcNotImplemented());
@@ -844,6 +857,8 @@ namespace aspect
           yield_mechanism = drucker_prager;
         else if (prm.get ("Yield mechanism") == "limiter")
           yield_mechanism = stress_limiter;
+        else if (prm.get ("Yield mechanism") == "RSF")
+          yield_mechanism = rate_and_state_benchmark;
         else
           AssertThrow(false, ExcMessage("Not a valid yield mechanism."));
 
