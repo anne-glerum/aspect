@@ -508,7 +508,7 @@ namespace aspect
                       // In \\cite{pipping_variational_2015} it is stated that this is the
                       // equation for Tresca friction
                       double fault_strength = friction_options.effective_normal_stress_on_fault
-                                              * output_parameters.current_friction_angles[j] * current_edot_ii
+                                              * tan(output_parameters.current_friction_angles[j]) * current_edot_ii
                                               * current_cell->extent_in_direction(0);
 
                       // these two lines are from drucker_prager_plasticity.compute_viscosity()
