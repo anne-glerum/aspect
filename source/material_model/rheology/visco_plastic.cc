@@ -497,10 +497,13 @@ namespace aspect
                     }
                   break;
                 }
-                case rate_and_state_benchmark:
+                case tresca:
                 {
-                  // This is according to Erickson et al. 2020. They state state that
-                  // the fault strength is equal to the shear stress on the fault
+                  // This is according to \\cite{erickson_community_2020}, a benchmark paper for 
+                  // rate-and-state friction models. They state state that
+                  // the fault strength is equal to the shear stress on the fault.
+                  // In \\cite{pipping_variational_2015} it is stated that this is the 
+                  // equation for Tresca friction
                   double fault_strength = friction_options.effective_normal_stress_on_fault
                                           * output_parameters.current_friction_angles[j] * current_edot_ii
                                           * current_cell->extent_in_direction(0);
@@ -733,9 +736,9 @@ namespace aspect
                            "strain rates, it is recommended to take the minimum of the creep "
                            "viscosities.");
         prm.declare_entry ("Yield mechanism", "drucker",
-                           Patterns::Selection("drucker|limiter"),
-                           "Select what type of yield mechanism to use between Drucker Prager "
-                           "and stress limiter options.");
+                           Patterns::Selection("drucker|limiter|tresca"),
+                           "Select what type of yield mechanism to use between Drucker Prager, "
+                           "stress limiter and Tresca friction options.");
         prm.declare_entry ("Allow negative pressures in plasticity", "false",
                            Patterns::Bool (),
                            "Whether to allow negative pressures to be used in the computation "
@@ -864,8 +867,8 @@ namespace aspect
           yield_mechanism = drucker_prager;
         else if (prm.get ("Yield mechanism") == "limiter")
           yield_mechanism = stress_limiter;
-        else if (prm.get ("Yield mechanism") == "RSF")
-          yield_mechanism = rate_and_state_benchmark;
+        else if (prm.get ("Yield mechanism") == "tresca")
+          yield_mechanism = tresca;
         else
           AssertThrow(false, ExcMessage("Not a valid yield mechanism."));
 

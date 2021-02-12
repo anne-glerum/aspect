@@ -544,8 +544,13 @@ namespace aspect
 
         prm.declare_entry ("Effective normal stress on fault", "1",
                            Patterns::List(Patterns::Double(0)),
-                           "ADD DESCRIPTION AND CITATION. "
-                           "Units: none.");
+                           "This is a scalar value for the effective normal stress on a fault. It "
+                           "replaces the solution-dependent normal stress in Tresca friction formulation. "
+                           "This is for example used in \\cite{erickson_community_2020} and "
+                           "\\cite{pipping_variational_2015} in simple rate-and-state friction models. "
+                           "This parameter only becomes effective when the yield mechanism tresca "
+                           "is specified in the input file. "
+                           "Units: MPa.");
 
         /*
                 prm.declare_entry ("Critical slip distance", "0.01",

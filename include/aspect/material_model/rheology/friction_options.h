@@ -151,8 +151,8 @@ namespace aspect
           double get_critical_slip_distance(const Point<dim> &position, const int j) const;
 
           /**
-          * A value for th effective normal stress on the fault that is used in the
-          * rate_and_state_benchmark yield mechanism which is based on Erickson et al. 2020
+          * A value for th effective normal stress on the fault that is used in Tresca friction 
+          * which is available under the yield mechanism tresca.
           */
           double effective_normal_stress_on_fault;
 

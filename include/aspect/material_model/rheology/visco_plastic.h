@@ -294,13 +294,14 @@ namespace aspect
 
           /**
            * Enumeration for selecting which type of yield mechanism to use.
-           * Select between Drucker Prager and stress limiter.
+           * Select between Drucker Prager, stress limiter and Tresca which is sometimes 
+           * used in rate and state models, e.g. \\cite{erickson_community_2020}.
            */
           enum YieldScheme
           {
             stress_limiter,
             drucker_prager,
-            rate_and_state_benchmark
+            tresca
           } yield_mechanism;
 
           /**
