@@ -499,16 +499,16 @@ namespace aspect
                 }
                 case tresca:
                 {
-                  // This is according to \\cite{erickson_community_2020}, a benchmark paper for 
+                  // This is according to \\cite{erickson_community_2020}, a benchmark paper for
                   // rate-and-state friction models. They state state that
                   // the fault strength is equal to the shear stress on the fault.
-                  // In \\cite{pipping_variational_2015} it is stated that this is the 
+                  // In \\cite{pipping_variational_2015} it is stated that this is the
                   // equation for Tresca friction
                   double fault_strength = friction_options.effective_normal_stress_on_fault
                                           * output_parameters.current_friction_angles[j] * current_edot_ii
                                           * current_cell->extent_in_direction(0);
 
-                  // these two lines are from drucker_prager_plasticity.compute_viscosity() 
+                  // these two lines are from drucker_prager_plasticity.compute_viscosity()
                   const double strain_rate_effective_inv = 1./(2.*current_edot_ii);
                   viscosity_yield = fault_strength * strain_rate_effective_inv;
                   break;
@@ -1000,8 +1000,8 @@ namespace aspect
                     plastic_out->RSF_b[i] += volume_fractions[j] * friction_options.calculate_depth_dependent_a_and_b(in.position[i], j).second;
                     plastic_out->RSF_L[i] += volume_fractions[j] * friction_options.get_critical_slip_distance(in.position[i], j);
                     plastic_out->edot_ii[i] += volume_fractions[j] * calculate_isostrain_viscosities(in, i, volume_fractions,
-                                                                          in.current_cell,
-                                                                          phase_function_values).current_edot_ii[j];
+                                               in.current_cell,
+                                               phase_function_values).current_edot_ii[j];
                   }
               }
           }

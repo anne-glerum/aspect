@@ -97,9 +97,9 @@ namespace aspect
          */
         std::vector<double> RSF_L;
 
-      /**
-       * the current edot ii - second invariant of the deviatoric stress tensor
-       */
+        /**
+         * the current edot ii - second invariant of the deviatoric stress tensor
+         */
         std::vector<double> edot_ii;
 
         /**
@@ -294,7 +294,7 @@ namespace aspect
 
           /**
            * Enumeration for selecting which type of yield mechanism to use.
-           * Select between Drucker Prager, stress limiter and Tresca which is sometimes 
+           * Select between Drucker Prager, stress limiter and Tresca which is sometimes
            * used in rate and state models, e.g. \\cite{erickson_community_2020}.
            */
           enum YieldScheme
