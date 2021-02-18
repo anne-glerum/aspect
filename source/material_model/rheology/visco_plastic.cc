@@ -234,6 +234,7 @@ namespace aspect
                                    "yielding is always assumed due to the rate and state framework."));
             fault_material_index = this->introspection().compositional_index_for_name("fault");
           }
+        std::cout << std::endl << "fault material index is: " << fault_material_index << std::endl ;
 
         // Calculate viscosities for each of the individual compositional phases
         for (unsigned int j=0; j < volume_fractions.size(); ++j)
@@ -481,12 +482,6 @@ namespace aspect
                   if (non_yielding_stress >= yield_stress) |
                       ((friction_options.get_use_theta()) && (j== fault_material_index)))
                     {
-                      // The following uses the effective_edot_ii
-                      // (which has been modified for elastic effects, above),
-                      // and calculates the effective viscosity over all active rheological elements
-                      // assuming that the non-yielding viscosity is not strain rate dependent.
-                      // TODO When dislocation creep or nonlinear plastic strain weakening
-                      // is used, we need to iterate on the yield stress.
                       effective_viscosity = drucker_prager_plasticity.compute_viscosity(current_cohesion,
                                                                                         current_friction,
                                                                                         pressure_for_plasticity,
