@@ -79,8 +79,7 @@ namespace aspect
                   cellsize = current_cell->extent_in_direction(0);
                   // Calculate the state variable theta
                   // theta_old loads theta from previous time step
-                  const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
-                  const double theta_old = composition[theta_position_tmp];
+                  const double theta_old = composition[theta_composition_index];
 
                   // Get the values for a and b
                   const double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(position,j).first;
@@ -149,8 +148,7 @@ namespace aspect
                   cellsize = current_cell->extent_in_direction(0);
                   // Calculate the state variable theta
                   // theta_old loads theta from previous time step
-                  const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
-                  const double theta_old = composition[theta_position_tmp];
+                  const double theta_old = composition[theta_composition_index];
 
                   // Get the values for a and b
                   double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(position,j).first;
@@ -192,8 +190,7 @@ namespace aspect
                   cellsize = current_cell->extent_in_direction(0);
                   // Calculate the state variable theta
                   // theta_old loads theta from previous time step
-                  const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
-                  const double theta_old = composition[theta_position_tmp];
+                  const double theta_old = composition[theta_composition_index];
 
                   // Get the values for a and b
                   const double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(position,j).first;
@@ -239,12 +236,8 @@ namespace aspect
       FrictionOptions<dim>::
       get_theta_composition_mask(ComponentMask composition_mask) const
       {
-        // Store which components to exclude during the volume fraction computation.
-
-        // This is the compositional field used for theta in rate-and-state friction
-        const int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
-        composition_mask.set(theta_position_tmp,false);
-
+        // Exlude compmositional field "theta" during the volume fraction computation.
+        composition_mask.set(theta_composition_index,false);
         return composition_mask;
       }
 
@@ -306,8 +299,7 @@ namespace aspect
                                                           average_elastic_shear_moduli, use_elasticity,
                                                           use_reference_strainrate, dte);
 
-            const unsigned int theta_position_tmp = this->introspection().compositional_index_for_name("theta");
-            const double theta_old = in.composition[q][theta_position_tmp];
+            const double theta_old = in.composition[q][theta_composition_index];
             double current_theta = 0;
 
             for (unsigned int j=0; j < volume_fractions.size(); ++j)
@@ -317,7 +309,7 @@ namespace aspect
               }
             const double theta_increment = current_theta - theta_old;
 
-            out.reaction_terms[q][theta_position_tmp] = theta_increment;
+            out.reaction_terms[q][theta_composition_index] = theta_increment;
           }
       }
 
@@ -730,15 +722,6 @@ namespace aspect
         dynamic_friction_smoothness_exponent = prm.get_double("Dynamic friction smoothness exponent");
 
         // Rate and state friction parameters
-        // Todo: add other RSF options! Or take get_use_theta()
-        if (friction_dependence_mechanism == rate_and_state_dependent_friction)
-          {
-            AssertThrow(this->introspection().compositional_name_exists("theta"),
-                        ExcMessage("Material model with rate-and-state friction only works "
-                                   "if there is a compositional field that is called theta. It is "
-                                   "used to store the state variable."));
-          }
-
         effective_friction_factor = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Effective friction factor"))),
                                                                             n_fields,
                                                                             "Effective friction factor");
@@ -820,6 +803,28 @@ namespace aspect
 
         slope_s_for_L = prm.get_double("Slope of log dependence for critical slip distance L");
 
+        unsigned int fault_composition_index = 1000;
+        if (get_use_theta())
+          {
+            // TODO: make this a bit more flexible name-wise, like let the user define which materials should be
+            // considered. Or which strategy. Could also be all, or take a and b as a proxy.
+            // TODO: should be done if this is > 70 or so %. Can be circumvented right now by using max
+            // composition for viscosity averaging
+            AssertThrow(this->introspection().compositional_name_exists("fault"),
+                        ExcMessage("Material model with rate-and-state friction only works "
+                                   "if there is a compositional field that is called fault. For this composition "
+                                   "yielding is always assumed due to the rate and state framework."));
+            fault_composition_index = this->introspection().compositional_index_for_name("fault");
+            AssertThrow(this->introspection().compositional_name_exists("theta"),
+                        ExcMessage("Material model with rate-and-state friction only works "
+                                   "if there is a compositional field that is called theta. It is "
+                                   "used to store the state variable."));
+            // if rate and state friction is used, this index is needed, as it will be used to always assume yielding
+            // conditions inside the fault. default is so high it should never unintentionally be reached.
+            const unsigned int theta_composition_index = this->introspection().compositional_index_for_name("theta");
+            std::cout << std::endl << "fault material index in parse_prms is: " << fault_composition_index << std::endl ;
+
+          }
       }
     }
   }

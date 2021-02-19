@@ -156,6 +156,9 @@ namespace aspect
           */
           double effective_normal_stress_on_fault;
 
+          unsigned int fault_composition_index;
+          unsigned int theta_composition_index;
+
         private:
           /**
           * Input parameters for the drucker prager plasticity.
