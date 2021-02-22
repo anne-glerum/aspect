@@ -237,6 +237,7 @@ namespace aspect
       get_theta_composition_mask(ComponentMask composition_mask) const
       {
         // Exlude compmositional field "theta" during the volume fraction computation.
+        const unsigned int theta_composition_index = this->introspection().compositional_index_for_name("theta");
         composition_mask.set(theta_composition_index,false);
         return composition_mask;
       }
@@ -803,7 +804,6 @@ namespace aspect
 
         slope_s_for_L = prm.get_double("Slope of log dependence for critical slip distance L");
 
-        unsigned int fault_composition_index = 1000;
         if (get_use_theta())
           {
             // TODO: make this a bit more flexible name-wise, like let the user define which materials should be
@@ -821,9 +821,7 @@ namespace aspect
                                    "used to store the state variable."));
             // if rate and state friction is used, this index is needed, as it will be used to always assume yielding
             // conditions inside the fault. default is so high it should never unintentionally be reached.
-            const unsigned int theta_composition_index = this->introspection().compositional_index_for_name("theta");
-            std::cout << std::endl << "fault material index in parse_prms is: " << fault_composition_index << std::endl ;
-
+            theta_composition_index = this->introspection().compositional_index_for_name("theta");
           }
       }
     }

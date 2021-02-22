@@ -466,7 +466,7 @@ namespace aspect
                       ((friction_options.get_use_theta()) && (j== friction_options.fault_composition_index + 1)))
                     {
                       effective_viscosity = drucker_prager_plasticity.compute_viscosity(current_cohesion,
-                                                                                        current_friction,
+                                                                                        output_parameters.current_friction_angles[j],
                                                                                         pressure_for_plasticity,
                                                                                         effective_edot_ii,
                                                                                         drucker_prager_parameters.max_yield_stress,
@@ -665,7 +665,7 @@ namespace aspect
         // If friction is defined state dependent, the material field for the state variable theta
         // must be excluded during volume fraction computation.
         if (friction_options.get_use_theta())
-          composition_mask = friction_options.get_theta_composition_mask(composition_mask);
+          composition_mask.set(friction_options.theta_composition_index,false);
 
         return composition_mask;
       }
