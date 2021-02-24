@@ -487,8 +487,9 @@ namespace aspect
                       // equation for Tresca friction
                       double fault_strength = friction_options.effective_normal_stress_on_fault
                                               * tan(output_parameters.current_friction_angles[j]) * current_edot_ii
-                                              * current_cell->extent_in_direction(0);
+                                              * current_cell->extent_in_direction(0)-radiation_damping_term;
 
+                      current_edot_ii = fault_strength / (2 * viscosity_pre_yield);
                       // these two lines are from drucker_prager_plasticity.compute_viscosity()
                       const double strain_rate_effective_inv = 1./(2.*current_edot_ii);
                       viscosity_yield = fault_strength * strain_rate_effective_inv;
