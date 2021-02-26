@@ -30,26 +30,63 @@ namespace aspect
     double
     LapustaTimeStep<dim>::execute()
     {
-      const double delta_x;
-      const double G_star = G/(1-nu);
-      const double k_param = 2 / std::pi() * G_star / (delta_x);
-      const double RSF_param_a;
-      const double RSF_param_b;
-      const double RSF_param_L;
-      const double pressure;
-      const double kLaP = (k_param * RSF_param_L) / (RSF_param_a * pressure);
-      const double xi = 0.25 * std::pow((kLaP - (RSF_param_b - RSF_param_a) / RSF_param_a),2) - kLaP;
+      const QIterated<dim> quadrature_formula (QTrapez<1>(),
+                                               this->get_parameters().stokes_velocity_degree);
 
-      double delta_theta_max = 0;
-      if (xi > 0)
-        delta_theta_max = std::min(((RSF_param_a * pressure)
-                                    / (k_param * RSF_param_L - (RSF_param_b - RSF_param_a)
-                                       * pressure)), 0.2);
-      else
-        delta_theta_max = std::min((1 - ((RSF_param_b - RSF_param_a) * pressure)
-                                    / (k_param * RSF_param_L)), 0.2);
+      FEValues<dim> fe_values (this->get_mapping(),
+                               this->get_fe(),
+                               quadrature_formula,
+                               update_values);
 
-      const double state_weakening_time_step = delta_theta_max * RSF_param_L / V_p;
+      const unsigned int n_q_points = quadrature_formula.size();
+
+      std::vector<Tensor<1,dim> > velocity_values(n_q_points);
+
+      double min_state_weakening_time_step = 1e10;
+      for (const auto &cell : this->get_dof_handler().active_cell_iterators())
+        if (cell->is_locally_owned())
+          {
+            fe_values.reinit (cell);
+            fe_values[this->introspection().extractors.velocities].get_function_values (this->get_solution(),
+                                                                                        velocity_values);
+
+            double max_local_velocity = 0;
+            for (unsigned int q=0; q<n_q_points; ++q)
+              {
+                max_local_velocity = std::max (max_local_velocity,
+                                               velocity_values[q].norm());
+
+                const unsigned int j = 0;
+                const double G_star = G/(1-nu); //G is shear modulus , nu is poisson ration (0.25 in herrendo)
+                const double k_param = 2 / numbers::PI * G_star / cell->minimum_vertex_distance();
+                const double RSF_param_a = friction_options.calculate_depth_dependent_a_and_b(position,j).first;
+                const double RSF_param_b = friction_options.calculate_depth_dependent_a_and_b(position,j).second;
+                const double RSF_param_L = friction_options.get_critical_slip_distance(in.position[q], j); // j is from volume fractions, q is n_evaluation points
+                const double pressure;
+                const double kLaP = (k_param * RSF_param_L) / (RSF_param_a * pressure);
+                const double xi = 0.25 * std::pow((kLaP - (RSF_param_b - RSF_param_a) / RSF_param_a),2) - kLaP;
+
+                double delta_theta_max = 0;
+                if (xi > 0)
+                  delta_theta_max = std::min(((RSF_param_a * pressure)
+                                              / (k_param * RSF_param_L - (RSF_param_b - RSF_param_a)
+                                                 * pressure)), 0.2);
+                else
+                  delta_theta_max = std::min((1 - ((RSF_param_b - RSF_param_a) * pressure)
+                                              / (k_param * RSF_param_L)), 0.2);
+              }
+
+            min_state_weakening_time_step = std::min(min_state_weakening_time_step,
+                                                     delta_theta_max * RSF_param_L / V_p);
+
+            /*
+                        max_local_speed_over_meshsize = std::max(max_local_speed_over_meshsize,
+                                                                 max_local_velocity
+                                                                 /
+                                                                 cell->minimum_vertex_distance());*/
+
+          }
+
 
       /*
       const QIterated<dim> quadrature_formula (QTrapez<1>(),
@@ -106,8 +143,8 @@ namespace aspect
       */
 
       //min_lapusta_timestep = std::min(state_weakening_time_step,healing_time_step);
-      min_lapusta_timestep = state_weakening_time_step;
-      
+      min_lapusta_timestep = min_state_weakening_time_step;
+
       AssertThrow (min_lapusta_timestep > 0,
                    ExcMessage("The time step length for the each time step needs to be positive, "
                               "but the computed step length was: " + std::to_string(min_lapusta_timestep) + ". "

@@ -23,6 +23,7 @@
 #define _aspect_time_stepping_lapusta_time_step_h
 
 #include <aspect/time_stepping/interface.h>
+#include <aspect/material_model/rheology/friction_options.h>
 
 
 namespace aspect
@@ -53,6 +54,11 @@ namespace aspect
         virtual
         double
         execute() override;
+
+        /**
+         * Object for computing the friction dependence of the rheology model.
+         */
+        MaterialModel::Rheology::FrictionOptions<dim> friction_options;
 
       private:
     };
