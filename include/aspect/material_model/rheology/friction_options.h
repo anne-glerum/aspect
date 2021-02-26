@@ -58,7 +58,7 @@ namespace aspect
        *
        * For the type 'slip rate dependent rate and state dependent friction', the rate
        * and state parameter 'a' and the critical slip distance L are slip rate dependent
-       * following Eqautions 8 and 9 in \\cite{im_slip-rate-dependent_2020}. Slip rate
+       * following Equations 8 and 9 in \\cite{im_slip-rate-dependent_2020}. Slip rate
        * dependent friction parameters seem to produce better results for the occurrence
        * conditions of slow slip events.
        *
