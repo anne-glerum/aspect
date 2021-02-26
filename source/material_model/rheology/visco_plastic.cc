@@ -396,30 +396,31 @@ namespace aspect
             // As current stress is only used to compare to yield stress but does not affect material properties,
             // it is used here to modify effective_edot_ii
             double radiation_damping_term = 0.0;
-            if (friction_options.use_radiation_damping)
+            if (friction_options.use_radiation_damping && (yield_mechanism != tresca))
               {
-                if (use_elasticity == false)
-                  {
-                    AssertThrow(false, ExcMessage("Usage of radiation damping only makes sense when elasticity is enabled."));
-                  }
-                else
-                  {
-                    // TODO: use the plastic strain rate instead of effective_edot_ii
-                    // TODO: more elaborate way to determine cellsize
-                    // TODO: this is not exactly the right way to get the density, as it i only reference densities.
-                    // ideally, you would take the actual densities from out.densities[I],
-                    // i.e. computed as out.densities[i] = MaterialUtilities::average_value (volume_fractions, eos_outputs.densities, MaterialUtilities::arithmetic);
-                    // but at the moment I don't have access to out in this function
-                    const double reference_density = this->get_adiabatic_conditions().density(in.position[0]);
-                    const double cellsize = current_cell->extent_in_direction(0);
-                    //std::cout << " current edot_ii is " << effective_edot_ii << std::endl;
-                    radiation_damping_term = effective_edot_ii * cellsize * elastic_shear_moduli[j]
-                                             / (2 * std::sqrt(elastic_shear_moduli[j] / reference_density));
-                    non_yielding_stress = non_yielding_stress - radiation_damping_term;
-                    effective_edot_ii = std::max(non_yielding_stress / (2 * viscosity_pre_yield), min_strain_rate);
-                  }
+                AssertThrow(use_elasticity, ExcMessage("Usage of radiation damping only makes sense when elasticity is enabled."));
+
+                // TODO: use the plastic strain rate instead of effective_edot_ii
+                // TODO: more elaborate way to determine cellsize
+                // TODO: this is not exactly the right way to get the density, as it i only reference densities.
+                // ideally, you would take the actual densities from out.densities[I],
+                // i.e. computed as out.densities[i] = MaterialUtilities::average_value (volume_fractions, eos_outputs.densities, MaterialUtilities::arithmetic);
+                // but at the moment I don't have access to out in this function
+                const double reference_density = this->get_adiabatic_conditions().density(in.position[0]);
+                const double cellsize = current_cell->extent_in_direction(0);
+                //std::cout << " current edot_ii is " << effective_edot_ii << std::endl;
+                radiation_damping_term = effective_edot_ii * cellsize * elastic_shear_moduli[j]
+                                         / (2.0 * std::sqrt(elastic_shear_moduli[j] / reference_density));
+                non_yielding_stress -= radiation_damping_term;
+                effective_edot_ii = std::max(non_yielding_stress / (2 * viscosity_pre_yield), min_strain_rate);
+
+                // Note: I applied radiation damping to non_yielding_stress because non_yielding_stress can be used
+                // to modify te effective viscosity and effective_edot_ii, which in turn modifies the friction
+                // angle. Contrary, the yield_stress is only used to be compared to non_yielding_stress to
+                // determine if we enter yielding, which we always do anyway for rate-and-state friction.
+                // But maybe this is in fact not the best place to apply it.
               }
-            output_parameters.current_edot_ii[j] = current_edot_ii;
+            output_parameters.current_edot_ii[j] = effective_edot_ii;
 
             // Steb 4c: calculate friction angle dependent on rate and/or state if specified
             output_parameters.current_friction_angles[j] = friction_options.compute_dependent_friction_angle(effective_edot_ii,
@@ -462,8 +463,10 @@ namespace aspect
                   // rescale the viscosity back to yield surface
                   // If this is the fault material and rate-and-state friction is used,
                   // assume that we are always yielding
-                  if (non_yielding_stress >= yield_stress) ||
-                      ((friction_options.get_use_theta()) && (j== friction_options.fault_composition_index + 1)))
+                  // TODO: always yielding should be done where faut has > 70 or so volume percentage. Can be circumvented
+                  // right now by using max composition for viscosity averaging
+                  if ((non_yielding_stress >= yield_stress) ||
+                      ((friction_options.use_theta()) && (j== friction_options.fault_composition_index + 1)))
                     {
                       effective_viscosity = drucker_prager_plasticity.compute_viscosity(current_cohesion,
                                                                                         output_parameters.current_friction_angles[j],
@@ -482,13 +485,17 @@ namespace aspect
                   // the fault strength is equal to the shear stress on the fault.
                   // In \\cite{pipping_variational_2015} it is stated that this is the
                   // equation for Tresca friction
-                  double fault_strength = friction_options.effective_normal_stress_on_fault
-                                          * std::tan(output_parameters.current_friction_angles[j]) * current_edot_ii
-                                          * current_cell->extent_in_direction(0) - radiation_damping_term;
+                  const double fault_strength = friction_options.effective_normal_stress_on_fault
+                                                * std::tan(output_parameters.current_friction_angles[j]) * current_edot_ii
+                                                * current_cell->extent_in_direction(0) - radiation_damping_term;
+                  // TODO: always yielding should be done where faut has > 70 or so volume percentage. Can be circumvented
+                  // right now by using max composition for viscosity averaging
                   if ((current_stress >= fault_strength) ||
                       ((friction_options.use_theta()) && (j== friction_options.fault_composition_index + 1)))
                     {
-                      current_edot_ii = fault_strength / (2 * viscosity_pre_yield);
+                      // I had put this line ere, buut during revision Anne suggested to remove it:
+                      // current_edot_ii = fault_strength / (2.0 * viscosity_pre_yield);
+
                       // these two lines are from drucker_prager_plasticity.compute_viscosity()
                       const double strain_rate_effective_inv = 1./(2.*current_edot_ii);
                       viscosity_yield = fault_strength * strain_rate_effective_inv;

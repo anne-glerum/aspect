@@ -289,15 +289,14 @@ namespace aspect
             const double theta_old = in.composition[q][theta_composition_index];
             double current_theta = 0;
 
+            double critical_slip_distance = 0.0;
             for (unsigned int j=0; j < volume_fractions.size(); ++j)
-              {
-                const double critical_slip_distance = get_critical_slip_distance(in.position[q], j);
-                current_theta += volume_fractions[j] * compute_theta(theta_old, current_edot_ii,
-                                                                     in.current_cell->extent_in_direction(0), critical_slip_distance);
-              }
-            const double theta_increment = current_theta - theta_old;
+              critical_slip_distance += volume_fractions[j] * get_critical_slip_distance(in.position[q], j);
 
-            out.reaction_terms[q][theta_composition_index] = theta_increment;
+            current_theta += compute_theta(theta_old, current_edot_ii,
+                                           in.current_cell->extent_in_direction(0), critical_slip_distance);
+
+            out.reaction_terms[q][theta_composition_index] = current_theta - theta_old;
           }
       }
 
@@ -333,8 +332,7 @@ namespace aspect
         const double critical_slip_distance =
           critical_slip_distance_function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),j);
 
-        if (critical_slip_distance <= 0)
-          AssertThrow(false, ExcMessage("Critical slip distance in a rate-and-state material must be > 0."));
+        AssertThrow(critical_slip_distance > 0, ExcMessage("Critical slip distance in a rate-and-state material must be > 0."));
 
         return critical_slip_distance;
       }
@@ -357,11 +355,11 @@ namespace aspect
       use_theta() const
       {
         bool use_theta = false;
-        // TODO add the RSF options
-        if ((get_friction_dependence_mechanism() == rate_and_state_dependent_friction)
-            || (get_friction_dependence_mechanism() == rate_and_state_dependent_friction_plus_linear_slip_weakening)
-            || (get_friction_dependence_mechanism() == regularized_rate_and_state_dependent_friction)
-            || (get_friction_dependence_mechanism() == slip_rate_dependent_rate_and_state_dependent_friction))
+        const FrictionDependenceMechanism mechanism = get_friction_dependence_mechanism();
+        if ((mechanism == rate_and_state_dependent_friction)
+            || (mechanism == rate_and_state_dependent_friction_plus_linear_slip_weakening)
+            || (mechanism == regularized_rate_and_state_dependent_friction)
+            || (mechanism == slip_rate_dependent_rate_and_state_dependent_friction))
           use_theta = true;
 
         return use_theta;
@@ -380,7 +378,7 @@ namespace aspect
                                                "regularized rate and state dependent friction"),
                            "Whether to apply a rate or rate and state dependence of the friction angle. This can "
                            "be used to obtain stick-slip motion to simulate earthquake-like behaviour, "
-                           "where short periods of high-velocities are seperated by longer periods without "
+                           "where short periods of high-velocities are separated by longer periods without "
                            "movement."
                            "\n\n"
                            "\\item ``none'': No rate or state dependence of the friction angle is applied. "
@@ -405,30 +403,30 @@ namespace aspect
                            "Pore fluid pressure can be taken into account by specifying the 'Effective friction "
                            "factor', which uses $\\mu* = \\mu\\big(1-\\frac{P_f}{\\sigma_n} \\big)$. "
                            "Reasonable values for a and b are 0.01 and 0.015, respectively, see \\cite{sobolev_modeling_2017}. "
-                           "In ASPECT the state variable is confined to positive values: if it becomes $<=0$ during the computation "
-                           "it is set to 1e-10. The friction angle is set to 0 if negative. "
+                           "In ASPECT the state variable is confined to values > 1e-50: if it becomes $<1e-50$ during the computation "
+                           "it is set to 1e-50. The same applies to the friction angle which is set to 1e-30 if smaller than that. "
                            "\n\n"
                            "\\item ``rate and state dependent friction plus linear slip weakening'': ToDo: all, this is an empty model atm. "
                            "Method taken from \\cite{sobolev_modeling_2017}. The friction coefficient is computed as "
                            "$\\mu = \\mu_{st} + a \\cdot ln\\big( \\frac{V}{V_{st}} \\big) + b \\cdot ln\\big( \\frac{\\Theta V_{st}}{L} \\big) - \\Delta \\mu(D)$"
                            "where D is the slip at point in fault at the first timestep of earthquake. "
                            "\n\n"
-                           "\\item ``slip rate dependent rate and state dependent friction'': The rate and state "
-                           "parametera and the critical slip distance L are made slip rate dependent. The friction "
+                           "\\item ``slip rate dependent rate and state dependent friction'': The rate-and-state "
+                           "parameters and the critical slip distance L are made slip-rate dependent. The friction "
                            "coefficient is computed as in 'rate and state dependent friction'. But a and L are not "
-                           "constant, but are computed as follws, see \\citep{Im_im_slip-rate-dependent_2020} for details."
+                           "constant, but are computed as follows, see \\citep{Im_im_slip-rate-dependent_2020} for details."
                            "$a(V) = a_0 + s_a log_{10}\\left(\\frac{V_a+V}{V_a}\\right)$ and "
                            "$L(V) = L_0 + s_L log_{10}\\left(\\frac{V_L+V}{V_L}\\right)$."
                            "So a and L have a log linear dependence on velocity with slopes od $s_a$ and $s_L$. "
                            "Parameters in their paper have the following values: "
                            "$L_0=10\\mu m$, $s_L=60\\mu m$, $V_L=100\\mu m/s$ and "
                            "$a_0=0.005$, $s_a=0.0003$, $V_a=100\\mu m/s$. "
-                           "In ASPECT the initial values $a_0$ and $L_0$ are the rate and state friction parameters "
+                           "In ASPECT the initial values $a_0$ and $L_0$ are the rate-and-state friction parameters "
                            "indicated in 'Critical slip distance' and 'Rate and state parameter a function'."
                            "\n\n"
                            "\\item ``regularized rate and state dependent friction'': The friction coefficient is computed using: "
                            "$\\mu = a\\cdot sinh^{-1}\\left[\\frac{V}{2V_0}exp\\left(\\frac{\\mu_0+b\cdot ln(V_0\theta/L)}{a}\\right)\\right]$ "
-                           "This is a high velocity approxiamtion and regularized version of the classic rate and state friction. "
+                           "This is a high velocity approximation and regularized version of the classic rate-and-state friction. "
                            "This formulation overcomes the problem of ill-posedness and the possibility of negative friction for "
                            "$V<<V_0$. It is for example used in \\cite{herrendorfer_invariant_2018}. ");
 
@@ -505,7 +503,7 @@ namespace aspect
                            "\\cite{pipping_variational_2015} in simple rate-and-state friction models. "
                            "This parameter only becomes effective when the yield mechanism tresca "
                            "is specified in the input file. "
-                           "Units: MPa.");
+                           "Units: Pa.");
 
         /*
                 prm.declare_entry ("Critical slip distance", "0.01",
@@ -534,7 +532,7 @@ namespace aspect
                            Patterns::Double (0),
                            "The quasi static or reference strain rate used in rate and state friction. It is an "
                            "arbitrary strain rate at which friction equals the reference friction angle. "
-                           "This happens when slip rate (which is represented in ASPECT as strain rate) "
+                           "This happens when slip rate (which is represented in ASPECT as strain rate * cell size) "
                            "enters a steady state. Friction at this steady state is defined as: "
                            "$\\mu = \\mu_{st} = \\mu_0 + (a-b)ln\\big( \\frac{V}{V_0} \\big). "
                            "It should not be confused with the characteristic strain rate in dynamic friction. "
@@ -543,9 +541,9 @@ namespace aspect
         prm.declare_entry ("Use radiation damping", "false",
                            Patterns::Bool (),
                            "Whether to include radiation damping or not. Radiation damping adds the term "
-                           "$-\\etaV = \\frac{\\mu}{2c_s}$ to the yield stress, $\\mu$ is the elastic shear "
+                           "$-\\etaV = \\frac{G}{2c_s}$ to the yield stress, $G$ is the elastic shear "
                            "modulus, $c_s$ the shear wave speed and V the slip rate \\citep{rice_spatio-temporal_1993}. "
-                           "Radiation damping prevents velocities to increase to infinity at the small time steps of "
+                           "Radiation damping prevents velocities from increasing to infinity at the small time steps of "
                            "earthquakes. It therewith assures that the governing equations continue to have a solution "
                            "during earthquakelike episodes. Unlike an inertial term it cannot be used to model rupture "
                            "propagation as it approximates seismic waves as energy outflow only. ");
@@ -592,6 +590,7 @@ namespace aspect
       FrictionOptions<dim>::parse_parameters (ParameterHandler &prm)
       {
         // Get the number of fields for composition-dependent material properties
+        // including the background field.
         const unsigned int n_fields = this->n_compositional_fields() + 1;
 
         // Friction dependence parameters
@@ -631,7 +630,7 @@ namespace aspect
                         ExcMessage("The rate and state friction will only work with the nonlinear "
                                    "solver schemes 'single Advection, single Stokes' and "
                                    "'single Advection, iterated Stokes', 'single Advection, "
-                                   "iterated defect correction Stokes', 'ginle advection, iterated Newton Stokes'"));
+                                   "iterated defect correction Stokes', single advection, iterated Newton Stokes'"));
           }
 
         // Dynamic friction parameters
@@ -651,14 +650,8 @@ namespace aspect
             // Convert angles from degrees to radians
             for (unsigned int i = 0; i<dynamic_angles_of_internal_friction.size(); ++i)
               {
-                if (dynamic_angles_of_internal_friction[i] > 90)
-                  {
-                    AssertThrow(false, ExcMessage("Dynamic angles of friction must be <= 90 degrees"));
-                  }
-                else
-                  {
-                    dynamic_angles_of_internal_friction[i] *= numbers::PI/180.0;
-                  }
+                AssertThrow(dynamic_angles_of_internal_friction[i] <= 90, ExcMessage("Dynamic angles of friction must be <= 90 degrees"));
+                dynamic_angles_of_internal_friction[i] *= numbers::PI/180.0;
               }
           }
 
@@ -741,21 +734,23 @@ namespace aspect
 
         if (use_theta())
           {
+            // if rate-and-state friction is used, this index is needed, as it will be used to always assume yielding
+            // conditions inside the fault. default is so high it should never unintentionally be reached.
             // TODO: make this a bit more flexible name-wise, like let the user define which materials should be
             // considered. Or which strategy. Could also be all, or take a and b as a proxy.
-            // TODO: should be done if this is > 70 or so %. Can be circumvented right now by using max
-            // composition for viscosity averaging
+            // TODO: always yielding should be done where faut has > 70 or so volume percentage. Can be circumvented
+            // right now by using max composition for viscosity averaging, because always yielding is applied  within
+            // calculate_isostrain_viscosities in visco_plastic.cc
             AssertThrow(this->introspection().compositional_name_exists("fault"),
                         ExcMessage("Material model with rate-and-state friction only works "
                                    "if there is a compositional field that is called fault. For this composition "
-                                   "yielding is always assumed due to the rate and state framework."));
+                                   "yielding is always assumed due to the rate-and-state framework."));
             fault_composition_index = this->introspection().compositional_index_for_name("fault");
+
             AssertThrow(this->introspection().compositional_name_exists("theta"),
                         ExcMessage("Material model with rate-and-state friction only works "
                                    "if there is a compositional field that is called theta. It is "
                                    "used to store the state variable."));
-            // if rate and state friction is used, this index is needed, as it will be used to always assume yielding
-            // conditions inside the fault. default is so high it should never unintentionally be reached.
             theta_composition_index = this->introspection().compositional_index_for_name("theta");
           }
       }
