@@ -40,15 +40,37 @@ namespace aspect
     {
       /**
        * Enumeration for selecting which type of friction dependence to use.
+       *
        * For the type 'independent', the user-supplied internal angle of friction is used.
-       * For the type 'dynamic friction' the friction angle is rate dependent using
-       * Equation 13 from van Dinther et al. (2013).
-       * For the type 'rate and state dependent friction'  the friction angle is calculated
+       *
+       * For the type 'dynamic friction', the friction angle is rate dependent following
+       * Equation 13 from \\cite{van_dinther_seismic_2013}.
+       *
+       * For the type 'rate and state dependent friction',  the friction angle is calculated
        * using classic aging rate-and-state friction by Ruina (1983) as described in
-       * Equations (4--7) in Sobolev and Muldashev (2017).
+       * Equations (4--7) in \\cite{sobolev_modeling_2017}.
+       *
+       * WIP: For the type 'rate and state dependent friction plus linear slip weakening',
+       * the rate-and-state dependent friction is expanded by a linear slip weakening
+       * copmonent. This is done following Appendix A in \\cite{sobolev_modeling_2017}.
+       * Therein linear slip weakening is added 'as half or more of the friction weakening
+       * may be in fact related to other than RSF type of friction-weakening mechanisms'.
+       *
+       * For the type 'slip rate dependent rate and state dependent friction', the rate
+       * and state parameter 'a' and the critical slip distance L are slip rate dependent
+       * following Eqautions 8 and 9 in \\cite{im_slip-rate-dependent_2020}. Slip rate
+       * dependent friction parameters seem to produce better results for the occurrence
+       * conditions of slow slip events.
+       *
+       * For the type 'regularized rate and state dependent friction', the friction angle
+       * is computed following the high velocity approxiamtion of the classic rate and
+       * state friction as in \\cite{herrendorfer_invariant_2018}. This overcomes the
+       * problem of ill-posedness and the possibility of negative friction for very small
+       * velocities.
+       *
        * Strain-weakening and friction dependence mechanisms other than rate or state
        * dependence are handled outside this functionality.
-       * TODO: an option to use dynamic friction and rate and state friction together
+       * TODO: an option to use dynamic friction and rate-and-state friction together
        */
       enum FrictionDependenceMechanism
       {
@@ -57,7 +79,7 @@ namespace aspect
         rate_and_state_dependent_friction,
         rate_and_state_dependent_friction_plus_linear_slip_weakening,
         slip_rate_dependent_rate_and_state_dependent_friction,
-        regularized_rate_and_state_friction
+        regularized_rate_and_state_dependent_friction
       };
 
       template <int dim>
@@ -79,7 +101,7 @@ namespace aspect
 
           /**
            * A function that computes the new friction angle when rate and/or state
-           * dependence is taken into account. Given a compositional field with
+           * dependence is taken into account. Given a volume fraction with
            * the index j and a vector of all compositional fields, it returns
            * the newly calculated friction angle.
            */
@@ -92,13 +114,6 @@ namespace aspect
                                            const Point<dim> &position) const;
 
           /**
-           * A function that returns a ComponentMask, which indicates that the component
-           * associated with theta should be excluded during the volume fraction computation.
-           */
-          ComponentMask get_theta_composition_mask(ComponentMask composition_mask) const;
-
-
-          /**
            * A function that computes the current value for the state variable theta.
            */
           double compute_theta(const double theta_old,
@@ -106,10 +121,9 @@ namespace aspect
                                const double cellsize,
                                const double critical_slip_distance) const;
 
-
           /**
            * A function that fills the reaction terms for the state variable theta in
-           * MaterialModelOutputs object that is handed over.
+           * the MaterialModelOutputs object that is handed over.
            */
           void compute_theta_reaction_terms(const int q,
                                             const std::vector<double> &volume_fractions,
@@ -122,8 +136,7 @@ namespace aspect
                                             const double dte,
                                             MaterialModel::MaterialModelOutputs<dim> &out) const;
 
-          /**for (unsigned int j=0; j < volume_fractions.size(); ++j)
-              {
+          /**
            * A function that returns the selected type of friction dependence.
            */
           FrictionDependenceMechanism
@@ -132,48 +145,61 @@ namespace aspect
           /**
            * A function that returns if the state variable theta is used.
            */
-          bool get_use_theta() const;
+          bool use_theta() const;
 
           /**
-           * A function that returns if radiation damping is used.
-           */
-          bool get_use_radiation_damping() const;
-
-          /**
-           * Function to calculate depth-dependent a and b values for state dependent friction.
+           * Function to calculate depth-dependent a and b values for state-dependent friction
+           * at a certain depth and for composition j.
            */
           std::pair<double,double>
           calculate_depth_dependent_a_and_b(const Point<dim> &position, const int j) const;
 
           /**
-          * Function that gets the critical slip distance at a certain position.
-          */
+           * Function that gets the critical slip distance at a certain position for composition j.
+           */
           double get_critical_slip_distance(const Point<dim> &position, const int j) const;
 
           /**
-          * A value for the effective normal stress on the fault that is used in Tresca friction
-          * which is available under the yield mechanism tresca.
-          */
+           * A value for the effective normal stress on the fault that is used in Tresca friction
+           * which is available under the yield mechanism tresca.
+           */
           double effective_normal_stress_on_fault;
 
+          /**
+           * The field index of the compositional field "fault", which is needed if the fault material
+           * is assumed to be always yielding as is the case for classical rate-and-state friciton.
+           */
           unsigned int fault_composition_index;
+
+          /**
+           * The field index of the compositional field "theta".
+           */
           unsigned int theta_composition_index;
+
+          /**
+           * Whether to include radiation damping as a representation of energy outflow due to
+           * seismic waves.
+           */
+          bool use_radiation_damping;
 
         private:
           /**
-          * Input parameters for the drucker prager plasticity.
-          */
+           * Input parameters for the drucker prager plasticity.
+           */
           Rheology::DruckerPragerParameters drucker_prager_parameters;
 
           /**
-           * Parameter about what mechanism should be used for the friction dependence.
-           * Possible options: (rate-and-state) independent | dynamic friction | rate and state dependent
+           * Select the mechanism to be used for the friction dependence.
+           * Possible options: none | dynamic friction | rate and state dependent friction
+           * | rate and state dependent friction plus linear slip weakening | slip rate
+           * dependent rate and state dependent friction | regularized rate and state
+           * dependent friction
            */
           FrictionDependenceMechanism friction_dependence_mechanism;
 
           /**
-          * Dynamic friction input parameters
-          */
+           * Dynamic friction input parameters
+           */
 
           /**
            * Dynamic angles of internal friction that are used at high strain rates.
@@ -181,10 +207,10 @@ namespace aspect
           std::vector<double> dynamic_angles_of_internal_friction;
 
           /**
-           * The characteristic strain rate value, where the angle of friction takes the mean
-           * of the dynamic and the static angle of friction. When the effective strain rate
-           * in a cell is very high the dynamic angle of friction is taken, when it is very low
-           * the static angle of internal friction is chosen.
+           * The characteristic strain rate value at which the angle of friction is taken as
+           * the mean of the dynamic and the static angle of friction. When the effective
+           * strain rate in a cell is very high the dynamic angle of friction is taken, when
+           * it is very low the static angle of internal friction is chosen.
            */
           double dynamic_characteristic_strain_rate;
 
@@ -196,71 +222,64 @@ namespace aspect
           double dynamic_friction_smoothness_exponent;
 
           /**
-          * rate and state friction input parameters
-          */
+           * Rate-and-state friction input parameters
+           */
 
           /**
-           * A number that is multiplied with the coefficient of friction to take into
+          * A number that is multiplied with the coefficient of friction to take into
            * account the influence of pore fluid pressure. This makes the friction
            * coefficient an effective friction coefficient as in Sobolev and Muldashev (2017).
            */
           std::vector<double> effective_friction_factor;
 
           /**
-           * The critical slip distance in rate and state friction. Used to calculate the state
+           * The critical slip distance in rate-and-state friction. Used to calculate the state
            * variable theta.
            */
-          //double critical_slip_distance;
           std::unique_ptr<Functions::ParsedFunction<dim> > critical_slip_distance_function;
 
           /**
            * Arbitrary strain rate at which friction equals the reference friction angle in
-           * rate and state friction.
+           * rate-and-state friction. There are different names for this parameter in the
+           * literature varying between steady state strain rate, reference strain rate,
+           * quasi-static strain rate.
            */
           double quasi_static_strain_rate;
 
           /**
-           * Whether to include radiation damping as a representation of energy outflow due to
-           * seismic waves.
-           */
-          bool use_radiation_damping;
-
-          /**
-           * Parsed functions that specify a and b depth-dependence when using the Function
-           * method.
+           * Parsed functions that specify the rate-and-state parameters a and b which must be
+           * given in the input file using the function method.
            */
           std::unique_ptr<Functions::ParsedFunction<dim> > rate_and_state_parameter_a_function;
           std::unique_ptr<Functions::ParsedFunction<dim> > rate_and_state_parameter_b_function;
 
           /**
-           * The coordinate representation to evaluate the function. Possible
-           * choices are depth, cartesian and spherical.
+           * The coordinate representation to evaluate the functions for a, b, and critical slip
+           * distance L. Possible choices are depth, cartesian and spherical.
            */
-          Utilities::Coordinates::CoordinateSystem coordinate_system_a;
-          Utilities::Coordinates::CoordinateSystem coordinate_system_b;
-          Utilities::Coordinates::CoordinateSystem coordinate_system_L;
+          Utilities::Coordinates::CoordinateSystem coordinate_system_RSF;
 
           /**
-           * Slip rate dependent rate and state friction
+           * Slip-rate dependent rate-and-state friction
            */
 
           /**
-           * Reference velocity for slip rate dependence of rate and state parameter a.
+           * Reference velocity for slip-rate dependence of rate-and-state parameter a.
            */
           double ref_v_for_a;
 
           /**
-           * Reference velocity for slip rate dependence of the critical slip distance.
+           * Reference velocity for slip-rate dependence of the critical slip distance.
            */
           double ref_v_for_L;
 
           /**
-           * Slope for the log linear slip rate dependence of rate and state parameter a.
+           * Slope for the log linear slip-rate dependence of rate-and-state parameter a.
            */
           double slope_s_for_a;
 
           /**
-           * Slope for the log linear slip rate dependence of the critical slip distance.
+           * Slope for the log linear slip-rate dependence of the critical slip distance.
            */
           double slope_s_for_L;
       };

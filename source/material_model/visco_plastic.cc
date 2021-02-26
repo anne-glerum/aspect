@@ -304,7 +304,7 @@ namespace aspect
                 }
 
               // Update the state variable theta if used
-              if (rheology->friction_options.get_use_theta())
+              if (rheology->friction_options.use_theta())
                 {
                   const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
                                                         (in.strain_rate[i].norm() <= std::numeric_limits<double>::min());

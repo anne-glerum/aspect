@@ -44,7 +44,7 @@ namespace aspect
 
         // if rate and state friction is used make more additional outputs
 // TODO: how can I only create these when RSF is used? I tried:
-//        if (rheology->friction_options.get_use_theta())
+//        if (rheology->friction_options.use_theta())
 // but then the error occured: rheology was not declared in this scope
 // when I declare it with:
 //       Rheology::FrictionOptions<dim>::declare_parameters (prm);
@@ -80,7 +80,7 @@ namespace aspect
       // TODO: is there a more elegant way to only get those outputs when RSF is used and still maintain the asserts?
       // TODO: this should have been the following, but that gave me: error: 'else' without a previous 'if'
       /*
-            if (friction_options.get_use_theta())
+            if (friction_options.use_theta())
               AssertIndexRange (idx, 6);
             else
               AssertIndexRange (idx, 3);
@@ -117,7 +117,7 @@ namespace aspect
 
           case 3:
           {
-            if (friction_options.get_use_theta())
+            if (friction_options.use_theta())
               return RSF_a;
             else
               AssertThrow(false, ExcInternalError());
@@ -125,7 +125,7 @@ namespace aspect
 
           case 5:
           {
-            if (friction_options.get_use_theta())
+            if (friction_options.use_theta())
               return RSF_b;
             else
               AssertThrow(false, ExcInternalError());
@@ -133,7 +133,7 @@ namespace aspect
 
           case 6:
           {
-            if (friction_options.get_use_theta())
+            if (friction_options.use_theta())
               return RSF_L;
             else
               AssertThrow(false, ExcInternalError());
@@ -396,7 +396,7 @@ namespace aspect
             // As current stress is only used to compare to yield stress but does not affect material properties,
             // it is used here to modify effective_edot_ii
             double radiation_damping_term = 0.0;
-            if (friction_options.get_use_radiation_damping())
+            if (friction_options.use_radiation_damping)
               {
                 if (use_elasticity == false)
                   {
@@ -478,7 +478,7 @@ namespace aspect
                 case tresca:
                 {
                   if ((current_stress >= yield_stress) |
-                      ((friction_options.get_use_theta()) && (j== friction_options.fault_composition_index + 1)))
+                      ((friction_options.use_theta()) && (j== friction_options.fault_composition_index + 1)))
                     {
                       // This is according to \\cite{erickson_community_2020}, a benchmark paper for
                       // rate-and-state friction models. They state state that
@@ -665,7 +665,7 @@ namespace aspect
 
         // If friction is defined state dependent, the material field for the state variable theta
         // must be excluded during volume fraction computation.
-        if (friction_options.get_use_theta())
+        if (friction_options.use_theta())
           composition_mask.set(friction_options.theta_composition_index,false);
 
         return composition_mask;
@@ -971,7 +971,7 @@ namespace aspect
               }
 
             // if rate and state friction is used, the additional output fields must be filled
-            if (friction_options.get_use_theta())
+            if (friction_options.use_theta())
               {
                 plastic_out->RSF_a[i] = 0;
                 plastic_out->RSF_b[i] = 0;

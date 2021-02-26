@@ -38,7 +38,7 @@ namespace aspect
       double
       FrictionOptions<dim>::
       compute_dependent_friction_angle(const double current_edot_ii,
-                                       const unsigned int j,  // j is from a for-loop over volume fractions
+                                       const unsigned int j,  // j is from a for-loop over volume_fractions.size()
                                        const std::vector<double> &composition,
                                        typename DoFHandler<dim>::active_cell_iterator current_cell,
                                        double current_friction,
@@ -180,7 +180,7 @@ namespace aspect
                 }
               break;
             }
-            case regularized_rate_and_state_friction:
+            case regularized_rate_and_state_dependent_friction:
             {
               // TODO as the cell size is used to compute the slip velocity as cell_size * strain_rate,
               //  come up with a better representation of the slip length.
@@ -227,19 +227,6 @@ namespace aspect
         if (current_friction < 1e-30)
           current_friction = 1e-30;
         return current_friction;
-      }
-
-
-
-      template <int dim>
-      ComponentMask
-      FrictionOptions<dim>::
-      get_theta_composition_mask(ComponentMask composition_mask) const
-      {
-        // Exlude compmositional field "theta" during the volume fraction computation.
-        const unsigned int theta_composition_index = this->introspection().compositional_index_for_name("theta");
-        composition_mask.set(theta_composition_index,false);
-        return composition_mask;
       }
 
 
@@ -321,9 +308,9 @@ namespace aspect
       FrictionOptions<dim>::calculate_depth_dependent_a_and_b(const Point<dim> &position, const int j) const
       {
         Utilities::NaturalCoordinate<dim> point_a =
-          this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_a);
+          this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF);
         Utilities::NaturalCoordinate<dim> point_b =
-          this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_b);
+          this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF);
 
         const double rate_and_state_parameter_a =
           rate_and_state_parameter_a_function->value(Utilities::convert_array_to_point<dim>(point_a.get_coordinates()),j);
@@ -341,7 +328,7 @@ namespace aspect
       FrictionOptions<dim>::get_critical_slip_distance(const Point<dim> &position, const int j) const
       {
         Utilities::NaturalCoordinate<dim> point =
-          this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_L);
+          this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF);
 
         const double critical_slip_distance =
           critical_slip_distance_function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),j);
@@ -367,26 +354,17 @@ namespace aspect
       template <int dim>
       bool
       FrictionOptions<dim>::
-      get_use_theta() const
+      use_theta() const
       {
         bool use_theta = false;
         // TODO add the RSF options
         if ((get_friction_dependence_mechanism() == rate_and_state_dependent_friction)
-            | (get_friction_dependence_mechanism() == regularized_rate_and_state_friction)
-            | (get_friction_dependence_mechanism() == slip_rate_dependent_rate_and_state_dependent_friction))
+            || (get_friction_dependence_mechanism() == rate_and_state_dependent_friction_plus_linear_slip_weakening)
+            || (get_friction_dependence_mechanism() == regularized_rate_and_state_dependent_friction)
+            || (get_friction_dependence_mechanism() == slip_rate_dependent_rate_and_state_dependent_friction))
           use_theta = true;
 
         return use_theta;
-      }
-
-
-
-      template <int dim>
-      bool
-      FrictionOptions<dim>::
-      get_use_radiation_damping() const
-      {
-        return use_radiation_damping;
       }
 
 
@@ -399,7 +377,7 @@ namespace aspect
                            Patterns::Selection("none|dynamic friction|rate and state dependent friction|"
                                                "rate and state dependent friction plus linear slip weakening|"
                                                "slip rate dependent rate and state dependent friction|"
-                                               "regularized rate and state friction"),
+                                               "regularized rate and state dependent friction"),
                            "Whether to apply a rate or rate and state dependence of the friction angle. This can "
                            "be used to obtain stick-slip motion to simulate earthquake-like behaviour, "
                            "where short periods of high-velocities are seperated by longer periods without "
@@ -448,7 +426,7 @@ namespace aspect
                            "In ASPECT the initial values $a_0$ and $L_0$ are the rate and state friction parameters "
                            "indicated in 'Critical slip distance' and 'Rate and state parameter a function'."
                            "\n\n"
-                           "\\item ``regularized rate and state friction'': The friction coefficient is computed using: "
+                           "\\item ``regularized rate and state dependent friction'': The friction coefficient is computed using: "
                            "$\\mu = a\\cdot sinh^{-1}\\left[\\frac{V}{2V_0}exp\\left(\\frac{\\mu_0+b\cdot ln(V_0\theta/L)}{a}\\right)\\right]$ "
                            "This is a high velocity approxiamtion and regularized version of the classic rate and state friction. "
                            "This formulation overcomes the problem of ill-posedness and the possibility of negative friction for "
@@ -483,47 +461,31 @@ namespace aspect
                            "the change between static and dynamic friction angle more steplike. "
                            "Units: none.");
 
+        /**
+         * The functions for the rate-and-state parameters a and b, and the critical
+         * slip distance use the same coordinate system. They can be declared in dependence
+         * of depth, cartesian coordinates or spherical coordinates. Note that the order
+         * of spherical coordinates is r,phi,theta and not r,theta,phi, since
+         * this allows for dimension independent expressions.
+         */
+        prm.declare_entry ("Coordinate system for RSF parameters", "cartesian",
+                           Patterns::Selection ("cartesian|spherical|depth"),
+                           "A selection that determines the assumed coordinate "
+                           "system for the function variables. Allowed values "
+                           "are `cartesian', `spherical', and `depth'. `spherical' coordinates "
+                           "are interpreted as r,phi or r,phi,theta in 2D/3D "
+                           "respectively with theta being the polar angle. `depth' "
+                           "will create a function, in which only the first "
+                           "parameter is non-zero, which is interpreted to "
+                           "be the depth of the point.");
+
         prm.enter_subsection("Rate and state parameter a function");
         {
-          /**
-           * The function can be declared in dependence of depth,
-           * cartesian coordinates or spherical coordinates. Note that the order
-           * of spherical coordinates is r,phi,theta and not r,theta,phi, since
-           * this allows for dimension independent expressions.
-           */
-          prm.declare_entry ("Coordinate system", "cartesian",
-                             Patterns::Selection ("cartesian|spherical|depth"),
-                             "A selection that determines the assumed coordinate "
-                             "system for the function variables. Allowed values "
-                             "are `cartesian', `spherical', and `depth'. `spherical' coordinates "
-                             "are interpreted as r,phi or r,phi,theta in 2D/3D "
-                             "respectively with theta being the polar angle. `depth' "
-                             "will create a function, in which only the first "
-                             "parameter is non-zero, which is interpreted to "
-                             "be the depth of the point.");
-
           Functions::ParsedFunction<dim>::declare_parameters(prm,1);
         }
         prm.leave_subsection();
         prm.enter_subsection("Rate and state parameter b function");
         {
-          /**
-           * The function can be declared in dependence of depth,
-           * cartesian coordinates or spherical coordinates. Note that the order
-           * of spherical coordinates is r,phi,theta and not r,theta,phi, since
-           * this allows for dimension independent expressions.
-           */
-          prm.declare_entry ("Coordinate system", "cartesian",
-                             Patterns::Selection ("cartesian|spherical|depth"),
-                             "A selection that determines the assumed coordinate "
-                             "system for the function variables. Allowed values "
-                             "are `cartesian', `spherical', and `depth'. `spherical' coordinates "
-                             "are interpreted as r,phi or r,phi,theta in 2D/3D "
-                             "respectively with theta being the polar angle. `depth' "
-                             "will create a function, in which only the first "
-                             "parameter is non-zero, which is interpreted to "
-                             "be the depth of the point.");
-
           Functions::ParsedFunction<dim>::declare_parameters(prm,1);
         }
         prm.leave_subsection();
@@ -564,23 +526,6 @@ namespace aspect
         */
         prm.enter_subsection("Critical slip distance function");
         {
-          /**
-           * The function can be declared in dependence of depth,
-           * cartesian coordinates or spherical coordinates. Note that the order
-           * of spherical coordinates is r,phi,theta and not r,theta,phi, since
-           * this allows for dimension independent expressions.
-           */
-          prm.declare_entry ("Coordinate system", "cartesian",
-                             Patterns::Selection ("cartesian|spherical|depth"),
-                             "A selection that determines the assumed coordinate "
-                             "system for the function variables. Allowed values "
-                             "are `cartesian', `spherical', and `depth'. `spherical' coordinates "
-                             "are interpreted as r,phi or r,phi,theta in 2D/3D "
-                             "respectively with theta being the polar angle. `depth' "
-                             "will create a function, in which only the first "
-                             "parameter is non-zero, which is interpreted to "
-                             "be the depth of the point.");
-
           Functions::ParsedFunction<dim>::declare_parameters(prm,1);
         }
         prm.leave_subsection();
@@ -660,15 +605,12 @@ namespace aspect
           friction_dependence_mechanism = rate_and_state_dependent_friction_plus_linear_slip_weakening;
         else if (prm.get ("Friction dependence mechanism") == "slip rate dependent rate and state dependent friction")
           friction_dependence_mechanism = slip_rate_dependent_rate_and_state_dependent_friction;
-        else if (prm.get ("Friction dependence mechanism") == "regularized rate and state friction")
-          friction_dependence_mechanism = regularized_rate_and_state_friction;
+        else if (prm.get ("Friction dependence mechanism") == "regularized rate and state dependent friction")
+          friction_dependence_mechanism = regularized_rate_and_state_dependent_friction;
         else
           AssertThrow(false, ExcMessage("Not a valid friction dependence option!"));
 
-        if ((friction_dependence_mechanism == slip_rate_dependent_rate_and_state_dependent_friction)
-            |(friction_dependence_mechanism == regularized_rate_and_state_friction)
-            |(friction_dependence_mechanism == rate_and_state_dependent_friction_plus_linear_slip_weakening)
-            |( friction_dependence_mechanism == rate_and_state_dependent_friction))
+        if (use_theta())
           {
             // Currently, it only makes sense to use a state variable when the nonlinear solver
             // scheme does a single Advection iteration and at minimum one Stokes iteration, as
@@ -729,9 +671,6 @@ namespace aspect
 
         //critical_slip_distance = prm.get_double("Critical slip distance");
         prm.enter_subsection("Critical slip distance function");
-        {
-          coordinate_system_L = Utilities::Coordinates::string_to_coordinate_system(prm.get("Coordinate system"));
-        }
         try
           {
             critical_slip_distance_function
@@ -754,10 +693,9 @@ namespace aspect
 
         use_radiation_damping = prm.get_bool("Use radiation damping");
 
+        coordinate_system_RSF = Utilities::Coordinates::string_to_coordinate_system(prm.get("Coordinate system for RSF parameters"));
+
         prm.enter_subsection("Rate and state parameter a function");
-        {
-          coordinate_system_a = Utilities::Coordinates::string_to_coordinate_system(prm.get("Coordinate system"));
-        }
         try
           {
             rate_and_state_parameter_a_function
@@ -775,9 +713,6 @@ namespace aspect
         prm.leave_subsection();
 
         prm.enter_subsection("Rate and state parameter b function");
-        {
-          coordinate_system_b = Utilities::Coordinates::string_to_coordinate_system(prm.get("Coordinate system"));
-        }
         try
           {
             rate_and_state_parameter_b_function
@@ -804,7 +739,7 @@ namespace aspect
 
         slope_s_for_L = prm.get_double("Slope of log dependence for critical slip distance L");
 
-        if (get_use_theta())
+        if (use_theta())
           {
             // TODO: make this a bit more flexible name-wise, like let the user define which materials should be
             // considered. Or which strategy. Could also be all, or take a and b as a proxy.
