@@ -465,8 +465,10 @@ namespace aspect
                   // assume that we are always yielding
                   // TODO: always yielding should be done where faut has > 70 or so volume percentage. Can be circumvented
                   // right now by using max composition for viscosity averaging
-                  if ((non_yielding_stress >= yield_stress) ||
-                      ((friction_options.use_theta()) && (j== friction_options.fault_composition_index + 1)))
+                  if ((non_yielding_stress >= yield_stress)
+                      || (friction_options.use_theta()
+                          && (j== friction_options.fault_composition_index + 1)
+                          && friction_options.use_always_yielding))
                     {
                       effective_viscosity = drucker_prager_plasticity.compute_viscosity(current_cohesion,
                                                                                         output_parameters.current_friction_angles[j],
@@ -490,10 +492,12 @@ namespace aspect
                                                 * current_cell->extent_in_direction(0) - radiation_damping_term;
                   // TODO: always yielding should be done where faut has > 70 or so volume percentage. Can be circumvented
                   // right now by using max composition for viscosity averaging
-                  if ((current_stress >= fault_strength) ||
-                      ((friction_options.use_theta()) && (j== friction_options.fault_composition_index + 1)))
+                  if ((current_stress >= fault_strength)
+                      || (friction_options.use_theta()
+                          && (j== friction_options.fault_composition_index + 1)
+                          && friction_options.use_always_yielding))
                     {
-                      // I had put this line ere, buut during revision Anne suggested to remove it:
+                      // I had put this line here, but during revision Anne suggested to remove it:
                       // current_edot_ii = fault_strength / (2.0 * viscosity_pre_yield);
 
                       // these two lines are from drucker_prager_plasticity.compute_viscosity()

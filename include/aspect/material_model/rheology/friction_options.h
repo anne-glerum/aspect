@@ -182,6 +182,11 @@ namespace aspect
            */
           bool use_radiation_damping;
 
+          /**
+           * Whether to assume always yielding in the fault material.
+           */
+          bool use_always_yielding;
+
         private:
           /**
            * Input parameters for the drucker prager plasticity.

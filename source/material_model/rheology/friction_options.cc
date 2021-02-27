@@ -547,6 +547,12 @@ namespace aspect
                            "earthquakes. It therewith assures that the governing equations continue to have a solution "
                            "during earthquakelike episodes. Unlike an inertial term it cannot be used to model rupture "
                            "propagation as it approximates seismic waves as energy outflow only. ");
+
+        prm.declare_entry ("Use always yielding", "false",
+                           Patterns::Bool (),
+                           "Whether to assume always yielding for the compositional field 'fault'. In the "
+                           "rate-and-state friction framework material is assumed to always be at yield. ");
+
         /* TODO:
         prm.declare_entry ("Friction state variable law", "aging law",
                           Patterns::Selection ("aging law|slip law"),
@@ -685,6 +691,8 @@ namespace aspect
         effective_normal_stress_on_fault = prm.get_double("Effective normal stress on fault");
 
         use_radiation_damping = prm.get_bool("Use radiation damping");
+
+        use_always_yielding = prm.get_bool("Use always yielding");
 
         coordinate_system_RSF = Utilities::Coordinates::string_to_coordinate_system(prm.get("Coordinate system for RSF parameters"));
 
