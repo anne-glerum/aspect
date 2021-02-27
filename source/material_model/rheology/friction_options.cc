@@ -64,6 +64,8 @@ namespace aspect
                                                                 / (1. + std::pow((current_edot_ii / dynamic_characteristic_strain_rate),
                                                                                  dynamic_friction_smoothness_exponent)));
               current_friction = std::atan (mu);
+              Assert((mu < 1) && (0 < current_friction <=1.6), ExcMessage(
+                       "Something is wrong with the tan/atan conversion of friction coefficient to friction angle in RAD."));
               break;
             }
             // default is for case rate_and_state_dependent_friction with the other rate-and-state variations as if statements
@@ -147,6 +149,8 @@ namespace aspect
                   // All equations for the different friction options are for friction coefficient, while
                   // ASPECT takes friction angle in radians, so conversion with tan/atan().
                   current_friction = std::atan (mu);
+                  Assert((mu < 1) && (0 < current_friction <=1.6), ExcMessage(
+                           "Something is wrong with the tan/atan conversion of friction coefficient to friction angle in RAD"));
 
                   /*// chasing the origin of negative friction angles
                   if (theta <= 0)
