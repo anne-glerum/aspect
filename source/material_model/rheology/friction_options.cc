@@ -107,13 +107,15 @@ namespace aspect
                           // Calculate regularized rate and state friction (e.g. Herrendörfer 2018) with
                           // mu = a sinh^{-1}[V/(2V_0)exp((mu_0 + b ln(V_0 theta/L))/a)]
                           // Their equation is for friction coefficient.
-                          // Effective friction is explained below for the other frictino option.
+                          // As we use strain-rates and current_edot_ii instead of velocities, these
+                          // are multiplied by the cellsize.
+                          // Effective friction is explained below for the other friction option.
                           mu = effective_friction_factor[j]
                                * (rate_and_state_parameter_a
-                                  * std::asinh((current_edot_ii * cellsize ) / (2.0 * quasi_static_strain_rate)
+                                  * std::asinh(current_edot_ii / (2.0 * quasi_static_strain_rate)
                                                * std::exp((std::tan(current_friction)
                                                            + rate_and_state_parameter_b
-                                                           * std::log((theta * quasi_static_strain_rate ) / critical_slip_distance))
+                                                           * std::log((theta * quasi_static_strain_rate * cellsize) / critical_slip_distance))
                                                           / rate_and_state_parameter_a)));
                         }
                       else
@@ -131,9 +133,9 @@ namespace aspect
                       mu = effective_friction_factor[j]
                            * (std::tan(current_friction)
                               + rate_and_state_parameter_a
-                              * std::log((current_edot_ii * cellsize ) / quasi_static_strain_rate)
+                              * std::log(current_edot_ii / quasi_static_strain_rate)
                               + rate_and_state_parameter_b
-                              * std::log((theta * quasi_static_strain_rate ) / critical_slip_distance));
+                              * std::log((theta * quasi_static_strain_rate  * cellsize) / critical_slip_distance));
 
                       /* TODO: from Sobolev and Muldashev appendix.
                       if (friction_dependence_mechanism == rate_and_state_dependent_friction_plus_linear_slip_weakening)
@@ -145,7 +147,7 @@ namespace aspect
                   // All equations for the different friction options are for friction coefficient, while
                   // ASPECT takes friction angle in radians, so conversion with tan/atan().
                   current_friction = std::atan (mu);
-                  
+
                   /*// chasing the origin of negative friction angles
                   if (theta <= 0)
                     {
@@ -324,7 +326,7 @@ namespace aspect
                                                "rate and state dependent friction plus linear slip weakening|"
                                                "slip rate dependent rate and state dependent friction|"
                                                "regularized rate and state dependent friction"),
-                           "Whether to apply a rate or rate and state dependence of the friction angle. This can "
+                           "Whether to apply a rate or rate-and-state dependence of the friction angle. This can "
                            "be used to obtain stick-slip motion to simulate earthquake-like behaviour, "
                            "where short periods of high-velocities are separated by longer periods without "
                            "movement."
@@ -335,11 +337,13 @@ namespace aspect
                            "When dynamic angles of friction are specified, "
                            "the friction angle will be weakened for high strain rates with: "
                            "$\\mu = \\mu_d + \\frac(\\mu_s-\\mu_d)(1+(\\frac(\\dot{\\epsilon}_{ii})(\\dot{\\epsilon}_C)))^x$  "
-                           "where $\mu_s$ and $\mu_d$ are the friction angle at low and high strain rates, "
+                           "where $\\mu_s$ and $\\mu_d$ are the friction angle at low and high strain rates, "
                            "respectively. $\\dot{\\epsilon}_{ii}$ is the second invariant of the strain rate and "
                            "$\\dot{\\epsilon}_C$ is the characterisitc strain rate where $\\mu = (\\mu_s+\\mu_d)/2$. "
-                           "x controls how smooth or step-like the change from $\mu_s$ to $\\mu_d$ is. "
+                           "x controls how smooth or step-like the change from $\\mu_s$ to $\\mu_d$ is. "
                            "The equation is modified after Equation (13) in \\cite{van_dinther_seismic_2013}. "
+                           "$\\mu_s$ and $\\mu_d$ can be specified by setting 'Angles of internal friction' and "
+                           "'Dynamic angles of internal friction', respectively."
                            "\n\n"
                            "\\item ``rate and state dependent friction'': A state variable theta is introduced "
                            "and the friction angle is calculated using classic aging rate-and-state friction by "
@@ -350,9 +354,26 @@ namespace aspect
                            "$\\Theta_{n+1} = \\frac{L}{V_{n+1}} + \big(\\Theta_n - \\frac{L}{V_{n+1}}\\big)*exp\\big(-\\frac{V_{n+1}\\Delta t}{L}\\big)$.\n"
                            "Pore fluid pressure can be taken into account by specifying the 'Effective friction "
                            "factor', which uses $\\mu* = \\mu\\big(1-\\frac{P_f}{\\sigma_n} \\big)$. "
-                           "Reasonable values for a and b are 0.01 and 0.015, respectively, see \\cite{sobolev_modeling_2017}. "
                            "In ASPECT the state variable is confined to values > 1e-50: if it becomes $<1e-50$ during the computation "
                            "it is set to 1e-50. The same applies to the friction angle which is set to 1e-30 if smaller than that. "
+                           "The term $a \\cdot ln\\big( \\frac{V}{V_{st}} \\big)$ is often referred to as the instantaneous 'viscosity-like' "
+                           "direct effect, and the rate-and-state parameter a describes its magnitude. "
+                           "The term b \\cdot ln\\big( \\frac{\\Theta V_{st}}{L} \\big)$ is referred to as the evolution effect as it is described "
+                           "by the evolving state variable $\\Theta$. The magnitude of the evolution effect is determined by the "
+                           "rate-and-state parameter b. See \\cite{herrendorfer_invariant_2018} for a comprehensive explanation of all parameters. "
+                           "Reasonable values for a and b are 0.01 and 0.015, respectively, see \\cite{sobolev_modeling_2017}. "
+                           "The critical slip distance L in rate-and-state friction is used to calculate the "
+                           "state variable theta using the aging law: $\\frac{d\\Theta}{dt}=1-\\frac{\\Theta V}{L}$. "
+                           "At steady state: $\\Theta = \\frac{L}{V} $. The critical slip distance "
+                           "is often interpreted as the sliding distance required to renew "
+                           "the contact population as it determines the critical nucleation size with: "
+                           "$h*=\\frac{2}{\\pi}\\frac{\\mu b L}{(b-a)^2 \\sigma_n}, where $\\sigma_n$ is the normal stress on the fault. "
+                           "Laboratory values of the critical slip distance are on the "
+                           "order of microns. For geodynamic modelling \\cite{sobolev_modeling_2017} set this parameter "
+                           "to 1--10 cm. In the SCEC-SEAS benchmark initiative \\citep{erickson_community_2020} they use 4 and 8 mm. "
+                           "This parameter should be changed when the level of mesh refinement de- or increases. "
+                           "I has the Unit: \\si{\\meter}."
+                           "The parameters a, b, and the critical slip distance L are specified as functions in a separate subsections."
                            "\n\n"
                            "\\item ``rate and state dependent friction plus linear slip weakening'': ToDo: all, this is an empty model atm. "
                            "Method taken from \\cite{sobolev_modeling_2017}. The friction coefficient is computed as "
@@ -370,10 +391,10 @@ namespace aspect
                            "$L_0=10\\mu m$, $s_L=60\\mu m$, $V_L=100\\mu m/s$ and "
                            "$a_0=0.005$, $s_a=0.0003$, $V_a=100\\mu m/s$. "
                            "In ASPECT the initial values $a_0$ and $L_0$ are the rate-and-state friction parameters "
-                           "indicated in 'Critical slip distance' and 'Rate and state parameter a function'."
+                           "indicated in 'Critical slip distance function' and 'Rate and state parameter a function'."
                            "\n\n"
                            "\\item ``regularized rate and state dependent friction'': The friction coefficient is computed using: "
-                           "$\\mu = a\\cdot sinh^{-1}\\left[\\frac{V}{2V_0}exp\\left(\\frac{\\mu_0+b\cdot ln(V_0\theta/L)}{a}\\right)\\right]$ "
+                           "$\\mu = a\\cdot sinh^{-1}\\left[\\frac{V}{2V_0}exp\\left(\\frac{\\mu_0+b\\cdot ln(V_0\theta/L)}{a}\\right)\\right]$ "
                            "This is a high velocity approximation and regularized version of the classic rate-and-state friction. "
                            "This formulation overcomes the problem of ill-posedness and the possibility of negative friction for "
                            "$V<<V_0$. It is for example used in \\cite{herrendorfer_invariant_2018}. ");
@@ -389,13 +410,12 @@ namespace aspect
                            "angle. "
                            "Units: \\si{\\per\\second}.");
 
-        prm.declare_entry ("Dynamic angles of internal friction", "9999",
+        prm.declare_entry ("Dynamic angles of internal friction", "2",
                            Patterns::List(Patterns::Double(0)),
                            "List of dynamic angles of internal friction, $\\phi$, for background material and compositional "
                            "fields, for a total of N+1 values, where N is the number of compositional fields. "
                            "Dynamic angles of friction are used as the current friction angle when the effective "
-                           "strain rate in a cell is well above the characteristic strain rate. If not specified, "
-                           "the internal angles of friction are taken. "
+                           "strain rate in a cell is well above the characteristic strain rate. "
                            "Units: \\si{\\degree}.");
 
         prm.declare_entry ("Dynamic friction smoothness exponent", "1",
@@ -453,23 +473,6 @@ namespace aspect
                            "is specified in the input file. "
                            "Units: Pa.");
 
-        /*
-                prm.declare_entry ("Critical slip distance", "0.01",
-                                   Patterns::List(Patterns::Double(0)),
-                                   "The critical slip distance in rate and state friction. It is used to calculate the "
-                                   "state variable theta using the aging law: $\\frac{d\\Theta}{dt}=1-\\frac{\\Theta V}{L}$. "
-                                   "At steady state: $\\Theta = \\frac{L}{V} $. The critical slip distance "
-                                   "is often interpreted as the sliding distance required to renew "
-                                   "the contact population as it determines the critical nucleation size with: "
-                                   "$h*=\\frac{2}{\\pi}\\frac{\\mu b L}{(b-a)^2 \\sigma_n}, where L is the critical slip "
-                                   "distance, a and b are parameters to describe the rate and state dependence, $\\mu$ "
-                                   "is the friction coefficient, and $\\sigma_n$ is the normal stress on the fault. "
-                                   "Laboratory values of the critical slip distance are on the "
-                                   "order of microns. For geodynamic modelling \\cite{sobolev_modeling_2017} set this parameter "
-                                   "to 1--10 cm. In the SEAS benchmark \\citep{erickson_community_2020} they use 4 and 8 mm. "
-                                   "This parameter should be changed when the level of mesh refinement de- or increases. "
-                                   "Units: \\si{\\meter}.");
-        */
         prm.enter_subsection("Critical slip distance function");
         {
           Functions::ParsedFunction<dim>::declare_parameters(prm,1);
@@ -590,23 +593,14 @@ namespace aspect
         // Dynamic friction parameters
         dynamic_characteristic_strain_rate = prm.get_double("Dynamic characteristic strain rate");
 
-        if (prm.get ("Dynamic angles of internal friction") == "9999")
+        dynamic_angles_of_internal_friction = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Dynamic angles of internal friction"))),
+                                                                                      n_fields,
+                                                                                      "Dynamic angles of internal friction");
+        // Convert angles from degrees to radians
+        for (unsigned int i = 0; i<dynamic_angles_of_internal_friction.size(); ++i)
           {
-            // If not specified, the internal angles of friction are used, so there is no dynamic friction in the model
-            dynamic_angles_of_internal_friction = drucker_prager_parameters.angles_internal_friction;
-          }
-        else
-          {
-            dynamic_angles_of_internal_friction = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Dynamic angles of internal friction"))),
-                                                                                          n_fields,
-                                                                                          "Dynamic angles of internal friction");
-
-            // Convert angles from degrees to radians
-            for (unsigned int i = 0; i<dynamic_angles_of_internal_friction.size(); ++i)
-              {
-                AssertThrow(dynamic_angles_of_internal_friction[i] <= 90, ExcMessage("Dynamic angles of friction must be <= 90 degrees"));
-                dynamic_angles_of_internal_friction[i] *= numbers::PI/180.0;
-              }
+            AssertThrow(dynamic_angles_of_internal_friction[i] <= 90, ExcMessage("Dynamic angles of friction must be <= 90 degrees"));
+            dynamic_angles_of_internal_friction[i] *= numbers::PI/180.0;
           }
 
         dynamic_friction_smoothness_exponent = prm.get_double("Dynamic friction smoothness exponent");
@@ -616,7 +610,6 @@ namespace aspect
                                                                             n_fields,
                                                                             "Effective friction factor");
 
-        //critical_slip_distance = prm.get_double("Critical slip distance");
         prm.enter_subsection("Critical slip distance function");
         try
           {

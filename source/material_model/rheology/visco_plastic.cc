@@ -402,8 +402,8 @@ namespace aspect
 
                 // TODO: use the plastic strain rate instead of effective_edot_ii
                 // TODO: more elaborate way to determine cellsize
-                // TODO: this is not exactly the right way to get the density, as it i only reference densities.
-                // ideally, you would take the actual densities from out.densities[I],
+                // TODO: this is not exactly the right way to get the density, as it is only reference densities.
+                // Anne said once: ideally, you would take the actual densities from out.densities[I],
                 // i.e. computed as out.densities[i] = MaterialUtilities::average_value (volume_fractions, eos_outputs.densities, MaterialUtilities::arithmetic);
                 // but at the moment I don't have access to out in this function
                 const double reference_density = this->get_adiabatic_conditions().density(in.position[0]);
