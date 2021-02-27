@@ -32,6 +32,63 @@ namespace aspect
 {
   namespace MaterialModel
   {
+    namespace
+    {
+      std::vector<std::string> make_friction_additional_outputs_names()
+      {
+        std::vector<std::string> names;
+        names.emplace_back("RSF_a");
+        names.emplace_back("RSF_b");
+        names.emplace_back("RSF_L");
+        names.emplace_back("edot_ii");
+        return names;
+      }
+    }
+
+
+
+    template <int dim>
+    FrictionAdditionalOutputs<dim>::FrictionAdditionalOutputs (const unsigned int n_points)
+      :
+      NamedAdditionalMaterialOutputs<dim>(make_friction_additional_outputs_names()),
+      RSF_a(n_points, numbers::signaling_nan<double>()),
+      RSF_b(n_points, numbers::signaling_nan<double>()),
+      RSF_L(n_points, numbers::signaling_nan<double>()),
+      edot_ii(n_points, numbers::signaling_nan<double>())
+    {}
+
+
+
+    template <int dim>
+    std::vector<double>
+    FrictionAdditionalOutputs<dim>::get_nth_output(const unsigned int idx) const
+    {
+      (void)idx; // suppress warning in release mode
+      /*
+      TODO:
+      I copied this from elasticity.cc. However I get this warning during 'make':
+      /home/hecken/code/aspect/source/material_model/rheology/friction_options.cc: In member function ‘std::vector<double, std::allocator<double> > aspect::MaterialModel::FrictionAdditionalOutputs<dim>::get_nth_output(unsigned int) const [with int dim = 3]’:
+      /home/hecken/code/aspect/source/material_model/rheology/friction_options.cc:82:5: warning: control reaches end of non-void function [-Wreturn-type]
+      */
+      AssertIndexRange (idx, 4);
+      switch (idx)
+        {
+          case 0:
+            return RSF_a;
+
+          case 1:
+            return RSF_b;
+
+          case 2:
+            return RSF_L;
+
+          case 3:
+            return edot_ii;
+        }
+    }
+
+
+
     namespace Rheology
     {
       template <int dim>
@@ -352,36 +409,38 @@ namespace aspect
                            "\\item ``rate and state dependent friction'': A state variable theta is introduced "
                            "and the friction angle is calculated using classic aging rate-and-state friction by "
                            "Ruina (1983) as described by Equations (4--7) in \\cite{sobolev_modeling_2017}:\n"
-                           "$\\mu = \\mu_{st} + a \\cdot ln\\big( \\frac{V}{V_{st}} \\big) + b \\cdot ln\\big( \\frac{\\Theta V_{st}}{L} \\big)$,\n"
-                           "$\\frac{d\\Theta}{dt} = 1-\\frac{\\Theta V}{L} $.\n"
+                           "$\\mu = \\mu_{st} + a \\cdot ln\\big( \\frac{V}{V_{st}} \\big) + b \\cdot ln\\big( \\frac{\\theta V_{st}}{L} \\big)$,\n"
+                           "$\\frac{d\\theta}{dt} = 1-\\frac{\\theta V}{L} $.\n"
                            "Assuming that velocities are constant at any time step, this can be analytically integrated: \n"
-                           "$\\Theta_{n+1} = \\frac{L}{V_{n+1}} + \big(\\Theta_n - \\frac{L}{V_{n+1}}\\big)*exp\\big(-\\frac{V_{n+1}\\Delta t}{L}\\big)$.\n"
+                           "$\\theta_{n+1} = \\frac{L}{V_{n+1}} + \\big(\\theta_n - \\frac{L}{V_{n+1}}\\big)*exp\\big(-\\frac{V_{n+1}\\Delta t}{L}\\big)$.\n"
                            "Pore fluid pressure can be taken into account by specifying the 'Effective friction "
                            "factor', which uses $\\mu* = \\mu\\big(1-\\frac{P_f}{\\sigma_n} \\big)$. "
                            "In ASPECT the state variable is confined to values > 1e-50: if it becomes $<1e-50$ during the computation "
                            "it is set to 1e-50. The same applies to the friction angle which is set to 1e-30 if smaller than that. "
                            "The term $a \\cdot ln\\big( \\frac{V}{V_{st}} \\big)$ is often referred to as the instantaneous 'viscosity-like' "
                            "direct effect, and the rate-and-state parameter a describes its magnitude. "
-                           "The term b \\cdot ln\\big( \\frac{\\Theta V_{st}}{L} \\big)$ is referred to as the evolution effect as it is described "
-                           "by the evolving state variable $\\Theta$. The magnitude of the evolution effect is determined by the "
+                           "The term $b \\cdot ln\\big( \\frac{\\theta V_{st}}{L} \\big)$ is referred to as the evolution effect as it is described "
+                           "by the evolving state variable $\\theta$. The magnitude of the evolution effect is determined by the "
                            "rate-and-state parameter b. See \\cite{herrendorfer_invariant_2018} for a comprehensive explanation of all parameters. "
                            "Reasonable values for a and b are 0.01 and 0.015, respectively, see \\cite{sobolev_modeling_2017}. "
                            "The critical slip distance L in rate-and-state friction is used to calculate the "
-                           "state variable theta using the aging law: $\\frac{d\\Theta}{dt}=1-\\frac{\\Theta V}{L}$. "
-                           "At steady state: $\\Theta = \\frac{L}{V} $. The critical slip distance "
+                           "state variable theta using the aging law: $\\frac{d\\theta}{dt}=1-\\frac{\\theta V}{L}$. "
+                           "At steady state: $\\theta = \\frac{L}{V} $. The critical slip distance "
                            "is often interpreted as the sliding distance required to renew "
                            "the contact population as it determines the critical nucleation size with: "
-                           "$h*=\\frac{2}{\\pi}\\frac{\\mu b L}{(b-a)^2 \\sigma_n}, where $\\sigma_n$ is the normal stress on the fault. "
+                           "$h*=\\frac{2}{\\pi}\\frac{\\mu b L}{(b-a)^2 \\sigma_n}$, where $\\sigma_n$ is the normal stress on the fault. "
                            "Laboratory values of the critical slip distance are on the "
                            "order of microns. For geodynamic modelling \\cite{sobolev_modeling_2017} set this parameter "
                            "to 1--10 cm. In the SCEC-SEAS benchmark initiative \\citep{erickson_community_2020} they use 4 and 8 mm. "
                            "This parameter should be changed when the level of mesh refinement de- or increases. "
                            "I has the Unit: \\si{\\meter}."
                            "The parameters a, b, and the critical slip distance L are specified as functions in a separate subsections."
+                           "The $V_{st}$ is the quasi-static strain-rate at which the friction coefficient will match the reference "
+                           "friction coefficient $\\mu_{st}$ which is defined through the 'angle of internal friction' parameter. "
                            "\n\n"
                            "\\item ``rate and state dependent friction plus linear slip weakening'': ToDo: all, this is an empty model atm. "
                            "Method taken from \\cite{sobolev_modeling_2017}. The friction coefficient is computed as "
-                           "$\\mu = \\mu_{st} + a \\cdot ln\\big( \\frac{V}{V_{st}} \\big) + b \\cdot ln\\big( \\frac{\\Theta V_{st}}{L} \\big) - \\Delta \\mu(D)$"
+                           "$\\mu = \\mu_{st} + a \\cdot ln\\big( \\frac{V}{V_{st}} \\big) + b \\cdot ln\\big( \\frac{\\theta V_{st}}{L} \\big) - \\Delta \\mu(D)$"
                            "where D is the slip at point in fault at the first timestep of earthquake. "
                            "\n\n"
                            "\\item ``slip rate dependent rate and state dependent friction'': The rate-and-state "
@@ -398,7 +457,7 @@ namespace aspect
                            "indicated in 'Critical slip distance function' and 'Rate and state parameter a function'."
                            "\n\n"
                            "\\item ``regularized rate and state dependent friction'': The friction coefficient is computed using: "
-                           "$\\mu = a\\cdot sinh^{-1}\\left[\\frac{V}{2V_0}exp\\left(\\frac{\\mu_0+b\\cdot ln(V_0\theta/L)}{a}\\right)\\right]$ "
+                           "$\\mu = a\\cdot sinh^{-1}\\left[\\frac{V}{2V_0}exp\\left(\\frac{\\mu_0+b\\cdot ln(V_0\\theta/L)}{a}\\right)\\right]$ "
                            "This is a high velocity approximation and regularized version of the classic rate-and-state friction. "
                            "This formulation overcomes the problem of ill-posedness and the possibility of negative friction for "
                            "$V<<V_0$. It is for example used in \\cite{herrendorfer_invariant_2018}. ");
@@ -707,6 +766,53 @@ namespace aspect
             theta_composition_index = this->introspection().compositional_index_for_name("theta");
           }
       }
+
+
+
+      template <int dim>
+      void
+      FrictionOptions<dim>::create_friction_outputs (MaterialModel::MaterialModelOutputs<dim> &out) const
+      {
+        if (out.template get_additional_output<FrictionAdditionalOutputs<dim> >() == nullptr)
+          {
+            const unsigned int n_points = out.n_evaluation_points();
+            out.additional_outputs.push_back(
+              std_cxx14::make_unique<FrictionAdditionalOutputs<dim>> (n_points));
+          }
+      }
+
+
+
+      template <int dim>
+      void
+      FrictionOptions<dim>::
+      fill_friction_outputs(const unsigned int i,
+                            const std::vector<double> &volume_fractions,
+                            const MaterialModel::MaterialModelInputs<dim> &in,
+                            MaterialModel::MaterialModelOutputs<dim> &out,
+                            const std::vector<double> edot_ii) const
+      {
+        FrictionAdditionalOutputs<dim> *friction_out = out.template get_additional_output<FrictionAdditionalOutputs<dim> >();
+
+        if (friction_out != nullptr)
+          {
+            if (use_theta())
+              {
+                friction_out->RSF_a[i] = 0;
+                friction_out->RSF_b[i] = 0;
+                friction_out->RSF_L[i] = 0;
+                friction_out->edot_ii[i] = 0;
+
+                for (unsigned int j=0; j < volume_fractions.size(); ++j)
+                  {
+                    friction_out->RSF_a[i] += volume_fractions[j] * calculate_depth_dependent_a_and_b(in.position[i], j).first;
+                    friction_out->RSF_b[i] += volume_fractions[j] * calculate_depth_dependent_a_and_b(in.position[i], j).second;
+                    friction_out->RSF_L[i] += volume_fractions[j] * get_critical_slip_distance(in.position[i], j);
+                    friction_out->edot_ii[i] += volume_fractions[j] * edot_ii[j];
+                  }
+              }
+          }
+      }
     }
   }
 }
@@ -719,6 +825,8 @@ namespace aspect
   namespace MaterialModel
   {
 #define INSTANTIATE(dim) \
+  template class FrictionAdditionalOutputs<dim>; \
+  \
   namespace Rheology \
   { \
     template class FrictionOptions<dim>; \

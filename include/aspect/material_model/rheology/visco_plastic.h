@@ -80,32 +80,6 @@ namespace aspect
          * and viscosity is rescaled back to the yield envelope.
          */
         std::vector<double> yielding;
-
-        /**
-         * The value of the rate and state friction parameter a.
-         */
-        std::vector<double> RSF_a;
-
-        /**
-         * The value of the rate and state friction parameter b.
-         */
-        std::vector<double> RSF_b;
-
-        /**
-         * The value of the rate and state friction parameter L, the critical
-         * slip distance.
-         */
-        std::vector<double> RSF_L;
-
-        /**
-         * the current edot ii - second invariant of the deviatoric stress tensor
-         */
-        std::vector<double> edot_ii;
-
-        /**
-         * Object for computing the friction dependence of the rheology model.
-         */
-        Rheology::FrictionOptions<dim> friction_options;
     };
 
     /**

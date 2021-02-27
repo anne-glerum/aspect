@@ -36,6 +36,43 @@ namespace aspect
   {
     using namespace dealii;
 
+    /**
+     * Additional output fields for the rate-and-state parameters to be added
+     * to the MaterialModel::MaterialModelOutputs structure and filled in the
+     * MaterialModel::Interface::evaluate() function.
+     */
+    template <int dim>
+    class FrictionAdditionalOutputs : public NamedAdditionalMaterialOutputs<dim>
+    {
+      public:
+        explicit FrictionAdditionalOutputs(const unsigned int n_points);
+
+        std::vector<double> get_nth_output(const unsigned int idx) const override;
+
+        /**
+         * The value of the rate and state friction parameter a.
+         */
+        std::vector<double> RSF_a;
+
+        /**
+         * The value of the rate and state friction parameter b.
+         */
+        std::vector<double> RSF_b;
+
+        /**
+         * The value of the rate and state friction parameter L, the critical
+         * slip distance.
+         */
+        std::vector<double> RSF_L;
+
+        /**
+         * the current edot ii - second invariant of the deviatoric stress tensor
+         */
+        std::vector<double> edot_ii;
+    };
+
+
+
     namespace Rheology
     {
       /**
@@ -158,6 +195,24 @@ namespace aspect
            * Function that gets the critical slip distance at a certain position for composition j.
            */
           double get_critical_slip_distance(const Point<dim> &position, const int j) const;
+
+          /**
+           * Create the additional material model outputs object that contains the
+           * rate-and-state friction parameters.
+           */
+          void
+          create_friction_outputs (MaterialModel::MaterialModelOutputs<dim> &out) const;
+
+          /**
+           * A function that fills the friction parameters additional output in the
+           * MaterialModelOutputs object that is handed over, if it exists.
+           * Does nothing otherwise.
+           */
+          void fill_friction_outputs (const unsigned int point_index,
+                                      const std::vector<double> &volume_fractions,
+                                      const MaterialModel::MaterialModelInputs<dim> &in,
+                                      MaterialModel::MaterialModelOutputs<dim> &out,
+                                      const std::vector<double> edot_ii) const;
 
           /**
            * A value for the effective normal stress on the fault that is used in Tresca friction

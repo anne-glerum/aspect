@@ -41,34 +41,17 @@ namespace aspect
         names.emplace_back("current_friction_angles");
         names.emplace_back("current_yield_stresses");
         names.emplace_back("plastic_yielding");
-
-        // if rate and state friction is used make more additional outputs
-// TODO: how can I only create these when RSF is used? I tried:
-//        if (rheology->friction_options.use_theta())
-// but then the error occured: rheology was not declared in this scope
-// when I declare it with:
-//       Rheology::FrictionOptions<dim>::declare_parameters (prm);
-// then I get dim was not declared in this scope
-        names.emplace_back("RSF_a");
-        names.emplace_back("RSF_b");
-        names.emplace_back("RSF_L");
-        names.emplace_back("edot_ii");
-
         return names;
       }
     }
 
     template <int dim>
-    PlasticAdditionalOutputs<dim>::PlasticAdditionalOutputs(const unsigned int n_points)
+    PlasticAdditionalOutputs<dim>::PlasticAdditionalOutputs (const unsigned int n_points)
       : NamedAdditionalMaterialOutputs<dim>(make_plastic_additional_outputs_names()),
         cohesions(n_points, numbers::signaling_nan<double>()),
         friction_angles(n_points, numbers::signaling_nan<double>()),
         yield_stresses(n_points, numbers::signaling_nan<double>()),
         yielding(n_points, numbers::signaling_nan<double>())
-        RSF_a(n_points, numbers::signaling_nan<double>()),
-        RSF_b(n_points, numbers::signaling_nan<double>()),
-        RSF_L(n_points, numbers::signaling_nan<double>())
-        edot_ii(n_points, numbers::signaling_nan<double>())
     {}
 
 
@@ -77,15 +60,7 @@ namespace aspect
     std::vector<double>
     PlasticAdditionalOutputs<dim>::get_nth_output(const unsigned int idx) const
     {
-      // TODO: is there a more elegant way to only get those outputs when RSF is used and still maintain the asserts?
-      // TODO: this should have been the following, but that gave me: error: 'else' without a previous 'if'
-      /*
-            if (friction_options.use_theta())
-              AssertIndexRange (idx, 6);
-            else
-              AssertIndexRange (idx, 3);
-      */
-      AssertIndexRange (idx, 7);
+      AssertIndexRange (idx, 4);
       switch (idx)
         {
           case 0:
@@ -100,45 +75,6 @@ namespace aspect
           case 3:
             return yielding;
 
-          case 4:
-            return RSF_a;
-
-          case 5:
-            return RSF_b;
-
-          case 6:
-            return RSF_L;
-
-          case 6:
-            return edot_ii;
-
-          // this is probably how it should be, but that got me an error...
-          /*
-
-          case 3:
-          {
-            if (friction_options.use_theta())
-              return RSF_a;
-            else
-              AssertThrow(false, ExcInternalError());
-          }
-
-          case 5:
-          {
-            if (friction_options.use_theta())
-              return RSF_b;
-            else
-              AssertThrow(false, ExcInternalError());
-          }
-
-          case 6:
-          {
-            if (friction_options.use_theta())
-              return RSF_L;
-            else
-              AssertThrow(false, ExcInternalError());
-          }
-          */
           default:
             AssertThrow(false, ExcInternalError());
         }
@@ -978,25 +914,6 @@ namespace aspect
                                                   friction_angles_RAD[j],
                                                   pressure_for_plasticity,
                                                   max_yield_stress);
-              }
-
-            // if rate and state friction is used, the additional output fields must be filled
-            if (friction_options.use_theta())
-              {
-                plastic_out->RSF_a[i] = 0;
-                plastic_out->RSF_b[i] = 0;
-                plastic_out->RSF_L[i] = 0;
-                plastic_out->edot_ii[i] = 0;
-
-                for (unsigned int j=0; j < volume_fractions.size(); ++j)
-                  {
-                    plastic_out->RSF_a[i] += volume_fractions[j] * friction_options.calculate_depth_dependent_a_and_b(in.position[i], j).first;
-                    plastic_out->RSF_b[i] += volume_fractions[j] * friction_options.calculate_depth_dependent_a_and_b(in.position[i], j).second;
-                    plastic_out->RSF_L[i] += volume_fractions[j] * friction_options.get_critical_slip_distance(in.position[i], j);
-                    plastic_out->edot_ii[i] += volume_fractions[j] * calculate_isostrain_viscosities(in, i, volume_fractions,
-                                               in.current_cell,
-                                               phase_function_values).current_edot_ii[j];
-                  }
               }
           }
       }
