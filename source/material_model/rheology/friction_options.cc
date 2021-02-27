@@ -66,7 +66,8 @@ namespace aspect
               current_friction = std::atan (mu);
               break;
             }
-            case rate_and_state_dependent_friction:
+            // default is for case rate_and_state_dependent_friction with the other rate-and-state variations as if statements
+            default:
             {
               // Cellsize is needed for theta and the friction angle
               // For now, the used cells are non-deforming squares, so the edge length in the
@@ -77,32 +78,74 @@ namespace aspect
                 {
                   cellsize = current_cell->extent_in_direction(0);
 
-                  // Get the values for a and b
-                  const double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(position,j).first;
+                  // Get the values for a and b and the critcal slip distance L
+                  double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(position,j).first;
                   const double rate_and_state_parameter_b = calculate_depth_dependent_a_and_b(position,j).second;
-                  const double critical_slip_distance = get_critical_slip_distance(position,j);
+                  double critical_slip_distance = get_critical_slip_distance(position,j);
 
                   // theta_old is taken from the current compositional field theta
                   const double theta_old = composition[theta_composition_index];
-
                   // Calculate the state variable theta according to Equation (7) from Sobolev and Muldashev (2017)
                   const double theta = compute_theta(theta_old, current_edot_ii, cellsize, critical_slip_distance);
 
-                  // Calculate effective friction according to Equation (4) in Sobolev and Muldashev (2017):
-                  // mu = mu_st + a ln(V/V_st) + b ln((theta V_st)/L)
-                  // Effective friction is calculated by multiplying the friction coefficient with the
-                  // effective_friction_factor to account for effects of pore fluid pressure:
-                  // mu = mu(1-p_f/sigma_n) = mu*, with (1-p_f/sigma_n) = 0.03 for subduction zones.
-                  // Their equation is for friction coefficient, while ASPECT takes friction angle in radians,
-                  // so conversion with tan/atan().
-                  //const double current_friction_old = current_friction; // also only for chasing negative friction
-                  current_friction = std::atan(effective_friction_factor[j]
-                                               * (std::tan(current_friction)
-                                                  + rate_and_state_parameter_a
-                                                  * std::log((current_edot_ii * cellsize ) / quasi_static_strain_rate)
-                                                  + rate_and_state_parameter_b
-                                                  * std::log((theta * quasi_static_strain_rate ) / critical_slip_distance)));
+                  if (friction_dependence_mechanism == slip_rate_dependent_rate_and_state_dependent_friction)
+                    {
+                      // compute slip-rate dependence following Equations 8 and 9 in \\cite{im_slip-rate-dependent_2020}
+                      rate_and_state_parameter_a += slope_s_for_a * std::log10((ref_v_for_a + current_edot_ii * cellsize)/ref_v_for_a);
 
+                      critical_slip_distance += slope_s_for_L * std::log10((ref_v_for_L + current_edot_ii * cellsize)/ref_v_for_L);
+                    }
+
+                  double mu = 0;
+                  if (friction_dependence_mechanism == regularized_rate_and_state_dependent_friction)
+                    {
+                      // As we divide by RSF parameter a here, current_friction will be nan when a is zero
+                      // Not modifying the friction angle in the case of a (and b) zero follows the classical
+                      // logarithmic formulation of rate-and-state friction.
+                      if (rate_and_state_parameter_a > 0)
+                        {
+                          // Calculate regularized rate and state friction (e.g. Herrendörfer 2018) with
+                          // mu = a sinh^{-1}[V/(2V_0)exp((mu_0 + b ln(V_0 theta/L))/a)]
+                          // Their equation is for friction coefficient.
+                          // Effective friction is explained below for the other frictino option.
+                          mu = effective_friction_factor[j]
+                               * (rate_and_state_parameter_a
+                                  * std::asinh((current_edot_ii * cellsize ) / (2.0 * quasi_static_strain_rate)
+                                               * std::exp((std::tan(current_friction)
+                                                           + rate_and_state_parameter_b
+                                                           * std::log((theta * quasi_static_strain_rate ) / critical_slip_distance))
+                                                          / rate_and_state_parameter_a)));
+                        }
+                      else
+                        mu = std::tan(current_friction);
+                    }
+                  else
+                    {
+                      // Calculate effective friction according to Equation (4) in Sobolev and Muldashev (2017):
+                      // mu = mu_st + a ln(V/V_st) + b ln((theta V_st)/L)
+                      // Their equation is for friction coefficient.
+                      // Effective friction is calculated by multiplying the friction coefficient with the
+                      // effective_friction_factor to account for effects of pore fluid pressure:
+                      // mu = mu(1-p_f/sigma_n) = mu*, with (1-p_f/sigma_n) = 0.03 for subduction zones.
+                      //const double current_friction_old = current_friction; // also only for chasing negative friction
+                      mu = effective_friction_factor[j]
+                           * (std::tan(current_friction)
+                              + rate_and_state_parameter_a
+                              * std::log((current_edot_ii * cellsize ) / quasi_static_strain_rate)
+                              + rate_and_state_parameter_b
+                              * std::log((theta * quasi_static_strain_rate ) / critical_slip_distance));
+
+                      /* TODO: from Sobolev and Muldashev appendix.
+                      if (friction_dependence_mechanism == rate_and_state_dependent_friction_plus_linear_slip_weakening)
+                      {
+                      const double deltamustartvonD  ;
+                      mu -= deltamustartvonD;
+                      }*/
+                    }
+                  // All equations for the different friction options are for friction coefficient, while
+                  // ASPECT takes friction angle in radians, so conversion with tan/atan().
+                  current_friction = std::atan (mu);
+                  
                   /*// chasing the origin of negative friction angles
                   if (theta <= 0)
                     {
@@ -130,104 +173,10 @@ namespace aspect
                 }
               break;
             }
-            case rate_and_state_dependent_friction_plus_linear_slip_weakening:
-            {
-              break;
-            }
-            case slip_rate_dependent_rate_and_state_dependent_friction:
-            {
-              // Cellsize is needed for theta and the friction angle
-              // For now, the used cells are non-deforming squares, so the edge length in the
-              // x-direction is representative of the cell size.
-              // TODO as the cell size is used to compute the slip velocity as cell_size * strain_rate,
-              //  come up with a better representation of the slip length.
-              double cellsize = 1.;
-              if (current_cell.state() == IteratorState::valid)
-                {
-                  cellsize = current_cell->extent_in_direction(0);
-                  // Calculate the state variable theta
-                  // theta_old loads theta from previous time step
-                  const double theta_old = composition[theta_composition_index];
-
-                  // Get the values for a and b
-                  double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(position,j).first;
-                  const double rate_and_state_parameter_b = calculate_depth_dependent_a_and_b(position,j).second;
-                  double critical_slip_distance = get_critical_slip_distance(position,j);
-
-                  // Equation (7) from \\cite{sobolev_modeling_2017}
-                  const double theta = compute_theta(theta_old, current_edot_ii, cellsize, critical_slip_distance);
-
-                  // compute slip-rate dependence following Equations 8 and 9 in \\cite{im_slip-rate-dependent_2020}
-                  rate_and_state_parameter_a = rate_and_state_parameter_a + slope_s_for_a
-                                               * std::log10((ref_v_for_a + current_edot_ii * cellsize)/ref_v_for_a);
-
-                  critical_slip_distance = critical_slip_distance + slope_s_for_L
-                                           * std::log10((ref_v_for_L + current_edot_ii * cellsize)/ref_v_for_L);
-
-                  // Calculate effective friction according to Equation (4) in \\cite{sobolev_modeling_2017}:
-                  // mu = mu_st + a ln(V/V_st) + b ln((theta Vst)/L)
-                  // Effective friction is calculated by multiplying the friction coefficient with the
-                  // effective_friction_factor to account for effects of pore fluid pressure:
-                  // mu = mu(1-p_f/sigma_n) = mu*, with (1-p_f/sigma_n) = 0.03 for subduction zones.
-                  // Their equation is for friction coefficient, while ASPECT takes friction angle in radians,
-                  // so conversion with tan/atan().
-                  current_friction = std::atan(effective_friction_factor[j]
-                                               * (std::tan(current_friction)
-                                                  + rate_and_state_parameter_a
-                                                  * std::log((current_edot_ii * cellsize ) / quasi_static_strain_rate)
-                                                  + rate_and_state_parameter_b
-                                                  * std::log((theta * quasi_static_strain_rate ) / critical_slip_distance)));
-                }
-              break;
-            }
-            case regularized_rate_and_state_dependent_friction:
-            {
-              // TODO as the cell size is used to compute the slip velocity as cell_size * strain_rate,
-              //  come up with a better representation of the slip length.
-              double cellsize = 1.;
-              if (current_cell.state() == IteratorState::valid)
-                {
-                  cellsize = current_cell->extent_in_direction(0);
-                  // Calculate the state variable theta
-                  // theta_old loads theta from previous time step
-                  const double theta_old = composition[theta_composition_index];
-
-                  // Get the values for a and b
-                  const double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(position,j).first;
-                  const double rate_and_state_parameter_b = calculate_depth_dependent_a_and_b(position,j).second;
-                  const double critical_slip_distance = get_critical_slip_distance(position,j);
-
-                  // Equation (7) from Sobolev and Muldashev (2017)
-                  const double theta = compute_theta(theta_old, current_edot_ii, cellsize, critical_slip_distance);
-
-                  // As we divide by RSF parameter a here, current_friction will be nan when a is zero
-                  // Not modifying the friction angle in the case of a (and b) zero follows the classical
-                  // logarithmic formulation of rate-and-state friction.
-                  if (rate_and_state_parameter_a > 0)
-                    {
-                      // Calculate regularized rate and state friction (e.g. Herrendörfer 2018) with
-                      // mu = a sinh^{-1}[V/(2V_0)exp((mu_0 + b ln(V_0 theta/L))/a)]
-                      // Effective friction is calculated by multiplying the friction coefficient with the
-                      // effective_friction_factor to account for effects of pore fluid pressure:
-                      // mu = mu(1-p_f/sigma_n) = mu*, with (1-p_f/sigma_n) = 0.03 for subduction zones.
-                      // Their equation is for friction coefficient, while ASPECT takes friction angle in radians,
-                      // so conversion with tan/atan().
-                      current_friction = std::atan(effective_friction_factor[j]
-                                                   * (rate_and_state_parameter_a
-                                                      * std::asinh((current_edot_ii * cellsize ) / (2.0 * quasi_static_strain_rate)
-                                                                   * std::exp((std::tan(current_friction)
-                                                                               + rate_and_state_parameter_b
-                                                                               * std::log((theta * quasi_static_strain_rate ) / critical_slip_distance))
-                                                                              / rate_and_state_parameter_a))));
-                    }
-                }
-              break;
-            }
           }
         // A negative friction angle, that does not make sense and will get rate-and-state friction
         // into trouble, so return some very small value
-        std::max(current_friction, 1e-30);
-
+        current_friction = std::max(current_friction, 1e-30);
         return current_friction;
       }
 
@@ -254,8 +203,7 @@ namespace aspect
         // values physically do not make sense but can occur as theta is advected
         // as a material field. A zero or negative value for theta also leads to nan
         // values for friction.
-        std::max(current_theta, 1e-50);
-
+        current_theta = std::max(current_theta, 1e-50);
         return current_theta;
       }
 
