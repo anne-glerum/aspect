@@ -509,6 +509,33 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
 
 
       template <int dim>
+      double
+      FrictionOptions<dim>::compute_delta_theta_max (const Point<dim> &position, const int j) const
+      {
+        const double G_star = G/(1-nu); //G is shear modulus , nu is poisson ration (0.25 in herrendo)
+        const double k_param = 2 / numbers::PI * G_star / cell->minimum_vertex_distance();
+        const double RSF_parameter_a = friction_options.calculate_depth_dependent_a_and_b(position,j).first;
+        const double RSF_parameter_b = friction_options.calculate_depth_dependent_a_and_b(position,j).second;
+        const double critical_slip_distance = friction_options.get_critical_slip_distance(in.position[q], j); // j is from volume fractions, q is n_evaluation points
+        const double pressure;
+        const double kLaP = (k_param * critical_slip_distance) / (RSF_parameter_a * pressure);
+        const double xi = 0.25 * std::pow((kLaP - (RSF_parameter_b - RSF_parameter_a) / RSF_parameter_a),2) - kLaP;
+
+        double delta_theta_max = 0;
+        if (xi > 0)
+          delta_theta_max = std::min(((RSF_parameter_a * pressure)
+                                      / (k_param * critical_slip_distance - (RSF_parameter_b - RSF_parameter_a)
+                                         * pressure)), 0.2);
+        else
+          delta_theta_max = std::min((1 - ((RSF_parameter_b - RSF_parameter_a) * pressure)
+                                      / (k_param * critical_slip_distance)), 0.2);
+
+        return delta_theta_max;
+      }
+
+
+
+      template <int dim>
       FrictionDependenceMechanism
       FrictionOptions<dim>::
       get_friction_dependence_mechanism() const

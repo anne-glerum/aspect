@@ -212,8 +212,7 @@ namespace aspect
            * Create the additional material model outputs object that contains the
            * rate-and-state friction parameters.
            */
-          void
-          create_friction_outputs (MaterialModel::MaterialModelOutputs<dim> &out) const;
+          void create_friction_outputs (MaterialModel::MaterialModelOutputs<dim> &out) const;
 
           /**
            * A function that fills the friction parameters additional output in the
@@ -225,6 +224,12 @@ namespace aspect
                                       const MaterialModel::MaterialModelInputs<dim> &in,
                                       MaterialModel::MaterialModelOutputs<dim> &out,
                                       const std::vector<double> edot_ii) const;
+
+          /** A function that returns delta_theta_max which is needed to calculate the necessary
+           * minimum time step needed for rate-and-state friction models. The calculation of the
+           * timestep is done after Lapusta 200 and Herrendörfer 2018.
+           */
+          double compute_delta_theta_max (const Point<dim> &position, const int j) const
 
           /**
            * A value for the effective normal stress on the fault that is used in Tresca friction

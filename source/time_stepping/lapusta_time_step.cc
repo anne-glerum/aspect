@@ -57,27 +57,13 @@ namespace aspect
                                                velocity_values[q].norm());
 
                 const unsigned int j = 0;
-                const double G_star = G/(1-nu); //G is shear modulus , nu is poisson ration (0.25 in herrendo)
-                const double k_param = 2 / numbers::PI * G_star / cell->minimum_vertex_distance();
-                const double RSF_param_a = friction_options.calculate_depth_dependent_a_and_b(position,j).first;
-                const double RSF_param_b = friction_options.calculate_depth_dependent_a_and_b(position,j).second;
-                const double RSF_param_L = friction_options.get_critical_slip_distance(in.position[q], j); // j is from volume fractions, q is n_evaluation points
-                const double pressure;
-                const double kLaP = (k_param * RSF_param_L) / (RSF_param_a * pressure);
-                const double xi = 0.25 * std::pow((kLaP - (RSF_param_b - RSF_param_a) / RSF_param_a),2) - kLaP;
 
-                double delta_theta_max = 0;
-                if (xi > 0)
-                  delta_theta_max = std::min(((RSF_param_a * pressure)
-                                              / (k_param * RSF_param_L - (RSF_param_b - RSF_param_a)
-                                                 * pressure)), 0.2);
-                else
-                  delta_theta_max = std::min((1 - ((RSF_param_b - RSF_param_a) * pressure)
-                                              / (k_param * RSF_param_L)), 0.2);
+                delta_theta_max = friction_options.copmute_delta_theta_max();
+                critical_slip_distance = friction_options.get_critical_slip_distance();
               }
 
             min_state_weakening_time_step = std::min(min_state_weakening_time_step,
-                                                     delta_theta_max * RSF_param_L / V_p);
+                                                     delta_theta_max * critical_slip_distance / V_p);
 
             /*
                         max_local_speed_over_meshsize = std::max(max_local_speed_over_meshsize,
