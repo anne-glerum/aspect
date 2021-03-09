@@ -30,6 +30,13 @@ namespace aspect
     double
     LapustaTimeStep<dim>::execute()
     {
+      /**
+       * this time stepping plugin is developed to capture all time scales
+       * relevant for rate-and-state friction seismic cycle models. For its
+       * development see \cite{lapusta_elastodynamic_2000},
+       * \cite{lapusta_three-dimensional_2009} and \cite{herrendorfer_invariant_2018}.
+       */
+
       std::cout << "entered Lapusta time step execute" << std::endl;
 
       const QIterated<dim> quadrature_formula (QTrapez<1>(),
@@ -45,23 +52,28 @@ namespace aspect
       const unsigned int n_q_points = quadrature_formula.size();
       std::cout << "entered Lapusta time step execute - got nq-points" << std::endl;
 
+      // get the velocities and "in" and "out"
       std::vector<Tensor<1,dim> > velocity_values(n_q_points);
       MaterialModel::MaterialModelInputs<dim> in(n_q_points,
                                                  this->introspection().n_compositional_fields);
-
-      // Do I need "out"?
       MaterialModel::MaterialModelOutputs<dim> out(n_q_points,
                                                    this->introspection().n_compositional_fields);
       std::cout << "entered Lapusta time step execute - got in#n#out" << std::endl;
-      
+
+      // This is the part that gives me a segmentation fault error....
       ComponentMask composition_mask = visco_plastic.get_volumetric_composition_mask();
       std::cout << "entered Lapusta time step execute - got composition mask" << std::endl;
 
-      double min_state_weakening_time_step = 1.e30; //TODO: get the actual max number? Now its just arbitrarily big
+      // The Lapusta adaptive time stepping is based on four individual minimum time step criteria
+      double min_state_weakening_time_step =  std::numeric_limits<double>::max();
+      double min_healing_time_step =  std::numeric_limits<double>::max();
+      double min_displacement_time_step =  std::numeric_limits<double>::max();
+      double min_vep_relaxation_time_step =  std::numeric_limits<double>::max();
+
       for (const auto &cell : this->get_dof_handler().active_cell_iterators())
         if (cell->is_locally_owned())
           {
-      std::cout << "entered Lapusta time step execute - cell loop" << std::endl;
+            std::cout << "entered Lapusta time step execute - cell loop" << std::endl;
             fe_values.reinit (cell);
             in.reinit(fe_values,
                       cell,
@@ -78,79 +90,55 @@ namespace aspect
             const double delta_x = cell->minimum_vertex_distance();
             for (unsigned int q=0; q<n_q_points; ++q)
               {
-      std::cout << "entered Lapusta time step execute - cell loop - nq-points" << std::endl;
-                // TODO in Lapusta, this should be plastic velocity. But just taking the max velocity
+                std::cout << "entered Lapusta time step execute - cell loop - nq-points" << std::endl;
+                // TODO in Lapusta, this should be plastic velocity. But just taking the full velocity
                 // should be the most conservative approach, so it should be ok...
-                max_local_velocity = velocity_values[q].norm();
+                const double local_velocity = velocity_values[q].norm();
 
                 const double pressure = in.pressure[q]; //TODO: is this correct to get the pressure? out. has no member pressure...
-                std::pair<double,double> delta_theta_max_and_critical_slip_distance = friction_options.compute_delta_theta_max(composition_mask, in.composition[0], in.position[q], delta_x, pressure);
+                std::pair<double,double> delta_theta_max_and_critical_slip_distance = friction_options.compute_delta_theta_max(
+                                                                                        composition_mask,
+                                                                                        in.composition[0],
+                                                                                        in.position[q],
+                                                                                        delta_x,
+                                                                                        pressure);
                 min_state_weakening_time_step = std::min (min_state_weakening_time_step,
                                                           delta_theta_max_and_critical_slip_distance.first
-                                                          * delta_theta_max_and_critical_slip_distance.second / max_local_velocity);
-              
-              
-      std::cout << "entered Lapusta time step execute - cell loop - nq-points - end" << std::endl;}
+                                                          * delta_theta_max_and_critical_slip_distance.second / local_velocity);
 
-          }
+                // state healing time step is: Deltat_h = 0.2 * theta.
+                min_healing_time_step = std::min (min_healing_time_step,
+                                                        0.2 * in.composition[q][friction_options.theta_composition_index]);
 
+                // the maximum local velocity needed for the displacement time step
+                max_local_velocity = std::max (max_local_velocity,
+                                               local_velocity);
 
-      /*
-      const QIterated<dim> quadrature_formula (QTrapez<1>(),
-                                               this->get_parameters().stokes_velocity_degree);
+                // the viscoelastoplastic relaxation time step using the relaxation time scale: f_max * viscoplastic viscosity / shear modulus
+                // with f_max = 0.2 in Herrendörfer et al. 2018
+                // to capture the increasing slip rate in case of a purely rate-dependent friction, i.e. if b = 0
+                min_vep_relaxation_time_step = std::min (min_vep_relaxation_time_step,
+                                                         0.2 * out.viscosities[q] / 1e10); //elastic_sher_modulus) TODO: get elastic shear moduli
 
-      FEValues<dim> fe_values (this->get_mapping(),
-                               this->get_fe(),
-                               quadrature_formula,
-                               update_values);
-
-      const unsigned int n_q_points = quadrature_formula.size();
-
-      std::vector<Tensor<1,dim> > velocity_values(n_q_points);
-      std::vector<Tensor<1,dim> > fluid_velocity_values(n_q_points);
-
-      double max_local_speed_over_meshsize = 0;
-
-      for (const auto &cell : this->get_dof_handler().active_cell_iterators())
-        if (cell->is_locally_owned())
-          {
-            fe_values.reinit (cell);
-            fe_values[this->introspection().extractors.velocities].get_function_values (this->get_solution(),
-                                                                                        velocity_values);
-
-            double max_local_velocity = 0;
-            for (unsigned int q=0; q<n_q_points; ++q)
-              max_local_velocity = std::max (max_local_velocity,
-                                             velocity_values[q].norm());
-
-            if (this->get_parameters().include_melt_transport)
-              {
-                const FEValuesExtractors::Vector ex_u_f = this->introspection().variable("fluid velocity").extractor_vector();
-                fe_values[ex_u_f].get_function_values (this->get_solution(), fluid_velocity_values);
-
-                for (unsigned int q=0; q<n_q_points; ++q)
-                  max_local_velocity = std::max (max_local_velocity,
-                                                 fluid_velocity_values[q].norm());
+                std::cout << "entered Lapusta time step execute - cell loop - nq-points - end" << std::endl;
               }
 
-            max_local_speed_over_meshsize = std::max(max_local_speed_over_meshsize,
-                                                     max_local_velocity
-                                                     /
-                                                     cell->minimum_vertex_distance());
+            // minimum displacement time step: Delta t_d = Delta d_max * min(|Delta x/v_x|,|Delta x/v_y|),
+            // with Delta d_max = 1e-3 in Herrendörfer et al. 2018
+            // here, the term  min(|Delta x/v_x|,|Delta x/v_y|) is simplified to min Delta x / max_local_velocity
+            min_displacement_time_step = std::min (min_displacement_time_step,
+                                                   1.e-3 * cell->minimum_vertex_distance() / max_local_velocity);
 
           }
 
-      const double max_global_speed_over_meshsize
-        = Utilities::MPI::max (max_local_speed_over_meshsize, this->get_mpi_communicator());
-      */
       double min_lapusta_timestep = std::numeric_limits<double>::max();
 
-      /*      if (max_global_speed_over_meshsize != 0.0)
-              min_lapusta_timestep = this->get_parameters().CFL_number / (this->get_parameters().temperature_degree * max_global_speed_over_meshsize);
-      */
-
-      //min_lapusta_timestep = std::min(state_weakening_time_step,healing_time_step);
-      min_lapusta_timestep = min_state_weakening_time_step;
+      // take the minimum of the four criteria
+      // TODO: is there a more elegant way to take the minimum of four values?
+      min_lapusta_timestep = std::min (min_state_weakening_time_step,
+                                       std::min (min_healing_time_step,
+                                       std::min (min_displacement_time_step,
+                                       min_vep_relaxation_time_step)));
       std::cout << "entered Lapusta time step execute - end" << std::endl;
 
       AssertThrow (min_lapusta_timestep > 0,
@@ -172,8 +160,13 @@ namespace aspect
   {
     ASPECT_REGISTER_TIME_STEPPING_MODEL(LapustaTimeStep,
                                         "lapusta time step",
-                                        "This model computes the state weakening and state healing "
-                                        "time step following Lapusta et al. 2000. It is intended for models "
-                                        "with rate and state friction. min dt computed as follows: TODO.... ")
+                                        "This time stepping plugin is developed to capture all time scales "
+                                        "relevant for rate-and-state friction seismic cycle models. "
+                                        "It is following the approach described in \\cite{lapusta_elastodynamic_2000}, "
+                                        "\\cite{lapusta_three-dimensional_2009} and \\cite{herrendorfer_invariant_2018}. "
+                                        "This time stepping plugin will enforce the use of the smallest of the four "
+                                        "proposed time scales in the above papers. These are: the state weakening time step, "
+                                        "the healing time step, the displacement time step, and the "
+                                        "viscoelastoplastic relaxation time step. ")
   }
 }
