@@ -550,10 +550,7 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
               delta_theta_max = std::min((1 - ((RSF_parameter_b - RSF_parameter_a) * pressure)
                                           / (k_param * critical_slip_distance)), 0.2);
 
-            // the smallest delta_theta_max will result in the smallest time step, keeping me on the safe side
-            // TODO: rethink, is it correct to take the volume_fraction-averaged critical slip distance,
-            // but the minimal delta_theta_max?
-            delta_theta_max_tot = std::min (delta_theta_max, delta_theta_max_tot);
+            delta_theta_max_tot +=  volume_fractions[j] * delta_theta_max;
             critical_slip_distance_tot += volume_fractions[j] * critical_slip_distance;
           }
         return std::pair<double,double>(delta_theta_max_tot,

@@ -26,7 +26,6 @@
 #include <aspect/material_model/rheology/friction_options.h>
 #include <aspect/material_model/rheology/visco_plastic.h>
 
-
 namespace aspect
 {
   namespace TimeStepping
