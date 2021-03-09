@@ -509,28 +509,55 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
 
 
       template <int dim>
-      double
-      FrictionOptions<dim>::compute_delta_theta_max (const Point<dim> &position, const int j) const
+      std::pair<double,double>
+      FrictionOptions<dim>::compute_delta_theta_max (const ComponentMask &composition_mask,
+                                                     const std::vector<double> &composition,
+                                                     const Point<dim> &position,
+                                                     const double delta_x,
+                                                     const double pressure) const
       {
-        const double G_star = G/(1-nu); //G is shear modulus , nu is poisson ration (0.25 in herrendo)
-        const double k_param = 2 / numbers::PI * G_star / cell->minimum_vertex_distance();
-        const double RSF_parameter_a = friction_options.calculate_depth_dependent_a_and_b(position,j).first;
-        const double RSF_parameter_b = friction_options.calculate_depth_dependent_a_and_b(position,j).second;
-        const double critical_slip_distance = friction_options.get_critical_slip_distance(in.position[q], j); // j is from volume fractions, q is n_evaluation points
-        const double pressure;
-        const double kLaP = (k_param * critical_slip_distance) / (RSF_parameter_a * pressure);
-        const double xi = 0.25 * std::pow((kLaP - (RSF_parameter_b - RSF_parameter_a) / RSF_parameter_a),2) - kLaP;
+        AssertThrow(use_theta()==false, ExcMessage("The Lapusta-timestepping scheeme only works when a state variable 'theta' is used in the friction formulation."));
+        const double nu = 0.5;
+        // poisson ration (0.25 in herrendo), but we are incompressible, so it must be 0.5.
+        // TODO: get the actual Poissons ration if at some point compressibility is possible
+        const std::vector<double> elastic_shear_moduli = elastic_rheology.get_elastic_shear_moduli();
 
-        double delta_theta_max = 0;
-        if (xi > 0)
-          delta_theta_max = std::min(((RSF_parameter_a * pressure)
-                                      / (k_param * critical_slip_distance - (RSF_parameter_b - RSF_parameter_a)
-                                         * pressure)), 0.2);
-        else
-          delta_theta_max = std::min((1 - ((RSF_parameter_b - RSF_parameter_a) * pressure)
-                                      / (k_param * critical_slip_distance)), 0.2);
+        double delta_theta_max_tot = 0;
+        double critical_slip_distance_tot = 0;
 
-        return delta_theta_max;
+
+        // during make it says that volume_fractions was not declared in this scope... wthin material_model/visco_plastic.cc it is obtained like this:
+        const std::vector<double> volume_fractions = MaterialUtilities::compute_volume_fractions(composition, composition_mask);
+
+        for (unsigned int j=0; j < volume_fractions.size(); ++j)
+          {
+            const double G_star = elastic_shear_moduli[j]/(1-nu);
+            const double k_param = 2 / numbers::PI * G_star / delta_x;
+
+            // compute delta_theta_max for each volume fraction
+            const double RSF_parameter_a = calculate_depth_dependent_a_and_b(position,j).first;
+            const double RSF_parameter_b = calculate_depth_dependent_a_and_b(position,j).second;
+            const double critical_slip_distance = get_critical_slip_distance(position, j); // j is from volume fractions, q is n_evaluation points
+            const double kLaP = (k_param * critical_slip_distance) / (RSF_parameter_a * pressure);
+            const double xi = 0.25 * std::pow((kLaP - (RSF_parameter_b - RSF_parameter_a) / RSF_parameter_a),2) - kLaP;
+
+            double delta_theta_max = 0;
+            if (xi > 0)
+              delta_theta_max = std::min(((RSF_parameter_a * pressure)
+                                          / (k_param * critical_slip_distance - (RSF_parameter_b - RSF_parameter_a)
+                                             * pressure)), 0.2);
+            else
+              delta_theta_max = std::min((1 - ((RSF_parameter_b - RSF_parameter_a) * pressure)
+                                          / (k_param * critical_slip_distance)), 0.2);
+
+            // the smallest delta_theta_max will result in the smallest time step, keeping me on the safe side
+            // TODO: rethink, is it correct to take the volume_fraction-averaged critical slip distance,
+            // but the minimal delta_theta_max?
+            delta_theta_max_tot = std::min (delta_theta_max, delta_theta_max_tot);
+            critical_slip_distance_tot += volume_fractions[j] * critical_slip_distance;
+          }
+        return std::pair<double,double>(delta_theta_max_tot,
+                                        critical_slip_distance_tot);
       }
 
 
@@ -847,6 +874,13 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
         // Get the number of fields for composition-dependent material properties
         // including the background field.
         const unsigned int n_fields = this->n_compositional_fields() + 1;
+
+        if (use_theta())
+          {
+            elastic_rheology.initialize_simulator (this->get_simulator());
+            elastic_rheology.parse_parameters(prm);
+          }
+
 
         // Friction dependence parameters
         if (prm.get ("Friction dependence mechanism") == "none")

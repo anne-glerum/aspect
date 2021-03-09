@@ -30,6 +30,8 @@ namespace aspect
     double
     LapustaTimeStep<dim>::execute()
     {
+      ComponentMask composition_mask = visco_plastic.get_volumetric_composition_mask();
+
       const QIterated<dim> quadrature_formula (QTrapez<1>(),
                                                this->get_parameters().stokes_velocity_degree);
 
@@ -41,35 +43,44 @@ namespace aspect
       const unsigned int n_q_points = quadrature_formula.size();
 
       std::vector<Tensor<1,dim> > velocity_values(n_q_points);
+      MaterialModel::MaterialModelInputs<dim> in(n_q_points,
+                                                 this->introspection().n_compositional_fields);
 
-      double min_state_weakening_time_step = 1e10;
+      // Do I need "out"?
+      MaterialModel::MaterialModelOutputs<dim> out(n_q_points,
+                                                   this->introspection().n_compositional_fields);
+
+      double min_state_weakening_time_step = 1.e30; //TODO: get the actual max number? Now its just arbitrarily big
       for (const auto &cell : this->get_dof_handler().active_cell_iterators())
         if (cell->is_locally_owned())
           {
             fe_values.reinit (cell);
+            in.reinit(fe_values,
+                      cell,
+                      this->introspection(),
+                      this->get_solution());
+            // do I need to do this? It is copied from conduction_time_step
+            this->get_material_model().evaluate(in, out);
+
             fe_values[this->introspection().extractors.velocities].get_function_values (this->get_solution(),
                                                                                         velocity_values);
 
+
             double max_local_velocity = 0;
+
+            const double delta_x = cell->minimum_vertex_distance();
             for (unsigned int q=0; q<n_q_points; ++q)
               {
-                max_local_velocity = std::max (max_local_velocity,
-                                               velocity_values[q].norm());
+                // TODO in Lapusta, this should be plastic velocity. But just taking the max velocity
+                // should be the most conservative approach, so it should be ok...
+                max_local_velocity = velocity_values[q].norm();
 
-                const unsigned int j = 0;
-
-                delta_theta_max = friction_options.copmute_delta_theta_max();
-                critical_slip_distance = friction_options.get_critical_slip_distance();
+                const double pressure = in.pressure[q]; //TODO: is this correct to get the pressure? out. has no member pressure...
+                std::pair<double,double> delta_theta_max_and_critical_slip_distance = friction_options.compute_delta_theta_max(composition_mask, in.composition[0], in.position[q], delta_x, pressure);
+                min_state_weakening_time_step = std::min (min_state_weakening_time_step,
+                                                          delta_theta_max_and_critical_slip_distance.first
+                                                          * delta_theta_max_and_critical_slip_distance.second / max_local_velocity);
               }
-
-            min_state_weakening_time_step = std::min(min_state_weakening_time_step,
-                                                     delta_theta_max * critical_slip_distance / V_p);
-
-            /*
-                        max_local_speed_over_meshsize = std::max(max_local_speed_over_meshsize,
-                                                                 max_local_velocity
-                                                                 /
-                                                                 cell->minimum_vertex_distance());*/
 
           }
 
