@@ -1355,14 +1355,10 @@ namespace aspect
                              min_strain_rate);
 
         // Step 2: calculate the viscous stress magnitude
-        // and strain rate. If requested compute visco-elastic contribution
-        double current_edot_ii = numbers::signaling_nan<double>();
+        // and strain rate. If requested compute visco-elastic contributions.
+        double current_edot_ii = edot_ii;
 
-        if (use_elasticity == false)
-          {
-            current_edot_ii = edot_ii;
-          }
-        else
+        if (use_elasticity)
           {
             if (use_reference_strainrate == true)
               current_edot_ii = ref_strain_rate;

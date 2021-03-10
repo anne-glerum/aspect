@@ -418,6 +418,9 @@ namespace aspect
                 }
                 case tresca:
                 {
+                  // TODO: find a better name for this yield option, as Tresca is probably
+                  // not actually correct. Update all documentation with it!
+
                   // This is according to \\cite{erickson_community_2020}, a benchmark paper for
                   // rate-and-state friction models. They state state that
                   // the fault strength is equal to the shear stress on the fault.

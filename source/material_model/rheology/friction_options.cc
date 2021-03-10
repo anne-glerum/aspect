@@ -96,7 +96,7 @@ namespace aspect
       FrictionOptions<dim>::
       compute_dependent_friction_angle(const double current_edot_ii,
                                        const unsigned int j,  // j is from a for-loop over volume_fractions.size()
-                                       const std::vector<double> &composition,
+                                       const std::vector<double> &composition,  // these are the compositional fields not volume_fractions
                                        typename DoFHandler<dim>::active_cell_iterator current_cell,
                                        double current_friction,
                                        const Point<dim> &position) const
@@ -208,6 +208,9 @@ namespace aspect
                   current_friction = std::atan (mu);
                   Assert((mu < 1) && (0 < current_friction <=1.6), ExcMessage(
                            "Something is wrong with the tan/atan conversion of friction coefficient to friction angle in RAD"));
+                  AssertThrow((std::isinf(mu) || numbers::is_nan(mu)) == false, ExcMessage(
+                                "Your friction coefficient becomes nan or inf. Please check all your friction parameters. In case of "
+                                "rate-and-state like friction, don't forget to check on a,b, and the critical slip distance, or theta."));
 
                   /*// chasing the origin of negative friction angles
                   if (theta <= 0)
@@ -239,7 +242,8 @@ namespace aspect
           }
         // A negative friction angle, that does not make sense and will get rate-and-state friction
         // into trouble, so return some very small value
-        current_friction = std::max(current_friction, 1e-30);
+        if (friction_dependence_mechanism != regularized_rate_and_state_dependent_friction)
+          current_friction = std::max(current_friction, 1e-30);
         return current_friction;
       }
 
@@ -299,13 +303,15 @@ namespace aspect
 
             const double theta_old = in.composition[q][theta_composition_index];
             double current_theta = 0;
-
             double critical_slip_distance = 0.0;
             for (unsigned int j=0; j < volume_fractions.size(); ++j)
-              critical_slip_distance += volume_fractions[j] * get_critical_slip_distance(in.position[q], j);
-
-            current_theta += compute_theta(theta_old, current_edot_ii,
-                                           in.current_cell->extent_in_direction(0), critical_slip_distance);
+              {
+                critical_slip_distance += volume_fractions[j] * get_critical_slip_distance(in.position[q], j);
+                // theta is also computed within the loop to keep it as similar as possible to the theta used
+                // within compute_dependent_friction which is also called from within a loop over volume_fractions.size()
+                current_theta += volume_fractions[j] * compute_theta(theta_old, current_edot_ii,
+                                                                     in.current_cell->extent_in_direction(0), critical_slip_distance);
+              }
 
             out.reaction_terms[q][theta_composition_index] = current_theta - theta_old;
           }
