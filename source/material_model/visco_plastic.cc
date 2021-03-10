@@ -446,7 +446,7 @@ namespace aspect
     {
 
                 std::cout << "entered Lapusta time step execute - entered visco_plastic" << std::endl;
-                std::cout << "use theta: " << rheology ->friction_options.use_theta() << std::endl;
+                std::cout << "use theta: " << rheology->friction_options.use_theta() << std::endl;
       //AssertThrow(rheology->friction_options.use_theta() == true,
       //            ExcMessage("The Lapusta-timestepping scheeme only works "
       //                       "when a state variable 'theta' is used in the friction formulation."));
