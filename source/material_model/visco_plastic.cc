@@ -491,6 +491,12 @@ namespace aspect
           delta_theta_max_tot +=  volume_fractions[j] * delta_theta_max;
           critical_slip_distance_tot += volume_fractions[j] * critical_slip_distance;
         }
+
+        AssertThrow((std::isinf(delta_theta_max_tot) || numbers::is_nan(delta_theta_max_tot)) == false, ExcMessage(
+                                "Delta_theta_max needed for the Lapusta time stepping becomes nan or inf. Please "
+                                "check all your friction parameters. In case of "
+                                "rate-and-state like friction, don't forget to check on a,b, and the critical slip distance, or theta."));
+
       return std::pair<double,double>(delta_theta_max_tot,
                                       critical_slip_distance_tot);
     }
