@@ -265,8 +265,18 @@ namespace aspect
         compute_theta(double theta_old,
                       const double current_edot_ii,
                       const double cellsize,
-                      const double critical_slip_distance,
-                      const Point<dim> &position) const;
+                      const double critical_slip_distance) const;
+                      
+        /** A function that returns delta_theta_max which is needed to calculate the necessary
+         * minimum time step needed for rate-and-state friction models. The calculation of the
+         * timestep is done following \cite{lapusta_elastodynamic_2000},
+        * \cite{lapusta_three-dimensional_2009} and \cite{herrendorfer_invariant_2018}
+         */
+        std::pair<double,double>
+        compute_delta_theta_max (const std::vector<double> &composition,
+                                 const Point<dim> &position,
+                                 const double delta_x,
+                                 const double pressure) const;
 
       private:
 

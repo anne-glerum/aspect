@@ -41,16 +41,15 @@ namespace aspect
 
       const QIterated<dim> quadrature_formula (QTrapez<1>(),
                                                this->get_parameters().stokes_velocity_degree);
-      std::cout << "entered Lapusta time step execute - got quadrature formula" << std::endl;
 
       FEValues<dim> fe_values (this->get_mapping(),
                                this->get_fe(),
                                quadrature_formula,
-                               update_values);
-      std::cout << "entered Lapusta time step execute - got fe-values" << std::endl;
+                               update_values |
+                               update_gradients |
+                               update_quadrature_points);
 
       const unsigned int n_q_points = quadrature_formula.size();
-      std::cout << "entered Lapusta time step execute - got nq-points" << std::endl;
 
       // get the velocities and "in" and "out"
       std::vector<Tensor<1,dim> > velocity_values(n_q_points);
@@ -58,11 +57,6 @@ namespace aspect
                                                  this->introspection().n_compositional_fields);
       MaterialModel::MaterialModelOutputs<dim> out(n_q_points,
                                                    this->introspection().n_compositional_fields);
-      std::cout << "entered Lapusta time step execute - got in#n#out" << std::endl;
-
-      // This is the part that gives me a segmentation fault error....
-      ComponentMask composition_mask = visco_plastic.get_volumetric_composition_mask();
-      std::cout << "entered Lapusta time step execute - got composition mask" << std::endl;
 
       // The Lapusta adaptive time stepping is based on four individual minimum time step criteria
       double min_state_weakening_time_step =  std::numeric_limits<double>::max();
@@ -79,14 +73,12 @@ namespace aspect
                       cell,
                       this->introspection(),
                       this->get_solution());
-            // do I need to do this? It is copied from conduction_time_step
+                      
             this->get_material_model().evaluate(in, out);
 
             fe_values[this->introspection().extractors.velocities].get_function_values (this->get_solution(),
                                                                                         velocity_values);
-
             double max_local_velocity = 0;
-
             const double delta_x = cell->minimum_vertex_distance();
             for (unsigned int q=0; q<n_q_points; ++q)
               {
@@ -94,21 +86,22 @@ namespace aspect
                 // TODO in Lapusta, this should be plastic velocity. But just taking the full velocity
                 // should be the most conservative approach, so it should be ok...
                 const double local_velocity = velocity_values[q].norm();
-
-                const double pressure = in.pressure[q]; //TODO: is this correct to get the pressure? out. has no member pressure...
-                std::pair<double,double> delta_theta_max_and_critical_slip_distance = friction_options.compute_delta_theta_max(
-                                                                                        composition_mask,
+                std::cout << "entered Lapusta time step execute - cell loop - nq-points1" << std::endl;
+                const double pressure = in.pressure[q]; 
+                std::cout << "entered Lapusta time step execute - cell loop - nq-points2" << std::endl;
+                std::pair<double,double> delta_theta_max_and_critical_slip_distance = visco_plastic.compute_delta_theta_max(
                                                                                         in.composition[0],
                                                                                         in.position[q],
                                                                                         delta_x,
                                                                                         pressure);
+                std::cout << "entered Lapusta time step execute - cell loop - nq-points3" << std::endl;
                 min_state_weakening_time_step = std::min (min_state_weakening_time_step,
                                                           delta_theta_max_and_critical_slip_distance.first
                                                           * delta_theta_max_and_critical_slip_distance.second / local_velocity);
 
                 // state healing time step is: Deltat_h = 0.2 * theta.
                 min_healing_time_step = std::min (min_healing_time_step,
-                                                        0.2 * in.composition[q][friction_options.theta_composition_index]);
+                                                  0.2 * in.composition[q][friction_options.theta_composition_index]);
 
                 // the maximum local velocity needed for the displacement time step
                 max_local_velocity = std::max (max_local_velocity,
@@ -137,8 +130,8 @@ namespace aspect
       // TODO: is there a more elegant way to take the minimum of four values?
       min_lapusta_timestep = std::min (min_state_weakening_time_step,
                                        std::min (min_healing_time_step,
-                                       std::min (min_displacement_time_step,
-                                       min_vep_relaxation_time_step)));
+                                                 std::min (min_displacement_time_step,
+                                                           min_vep_relaxation_time_step)));
       std::cout << "entered Lapusta time step execute - end" << std::endl;
 
       AssertThrow (min_lapusta_timestep > 0,

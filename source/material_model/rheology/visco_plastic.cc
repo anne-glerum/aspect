@@ -626,7 +626,7 @@ namespace aspect
       ViscoPlastic<dim>::
       get_volumetric_composition_mask() const
       {
-        // Store which components to exclude during the volume fraction computation.
+        // Store which components to exclude during the volume fraction computation. 
         ComponentMask composition_mask = strain_rheology.get_strain_composition_mask();
 
         if (this->get_parameters().enable_elasticity)

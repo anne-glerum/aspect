@@ -28,7 +28,6 @@
 #include <aspect/utilities.h>
 
 #include <aspect/material_model/rheology/drucker_prager.h>
-#include <aspect/material_model/rheology/elasticity.h>
 #include <deal.II/fe/component_mask.h>
 
 namespace aspect
@@ -226,17 +225,6 @@ namespace aspect
                                       MaterialModel::MaterialModelOutputs<dim> &out,
                                       const std::vector<double> edot_ii) const;
 
-          /** A function that returns delta_theta_max which is needed to calculate the necessary
-           * minimum time step needed for rate-and-state friction models. The calculation of the
-           * timestep is done after Lapusta 200 and Herrendörfer 2018.
-           */
-          std::pair<double,double>
-          compute_delta_theta_max (const ComponentMask &composition_mask,
-                                   const std::vector<double> &composition,
-                                   const Point<dim> &position,
-                                   const double delta_x,
-                                   const double pressure) const;
-
           /**
            * A value for the effective normal stress on the fault that is used in Tresca friction
            * which is available under the yield mechanism tresca.
@@ -285,11 +273,6 @@ namespace aspect
            * Object for computing plastic stresses, viscosities, and additional outputs
            */
           Rheology::DruckerPrager<dim> drucker_prager_plasticity;
-
-          /**
-           * Object for computing viscoelastic viscosities and stresses.
-           */
-          Rheology::Elasticity<dim> elastic_rheology;
 
           /**
            * Select the mechanism to be used for the friction dependence.

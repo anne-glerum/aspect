@@ -24,7 +24,7 @@
 
 #include <aspect/time_stepping/interface.h>
 #include <aspect/material_model/rheology/friction_options.h>
-#include <aspect/material_model/rheology/visco_plastic.h>
+#include <aspect/material_model/visco_plastic.h>
 
 namespace aspect
 {
@@ -63,7 +63,7 @@ namespace aspect
         /**
          * Object for computing the friction dependence of the rheology model.
          */
-        MaterialModel::Rheology::ViscoPlastic<dim> visco_plastic;
+        MaterialModel::ViscoPlastic<dim> visco_plastic;
 
       private:
     };
