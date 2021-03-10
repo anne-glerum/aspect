@@ -85,6 +85,8 @@ namespace aspect
           case 3:
             return edot_ii;
         }
+      // We will never get here, so just return something
+      return RSF_a;
     }
 
 
