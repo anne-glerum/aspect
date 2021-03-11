@@ -100,10 +100,15 @@ namespace aspect
        * conditions of slow slip events.
        *
        * For the type 'regularized rate and state dependent friction', the friction angle
-       * is computed following the high velocity approxiamtion of the classic rate and
+       * is computed following the high velocity approximation of the classic rate and
        * state friction as in \\cite{herrendorfer_invariant_2018}. This overcomes the
        * problem of ill-posedness and the possibility of negative friction for very small
        * velocities.
+       *
+       * For the type 'steady state rate and state dependent friction', the friction angle
+       * is computed as the steady-state friction coefficient in rate-and-state friction
+       * that is reached when state evolves toward a steady state \\theta_{ss} = L/V
+       * at constant slip velocities.
        *
        * Strain-weakening and friction dependence mechanisms other than rate or state
        * dependence are handled outside this functionality.
@@ -116,7 +121,8 @@ namespace aspect
         rate_and_state_dependent_friction,
         rate_and_state_dependent_friction_plus_linear_slip_weakening,
         slip_rate_dependent_rate_and_state_dependent_friction,
-        regularized_rate_and_state_dependent_friction
+        regularized_rate_and_state_dependent_friction,
+        steady_state_rate_and_state_dependent_friction
       };
 
       template <int dim>

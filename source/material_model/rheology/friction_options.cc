@@ -127,6 +127,18 @@ namespace aspect
                        "Something is wrong with the tan/atan conversion of friction coefficient to friction angle in RAD."));
               break;
             }
+            case steady_state_rate_and_state_dependent_friction:
+            {
+              // Get the values for a and b and the critcal slip distance L
+              const double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(position,j).first;
+              const double rate_and_state_parameter_b = calculate_depth_dependent_a_and_b(position,j).second;
+
+              const double mu = std::tan(current_friction)
+                                + (rate_and_state_parameter_a - rate_and_state_parameter_b)
+                                * std::log(current_edot_ii / quasi_static_strain_rate);
+              current_friction = std::atan (mu);
+              break;
+            }
             // default is for case rate_and_state_dependent_friction with the other rate-and-state variations as if statements
             default:
             {
@@ -394,7 +406,8 @@ namespace aspect
                            Patterns::Selection("none|dynamic friction|rate and state dependent friction|"
                                                "rate and state dependent friction plus linear slip weakening|"
                                                "slip rate dependent rate and state dependent friction|"
-                                               "regularized rate and state dependent friction"),
+                                               "regularized rate and state dependent friction|"
+                                               "steady state rate and state dependent friction"),
                            "Whether to apply a rate or rate-and-state dependence of the friction angle. This can "
                            "be used to obtain stick-slip motion to simulate earthquake-like behaviour, "
                            "where short periods of high-velocities are separated by longer periods without "
@@ -468,7 +481,13 @@ namespace aspect
                            "$\\mu = a\\cdot sinh^{-1}\\left[\\frac{V}{2V_0}exp\\left(\\frac{\\mu_0+b\\cdot ln(V_0\\theta/L)}{a}\\right)\\right]$ "
                            "This is a high velocity approximation and regularized version of the classic rate-and-state friction. "
                            "This formulation overcomes the problem of ill-posedness and the possibility of negative friction for "
-                           "$V<<V_0$. It is for example used in \\cite{herrendorfer_invariant_2018}. ");
+                           "$V<<V_0$. It is for example used in \\cite{herrendorfer_invariant_2018}. "
+                           "\n\n"
+                           "\\item ``steady state rate and state dependent friction'': friction "
+                           "is computed as the steady-state friction coefficient in rate-and-state friction: "
+                           "$\\mu_{ss} =\\mu_{st}}+(a-b)ln(V/V_{st}})$"
+                           "This friction is reached when state evolves toward a steady state $\\theta_{ss} = L/V$"
+                           "at constant slip velocities.");
 
         // Dynamic friction paramters
         prm.declare_entry ("Dynamic characteristic strain rate", "1e-12",
@@ -634,6 +653,8 @@ namespace aspect
           friction_dependence_mechanism = slip_rate_dependent_rate_and_state_dependent_friction;
         else if (prm.get ("Friction dependence mechanism") == "regularized rate and state dependent friction")
           friction_dependence_mechanism = regularized_rate_and_state_dependent_friction;
+        else if (prm.get ("Friction dependence mechanism") == "steady state rate and state dependent friction")
+          friction_dependence_mechanism = steady_state_rate_and_state_dependent_friction;
         else
           AssertThrow(false, ExcMessage("Not a valid friction dependence option!"));
 
