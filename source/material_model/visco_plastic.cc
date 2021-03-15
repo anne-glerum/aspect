@@ -478,7 +478,7 @@ namespace aspect
           const double critical_slip_distance = rheology->friction_options.get_critical_slip_distance(position, j); // j is from volume fractions, q is n_evaluation points
           const double kLaP = (k_param * critical_slip_distance) / (RSF_parameter_a * pressure);
           const double xi = 0.25 * std::pow((kLaP - (RSF_parameter_b - RSF_parameter_a) / RSF_parameter_a),2) - kLaP;
-
+          // todo: only do so if a !=0 !!!
           double delta_theta_max = 0;
           if (xi > 0)
             delta_theta_max = std::min(((RSF_parameter_a * pressure)

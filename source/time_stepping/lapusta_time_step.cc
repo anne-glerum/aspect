@@ -86,14 +86,13 @@ namespace aspect
                 // TODO in Lapusta, this should be plastic velocity. But just taking the full velocity
                 // should be the most conservative approach, so it should be ok...
                 const double local_velocity = velocity_values[q].norm();
-                std::cout << "entered Lapusta time step execute - cell loop - nq-points1" << std::endl;
-                const double pressure = in.pressure[q]; 
+                
                 std::cout << "entered Lapusta time step execute - cell loop - nq-points2" << std::endl;
                 std::pair<double,double> delta_theta_max_and_critical_slip_distance = visco_plastic.compute_delta_theta_max(
                                                                                         in.composition[0],
                                                                                         in.position[q],
                                                                                         delta_x,
-                                                                                        pressure);
+                                                                                         in.pressure[q]);
                 std::cout << "entered Lapusta time step execute - cell loop - nq-points3" << std::endl;
                 min_state_weakening_time_step = std::min (min_state_weakening_time_step,
                                                           delta_theta_max_and_critical_slip_distance.first
