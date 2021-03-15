@@ -192,8 +192,9 @@ namespace aspect
                                                           / rate_and_state_parameter_a)));
                         }
                       else
-                        mu = std::tan(current_friction);
-                    }
+                        mu = std::tan(current_friction) + rate_and_state_parameter_b
+                             * std::log((theta * quasi_static_strain_rate  * cellsize) / critical_slip_distance));
+                      }
                   else
                     {
                       // Calculate effective friction according to Equation (4) in Sobolev and Muldashev (2017):
@@ -731,7 +732,7 @@ namespace aspect
 
         cut_edot_ii = prm.get_bool("Cut edot_ii after radiation damping");
 
-                      use_always_yielding = prm.get_bool("Use always yielding");
+        use_always_yielding = prm.get_bool("Use always yielding");
 
         coordinate_system_RSF = Utilities::Coordinates::string_to_coordinate_system(prm.get("Coordinate system for RSF parameters"));
 
