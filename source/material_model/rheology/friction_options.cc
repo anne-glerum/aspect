@@ -589,6 +589,10 @@ namespace aspect
                            "during earthquakelike episodes. Unlike an inertial term it cannot be used to model rupture "
                            "propagation as it approximates seismic waves as energy outflow only. ");
 
+        prm.declare_entry ("Cut edot_ii after radiation damping", "true",
+                           Patterns::Bool (),
+                           "Whether to cut edot_ii after applying radiation damping or not. A parameter for debugging my issues. ");
+
         prm.declare_entry ("Use always yielding", "false",
                            Patterns::Bool (),
                            "Whether to assume always yielding for the compositional field 'fault'. In the "
@@ -725,7 +729,9 @@ namespace aspect
 
         use_radiation_damping = prm.get_bool("Use radiation damping");
 
-        use_always_yielding = prm.get_bool("Use always yielding");
+        cut_edot_ii = prm.get_bool("Cut edot_ii after radiation damping");
+
+                      use_always_yielding = prm.get_bool("Use always yielding");
 
         coordinate_system_RSF = Utilities::Coordinates::string_to_coordinate_system(prm.get("Coordinate system for RSF parameters"));
 

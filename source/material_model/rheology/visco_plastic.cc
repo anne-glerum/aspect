@@ -348,7 +348,8 @@ namespace aspect
                 radiation_damping_term = effective_edot_ii * cellsize * elastic_shear_moduli[j]
                                          / (2.0 * std::sqrt(elastic_shear_moduli[j] / reference_density));
                 non_yielding_stress -= radiation_damping_term;
-                effective_edot_ii = std::max(non_yielding_stress / (2 * viscosity_pre_yield), min_strain_rate);
+                if (friction_options.cut_edot_ii)
+                  effective_edot_ii = std::max(non_yielding_stress / (2 * viscosity_pre_yield), min_strain_rate);
 
                 // Note: I applied radiation damping to non_yielding_stress because non_yielding_stress can be used
                 // to modify te effective viscosity and effective_edot_ii, which in turn modifies the friction
