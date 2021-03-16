@@ -444,29 +444,18 @@ namespace aspect
                              const double delta_x,
                              const double pressure) const
     {
-
-                std::cout << "entered Lapusta time step execute - entered visco_plastic" << std::endl;
-                std::cout << "use theta: " << rheology->friction_options.use_theta() << std::endl;
-      //AssertThrow(rheology->friction_options.use_theta() == true,
-      //            ExcMessage("The Lapusta-timestepping scheeme only works "
-      //                       "when a state variable 'theta' is used in the friction formulation."));
-                std::cout << "entered Lapusta time step execute - visco_plastic - theta" << std::endl;
+      AssertThrow(rheology->friction_options.use_theta() == true,
+                  ExcMessage("The Lapusta-timestepping scheeme only works "
+                             "when a state variable 'theta' is used in the friction formulation."));
       const double nu = 0.5;
-                std::cout << "entered Lapusta time step execute - visco_plastic - nu" << std::endl;
-      // poisson ration (0.25 in herrendo), but we are incompressible, so it must be 0.5.
+      // poisson ratio (0.25 in herrendoerfer 2018), but we are incompressible, so it must be 0.5.
       // TODO: get the actual Poissons ration if at some point compressibility is possible
       const std::vector<double> elastic_shear_moduli = rheology->elastic_rheology.get_elastic_shear_moduli();
 
-                std::cout << "entered Lapusta time step execute - visco_plastic - G" << std::endl;
       double delta_theta_max_tot = 0;
       double critical_slip_distance_tot = 0;
-
-
-                std::cout << "entered Lapusta time step execute - visco_plastic" << std::endl;
-      // during make it says that volume_fractions was not declared in this scope... wthin material_model/visco_plastic.cc it is obtained like this:
       const std::vector<double> volume_fractions = MaterialUtilities::compute_volume_fractions(composition, rheology->get_volumetric_composition_mask());
 
-                std::cout << "entered Lapusta time step execute - visco_plastic - got volume fractions" << std::endl;
       for (unsigned int j=0; j < volume_fractions.size(); ++j)
         {
           const double G_star = elastic_shear_moduli[j]/(1-nu);
@@ -475,10 +464,9 @@ namespace aspect
           // compute delta_theta_max for each volume fraction
           const double RSF_parameter_a = rheology->friction_options.calculate_depth_dependent_a_and_b(position,j).first;
           const double RSF_parameter_b = rheology->friction_options.calculate_depth_dependent_a_and_b(position,j).second;
-          const double critical_slip_distance = rheology->friction_options.get_critical_slip_distance(position, j); // j is from volume fractions, q is n_evaluation points
+          const double critical_slip_distance = rheology->friction_options.get_critical_slip_distance(position, j);
           const double kLaP = (k_param * critical_slip_distance) / (RSF_parameter_a * pressure);
           const double xi = 0.25 * std::pow((kLaP - (RSF_parameter_b - RSF_parameter_a) / RSF_parameter_a),2) - kLaP;
-          // todo: only do so if a !=0 !!!
           double delta_theta_max = 0;
           if (xi > 0)
             delta_theta_max = std::min(((RSF_parameter_a * pressure)
@@ -491,14 +479,47 @@ namespace aspect
           delta_theta_max_tot +=  volume_fractions[j] * delta_theta_max;
           critical_slip_distance_tot += volume_fractions[j] * critical_slip_distance;
         }
-
-        AssertThrow((std::isinf(delta_theta_max_tot) || numbers::is_nan(delta_theta_max_tot)) == false, ExcMessage(
-                                "Delta_theta_max needed for the Lapusta time stepping becomes nan or inf. Please "
-                                "check all your friction parameters. In case of "
-                                "rate-and-state like friction, don't forget to check on a,b, and the critical slip distance, or theta."));
+      // 0 is the initializing value for delta_theta_max, but will lead to problems later on when
+      // determining time step size. nan or inf are also possible values, e.g. in case of RSF_parameter_a = 0.
+      // A negative delta_theta_max would lead to a negative time step size and also does not make sense.
+      // According to Herrendoerfer 2018 delta_theta_max is not allowed > 0.2, so this velue is used if the rest
+      // gives non-sense.
+      if ((delta_theta_max_tot <= 0) || std::isinf(delta_theta_max_tot) || numbers::is_nan(delta_theta_max_tot))
+        delta_theta_max_tot = 0.2;
 
       return std::pair<double,double>(delta_theta_max_tot,
                                       critical_slip_distance_tot);
+    }
+
+
+
+    template <int dim>
+    double
+    ViscoPlastic<dim>::
+    compute_min_healing_time_step (const std::vector<double> &composition) const
+    {
+      const double min_healing_time_step = 0.2 * composition[rheology->friction_options.theta_composition_index];
+
+      AssertThrow((std::isinf( min_healing_time_step) || numbers::is_nan( min_healing_time_step)) == false, ExcMessage(
+                    " min_healing_time_step needed for the Lapusta time stepping becomes nan or inf. Please "
+                    "check all your friction parameters. In case of "
+                    "rate-and-state like friction, don't forget to check on a,b, and the critical slip distance, or theta."));
+      return min_healing_time_step;
+    }
+
+
+
+    template <int dim>
+    double
+    ViscoPlastic<dim>::
+    get_elastic_shear_modulus (const std::vector<double> &composition) const
+    {
+      double elastic_shear_modulus = 0;
+      const std::vector<double> elastic_shear_moduli = rheology->elastic_rheology.get_elastic_shear_moduli();
+      const std::vector<double> volume_fractions = MaterialUtilities::compute_volume_fractions(composition, rheology->get_volumetric_composition_mask());
+      for (unsigned int j=0; j < volume_fractions.size(); ++j)
+        elastic_shear_modulus += volume_fractions[j] * elastic_shear_moduli[j];
+      return elastic_shear_modulus;
     }
 
 

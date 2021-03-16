@@ -36,8 +36,8 @@ namespace aspect
        * development see \cite{lapusta_elastodynamic_2000},
        * \cite{lapusta_three-dimensional_2009} and \cite{herrendorfer_invariant_2018}.
        */
-
-      std::cout << "entered Lapusta time step execute" << std::endl;
+      const MaterialModel::ViscoPlastic<dim> &viscoplastic
+        = Plugins::get_plugin_as_type<const MaterialModel::ViscoPlastic<dim>>(this->get_material_model());
 
       const QIterated<dim> quadrature_formula (QTrapez<1>(),
                                                this->get_parameters().stokes_velocity_degree);
@@ -67,13 +67,12 @@ namespace aspect
       for (const auto &cell : this->get_dof_handler().active_cell_iterators())
         if (cell->is_locally_owned())
           {
-            std::cout << "entered Lapusta time step execute - cell loop" << std::endl;
             fe_values.reinit (cell);
             in.reinit(fe_values,
                       cell,
                       this->introspection(),
                       this->get_solution());
-                      
+
             this->get_material_model().evaluate(in, out);
 
             fe_values[this->introspection().extractors.velocities].get_function_values (this->get_solution(),
@@ -82,25 +81,23 @@ namespace aspect
             const double delta_x = cell->minimum_vertex_distance();
             for (unsigned int q=0; q<n_q_points; ++q)
               {
-                std::cout << "entered Lapusta time step execute - cell loop - nq-points" << std::endl;
                 // TODO in Lapusta, this should be plastic velocity. But just taking the full velocity
                 // should be the most conservative approach, so it should be ok...
                 const double local_velocity = velocity_values[q].norm();
-                
-                std::cout << "entered Lapusta time step execute - cell loop - nq-points2" << std::endl;
-                std::pair<double,double> delta_theta_max_and_critical_slip_distance = visco_plastic.compute_delta_theta_max(
-                                                                                        in.composition[0],
+
+                std::pair<double,double> delta_theta_max_and_critical_slip_distance = viscoplastic.compute_delta_theta_max(
+                                                                                        in.composition[0],  // should this be 0 or q? for all the times I hand over composition.. found 0 in some part of the code, but q intuitively makes more sense
                                                                                         in.position[q],
                                                                                         delta_x,
-                                                                                         in.pressure[q]);
-                std::cout << "entered Lapusta time step execute - cell loop - nq-points3" << std::endl;
+                                                                                        in.pressure[q]);
+
                 min_state_weakening_time_step = std::min (min_state_weakening_time_step,
                                                           delta_theta_max_and_critical_slip_distance.first
                                                           * delta_theta_max_and_critical_slip_distance.second / local_velocity);
 
                 // state healing time step is: Deltat_h = 0.2 * theta.
                 min_healing_time_step = std::min (min_healing_time_step,
-                                                  0.2 * in.composition[q][friction_options.theta_composition_index]);
+                                                  viscoplastic.compute_min_healing_time_step(in.composition[q]));
 
                 // the maximum local velocity needed for the displacement time step
                 max_local_velocity = std::max (max_local_velocity,
@@ -110,9 +107,8 @@ namespace aspect
                 // with f_max = 0.2 in Herrendörfer et al. 2018
                 // to capture the increasing slip rate in case of a purely rate-dependent friction, i.e. if b = 0
                 min_vep_relaxation_time_step = std::min (min_vep_relaxation_time_step,
-                                                         0.2 * out.viscosities[q] / 1e10); //elastic_sher_modulus) TODO: get elastic shear moduli
-
-                std::cout << "entered Lapusta time step execute - cell loop - nq-points - end" << std::endl;
+                                                         0.2 * out.viscosities[q] 
+                                                         / viscoplastic.get_elastic_shear_modulus(in.composition[0]));
               }
 
             // minimum displacement time step: Delta t_d = Delta d_max * min(|Delta x/v_x|,|Delta x/v_y|),
@@ -131,7 +127,26 @@ namespace aspect
                                        std::min (min_healing_time_step,
                                                  std::min (min_displacement_time_step,
                                                            min_vep_relaxation_time_step)));
-      std::cout << "entered Lapusta time step execute - end" << std::endl;
+
+      AssertThrow (min_state_weakening_time_step > 0,
+                   ExcMessage("The time step length for the each time step needs to be positive, "
+                              "but the computed step length was: " + std::to_string(min_lapusta_timestep) + ". "
+                              "Please check for non-positive material properties."));
+
+      AssertThrow (min_healing_time_step > 0,
+                   ExcMessage("The time step length for the each time step needs to be positive, "
+                              "but the computed step length was: " + std::to_string(min_lapusta_timestep) + ". "
+                              "Please check for non-positive material properties."));
+
+      AssertThrow (min_displacement_time_step > 0,
+                   ExcMessage("The time step length for the each time step needs to be positive, "
+                              "but the computed step length was: " + std::to_string(min_lapusta_timestep) + ". "
+                              "Please check for non-positive material properties."));
+
+      AssertThrow (min_vep_relaxation_time_step > 0,
+                   ExcMessage("The time step length for the each time step needs to be positive, "
+                              "but the computed step length was: " + std::to_string(min_lapusta_timestep) + ". "
+                              "Please check for non-positive material properties."));
 
       AssertThrow (min_lapusta_timestep > 0,
                    ExcMessage("The time step length for the each time step needs to be positive, "

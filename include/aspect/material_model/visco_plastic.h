@@ -278,6 +278,20 @@ namespace aspect
                                  const double delta_x,
                                  const double pressure) const;
 
+        /**
+         * A function to compute the minimum healing time step which is used to calculate the necessary
+                 * minimum time step needed for rate-and-state friction models. The calculation of the
+                 * timestep is done following \cite{lapusta_elastodynamic_2000},
+                * \cite{lapusta_three-dimensional_2009} and \cite{herrendorfer_invariant_2018}
+                 */
+        double
+        compute_min_healing_time_step (const std::vector<double> &composition) const;
+
+        /**
+         * A function that returns the elastic shear modulus according to the volume fractions
+         */
+        double get_elastic_shear_modulus (const std::vector<double> &composition) const;
+
       private:
 
         /**
