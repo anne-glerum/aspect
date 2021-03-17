@@ -107,7 +107,7 @@ namespace aspect
                 // with f_max = 0.2 in Herrendörfer et al. 2018
                 // to capture the increasing slip rate in case of a purely rate-dependent friction, i.e. if b = 0
                 min_vep_relaxation_time_step = std::min (min_vep_relaxation_time_step,
-                                                         0.2 * out.viscosities[q] 
+                                                         0.2 * out.viscosities[q]
                                                          / viscoplastic.get_elastic_shear_modulus(in.composition[0]));
               }
 
