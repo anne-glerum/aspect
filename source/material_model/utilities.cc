@@ -946,6 +946,11 @@ namespace aspect
                 composition_fractions[i+1] = x_comp[i];
             }
 
+        // do not let a composition_fraction be negative! to see if this keeps theta positive
+        for (unsigned int j=0; j < composition_fractions.size(); ++j)
+          if (composition_fractions[j] < 0)
+            composition_fractions[j] = 0;
+
         return composition_fractions;
       }
 
