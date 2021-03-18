@@ -129,14 +129,20 @@ namespace aspect
             }
             case steady_state_rate_and_state_dependent_friction:
             {
-              // Get the values for a and b and the critcal slip distance L
-              const double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(position,j).first;
-              const double rate_and_state_parameter_b = calculate_depth_dependent_a_and_b(position,j).second;
+              double cellsize = 1.;
+              if (current_cell.state() == IteratorState::valid)
+                {
+                  cellsize = current_cell->extent_in_direction(0);
+                  // Get the values for a and b and the critcal slip distance L
+                  const double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(position,j).first;
+                  const double rate_and_state_parameter_b = calculate_depth_dependent_a_and_b(position,j).second;
 
-              const double mu = std::tan(current_friction)
-                                + (rate_and_state_parameter_a - rate_and_state_parameter_b)
-                                * std::log(current_edot_ii / quasi_static_strain_rate);
-              current_friction = std::atan (mu);
+                  const double mu = std::tan(current_friction)
+                                    + (rate_and_state_parameter_a - rate_and_state_parameter_b)
+                                    * std::log(1.75e-2 / (quasi_static_strain_rate * cellsize));
+                  // ToDo: instead of hardcoding 1.75e-2, make this an input parameter!
+                  current_friction = std::atan (mu);
+                }
               break;
             }
             // default is for case rate_and_state_dependent_friction with the other rate-and-state variations as if statements
