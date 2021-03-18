@@ -199,7 +199,7 @@ namespace aspect
                         }
                       else
                         mu = std::tan(current_friction) + rate_and_state_parameter_b
-                             * std::log((theta * quasi_static_strain_rate  * cellsize) / critical_slip_distance));
+                             * std::log((theta * quasi_static_strain_rate  * cellsize) / critical_slip_distance);
                       }
                   else
                     {
