@@ -24,6 +24,7 @@
 #include <aspect/simulator_access.h>
 #include <aspect/material_model/interface.h>
 #include <aspect/material_model/melt_boukare.h>
+#include <aspect/material_model/melt_phipps_morgan.h>
 #include <aspect/material_model/equation_of_state/multicomponent_incompressible.h>
 #include <aspect/material_model/rheology/visco_plastic.h>
 
@@ -190,7 +191,7 @@ namespace aspect
         * Reference value for the Darcy coefficient, which is defined as
         * permeability divided by fluid viscosity. Units: m^2/Pa/s.
         */
-        virtual double reference_darcy_coefficient () const;
+        double reference_darcy_coefficient () const override;
 
         /**
         * Compute the equilibrium melt fractions for the given input conditions.
@@ -200,8 +201,8 @@ namespace aspect
         * @param melt_fractions Vector of doubles that is filled with the
         * equilibrium melt fraction for each given input conditions.
         */
-        virtual void melt_fractions (const MaterialModel::MaterialModelInputs<dim> &in,
-                                     std::vector<double> &melt_fractions) const;
+        void melt_fractions (const MaterialModel::MaterialModelInputs<dim> &in,
+                                     std::vector<double> &melt_fractions) const override;
 
         /**
          * Return whether the model is compressible or not.  Incompressibility
@@ -288,7 +289,20 @@ namespace aspect
         /**
          * Pointer to the material model used as the base model
          */
-        MaterialModel::MeltBoukare<dim> melt_model;
+        //MaterialModel::MeltBoukare<dim> melt_model;
+        MaterialModel::MeltPhippsMorgan<dim> melt_model;
+
+        /**
+         * The compositional field index for the porosity field
+         */
+        unsigned int porosity_field_index;
+
+        /**
+         * The compositional field index for the Fe field in the 
+         * solid and liquid
+         */
+        unsigned int fe_field_index;
+        unsigned int fe_melt_field_index;
 
     };
 
