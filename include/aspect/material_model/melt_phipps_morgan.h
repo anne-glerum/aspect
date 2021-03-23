@@ -36,10 +36,10 @@ namespace aspect
      * Additional output fields for the melt phipps_morgan material model.
      */
     template <int dim>
-    class BoukareOutputs : public NamedAdditionalMaterialOutputs<dim>
+    class PhippsMorganOutputs : public NamedAdditionalMaterialOutputs<dim>
     {
       public:
-        BoukareOutputs(const unsigned int n_points);
+        PhippsMorganOutputs(const unsigned int n_points);
 
         virtual std::vector<double> get_nth_output(const unsigned int idx) const;
 
@@ -188,6 +188,7 @@ namespace aspect
 
 
         // names of the endmembers
+        // TODOPM11 rm unused
         unsigned int febdg_idx;
         unsigned int mgbdg_idx;
         unsigned int wus_idx;
@@ -195,6 +196,11 @@ namespace aspect
         unsigned int femelt_idx;
         unsigned int mgmelt_idx;
         unsigned int simelt_idx;
+
+        unsigned int fa_idx;
+        unsigned int fo_idx;
+        unsigned int fa_melt_idx;
+        unsigned int fo_melt_idx;
 
         struct EndmemberProperties
         {
@@ -297,12 +303,12 @@ namespace aspect
         /**
          * Convert from the mole fraction of iron in the solid to the mole fraction of iron in the
          * two solid phases, bridgmanite and ferropericlase, and the mass fraction of bridgmanite
-         * in the solid.
+         * in the solid. Q!
          */
         virtual
         double
         compute_melt_molar_fraction (const double porosity,
-                                     const double bridgmanite_molar_fraction_in_solid,
+//                                     const double fayalite_molar_fraction_in_solid,
                                      EndmemberProperties &properties,
                                      const std::vector<double> &endmember_mole_fractions_per_phase) const;
 
@@ -311,7 +317,7 @@ namespace aspect
         melt_fraction (const double temperature,
                        const double pressure,
                        const double bulk_composition,
-                       double &molar_volatiles_in_melt,
+//                       double &molar_volatiles_in_melt,
                        double &solid_composition,
                        double &melt_composition) const;
 
