@@ -72,7 +72,12 @@ namespace aspect
       in.composition[i] = composition;
       in.strain_rate[i] = strain_rate;
 
-      const std::vector<double> volume_fractions = MaterialUtilities::compute_volume_fractions(composition, rheology->get_volumetric_composition_mask());
+      // Do not use the porosity and Fe fields for visco-plasticity.
+      ComponentMask composition_mask = rheology->get_volumetric_composition_mask();
+      composition_mask.set(porosity_field_index,false);
+      composition_mask.set(fe_field_index,false);
+      composition_mask.set(fe_melt_field_index,false);
+      const std::vector<double> volume_fractions = MaterialUtilities::compute_volume_fractions(composition, composition_mask);
 
       const IsostrainViscosities isostrain_viscosities =
         rheology->calculate_isostrain_viscosities(in, i, volume_fractions);
@@ -92,7 +97,12 @@ namespace aspect
     {
       Assert(in.n_evaluation_points() == 1, ExcInternalError());
 
-      const std::vector<double> volume_fractions = MaterialUtilities::compute_volume_fractions(in.composition[0], rheology->get_volumetric_composition_mask());
+      // Do not use the porosity and Fe fields for visco-plasticity.
+      ComponentMask composition_mask = rheology->get_volumetric_composition_mask();
+      composition_mask.set(porosity_field_index,false);
+      composition_mask.set(fe_field_index,false);
+      composition_mask.set(fe_melt_field_index,false);
+      const std::vector<double> volume_fractions = MaterialUtilities::compute_volume_fractions(in.composition[0], composition_mask);
 
       /* The following handles phases in a similar way as in the 'evaluate' function.
       * Results then enter the calculation of plastic yielding.
@@ -150,7 +160,10 @@ namespace aspect
       melt_model.evaluate(in, out);
 
       // Store which components do not represent volumetric compositions (e.g. strain components).
-      const ComponentMask volumetric_compositions = rheology->get_volumetric_composition_mask();
+      ComponentMask volumetric_compositions = rheology->get_volumetric_composition_mask();
+      volumetric_compositions.set(porosity_field_index,false);
+      volumetric_compositions.set(fe_field_index,false);
+      volumetric_compositions.set(fe_melt_field_index,false);
 
       EquationOfStateOutputs<dim> eos_outputs (this->n_compositional_fields()+1);
       EquationOfStateOutputs<dim> eos_outputs_all_phases (this->n_compositional_fields()+1+phase_function.n_phase_transitions());
@@ -196,8 +209,42 @@ namespace aspect
                                                   eos_outputs);
 
           const std::vector<double> volume_fractions = MaterialUtilities::compute_volume_fractions(in.composition[i], volumetric_compositions);
+          // not strictly correct if thermal expansivities are different, since we are interpreting
+          // these compositions as volume fractions, but the error introduced should not be too bad.
+          ////out.densities[i] = MaterialUtilities::average_value (volume_fractions, eos_outputs.densities, MaterialUtilities::arithmetic);
+          ////out.thermal_expansion_coefficients[i] = MaterialUtilities::average_value (volume_fractions, eos_outputs.thermal_expansion_coefficients, MaterialUtilities::arithmetic);
+          ////out.specific_heat[i] = MaterialUtilities::average_value (volume_fractions, eos_outputs.specific_heat_capacities, MaterialUtilities::arithmetic);
 
-          // Compute the effective viscosity if requested and retrieve whether the material is plastically yielding
+          ////if (define_conductivities == false)
+          ////  {
+          ////    double thermal_diffusivity = 0.0;
+
+          ////    for (unsigned int j=0; j < volume_fractions.size(); ++j)
+          ////      thermal_diffusivity += volume_fractions[j] * thermal_diffusivities[j];
+
+              // Thermal conductivity at the given positions. If the temperature equation uses
+              // the reference density profile formulation, use the reference density to
+              // calculate thermal conductivity. Otherwise, use the real density. If the adiabatic
+              // conditions are not yet initialized, the real density will still be used.
+         ////    if (this->get_parameters().formulation_temperature_equation ==
+          ////        Parameters<dim>::Formulation::TemperatureEquation::reference_density_profile &&
+          ////        this->get_adiabatic_conditions().is_initialized())
+          ////      out.thermal_conductivities[i] = thermal_diffusivity * out.specific_heat[i] *
+          ////                                      this->get_adiabatic_conditions().density(in.position[i]);
+          ////    else      out.thermal_conductivities[i] = thermal_diffusivity * out.specific_heat[i] * out.densities[i];
+          ////    }
+          ////  else
+          ////    {
+                // Use thermal conductivity values specified in the parameter file, if this
+                // option was selected.
+          ////      out.thermal_conductivities[i] = MaterialUtilities::average_value (volume_fractions, thermal_conductivities, MaterialUtilities::arithmetic);
+          ////    }
+
+          ////  out.compressibilities[i] = MaterialUtilities::average_value (volume_fractions, eos_outputs.compressibilities, MaterialUtilities::arithmetic);
+           // out.entropy_derivative_pressure[i] = MaterialUtilities::average_value (volume_fractions, eos_outputs.entropy_derivative_pressure, MaterialUtilities::arithmetic);
+           // out.entropy_derivative_temperature[i] = MaterialUtilities::average_value (volume_fractions, eos_outputs.entropy_derivative_temperature, MaterialUtilities::arithmetic);
+
+            // Compute the effective viscosity if requested and retrieve whether the material is plastically yielding
           bool plastic_yielding = false;
           if (in.requests_property(MaterialProperties::viscosity))
             {
@@ -382,6 +429,9 @@ namespace aspect
       melt_model.parse_parameters(prm);
       melt_model.initialize();
 
+      porosity_field_index = this->introspection().compositional_index_for_name("porosity");
+      fe_field_index = this->introspection().compositional_index_for_name("molar_Fe_in_solid");
+      fe_melt_field_index = this->introspection().compositional_index_for_name("molar_Fe_in_melt");
 
       // Declare dependencies on solution variables
       this->model_dependence.viscosity = NonlinearDependence::temperature | NonlinearDependence::pressure | NonlinearDependence::strain_rate | NonlinearDependence::compositional_fields;
