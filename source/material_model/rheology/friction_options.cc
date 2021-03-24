@@ -397,10 +397,13 @@ namespace aspect
       {
         bool use_theta = false;
         const FrictionDependenceMechanism mechanism = get_friction_dependence_mechanism();
+        // steady_state_rate_and_state_dependent_friction does not actually use theta, but
+        // it also comes from the RSF framework. So I am not sure if it needs to be put in here....
         if ((mechanism == rate_and_state_dependent_friction)
             || (mechanism == rate_and_state_dependent_friction_plus_linear_slip_weakening)
             || (mechanism == regularized_rate_and_state_dependent_friction)
-            || (mechanism == slip_rate_dependent_rate_and_state_dependent_friction))
+            || (mechanism == slip_rate_dependent_rate_and_state_dependent_friction)
+            || (mechanism == steady_state_rate_and_state_dependent_friction))
           use_theta = true;
 
         return use_theta;
