@@ -358,5 +358,3 @@ namespace aspect
   }
 }
 #endif
-
-

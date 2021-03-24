@@ -137,9 +137,9 @@ namespace aspect
                   const double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(position,j).first;
                   const double rate_and_state_parameter_b = calculate_depth_dependent_a_and_b(position,j).second;
 
-                  const double mu = std::tan(current_friction)
-                                    + (rate_and_state_parameter_a - rate_and_state_parameter_b)
-                                    * std::log(1.75e-2 / (quasi_static_strain_rate * cellsize));
+                  const double mu = effective_friction_factor[j] * (std::tan(current_friction)
+                                                                    + (rate_and_state_parameter_a - rate_and_state_parameter_b)
+                                                                    * std::log(1.75e-2 / (quasi_static_strain_rate * cellsize)));
                   // ToDo: instead of hardcoding 1.75e-2, make this an input parameter!
                   current_friction = std::atan (mu);
                 }
@@ -200,7 +200,7 @@ namespace aspect
                       else
                         mu = std::tan(current_friction) + rate_and_state_parameter_b
                              * std::log((theta * quasi_static_strain_rate  * cellsize) / critical_slip_distance);
-                      }
+                    }
                   else
                     {
                       // Calculate effective friction according to Equation (4) in Sobolev and Muldashev (2017):
@@ -885,4 +885,3 @@ namespace aspect
 #undef INSTANTIATE
   }
 }
-
