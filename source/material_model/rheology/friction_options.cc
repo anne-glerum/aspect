@@ -337,7 +337,12 @@ namespace aspect
                                                                      in.current_cell->extent_in_direction(0), critical_slip_distance);
               }
 
-            out.reaction_terms[q][theta_composition_index] = current_theta - theta_old;
+            // reintroduction of theta_increment to see if limiting it, can save me from negative theta values
+            double theta_increment = current_theta - theta_old;
+            if (theta_old + theta_increment < 0)
+              theta_increment = 0;
+
+            out.reaction_terms[q][theta_composition_index] = theta_increment;
           }
       }
 
