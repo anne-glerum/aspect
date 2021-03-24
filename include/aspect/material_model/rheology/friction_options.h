@@ -159,7 +159,7 @@ namespace aspect
           /**
            * A function that computes the current value for the state variable theta.
            */
-          double compute_theta(const double theta_old,
+          double compute_theta(double theta_old,
                                const double current_edot_ii,
                                const double cellsize,
                                const double critical_slip_distance) const;

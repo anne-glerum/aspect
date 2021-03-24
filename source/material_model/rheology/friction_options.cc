@@ -273,11 +273,13 @@ namespace aspect
       template <int dim>
       double
       FrictionOptions<dim>::
-      compute_theta(const double theta_old,
+      compute_theta(double theta_old,
                     const double current_edot_ii,
                     const double cellsize,
                     const double critical_slip_distance) const
       {
+        // this is a trial to check if it prevents current_theta from being negative if old_theta is limited to >=0
+        theta_old = std::max(theta_old,0.);
         // Equation (7) from Sobolev and Muldashev (2017):
         // theta_{n+1} = L/V_{n+1} + (theta_n - L/V_{n+1})*exp(-(V_{n+1}dt)/L)
         // This is obtained from Equation (5): dtheta/dt = 1 - (theta V)/L
@@ -322,7 +324,8 @@ namespace aspect
                                                           average_elastic_shear_moduli, use_elasticity,
                                                           use_reference_strainrate, dte);
 
-            const double theta_old = in.composition[q][theta_composition_index];
+            // this is a trial to check if it prevents current_theta from being negative if old_theta is limited to >=0
+            const double theta_old = std::max(0.,in.composition[q][theta_composition_index]);
             double current_theta = 0;
             double critical_slip_distance = 0.0;
             for (unsigned int j=0; j < volume_fractions.size(); ++j)
