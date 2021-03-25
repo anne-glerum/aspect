@@ -203,6 +203,11 @@ namespace aspect
           double get_critical_slip_distance(const Point<dim> &position, const int j) const;
 
           /**
+           * Function that gets the effective friction factor at a certain position for composition j.
+           */
+          double get_effective_friction_factor(const Point<dim> &position, const int j) const;
+
+          /**
            * Create the additional material model outputs object that contains the
            * rate-and-state friction parameters.
            */
@@ -301,7 +306,7 @@ namespace aspect
            * account the influence of pore fluid pressure. This makes the friction
            * coefficient an effective friction coefficient as in Sobolev and Muldashev (2017).
            */
-          std::vector<double> effective_friction_factor;
+          std::unique_ptr<Functions::ParsedFunction<dim> > effective_friction_factor_function;
 
           /**
            * The critical slip distance in rate-and-state friction. Used to calculate the state
@@ -316,6 +321,13 @@ namespace aspect
            * quasi-static strain rate.
            */
           double quasi_static_strain_rate;
+
+          /**
+           * The velocity used in 'steady state rate and state dependent friction' that is
+           * assumed to have remained constant over a long period such that the friction angle
+           * evolved to a steady-state.
+           */
+          double steady_state_velocity;
 
           /**
            * Parsed functions that specify the rate-and-state parameters a and b which must be
