@@ -145,10 +145,13 @@ namespace aspect
                                const unsigned int q,
                                EndmemberProperties &properties) const
     {
-      const double n_endmembers = properties.volumes.size();
+      const unsigned int n_solid_endmembers = 2; 
 
-      for (unsigned int i=0; i<n_endmembers; ++i)
+      // Modified Tait equations for the solid endmembers
+      for (unsigned int i=0; i<n_solid_endmembers; ++i)
         {
+          AssertThrow (endmember_states[i] == EndmemberState::solid, ExcMessage("The first two endmembers are expected to be solids."));
+
           // eq B6-B8
           const double a = tait_parameters_a[i];
           const double b = tait_parameters_b[i];
@@ -192,14 +195,6 @@ namespace aspect
           // eq 12 of HP11
           // in HP11, P = P_ref + P_th
           properties.volumes[i] = reference_volumes[i] * (1. - a * (1. - std::pow(1. + b * (pressure - Pth), -c)));
-          // Q! the melts give nan properties
-          if (std::isnan(properties.volumes[i]))
-           {
-          std::cout << "in fill_endmember_properties, i, volumes " << i << ", " << properties.volumes[i] << std::endl;
-          std::cout << "in fill_endmember_properties, i, a, b, c, P, Pth " <<  i << ", " <<  a << ", " << b << ", " << c << ", " << pressure << ", " << Pth << std::endl;
-          std::cout << "in fill_endmember_properties, i, pow " <<  i << ", " <<   std::pow(1. + b * (pressure - Pth), -c) << std::endl;
-           properties.volumes[i] = reference_volumes[i];
-           }
 
           // eq 13++ of HP11
           properties.bulk_moduli[i] = reference_bulk_moduli[i] * (1. + b * (pressure - Pth))
@@ -212,15 +207,6 @@ namespace aspect
                                                 1. / ((1. + b * (pressure - Pth)) *
                                                       (a + (1. - a) * std::pow(1 + b * (pressure - Pth), c)));
         
-          // Q! the melts give nan properties
-          if (std::isnan(properties.thermal_expansivities[i]))
-           {
-          std::cout << "in fill_endmember_properties, i, alphas " << i << ", " << properties.volumes[i] << std::endl;
-          std::cout << "in fill_endmember_properties, i, C_V, C_V0, a, b, c, P, Pth " <<  i << ", " <<  C_V << ", " << C_V0 << ", " << a << ", " << b << ", " << c << ", " << pressure << ", " << Pth << std::endl;
-          std::cout << "in fill_endmember_properties, i, pow " <<  i << ", " <<   std::pow(1. + b * (pressure - Pth), -c) << std::endl;
-           properties.thermal_expansivities[i] = reference_thermal_expansivities[i];
-           }
-
           // eq B4
           const double Cp_ref = reference_specific_heats[i] + specific_heat_linear_coefficients[i] * in.temperature[q]
                                 + specific_heat_second_coefficients[i] * std::pow(in.temperature[q], -2.)
@@ -236,13 +222,35 @@ namespace aspect
           const double dSdT = dSdT0 + dintVdpdT * (1 - 2./relative_T + 2./(std::exp(relative_T) - 1.)) * relative_T/in.temperature[q];
 
           properties.heat_capacities[i] = Cp_ref + in.temperature[q] * dSdT;
-          // Q! the melts give nan properties
-          if (std::isnan(properties.heat_capacities[i]))
-           {
-          std::cout << "in fill_endmember_properties, i, cp " << i << ", " << properties.heat_capacities[i] << std::endl;
-          std::cout << "in fill_endmember_properties, i, cp_ref, dSdT, T " <<  i << ", " <<  Cp_ref << ", " << dSdT << ", " << in.temperature[q] << std::endl;
-           properties.heat_capacities[i] = Cp_ref;
-           }
+        }
+
+      // Endmember properties for the melts are defined relative
+      // to the solid endmembers according to equations 2-7 of Myhill (2018)
+      // Assume order of endmembers is Fa, Fo, Fa_melt, Fo_melt
+      for (unsigned int i=n_solid_endmembers; i<endmember_names.size(); ++i)
+        {
+	 // Change in Gibbs free energy of fusion
+         const double delta_S_fusion = (endmember_names[i] == "Fe2SiO4_fayalite") ? Fe_mantle_melting_entropy : Mg_mantle_melting_entropy;
+         const double delta_V_fusion = (endmember_names[i] == "Fe2SiO4_fayalite") ? Fe_mantle_melting_volume : Mg_mantle_melting_volume;
+         const double delta_E = (endmember_names[i] == "Fe2SiO4_fayalite") ? Fe_delta_E : Mg_delta_E;
+         const double delta_V_prime_fusion = (endmember_names[i] == "Fe2SiO4_fayalite") ? Fe_delta_V_prime_fusion : Mg_delta_V_prime_fusion;
+         const double delta_G_fusion = delta_E - in.temperature[q] * delta_S_fusion + in.pressure[q] * delta_V_fusion 
+                                     + 0.5 * in.pressure[q] * in.pressure[q] * delta_V_prime_fusion;
+
+         // Q! is p the molar fraction of endmember in the melt or in the composite or not needed?
+         // eq 2 M18
+         properties.gibbs_energies[i] =  properties.gibbs_energies[i-2] + delta_G_fusion;
+         // eq 3 M18
+         properties.entropies[i] = properties.entropies[i-2] + delta_S_fusion; 
+         // eq 4 M18
+         properties.volumes[i] = properties.volumes[i-2] + delta_V_fusion + delta_V_prime_fusion * in.pressure[q]; 
+         // eq 5 M18
+         properties.bulk_moduli[i] = properties.volumes[i] / 
+                                           (properties.volumes[i-2] / properties.bulk_moduli[i-2] - delta_V_prime_fusion);
+         // eq 6 M18
+         properties.heat_capacities[i] = properties.heat_capacities[i-2]; 
+         // eq 7 M18
+         properties.thermal_expansivities[i] = properties.thermal_expansivities[i-2] * properties.volumes[i-2] / properties.volumes[i]; 
         }
     }
 
@@ -1067,6 +1075,26 @@ namespace aspect
                              "computed. If the model does not use operator splitting, this parameter is not used. "
                              "Units: yr or s, depending on the ``Use years "
                              "in output instead of seconds'' parameter.");
+          // molar change in internal energy due to melting 
+          // TODO units
+          prm.declare_entry ("Fe mantle melting energy", "0.",
+                             Patterns::Double(),
+                             "The molar internal energy change of solid Fe mantle endmember. "
+                             "Units: .");
+          prm.declare_entry ("Mg mantle melting energy", "0.",
+                             Patterns::Double(),
+                             "The molar internal energy change of solid Mg mantle endmember. "
+                             "Units: .");
+          // molar change in volume derivative? due to melting 
+          // TODO units
+          prm.declare_entry ("Fe mantle melting volume derivative", "0.",
+                             Patterns::Double(),
+                             "The molar internal energy change of solid Fe mantle endmember. "
+                             "Units: .");
+          prm.declare_entry ("Mg mantle melting volume derivative", "0.",
+                             Patterns::Double(),
+                             "The molar internal energy change of solid Mg mantle endmember. "
+                             "Units: .");
           // PM01 Table A1 T^m
           prm.declare_entry ("Fe mantle melting temperature", "1490.",
                              Patterns::Double(),
@@ -1230,6 +1258,10 @@ namespace aspect
           alpha_phi                         = prm.get_double ("Exponential melt weakening factor");
           include_melting_and_freezing      = prm.get_bool ("Include melting and freezing");
           melting_time_scale                = prm.get_double ("Melting time scale for operator splitting");
+          Fe_delta_E                        = prm.get_double ("Fe mantle melting energy");
+          Mg_delta_E                        = prm.get_double ("Mg mantle melting energy");
+          Fe_delta_V_prime_fusion           = prm.get_double ("Fe mantle melting volume derivative");
+          Mg_delta_V_prime_fusion           = prm.get_double ("Mg mantle melting volume derivative");
           Fe_mantle_melting_temperature     = prm.get_double ("Fe mantle melting temperature");
           Mg_mantle_melting_temperature     = prm.get_double ("Mg mantle melting temperature");
           Fe_number_of_moles                = prm.get_double ("Fe number of moles");
@@ -1268,16 +1300,33 @@ namespace aspect
 
           std::vector<std::string> endmember_states_string = Utilities::split_string_list(prm.get("Endmember states"));
           endmember_states.resize(endmember_states_string.size());
+          unsigned int n_solid_endmembers = 0;
+          unsigned int n_melt_endmembers = 0;
 
           for (unsigned int i=0; i<endmember_states_string.size(); ++i)
             {
               if (endmember_states_string[i] == "solid")
+              {
                 endmember_states[i] = EndmemberState::solid;
+                n_solid_endmembers += 1;
+              }
               else if (endmember_states_string[i] == "melt")
+              {
                 endmember_states[i] = EndmemberState::melt;
+                n_melt_endmembers += 1;
+              }
               else
                 AssertThrow (false, ExcNotImplemented());
             }
+
+          AssertThrow(n_solid_endmembers == 2 && n_melt_endmembers == 2,
+                      ExcMessage("The list of strings for the parameter "
+                                 "'Material model/Melt phipps_morgan/Endmember states' does not contain the correct "
+                                 "number of entries. Two solid and two liquid states are expected. Please check your parameter file."));
+
+ 
+          // TODO MP01: Read in the below properties only for the solid endmembers. At the moment, the melt values
+          // do not matter, as they are not used. 
 
           molar_masses = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Molar masses"))),
                                                                  n_endmembers,
