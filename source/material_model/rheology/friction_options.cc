@@ -352,15 +352,13 @@ namespace aspect
       std::pair<double,double>
       FrictionOptions<dim>::calculate_depth_dependent_a_and_b(const Point<dim> &position, const int j) const
       {
-        Utilities::NaturalCoordinate<dim> point_a =
-          this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF);
-        Utilities::NaturalCoordinate<dim> point_b =
+        Utilities::NaturalCoordinate<dim> point =
           this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF);
 
         const double rate_and_state_parameter_a =
-          rate_and_state_parameter_a_function->value(Utilities::convert_array_to_point<dim>(point_a.get_coordinates()),j);
+          rate_and_state_parameter_a_function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),j);
         const double rate_and_state_parameter_b =
-          rate_and_state_parameter_b_function->value(Utilities::convert_array_to_point<dim>(point_b.get_coordinates()),j);
+          rate_and_state_parameter_b_function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),j);
 
         return std::pair<double,double>(rate_and_state_parameter_a,
                                         rate_and_state_parameter_b);
