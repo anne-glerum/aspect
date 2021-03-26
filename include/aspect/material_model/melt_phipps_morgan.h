@@ -354,7 +354,7 @@ namespace aspect
         const double Fe_mantle_melting_volume = 3.8e-6;       // molar volume change of melting of solid Fe mantle endmember in m3/mol
         const double Mg_mantle_melting_volume = 3.1e-6;       // molar volume change of melting volume of solid Mg mantle endmember in m3/mol
 
-        // Change in internal energy due to melting 
+        // Change in internal energy due to melting
         double Fe_delta_E = 0.;
         double Mg_delta_E = 0.;
         // Change in volume derivative? due to melting
