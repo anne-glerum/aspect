@@ -38,7 +38,6 @@ namespace aspect
       {
         std::vector<std::string> names;
         names.emplace_back("bulk_composition");
-//        names.emplace_back("molar_volatiles_in_melt");
         return names;
       }
     }
@@ -47,8 +46,7 @@ namespace aspect
     PhippsMorganOutputs<dim>::PhippsMorganOutputs (const unsigned int n_points)
       :
       NamedAdditionalMaterialOutputs<dim>(make_phipps_morgan_additional_outputs_names()),
-      bulk_composition(n_points, numbers::signaling_nan<double>()) //,
-//     molar_volatiles_in_melt(n_points, numbers::signaling_nan<double>())
+      bulk_composition(n_points, numbers::signaling_nan<double>())
     {}
 
     template <int dim>
@@ -60,7 +58,6 @@ namespace aspect
         return bulk_composition;
       else
         AssertThrow (false, ExcNotImplemented());
-      //return molar_volatiles_in_melt;
     }
 
 
@@ -72,7 +69,6 @@ namespace aspect
       // derived from the isothermal bulk modulus and its two first pressure derivatives
       // EQ 3 from Holland and Powell, 2011
 
-      //const unsigned int n_endmembers = reference_bulk_moduli.size();
       const unsigned int n_endmembers = endmember_names.size();
 
       tait_parameters_a.resize(n_endmembers);
@@ -90,8 +86,6 @@ namespace aspect
                                  (std::pow(bulk_modulus_pressure_derivatives[i],2) + bulk_modulus_pressure_derivatives[i]
                                   - reference_bulk_moduli[i] * bulk_modulus_second_pressure_derivatives[i]);
         }
-
-      //simelt_idx = distance(endmember_names.begin(), find(endmember_names.begin(), endmember_names.end(), "SiO2_melt"));
 
       fa_idx = distance(endmember_names.begin(), find(endmember_names.begin(), endmember_names.end(), "Fe2SiO4_fayalite"));
       fo_idx = distance(endmember_names.begin(), find(endmember_names.begin(), endmember_names.end(), "Mg2SiO4_forsterite"));
@@ -350,43 +344,44 @@ namespace aspect
     }
 
 
-    template <int dim>
-    void
-    MeltPhippsMorgan<dim>::
-    convert_to_fraction_of_endmembers_in_solid (const double temperature,
-                                                const double /*pressure*/,
-                                                const double molar_Fe_in_solid,
-                                                const std::vector<double> &endmember_gibbs_energies,
-                                                double &molar_FeSiO3_in_bridgmanite,
-                                                double &molar_FeO_in_ferropericlase,
-                                                double &f_pv) const
-    {
-      const double x_FeO = molar_Fe_in_solid * molar_FeO_in_Fe_mantle_endmember;
-      const double x_MgO = (1. - molar_Fe_in_solid) * molar_MgO_in_Mg_mantle_endmember;
-      const double x_SiO2 = molar_Fe_in_solid * molar_SiO2_in_Fe_mantle_endmember + (1. - molar_Fe_in_solid) * molar_SiO2_in_Mg_mantle_endmember;
-
-      const double molar_fraction_FeO = x_FeO/(x_MgO + x_FeO);
-      const double molar_fraction_SiO2 = x_SiO2/(x_MgO + x_FeO);
-
-      const double gibbs_energy_of_reaction = endmember_gibbs_energies[mgbdg_idx] + endmember_gibbs_energies[wus_idx]
-                                              - endmember_gibbs_energies[febdg_idx] - endmember_gibbs_energies[per_idx];
-      const double partition_coefficient = std::exp(gibbs_energy_of_reaction / (constants::gas_constant * temperature));
-
-      // Solving equation 6 in Nakajima et al., 2012 for X_Fe_fp and X_Fe_pv
-      // Solved using the definition of the distribution coefficient to define X_Fe_fp as a function of X_Fe_pv
-
-      const double num_to_sqrt = -4. * molar_fraction_FeO * (partition_coefficient - 1.) * partition_coefficient * molar_fraction_SiO2
-                                 + std::pow(1. + (molar_fraction_FeO + molar_fraction_SiO2) * (partition_coefficient - 1.0), 2.);
-
-      molar_FeSiO3_in_bridgmanite = (-1. + molar_fraction_FeO - (molar_fraction_FeO * partition_coefficient) + molar_fraction_SiO2 - (molar_fraction_SiO2 * partition_coefficient) + std::sqrt(num_to_sqrt)) /
-                                    (2. * molar_fraction_SiO2 * (1. - partition_coefficient));
-
-      molar_FeO_in_ferropericlase = molar_FeSiO3_in_bridgmanite / (((1. - molar_FeSiO3_in_bridgmanite) * partition_coefficient) + molar_FeSiO3_in_bridgmanite);
-
-      f_pv = molar_fraction_SiO2; // molar fraction of bridgmanite in the solid
-
-      return;
-    }
+    // TODO PM01 rm
+//    template <int dim>
+//    void
+//    MeltPhippsMorgan<dim>::
+//    convert_to_fraction_of_endmembers_in_solid (const double temperature,
+//                                                const double /*pressure*/,
+//                                                const double molar_Fe_in_solid,
+//                                                const std::vector<double> &endmember_gibbs_energies,
+//                                                double &molar_FeSiO3_in_bridgmanite,
+//                                                double &molar_FeO_in_ferropericlase,
+//                                                double &f_pv) const
+//    {
+//      const double x_FeO = molar_Fe_in_solid * molar_FeO_in_Fe_mantle_endmember;
+//      const double x_MgO = (1. - molar_Fe_in_solid) * molar_MgO_in_Mg_mantle_endmember;
+//      const double x_SiO2 = molar_Fe_in_solid * molar_SiO2_in_Fe_mantle_endmember + (1. - molar_Fe_in_solid) * molar_SiO2_in_Mg_mantle_endmember;
+//
+//      const double molar_fraction_FeO = x_FeO/(x_MgO + x_FeO);
+//      const double molar_fraction_SiO2 = x_SiO2/(x_MgO + x_FeO);
+//
+//      const double gibbs_energy_of_reaction = endmember_gibbs_energies[mgbdg_idx] + endmember_gibbs_energies[wus_idx]
+//                                              - endmember_gibbs_energies[febdg_idx] - endmember_gibbs_energies[per_idx];
+//      const double partition_coefficient = std::exp(gibbs_energy_of_reaction / (constants::gas_constant * temperature));
+//
+//      // Solving equation 6 in Nakajima et al., 2012 for X_Fe_fp and X_Fe_pv
+//      // Solved using the definition of the distribution coefficient to define X_Fe_fp as a function of X_Fe_pv
+//
+//      const double num_to_sqrt = -4. * molar_fraction_FeO * (partition_coefficient - 1.) * partition_coefficient * molar_fraction_SiO2
+//                                 + std::pow(1. + (molar_fraction_FeO + molar_fraction_SiO2) * (partition_coefficient - 1.0), 2.);
+//
+//      molar_FeSiO3_in_bridgmanite = (-1. + molar_fraction_FeO - (molar_fraction_FeO * partition_coefficient) + molar_fraction_SiO2 - (molar_fraction_SiO2 * partition_coefficient) + std::sqrt(num_to_sqrt)) /
+//                                    (2. * molar_fraction_SiO2 * (1. - partition_coefficient));
+//
+//      molar_FeO_in_ferropericlase = molar_FeSiO3_in_bridgmanite / (((1. - molar_FeSiO3_in_bridgmanite) * partition_coefficient) + molar_FeSiO3_in_bridgmanite);
+//
+//      f_pv = molar_fraction_SiO2; // molar fraction of bridgmanite in the solid
+//
+//      return;
+//    }
 
 
 
@@ -394,7 +389,6 @@ namespace aspect
     double
     MeltPhippsMorgan<dim>::
     compute_melt_molar_fraction (const double porosity,
-//                                 const double fayalite_molar_fraction_in_solid,
                                  EndmemberProperties &endmembers,
                                  const std::vector<double> &endmember_mole_fractions_per_phase) const
     {
@@ -454,14 +448,12 @@ namespace aspect
     melt_fraction (const double temperature,
                    const double pressure,
                    const double molar_composition_of_bulk,
-//                   double &molar_volatiles_in_melt,
                    double &new_molar_composition_of_solid,
                    double &new_molar_composition_of_melt) const
     {
       if (temperature == 0)
         return 0;
 
-      //const double molar_volatiles_in_bulk = 1.e-4;
       {
         // after Phipps Morgan, Jason. "Thermodynamics of pressure release melting of a veined plum pudding mantle."
         // Geochemistry, Geophysics, Geosystems 2.4 (2001).
@@ -470,12 +462,6 @@ namespace aspect
         const double R = constants::gas_constant;    // Ideal Gas Constant
 
         // eq 11
-        // Free Energy Change Delta_G due to Melting as a function of temperature and pressure
-        // eq A9 of PM11 minus the last rhs term
-        //const double dG_Fe_mantle = (Fe_mantle_melting_temperature - T) * Fe_mantle_melting_entropy
-        //                            + (P - melting_reference_pressure) * Fe_mantle_melting_volume;
-        //const double dG_Mg_mantle = (Mg_mantle_melting_temperature - T) * Mg_mantle_melting_entropy
-        //                            + (P - melting_reference_pressure) * Mg_mantle_melting_volume;
         // Free Energy Change Delta_G due to Melting as a function of temperature and pressure
         // eq 2 of Myhill 2018
         const double dG_Fe_mantle =  Fe_delta_E - T * Fe_mantle_melting_entropy + P * Fe_mantle_melting_volume
@@ -487,24 +473,11 @@ namespace aspect
         const double p_Fe_mantle = std::exp(dG_Fe_mantle/(Fe_number_of_moles*R*T));
         const double p_Mg_mantle = std::exp(dG_Mg_mantle/(Mg_number_of_moles*R*T));
 
-        // Mole composition of the solid and liquid (corresponds to the molar fraction of X_Fe, the iron-bearing endmember).
-        // In addition to the Phipps Morgan model, we also include volatiles here.
-        // eq A10
-        ////const double a = (p_Fe_mantle - p_Mg_mantle) * p_Fe_mantle/p_Mg_mantle;
-        // eq A11
-        ////const double b = p_Fe_mantle * (1. - 1./p_Mg_mantle) - molar_composition_of_bulk * (p_Fe_mantle - p_Mg_mantle)/p_Mg_mantle + molar_volatiles_in_bulk * (1. - p_Fe_mantle);
-        // eq A12
-        ////const double c = -molar_composition_of_bulk * (1. - 1./p_Mg_mantle);
-        // eq A8
-        ////double Xls = (-b + std::sqrt(b*b - 4.*a*c))/(2.*a);
-
         // Mole composition of Fe in the liquid (eq 12)
         // Q! is this the same as A12 in PM01, just reformulated?
         // A12 computes X_Fe_l = (1-p_Mg)/(p_Fe-p_Mg)
         const double Xls = 1. - ((1. - p_Fe_mantle) / (p_Mg_mantle - p_Fe_mantle));
 
-        //const double T_Fe_mantle = dG_Fe_mantle / Fe_mantle_melting_entropy;
-        //const double T_Mg_mantle = dG_Mg_mantle / Mg_mantle_melting_entropy;
         // Melting occurs when delta G = 0
         const double T_Fe_mantle = (Fe_delta_E + P * Fe_mantle_melting_volume + 0.5 * P * P * Fe_delta_V_prime_fusion) / Fe_mantle_melting_entropy;
         const double T_Mg_mantle = (Mg_delta_E + P * Mg_mantle_melting_volume + 0.5 * P * P * Mg_delta_V_prime_fusion) / Mg_mantle_melting_entropy;
@@ -518,8 +491,6 @@ namespace aspect
             // Q!: why are both the composition of the bulk? The solid would be zero?
             new_molar_composition_of_melt = molar_composition_of_bulk;
             new_molar_composition_of_solid = molar_composition_of_bulk;
-
-            //molar_volatiles_in_melt = molar_volatiles_in_bulk;
           }
         else // below liquidus
           {
@@ -530,9 +501,6 @@ namespace aspect
             new_molar_composition_of_solid = std::max(std::min(Xss, molar_composition_of_bulk), 0.0);
             new_molar_composition_of_melt = std::min(std::max(Xls, molar_composition_of_bulk), 1.0);
             melt_molar_fraction = std::min(std::max((molar_composition_of_bulk - Xss) / (Xls - Xss), 0.0), 1.0);
-
-            //if (molar_volatiles_in_bulk > 0)
-            //  molar_volatiles_in_melt = molar_volatiles_in_bulk*(Xls - Xss)/(molar_composition_of_bulk - Xss);
           }
 
         return melt_molar_fraction;
@@ -559,14 +527,6 @@ namespace aspect
 
           fill_endmember_properties(in, q, endmembers);
 
-          //convert_to_fraction_of_endmembers_in_solid(in.temperature[q],
-          //                                           this->get_adiabatic_conditions().pressure(in.position[q]),
-          //                                           solid_composition,
-          //                                           endmembers.gibbs_energies,
-          //                                           endmember_mole_fractions_per_phase[febdg_idx],
-          //                                           endmember_mole_fractions_per_phase[wus_idx],
-          //                                           bridgmanite_molar_fraction);
-
           endmember_mole_fractions_per_phase[fa_idx] = fayalite_molar_fraction;
           endmember_mole_fractions_per_phase[fo_idx] = 1.0 - endmember_mole_fractions_per_phase[fa_idx];
 
@@ -580,33 +540,20 @@ namespace aspect
               melt_composition = in.composition[q][Fe_melt_idx];
               endmember_mole_fractions_per_phase[fo_melt_idx] = (1. - melt_composition);
               endmember_mole_fractions_per_phase[fa_melt_idx] = melt_composition;
-              //endmember_mole_fractions_per_phase[simelt_idx] = 0.0;
 
               melt_molar_fraction = compute_melt_molar_fraction(in.composition[q][porosity_idx],
-//                                                                bridgmanite_molar_fraction,
                                                                 endmembers,
                                                                 endmember_mole_fractions_per_phase);
             }
 
           const double solid_molar_fraction = 1.0 - melt_molar_fraction;
           double bulk_composition = melt_composition * melt_molar_fraction + solid_composition * solid_molar_fraction;
-          //double molar_volatiles_in_melt = 0.0;
 
           double eq_melt_molar_fraction = this->melt_fraction(in.temperature[q],
                                                               this->get_adiabatic_conditions().pressure(in.position[q]),
                                                               bulk_composition,
-//                                                              molar_volatiles_in_melt,
                                                               solid_composition,
                                                               melt_composition);
-
-          /* ------------- We have to compute this again here because the porosity may have changed ----------------- */
-          //convert_to_fraction_of_endmembers_in_solid(in.temperature[q],
-          //                                           this->get_adiabatic_conditions().pressure(in.position[q]),
-          //                                           solid_composition,
-          //                                           endmembers.gibbs_energies,
-          //                                           endmember_mole_fractions_per_phase[febdg_idx],
-          //                                           endmember_mole_fractions_per_phase[wus_idx],
-          //                                           bridgmanite_molar_fraction);
 
           endmember_mole_fractions_per_phase[fa_idx] = solid_composition;
           endmember_mole_fractions_per_phase[fo_idx] = 1.0 - endmember_mole_fractions_per_phase[fa_idx];
@@ -614,7 +561,6 @@ namespace aspect
           // For now, we only consider the fraction of Fe in the melt
           endmember_mole_fractions_per_phase[fo_melt_idx] = (1. - melt_composition);
           endmember_mole_fractions_per_phase[fa_melt_idx] = melt_composition;
-          //endmember_mole_fractions_per_phase[simelt_idx] = 0.0;
           /* ------------- ---------------------------------------------------------------------- ----------------- */
 
 
@@ -690,21 +636,9 @@ namespace aspect
           fill_endmember_properties(in, q, endmembers);
 
           // we need the bulk composition of both solid phases
-          //double bridgmanite_molar_fraction_in_solid;
           // Mole fraction of fayalite in solid
           const double fayalite_molar_fraction_in_solid = solid_composition;
           endmember_mole_fractions_per_phase[fa_idx] = fayalite_molar_fraction_in_solid;
-          // TODOPM01 simplify
-          //convert_to_fraction_of_endmembers_in_solid(in.temperature[q],
-          //                                           this->get_adiabatic_conditions().pressure(in.position[q]),
-          //                                           solid_composition,
-          //                                           endmembers.gibbs_energies,
-          //                                           endmember_mole_fractions_per_phase[febdg_idx],
-          //                                           endmember_mole_fractions_per_phase[wus_idx],
-          //                                           bridgmanite_molar_fraction_in_solid);
-
-          //endmember_mole_fractions_per_phase[mgbdg_idx] = 1.0 - endmember_mole_fractions_per_phase[febdg_idx];
-          //endmember_mole_fractions_per_phase[per_idx] = 1.0 - endmember_mole_fractions_per_phase[wus_idx];
 
           // Mole fraction of Mg in solid
           const double forsterite_molar_fraction_in_solid = 1. - fayalite_molar_fraction_in_solid;
@@ -717,16 +651,10 @@ namespace aspect
               const unsigned int porosity_idx = this->introspection().compositional_index_for_name("porosity");
 
               // For now, we only consider the fraction of Fe in the melt
-              // TODO: For now, we don't have an simelt endmember...
-              // TODOPM01 remove simelt
-              //endmember_mole_fractions_per_phase[mgmelt_idx] = (1. - in.composition[q][Fe_melt_idx]);
-              //endmember_mole_fractions_per_phase[femelt_idx] = in.composition[q][Fe_melt_idx];
-              //endmember_mole_fractions_per_phase[simelt_idx] = 0.0;
               endmember_mole_fractions_per_phase[fa_melt_idx] = in.composition[q][Fe_melt_idx];
               endmember_mole_fractions_per_phase[fo_melt_idx] = (1. - in.composition[q][Fe_melt_idx]);
 
               melt_molar_fraction = compute_melt_molar_fraction(in.composition[q][porosity_idx],
-//                                                                fayalite_molar_fraction_in_solid,
                                                                 endmembers,
                                                                 endmember_mole_fractions_per_phase);
             }
@@ -740,7 +668,6 @@ namespace aspect
           double melt_molar_volume = 0.0;
           double solid_molar_volume = 0.0;
 
-          // TODOPM01
           for (unsigned int i=0; i<n_endmembers; ++i)
             {
               if (endmember_states[i] == EndmemberState::solid)
@@ -781,36 +708,11 @@ namespace aspect
                                               / (solid_molar_volume * endmembers.bulk_moduli[i]);
                 }
             }
-          if (std::isnan(out.thermal_expansion_coefficients[q]))
-            {
-              std::cout << "Alpha nan: " << std::endl;
-              for (unsigned int i=0; i<n_endmembers; ++i)
-                {
-                  std::cout << endmember_mole_fractions_in_composite[i] << ", " << endmembers.volumes[i] << ", " << endmembers.thermal_expansivities[i] << ", " << total_volume << std::endl;
-                }
-            }
-
-          if (std::isnan(out.specific_heat[q]))
-            {
-              std::cout << "Cp nan " << std::endl;
-              for (unsigned int i=0; i<n_endmembers; ++i)
-                {
-                  std::cout << endmember_mole_fractions_in_composite[i] << ", " << endmembers.heat_capacities[i] << ", " << total_molar_mass << std::endl;
-                }
-            }
-
-          if (std::isnan(out.compressibilities[q]))
-            {
-              std::cout << "Kappa nan " << std::endl;
-            }
 
           if (solid_molar_volume > 0)
             out.densities[q] = solid_molar_mass / solid_molar_volume;
           else
             out.densities[q] = melt_molar_mass / melt_molar_volume;
-
-          if (std::isnan(out.densities[q]))
-            std::cout << "rho nan " << std::endl;
 
           if (melt_out != nullptr)
             {
@@ -857,7 +759,6 @@ namespace aspect
               // in this simple model, the bulk composition is just one number, namely
               // the molar fraction of the combined iron endmembers
               const double bulk_composition = old_melt_composition * melt_molar_fraction + old_solid_composition * solid_molar_fraction;
-              //double molar_volatiles_in_melt = 0.0;
               double solid_composition, melt_composition;
 
               // calculate the melting rate as difference between the equilibrium melt fraction
@@ -865,14 +766,12 @@ namespace aspect
               melt_molar_fraction = melt_fraction(in.temperature[q],
                                                   this->get_adiabatic_conditions().pressure(in.position[q]),
                                                   bulk_composition,
-//                                                  molar_volatiles_in_melt,
                                                   solid_composition,
                                                   melt_composition);
 
               if (phipps_morgan_out != nullptr)
                 {
                   phipps_morgan_out->bulk_composition[q] = bulk_composition;
-                  //   phipps_morgan_out->molar_volatiles_in_melt[q] = molar_volatiles_in_melt;
                 }
 
               // We have to compute the update to the melt fraction in such a way that the bulk composition is conserved.
@@ -890,15 +789,6 @@ namespace aspect
 
               // TODO write a function for this (computing molar volumes from solid and melt composition)
               /* ------------- We have to compute this again here because the porosity may have changed ----------------- */
-              // TODOPM01
-              //convert_to_fraction_of_endmembers_in_solid(in.temperature[q],
-              //                                           this->get_adiabatic_conditions().pressure(in.position[q]),
-              //                                           solid_composition,
-              //                                           endmembers.gibbs_energies,
-              //                                           endmember_mole_fractions_per_phase[febdg_idx],
-              //                                           endmember_mole_fractions_per_phase[wus_idx],
-              //                                           bridgmanite_molar_fraction_in_solid);
-
               endmember_mole_fractions_per_phase[fa_idx] = solid_composition;
               endmember_mole_fractions_per_phase[fo_idx] = 1.0 - endmember_mole_fractions_per_phase[fa_idx];
 
@@ -910,7 +800,6 @@ namespace aspect
 
 
               // convert from melt molar fraction to porosity
-              // TODOPM01
               double solid_molar_volume = endmember_mole_fractions_per_phase[fa_idx] * endmembers.volumes[fa_idx]
                                           + endmember_mole_fractions_per_phase[fa_idx] * endmembers.volumes[fa_idx];
               double melt_molar_volume = endmember_mole_fractions_per_phase[fa_melt_idx] * endmembers.volumes[fa_melt_idx]
@@ -946,6 +835,7 @@ namespace aspect
                   const double melt_molar_mass = endmember_mole_fractions_per_phase[fa_melt_idx] * molar_masses[fa_melt_idx]
                                                  + endmember_mole_fractions_per_phase[fo_melt_idx] * molar_masses[fo_melt_idx];
                   // Q! is this melting temperature coherent with the new change in Gibbs free energy definition?
+                  // TODO PM01 rm
                   const double pressure = this->get_adiabatic_conditions().pressure(in.position[q]);
                   const double T_Fe_mantle = (Fe_delta_E + pressure * Fe_mantle_melting_volume + 0.5 * pressure * pressure * Fe_delta_V_prime_fusion)
                                              / Fe_mantle_melting_entropy;
@@ -964,6 +854,7 @@ namespace aspect
 
 
                   // eq 16
+                  // TODO PM01 rm
                   const double old_Fe_enthalpy_of_fusion = Fe_mantle_melting_temperature * Fe_mantle_melting_entropy
                                                            + (this->get_adiabatic_conditions().pressure(in.position[q]) - melting_reference_pressure) * Fe_mantle_melting_volume;
                   const double old_Mg_enthalpy_of_fusion = Mg_mantle_melting_temperature * Mg_mantle_melting_entropy
@@ -1136,15 +1027,16 @@ namespace aspect
                              "The melting temperature of one of the components in the melting "
                              "model, the Mg mantle endmember."
                              "Units: K.");
-          // Q! should this be changed?
-          prm.declare_entry ("Fe number of moles", "0.48",
+          // Changed from 0.48
+          prm.declare_entry ("Fe number of moles", "2",
                              Patterns::Double(),
                              "The number of moles of Fe atoms mixing on a pseudosite in the "
                              "mantle lattice, This is needed because we use an empirical model "
                              "fitting the full Boukare model, and can be changed to reflect "
                              "partition coefficients from other sources."
                              "Units: none.");
-          prm.declare_entry ("Mg number of moles", "0.62",
+          // Changed from 0.62
+          prm.declare_entry ("Mg number of moles", "2",
                              Patterns::Double(),
                              "The number of moles of Mg atoms mixing on a pseudosite in the "
                              "mantle lattice, This is needed because we use an empirical model "

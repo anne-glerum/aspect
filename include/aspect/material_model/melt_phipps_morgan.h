@@ -176,27 +176,13 @@ namespace aspect
         // melting model parameters
         // Forsterite Mg-endmember: Mg2SiO4
         // Fayalite Fe-endmember: Fe2SiO4
-        // Q! to change?
-        const double molar_MgO_in_Mg_mantle_endmember = 0.581;
-        const double molar_SiO2_in_Mg_mantle_endmember = 0.419;
-        const double molar_FeO_in_Fe_mantle_endmember = 0.908;
-        const double molar_SiO2_in_Fe_mantle_endmember = 0.092;
 
         // number of moles of atoms mixing on pseudosite in mantle lattice (empirical model fitting the full phipps_morgan model)
         double Fe_number_of_moles;
         double Mg_number_of_moles;
 
 
-        // names of the endmembers
-        // TODOPM11 rm unused
-        unsigned int febdg_idx;
-        unsigned int mgbdg_idx;
-        unsigned int wus_idx;
-        unsigned int per_idx;
-        unsigned int femelt_idx;
-        unsigned int mgmelt_idx;
-        unsigned int simelt_idx;
-
+        // names of the endmembers ids
         unsigned int fa_idx;
         unsigned int fo_idx;
         unsigned int fa_melt_idx;
@@ -290,15 +276,15 @@ namespace aspect
          * two solid phases, bridgmanite and ferropericlase, and the molar fraction of bridgmanite
          * in the solid.
          */
-        virtual
-        void
-        convert_to_fraction_of_endmembers_in_solid (const double temperature,
-                                                    const double pressure,
-                                                    const double molar_Fe_in_solid,
-                                                    const std::vector<double> &endmember_gibbs_energies,
-                                                    double &molar_FeSiO3_in_bridgmanite,
-                                                    double &molar_FeO_in_ferropericlase,
-                                                    double &molar_bridgmanite_in_solid) const;
+//        virtual
+//        void
+//        convert_to_fraction_of_endmembers_in_solid (const double temperature,
+//                                                    const double pressure,
+//                                                    const double molar_Fe_in_solid,
+//                                                    const std::vector<double> &endmember_gibbs_energies,
+//                                                    double &molar_FeSiO3_in_bridgmanite,
+//                                                    double &molar_FeO_in_ferropericlase,
+//                                                    double &molar_bridgmanite_in_solid) const;
 
         /**
          * Convert from the mole fraction of iron in the solid to the mole fraction of iron in the
@@ -308,7 +294,6 @@ namespace aspect
         virtual
         double
         compute_melt_molar_fraction (const double porosity,
-//                                     const double fayalite_molar_fraction_in_solid,
                                      EndmemberProperties &properties,
                                      const std::vector<double> &endmember_mole_fractions_per_phase) const;
 
@@ -317,7 +302,6 @@ namespace aspect
         melt_fraction (const double temperature,
                        const double pressure,
                        const double bulk_composition,
-//                       double &molar_volatiles_in_melt,
                        double &solid_composition,
                        double &melt_composition) const;
 
