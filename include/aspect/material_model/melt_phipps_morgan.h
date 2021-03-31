@@ -311,6 +311,7 @@ namespace aspect
                                  const double change_of_value) const;
 
         // 1 [bar] = 1e5 [Pa]
+        // TODO PM01 rm
         const double melting_reference_pressure = 1.e5;       // Pa
 
         // Phipps Morgan Table 1A, ideal olivine, T^m in [K]
@@ -318,6 +319,7 @@ namespace aspect
         //double Mg_mantle_melting_temperature = 2163;          // Kelvin at reference pressure - reference melting temperature for Mg mantle endmember
 
         // Phipps Morgan Table 1A, olivine, T^m in [K]
+        // TODO PM01 rm
         double Fe_mantle_melting_temperature = 1490;          // Kelvin at the reference pressure - reference melting temperature for Fe mantle endmember
         double Mg_mantle_melting_temperature = 2174;          // Kelvin at reference pressure - reference melting temperature for Mg mantle endmember
 
@@ -339,11 +341,19 @@ namespace aspect
         const double Mg_mantle_melting_volume = 3.1e-6;       // molar volume change of melting volume of solid Mg mantle endmember in m3/mol
 
         // Change in internal energy due to melting
-        double Fe_delta_E = 0.;
-        double Mg_delta_E = 0.;
-        // Change in volume derivative? due to melting
-        double Fe_delta_V_prime_fusion = 0.;
-        double Mg_delta_V_prime_fusion = 0.;
+        // Phipps Morgan Table 1A, olivine
+        // At melt at reference pressure (0 Pa), delta_G = delta_E - delta_S * T_melt = 0,
+        // so delta_E = delta_S * T_melt
+        double Fe_delta_E = 89251.; // J/mol
+        double Mg_delta_E = 141962.2;
+        // Change in volume derivative due to melting
+        // Phipps Morgan Table 1A, olivine, and equation A3 and A9
+        // Assuming P = P_ref = 0 Pa,
+        // delta_V_prime = - (nu_melt * beta_melt - nu_solid * beta_solid),
+        // where nu is the inverse molar density and beta the compressibility.
+        // nu_melt is only given for forsterite melt.
+        double Fe_delta_V_prime_fusion = -3.599e-15;
+        double Mg_delta_V_prime_fusion = -3.115e-15;
     };
 
   }
