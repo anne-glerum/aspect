@@ -868,11 +868,13 @@ namespace aspect
 
               // cutoff for viscosity at 30%
               const double porosity = std::min(0.3, std::max(in.composition[q][porosity_idx],0.0));
-              out.viscosities[q] = (1.0 - porosity) * eta_0 * exp(- alpha_phi * porosity);
+              //out.viscosities[q] = (1.0 - porosity) * eta_0 * exp(- alpha_phi * porosity);
+              out.viscosities[q] = (1.0 - porosity) * exp(- alpha_phi * porosity);
             }
           else
             {
-              out.viscosities[q] = eta_0;
+              //out.viscosities[q] = eta_0;
+              out.viscosities[q] = 1.;
 
               // no melting/freezing is used in the model --> set all reactions to zero
               for (unsigned int c=0; c<in.composition[q].size(); ++c)
@@ -994,21 +996,21 @@ namespace aspect
                              "in output instead of seconds'' parameter.");
           // molar change in internal energy due to melting
           // TODO units
-          prm.declare_entry ("Fe mantle melting energy", "0.",
+          prm.declare_entry ("Fe mantle melting energy", "89251.",
                              Patterns::Double(),
                              "The molar internal energy change of solid Fe mantle endmember. "
                              "Units: .");
-          prm.declare_entry ("Mg mantle melting energy", "0.",
+          prm.declare_entry ("Mg mantle melting energy", "141962.2",
                              Patterns::Double(),
                              "The molar internal energy change of solid Mg mantle endmember. "
                              "Units: .");
           // molar change in volume derivative? due to melting
           // TODO units
-          prm.declare_entry ("Fe mantle melting volume derivative", "0.",
+          prm.declare_entry ("Fe mantle melting volume derivative", "-3.599e-15",
                              Patterns::Double(),
                              "The molar internal energy change of solid Fe mantle endmember. "
                              "Units: .");
-          prm.declare_entry ("Mg mantle melting volume derivative", "0.",
+          prm.declare_entry ("Mg mantle melting volume derivative", "-3.115e-15",
                              Patterns::Double(),
                              "The molar internal energy change of solid Mg mantle endmember. "
                              "Units: .");
