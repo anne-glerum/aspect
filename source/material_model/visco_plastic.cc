@@ -392,6 +392,31 @@ namespace aspect
 
 
     template <int dim>
+    bool
+    ViscoPlastic<dim>::
+    use_theta () const
+    {
+      return  rheology->friction_options.use_theta();
+    }
+
+
+
+      template <int dim>
+      double
+      ViscoPlastic<dim>::
+      compute_theta(double theta_old,
+                    const double current_edot_ii,
+                    const double cellsize,
+                    const double critical_slip_distance) const
+                    {
+                      const double current_theta = rheology->friction_options.compute_theta(theta_old, current_edot_ii,
+                      cellsize, critical_slip_distance);
+                      return current_theta;
+                    }
+
+
+
+    template <int dim>
     double ViscoPlastic<dim>::
     get_min_strain_rate () const
     {

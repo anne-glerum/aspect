@@ -244,6 +244,22 @@ namespace aspect
         bool
         is_yielding (const MaterialModelInputs<dim> &in) const;
 
+        /**
+         * A function that returns whether a state variable theta is used in
+         * the friction formulation.
+         */
+        bool
+        use_theta () const;
+        
+        /** calls the function copmute_theta from friction_options and returns 
+         * the current value for the state variable theta from rate-and-state friction.
+         */
+        double
+      compute_theta(double theta_old,
+                    const double current_edot_ii,
+                    const double cellsize,
+                    const double critical_slip_distance) const;
+
       private:
 
         /**

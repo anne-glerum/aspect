@@ -112,7 +112,7 @@ namespace aspect
             }
             case dynamic_friction:
             {
-                  const double effective_friction_factor = get_effective_friction_factor(position,j);
+              const double effective_friction_factor = get_effective_friction_factor(position,j);
               // The dynamic characteristic strain rate is used to see what value between dynamic and static angle of internal friction should be used.
               // This is done as in the material model dynamic friction which is based on Equation (13) in van Dinther et al., (2013, JGR). Although here
               // the dynamic friction coefficient is directly specified. Furthermore a smoothness exponent X is added, which determines whether the
@@ -120,9 +120,9 @@ namespace aspect
               // mu  = mu_d + (mu_s - mu_d) / ( (1 + strain_rate_dev_inv2/dynamic_characteristic_strain_rate)^X );
               // Angles of friction are used in radians within ASPECT. The coefficient of friction is the tangent of the internal angle of friction.
               const double mu = effective_friction_factor * (std::tan(dynamic_angles_of_internal_friction[j])
-                                                                + (std::tan(current_friction) - std::tan(dynamic_angles_of_internal_friction[j]))
-                                                                / (1. + std::pow((current_edot_ii / dynamic_characteristic_strain_rate),
-                                                                                 dynamic_friction_smoothness_exponent)));
+                                                             + (std::tan(current_friction) - std::tan(dynamic_angles_of_internal_friction[j]))
+                                                             / (1. + std::pow((current_edot_ii / dynamic_characteristic_strain_rate),
+                                                                              dynamic_friction_smoothness_exponent)));
               current_friction = std::atan (mu);
               Assert((mu < 1) && (0 < current_friction <=1.6), ExcMessage(
                        "Something is wrong with the tan/atan conversion of friction coefficient to friction angle in RAD."));
@@ -140,9 +140,9 @@ namespace aspect
                   const double effective_friction_factor = get_effective_friction_factor(position,j);
 
                   const double mu = effective_friction_factor * (std::tan(current_friction)
-                                                                    + (rate_and_state_parameter_a - rate_and_state_parameter_b)
-                                                                    * std::log(steady_state_velocity
-                                                                               / (quasi_static_strain_rate * cellsize)));
+                                                                 + (rate_and_state_parameter_a - rate_and_state_parameter_b)
+                                                                 * std::log(steady_state_velocity
+                                                                            / (quasi_static_strain_rate * cellsize)));
                   current_friction = std::atan (mu);
                 }
               break;
@@ -784,7 +784,7 @@ namespace aspect
         effective_friction_factor = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Effective friction factor"))),
                                                                             n_fields,
                                                                             "Effective friction factor");
-*/
+        */
 
         prm.enter_subsection("Effective friction factor function");
         try
