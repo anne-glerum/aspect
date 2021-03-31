@@ -350,10 +350,10 @@ namespace aspect
         // Phipps Morgan Table 1A, olivine, and equation A3 and A9
         // Assuming P = P_ref = 0 Pa,
         // delta_V_prime = - (nu_melt * beta_melt - nu_solid * beta_solid),
-        // where nu is the inverse molar density and beta the compressibility.
+        // where nu is the molar volume and beta the compressibility.
         // nu_melt is only given for forsterite melt.
-        double Fe_delta_V_prime_fusion = -3.599e-15;
-        double Mg_delta_V_prime_fusion = -3.115e-15;
+        double Fe_delta_V_prime_fusion = -3.752e-16;
+        double Mg_delta_V_prime_fusion = -4.382e-16;
     };
 
   }

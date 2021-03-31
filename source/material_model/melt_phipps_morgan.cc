@@ -455,7 +455,7 @@ namespace aspect
       if (temperature == 0)
         return 0;
 
-      // TODO PM01 makes this a loop over the melts instead of having separate Fe and Mg parameters
+      // TODO PM01 make this a loop over the melts instead of having separate Fe and Mg parameters
       {
         // after Phipps Morgan, Jason. "Thermodynamics of pressure release melting of a veined plum pudding mantle."
         // Geochemistry, Geophysics, Geosystems 2.4 (2001).
@@ -475,21 +475,34 @@ namespace aspect
         const double p_Mg_mantle = std::exp(dG_Mg_mantle/(Mg_number_of_moles*R*T));
 
         // Mole composition of Fe in the liquid (eq 12)
-        // Q! is this the same as A12 in PM01, just reformulated?
+        // A12 in PM01, although
         // A12 computes X_Fe_l = (1-p_Mg)/(p_Fe-p_Mg)
         const double Xls = 1. - ((1. - p_Fe_mantle) / (p_Mg_mantle - p_Fe_mantle));
 
         // Melting occurs when delta G = 0
         const double T_Fe_mantle = (Fe_delta_E + P * Fe_mantle_melting_volume + 0.5 * P * P * Fe_delta_V_prime_fusion) / Fe_mantle_melting_entropy;
         const double T_Mg_mantle = (Mg_delta_E + P * Mg_mantle_melting_volume + 0.5 * P * P * Mg_delta_V_prime_fusion) / Mg_mantle_melting_entropy;
+        std::cout << "T, P, New T_Melt " << T << ", " << P << ", " << T_Fe_mantle << ", " << T_Mg_mantle << std::endl;
+
+        // TODO PM01 rm
+        {
+        const double old_dG_Fe_mantle = (Fe_mantle_melting_temperature - T) * Fe_mantle_melting_entropy
+                                    + (P - melting_reference_pressure) * Fe_mantle_melting_volume;
+        const double old_dG_Mg_mantle = (Mg_mantle_melting_temperature - T) * Mg_mantle_melting_entropy
+                                    + (P - melting_reference_pressure) * Mg_mantle_melting_volume;
+        const double old_T_Fe_mantle = old_dG_Fe_mantle / Fe_mantle_melting_entropy;
+        const double old_T_Mg_mantle = old_dG_Mg_mantle / Mg_mantle_melting_entropy;
+        std::cout << "Old T_Melt Fe, Mg: " << old_T_Fe_mantle << ", " << old_T_Mg_mantle << std::endl;
+        } 
 
         double melt_molar_fraction = 0.;
 
+        // Q! why should the melting T be negative?
         if (Xls <= molar_composition_of_bulk
             && 0 > std::min(T_Fe_mantle, T_Mg_mantle)) // above the liquidus
           {
             melt_molar_fraction = 1.0;
-            // Q!: why are both the composition of the bulk? The solid would be zero?
+            // Q!: why are both the composition of the bulk?
             new_molar_composition_of_melt = molar_composition_of_bulk;
             new_molar_composition_of_solid = molar_composition_of_bulk;
           }
@@ -549,11 +562,11 @@ namespace aspect
           const double solid_molar_fraction = 1.0 - melt_molar_fraction;
           double bulk_composition = melt_composition * melt_molar_fraction + solid_composition * solid_molar_fraction;
 
-          double eq_melt_molar_fraction = this->melt_fraction(in.temperature[q],
-                                                              this->get_adiabatic_conditions().pressure(in.position[q]),
-                                                              bulk_composition,
-                                                              solid_composition,
-                                                              melt_composition);
+          const double eq_melt_molar_fraction = this->melt_fraction(in.temperature[q],
+                                                                    this->get_adiabatic_conditions().pressure(in.position[q]),
+                                                                    bulk_composition,
+                                                                    solid_composition,
+                                                                    melt_composition);
 
           endmember_mole_fractions_per_phase[fa_idx] = solid_composition;
           endmember_mole_fractions_per_phase[fo_idx] = 1.0 - endmember_mole_fractions_per_phase[fa_idx];
@@ -783,22 +796,18 @@ namespace aspect
                                     / (1.0 - melt_molar_fraction);
               const double change_of_solid_composition = solid_composition - old_solid_composition;
 
-
-              // TODO write a function for this (computing molar volumes from solid and melt composition)
               /* ------------- We have to compute this again here because the porosity may have changed ----------------- */
               endmember_mole_fractions_per_phase[fa_idx] = solid_composition;
               endmember_mole_fractions_per_phase[fo_idx] = 1.0 - endmember_mole_fractions_per_phase[fa_idx];
-
-              // For now, we only consider the fraction of Fe in the melt
               endmember_mole_fractions_per_phase[fo_melt_idx] = 1. - melt_composition;
               endmember_mole_fractions_per_phase[fa_melt_idx] = melt_composition;
               /* ------------- ---------------------------------------------------------------------- ----------------- */
 
               // convert from melt molar fraction to porosity
-              double solid_molar_volume = endmember_mole_fractions_per_phase[fa_idx] * endmembers.volumes[fa_idx]
-                                          + endmember_mole_fractions_per_phase[fo_idx] * endmembers.volumes[fo_idx];
-              double melt_molar_volume = endmember_mole_fractions_per_phase[fa_melt_idx] * endmembers.volumes[fa_melt_idx]
-                                         + endmember_mole_fractions_per_phase[fo_melt_idx] * endmembers.volumes[fo_melt_idx];
+              const double solid_molar_volume = endmember_mole_fractions_per_phase[fa_idx] * endmembers.volumes[fa_idx]
+                                                + endmember_mole_fractions_per_phase[fo_idx] * endmembers.volumes[fo_idx];
+              const double melt_molar_volume = endmember_mole_fractions_per_phase[fa_melt_idx] * endmembers.volumes[fa_melt_idx]
+                                               + endmember_mole_fractions_per_phase[fo_melt_idx] * endmembers.volumes[fo_melt_idx];
 
               const double new_porosity = melt_molar_fraction * melt_molar_volume
                                           / (melt_molar_fraction * melt_molar_volume + (1.0 - melt_molar_fraction) * solid_molar_volume);
@@ -831,15 +840,6 @@ namespace aspect
                                                  + endmember_mole_fractions_per_phase[fo_melt_idx] * molar_masses[fo_melt_idx];
                   const double pressure = this->get_adiabatic_conditions().pressure(in.position[q]);
 
-                  // TODO PM01 rm
-                  // Melting occurs when Delta G = 0
-                  //const double T_Fe_mantle = (Fe_delta_E + pressure * Fe_mantle_melting_volume + 0.5 * pressure * pressure * Fe_delta_V_prime_fusion)
-                  //                           / Fe_mantle_melting_entropy;
-                  //const double T_Mg_mantle = (Mg_delta_E + pressure * Mg_mantle_melting_volume + 0.5 * pressure * pressure * Mg_delta_V_prime_fusion)
-                  //                           / Mg_mantle_melting_entropy;
-                  //std::cout << "Fe melting temperature: reference, new " << Fe_mantle_melting_temperature << ", " << T_Fe_mantle << std::endl;
-                  //std::cout << "Mg melting temperature: reference, new " << Mg_mantle_melting_temperature << ", " << T_Mg_mantle << std::endl;
-
                   // Delta G = Delta H - T * Delta S -> Delta H = Delta G + T * Delta S
                   const double Fe_delta_G_fusion = Fe_delta_E - in.temperature[q] * Fe_mantle_melting_entropy + pressure * Fe_mantle_melting_volume
                                                    + 0.5 * pressure * pressure * Fe_delta_V_prime_fusion;
@@ -851,12 +851,12 @@ namespace aspect
 
                   // eq 16
                   // TODO PM01 rm
-                  //const double old_Fe_enthalpy_of_fusion = Fe_mantle_melting_temperature * Fe_mantle_melting_entropy
-                  //                                         + (this->get_adiabatic_conditions().pressure(in.position[q]) - melting_reference_pressure) * Fe_mantle_melting_volume;
-                  //const double old_Mg_enthalpy_of_fusion = Mg_mantle_melting_temperature * Mg_mantle_melting_entropy
-                  //                                         + (this->get_adiabatic_conditions().pressure(in.position[q]) - melting_reference_pressure) * Mg_mantle_melting_volume;
-                  //std::cout << "Fe elthalpy: reference, new " << old_Fe_enthalpy_of_fusion << ", " << Fe_enthalpy_of_fusion << std::endl;
-                  //std::cout << "Mg elthalpy: reference, new " << old_Mg_enthalpy_of_fusion << ", " << Mg_enthalpy_of_fusion << std::endl;
+                  const double old_Fe_enthalpy_of_fusion = Fe_mantle_melting_temperature * Fe_mantle_melting_entropy
+                                                           + (this->get_adiabatic_conditions().pressure(in.position[q]) - melting_reference_pressure) * Fe_mantle_melting_volume;
+                  const double old_Mg_enthalpy_of_fusion = Mg_mantle_melting_temperature * Mg_mantle_melting_entropy
+                                                           + (this->get_adiabatic_conditions().pressure(in.position[q]) - melting_reference_pressure) * Mg_mantle_melting_volume;
+                  this->get_pcout() << "Fe elthalpy: reference, new " << old_Fe_enthalpy_of_fusion << ", " << Fe_enthalpy_of_fusion << std::endl;
+                  this->get_pcout() << "Mg elthalpy: reference, new " << old_Mg_enthalpy_of_fusion << ", " << Mg_enthalpy_of_fusion << std::endl;
 
                   // mole-weighted enthalpy of fusion of the endmembers \Delta H = sum_i (X_bulk_i \Delta H_fus_i) / melt_molar_mass
                   // when above the liquidus Q!
@@ -891,9 +891,8 @@ namespace aspect
           for (unsigned int c=0; c<in.composition[q].size(); ++c)
             out.reaction_terms[q][c] = 0.0;
 
-          double visc_temperature_dependence = 1.0;
           const double delta_temp = in.temperature[q]-this->get_adiabatic_conditions().temperature(in.position[q]);
-          visc_temperature_dependence = std::max(std::min(std::exp(-thermal_viscosity_exponent*delta_temp/this->get_adiabatic_conditions().temperature(in.position[q])),1e8),1e-8);
+          const double visc_temperature_dependence = std::max(std::min(std::exp(-thermal_viscosity_exponent*delta_temp/this->get_adiabatic_conditions().temperature(in.position[q])),1e8),1e-8);
           out.viscosities[q] *= visc_temperature_dependence;
         }
 
@@ -995,22 +994,21 @@ namespace aspect
                              "Units: yr or s, depending on the ``Use years "
                              "in output instead of seconds'' parameter.");
           // molar change in internal energy due to melting
-          // TODO units
           prm.declare_entry ("Fe mantle melting energy", "89251.",
                              Patterns::Double(),
                              "The molar internal energy change of solid Fe mantle endmember. "
-                             "Units: .");
+                             "Units: J/mol.");
           prm.declare_entry ("Mg mantle melting energy", "141962.2",
                              Patterns::Double(),
                              "The molar internal energy change of solid Mg mantle endmember. "
-                             "Units: .");
+                             "Units: J/mol.");
           // molar change in volume derivative? due to melting
           // TODO units
-          prm.declare_entry ("Fe mantle melting volume derivative", "-3.599e-15",
+          prm.declare_entry ("Fe mantle melting volume derivative", "-3.752e-16",
                              Patterns::Double(),
                              "The molar internal energy change of solid Fe mantle endmember. "
                              "Units: .");
-          prm.declare_entry ("Mg mantle melting volume derivative", "-3.115e-15",
+          prm.declare_entry ("Mg mantle melting volume derivative", "-4.382e-16",
                              Patterns::Double(),
                              "The molar internal energy change of solid Mg mantle endmember. "
                              "Units: .");
