@@ -202,7 +202,7 @@ namespace aspect
         * equilibrium melt fraction for each given input conditions.
         */
         void melt_fractions (const MaterialModel::MaterialModelInputs<dim> &in,
-                                     std::vector<double> &melt_fractions) const override;
+                             std::vector<double> &melt_fractions) const override;
 
         /**
          * Return whether the model is compressible or not.  Incompressibility
@@ -298,7 +298,7 @@ namespace aspect
         unsigned int porosity_field_index;
 
         /**
-         * The compositional field index for the Fe field in the 
+         * The compositional field index for the Fe field in the
          * solid and liquid
          */
         unsigned int fe_field_index;
