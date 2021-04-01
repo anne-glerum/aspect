@@ -207,7 +207,7 @@ namespace aspect
                                 + specific_heat_second_coefficients[i] * std::pow(in.temperature[q], -2.)
                                 + specific_heat_third_coefficients[i] * std::pow(in.temperature[q], -0.5);
 
-          // Q! Where is this in D21?
+          // Not written out in D21
           const long double dSdT0 = reference_volumes[i] * reference_bulk_moduli[i] * std::pow(heat_capacity_ratio * reference_thermal_expansivities[i], 2.0)
                                     * (std::pow(1. + b * (pressure - Pth), -1.-c) - std::pow(1. + b * (reference_pressure - Pth), -1.- c));
 
@@ -232,7 +232,6 @@ namespace aspect
           const double delta_G_fusion = delta_E - in.temperature[q] * delta_S_fusion + in.pressure[q] * delta_V_fusion
                                         + 0.5 * in.pressure[q] * in.pressure[q] * delta_V_prime_fusion;
 
-          // Q! is p the molar fraction of endmember in the melt or in the composite or not needed?
           // eq 2 M18
           properties.gibbs_energies[i] =  properties.gibbs_energies[i-2] + delta_G_fusion;
           // eq 3 M18
@@ -462,6 +461,7 @@ namespace aspect
         const double P = pressure;                   // pressure in Pa
         const double T = temperature;                // temperature in K
         const double R = constants::gas_constant;    // Ideal Gas Constant
+        Assert (P >= 0. && T >= 0., ExcMessage("T or P negative: " + std::to_string(T) + ", " +  std::to_string(P)));
 
         // Free Energy Change Delta_G due to Melting as a function of temperature and pressure
         // eq 2 of Myhill 2018
@@ -480,9 +480,12 @@ namespace aspect
         const double Xls = 1. - ((1. - p_Fe_mantle) / (p_Mg_mantle - p_Fe_mantle));
 
         // Melting occurs when delta G = 0
-        const double T_Fe_mantle = (Fe_delta_E + P * Fe_mantle_melting_volume + 0.5 * P * P * Fe_delta_V_prime_fusion) / Fe_mantle_melting_entropy;
-        const double T_Mg_mantle = (Mg_delta_E + P * Mg_mantle_melting_volume + 0.5 * P * P * Mg_delta_V_prime_fusion) / Mg_mantle_melting_entropy;
-        std::cout << "T, P, New T_Melt " << T << ", " << P << ", " << T_Fe_mantle << ", " << T_Mg_mantle << std::endl;
+        // T_Fe_mantle = T_melting_Fe - T = delta_G / delta_S
+        //const double T_Fe_mantle = (Fe_delta_E + P * Fe_mantle_melting_volume + 0.5 * P * P * Fe_delta_V_prime_fusion) / Fe_mantle_melting_entropy;
+        //const double T_Mg_mantle = (Mg_delta_E + P * Mg_mantle_melting_volume + 0.5 * P * P * Mg_delta_V_prime_fusion) / Mg_mantle_melting_entropy;
+        const double T_Fe_mantle = dG_Fe_mantle / Fe_mantle_melting_entropy;
+        const double T_Mg_mantle = dG_Mg_mantle / Mg_mantle_melting_entropy;
+        //std::cout << "T, P, New T_Melt " << T << ", " << P << ", " << T_Fe_mantle << ", " << T_Mg_mantle << std::endl;
 
         // TODO PM01 rm
         {
@@ -492,22 +495,26 @@ namespace aspect
                                     + (P - melting_reference_pressure) * Mg_mantle_melting_volume;
         const double old_T_Fe_mantle = old_dG_Fe_mantle / Fe_mantle_melting_entropy;
         const double old_T_Mg_mantle = old_dG_Mg_mantle / Mg_mantle_melting_entropy;
-        std::cout << "Old T_Melt Fe, Mg: " << old_T_Fe_mantle << ", " << old_T_Mg_mantle << std::endl;
+        //std::cout << "Old T_Melt Fe, Mg: " << old_T_Fe_mantle << ", " << old_T_Mg_mantle << std::endl;
         } 
 
         double melt_molar_fraction = 0.;
 
-        // Q! why should the melting T be negative?
+        // T_Fe_mantle = T_melting_Fe - T, so when T_Fe_mantle is negative,
+        // the temperature T is above the melting temperature T_melting_Fe
         if (Xls <= molar_composition_of_bulk
             && 0 > std::min(T_Fe_mantle, T_Mg_mantle)) // above the liquidus
           {
+            //std::cout << "above liq " << std::endl;
             melt_molar_fraction = 1.0;
-            // Q!: why are both the composition of the bulk?
+            // Composition of the solid value doesn't matter, as the fraction
+            // of solid is zero.
             new_molar_composition_of_melt = molar_composition_of_bulk;
             new_molar_composition_of_solid = molar_composition_of_bulk;
           }
         else // below liquidus
           {
+            //std::cout << "below liq " << std::endl;
             // Mole composition of Fe in the solid
             // eq 13 and eq A10 of PM11
             const double Xss = Xls * p_Fe_mantle;
@@ -583,6 +590,7 @@ namespace aspect
           const double melt_molar_volume = endmember_mole_fractions_per_phase[fa_melt_idx] * endmembers.volumes[fa_melt_idx]
                                            + endmember_mole_fractions_per_phase[fo_melt_idx] * endmembers.volumes[fo_melt_idx];
 
+          std::cout << "Melt fractions solid, melt molar volume " << solid_molar_volume << ", " << melt_molar_volume << std::endl;
           melt_fractions[q] = eq_melt_molar_fraction * melt_molar_volume
                               / (eq_melt_molar_fraction * melt_molar_volume + (1.0 - eq_melt_molar_fraction) * solid_molar_volume);
         }
@@ -697,6 +705,7 @@ namespace aspect
               else
                 AssertThrow (false, ExcNotImplemented());
             }
+          std::cout << "Evaluate solid, melt molar volume " << solid_molar_volume << ", " << melt_molar_volume << std::endl;
 
           const double total_molar_mass = melt_molar_mass + solid_molar_mass;
           const double total_volume = melt_molar_volume + solid_molar_volume;
@@ -722,6 +731,15 @@ namespace aspect
             out.densities[q] = solid_molar_mass / solid_molar_volume;
           else
             out.densities[q] = melt_molar_mass / melt_molar_volume;
+
+          if (std::isnan(out.densities[q]))
+             std::cout << "Density nan" << std::endl;
+          if (std::isnan(out.specific_heat[q]))
+             std::cout << "Cp nan" << std::endl;
+          if (out.densities[q] < 0.)
+             std::cout << "Density neg: " << solid_molar_mass << ", " << solid_molar_volume << ", " << melt_molar_mass << ", " << melt_molar_volume << std::endl;
+          if (out.specific_heat[q] < 0.)
+             std::cout << "Cp neg" << std::endl;
 
           if (melt_out != nullptr)
             {
@@ -770,7 +788,7 @@ namespace aspect
               const double bulk_composition = old_melt_composition * melt_molar_fraction + old_solid_composition * solid_molar_fraction;
               // Q! solid_composition is already defined above!
               // both compositions will be overwriten by melt_fraction
-              double solid_composition = 0., melt_composition = 0.;
+              double melt_composition = 0.;
               // calculate the melting rate as difference between the equilibrium melt fraction
               // and the solution of the previous time step, and also update melt and solid composition
               melt_molar_fraction = melt_fraction(in.temperature[q],
@@ -812,6 +830,7 @@ namespace aspect
               const double new_porosity = melt_molar_fraction * melt_molar_volume
                                           / (melt_molar_fraction * melt_molar_volume + (1.0 - melt_molar_fraction) * solid_molar_volume);
               const double porosity_change = new_porosity - old_porosity;
+              std::cout << "Old, new porosity " << old_porosity << ", " << new_porosity << std::endl;
 
               // For this simple model, we only track the iron in the solid and the iron in the melt
               // TODO: make this more general to work with the full equation of state
@@ -855,11 +874,11 @@ namespace aspect
                                                            + (this->get_adiabatic_conditions().pressure(in.position[q]) - melting_reference_pressure) * Fe_mantle_melting_volume;
                   const double old_Mg_enthalpy_of_fusion = Mg_mantle_melting_temperature * Mg_mantle_melting_entropy
                                                            + (this->get_adiabatic_conditions().pressure(in.position[q]) - melting_reference_pressure) * Mg_mantle_melting_volume;
-                  this->get_pcout() << "Fe elthalpy: reference, new " << old_Fe_enthalpy_of_fusion << ", " << Fe_enthalpy_of_fusion << std::endl;
-                  this->get_pcout() << "Mg elthalpy: reference, new " << old_Mg_enthalpy_of_fusion << ", " << Mg_enthalpy_of_fusion << std::endl;
+                  //this->get_pcout() << "Fe elthalpy: reference, new " << old_Fe_enthalpy_of_fusion << ", " << Fe_enthalpy_of_fusion << std::endl;
+                  //this->get_pcout() << "Mg elthalpy: reference, new " << old_Mg_enthalpy_of_fusion << ", " << Mg_enthalpy_of_fusion << std::endl;
 
                   // mole-weighted enthalpy of fusion of the endmembers \Delta H = sum_i (X_bulk_i \Delta H_fus_i) / melt_molar_mass
-                  // when above the liquidus Q!
+                  // when above the liquidus
                   double enthalpy_of_fusion = Fe_enthalpy_of_fusion * bulk_composition + Mg_enthalpy_of_fusion * (1.0-bulk_composition);
                   enthalpy_of_fusion /= melt_molar_mass;
 
@@ -1080,13 +1099,13 @@ namespace aspect
                              Patterns::List(Patterns::Double(0)),
                              "Reference volumes of the different endmembers."
                              "Units: $m^3/mol$.");
-          // Holland & Powell Table 2a, assuming a factor 1e-5 Q!
+          // Holland & Powell Table 2a, assuming a factor 1e-5
           prm.declare_entry ("Reference thermal expansivities", "2.82e-5, 2.85e-5, 10.71e-5, 9.2e-5",
                              Patterns::List(Patterns::Double(0)),
                              "List of thermal expansivities for each different endmember at the reference temperature "
                              "and reference pressure."
                              "Units: 1/K.");
-          // Holland & Powell Table 2a, assuming they are given in [kbar = 1e8 Pa] Q!
+          // Holland & Powell Table 2a, given in [kbar = 1e8 Pa]
           prm.declare_entry ("Reference bulk moduli", "1.256e11, 1.285e11, 0.29e11, 0.362e11",
                              Patterns::List(Patterns::Double(0)),
                              "List of bulk moduli for each different endmember at the reference temperature "
@@ -1098,18 +1117,18 @@ namespace aspect
                              "The pressure derivative of the bulk modulus at the reference temperature and reference "
                              "pressure for each different endmember component."
                              "Units: none.");
-          // Holland & Powell Table 2a, assuming they are given in [1/kbar = 1/(1e8 Pa)] Q!
+          // Holland & Powell Table 2a, given in [1/kbar = 1/(1e8 Pa)]
           prm.declare_entry ("Second derivatives of the bulk modulus", "-3.7e-11, -3.0e-11, -3.59e-10, -2.78e-10",
                              Patterns::List(Patterns::Double()),
                              "The second pressure derivative of the bulk modulus at the reference temperature and reference "
                              "pressure for each different endmember component."
                              "Units: 1/Pa.");
-          // Q!
-          prm.declare_entry ("Einstein temperatures", "418.1, 561.0, 505.75, 558.1 ",
+          // Holland & Powell bottom of page 346: theta = 10636 / (S/7 + 6.44)
+          prm.declare_entry ("Einstein temperatures", "379.7, 531.1, 505.75, 558.1 ",
                              Patterns::List(Patterns::Double(0)),
                              "List of Einstein temperatures for each different endmember."
                              "Units: K.");
-          // Holland & Powell Table 2a, \Delta f H, given in kJ/mol Q!
+          // Holland & Powell Table 2a, \Delta f H, given in kJ/mol
           prm.declare_entry ("Reference enthalpies", "-1477740.0, -2172570.0, -1463040.0, -2237320.0",
                              Patterns::List(Patterns::Double()),
                              "List of enthalpies at the reference temperature and reference "
@@ -1128,13 +1147,13 @@ namespace aspect
                              "and reference pressure."
                              "Units: J/kg/K.");
           // Holland & Powell Table 2a, b, given in [1e5 kJ/K^2/mol] (so *1e3/1e5) Q!
-          // Q! in D2021, Table 1A, the unit is J/K2/mol instead of J/kg/K/K.
+          // Q! in D2021, Table A1, the unit is J/K2/mol instead of J/kg/K/K.
           prm.declare_entry ("Linear coefficients for specific heat polynomial", "1.733e-2, 0.1494e-2, 0, 0",
                              Patterns::List(Patterns::Double()),
                              "The first of three coefficients that are used to compute the specific heat capacities for each "
                              "different endmember at the reference temperature and reference pressure. "
                              "This coefficient describes the linear part of the temperature dependence. "
-                             "Units: J/kg/K/K.");
+                             "Units: J/K/K/mol.");
           // Holland & Powell Table 2a, c, given in [kJK]
           // Q! in D2021, Table 1A, the unit is JK/mol instead of Jkg/K.
           prm.declare_entry ("Second coefficients for specific heat polynomial", "-1960.6e3, -603.8e3, 0, 0",
@@ -1142,14 +1161,14 @@ namespace aspect
                              "The second of three coefficients that are used to compute the specific heat capacities for each "
                              "different endmember at the reference temperature and reference pressure. This coefficient describes "
                              "the part of the temperature dependence that scales as the inverse of the square of the temperature. "
-                             "Units: J K/kg.");
+                             "Units: J K/mol.");
           // Holland & Powell Table 2a, d, given in [kJ/K^(-1/2)]
           prm.declare_entry ("Third coefficients for specific heat polynomial", "-0.9009e3, -1.8697e3, 0, 0",
                              Patterns::List(Patterns::Double()),
                              "The third of three coefficients that are used to compute the specific heat capacities for each "
                              "different endmember at the reference temperature and reference pressure. This coefficient describes "
                              "the part of the temperature dependence that scales as the inverse of the square root of the temperature"
-                             "Units: J/K^(-1/2).");
+                             "Units: J/K^(1/2)/mol.");
         }
         prm.leave_subsection();
       }
