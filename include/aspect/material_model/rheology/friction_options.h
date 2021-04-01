@@ -154,7 +154,12 @@ namespace aspect
                                            const std::vector<double> &composition,
                                            typename DoFHandler<dim>::active_cell_iterator current_cell,
                                            double current_friction,
-                                           const Point<dim> &position) const;
+                                           const Point<dim> &position,
+                                           const double current_cohesion,
+                                           const double pressure_for_plasticity,
+                                           const double max_yield_stress,
+                                           const double current_stress,
+                                           const double min_strain_rate) const;
 
           /**
            * A function that computes the current value for the state variable theta.
@@ -263,6 +268,11 @@ namespace aspect
            * Input parameters for the drucker prager plasticity.
            */
           Rheology::DruckerPragerParameters drucker_prager_parameters;
+
+          /*
+           * Object for computing plastic stresses, viscosities, and additional outputs
+           */
+          Rheology::DruckerPrager<dim> drucker_prager_plasticity;
 
           /**
            * Select the mechanism to be used for the friction dependence.

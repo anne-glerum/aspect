@@ -250,15 +250,15 @@ namespace aspect
          */
         bool
         use_theta () const;
-        
-        /** calls the function copmute_theta from friction_options and returns 
+
+        /** calls the function copmute_theta from friction_options and returns
          * the current value for the state variable theta from rate-and-state friction.
          */
         double
-      compute_theta(double theta_old,
-                    const double current_edot_ii,
-                    const double cellsize,
-                    const double critical_slip_distance) const;
+        compute_theta(double theta_old,
+                      const double current_edot_ii,
+                      const double cellsize,
+                      const double critical_slip_distance) const;
 
       private:
 

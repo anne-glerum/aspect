@@ -101,7 +101,12 @@ namespace aspect
                                        const std::vector<double> &composition,  // these are the compositional fields not volume_fractions
                                        typename DoFHandler<dim>::active_cell_iterator current_cell,
                                        double current_friction,
-                                       const Point<dim> &position) const
+                                       const Point<dim> &position,
+                                       const double current_cohesion,
+                                       const double pressure_for_plasticity,
+                                       const double max_yield_stress,
+                                       const double current_stress,
+                                       const double min_strain_rate) const
       {
 
         switch (friction_dependence_mechanism)
@@ -167,8 +172,23 @@ namespace aspect
 
                   // theta_old is taken from the current compositional field theta
                   const double theta_old = composition[theta_composition_index];
+
+                  // if we do not assume always yielding, then theta should not be updated
+                  // with the entire strain rate, but only with min strain rate
+                  // ToDo: Should I do the same to compute the friction angle? would be tricky, bc it is computed before the yielding thing...
+
+                  double current_edot_ii_for_theta = current_edot_ii;
+                  const double yield_stress = drucker_prager_plasticity.compute_yield_stress(current_cohesion,
+                                                                                             current_friction,
+                                                                                             pressure_for_plasticity,
+                                                                                             max_yield_stress);
+                  if (current_stress < yield_stress)
+                    current_edot_ii_for_theta = min_strain_rate;
+
                   // Calculate the state variable theta according to Equation (7) from Sobolev and Muldashev (2017)
-                  const double theta = compute_theta(theta_old, current_edot_ii, cellsize, critical_slip_distance);
+                  const double theta = compute_theta(theta_old, current_edot_ii_for_theta, cellsize, critical_slip_distance);
+
+                  //std::cout << "theta = "<<theta<<" - theta_old = "<< theta_old<<std::endl;
 
                   if (friction_dependence_mechanism == slip_rate_dependent_rate_and_state_dependent_friction)
                     {
@@ -288,8 +308,6 @@ namespace aspect
                     const double cellsize,
                     const double critical_slip_distance) const
       {
-        // this is a trial to check if it prevents current_theta from being negative if old_theta is limited to >=0
-        theta_old = std::max(theta_old,1e-50);
         // Equation (7) from Sobolev and Muldashev (2017):
         // theta_{n+1} = L/V_{n+1} + (theta_n - L/V_{n+1})*exp(-(V_{n+1}dt)/L)
         // This is obtained from Equation (5): dtheta/dt = 1 - (theta V)/L
@@ -334,8 +352,7 @@ namespace aspect
                                                           average_elastic_shear_moduli, use_elasticity,
                                                           use_reference_strainrate, dte);
 
-            // this is a trial to check if it prevents current_theta from being negative if old_theta is limited to >=0
-            const double theta_old = std::max(1e-50,in.composition[q][theta_composition_index]);
+            const double theta_old = in.composition[q][theta_composition_index];
             double current_theta = 0;
             double critical_slip_distance = 0.0;
 
@@ -357,10 +374,10 @@ namespace aspect
                   }
               }
 
-            // reintroduction of theta_increment to see if limiting it, can save me from negative theta values
+            // prevent negative theta values in reaction terms by cutting the increment additionally to current_theta
             double theta_increment = current_theta - theta_old;
-            if (theta_old + theta_increment < 0)
-              theta_increment = 0;
+            if (theta_old + theta_increment < 1e-50)
+              theta_increment = 1e-50 - theta_old;
 
             out.reaction_terms[q][theta_composition_index] = theta_increment;
           }

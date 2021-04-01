@@ -73,54 +73,30 @@ namespace aspect
                                               const std::vector<Tensor<1,dim> > &gradients,
                                               typename ParticleHandler<dim>::particle_iterator &particle) const
       {
-        const MaterialModel::ViscoPlastic<dim> &viscoplastic
-          = Plugins::get_plugin_as_type<const MaterialModel::ViscoPlastic<dim>>(this->get_material_model());
-
         material_inputs.position[0] = particle->get_location();
 
         material_inputs.current_cell = typename DoFHandler<dim>::active_cell_iterator(*particle->get_surrounding_cell(this->get_triangulation()),
                                                                                       &(this->get_dof_handler()));
 
-        const double cellsize = material_inputs.current_cell->extent_in_direction(0);
+        material_inputs.temperature[0] = solution[this->introspection().component_indices.temperature];
 
-        // Calculate strain rate second invariant (from partice/property/viscoplastic_strain_invariants)
-        // Note/ToDo: this is not necessarily the same strain rate I use within calculate_isostrain_viscosities, is it?
-        const double edot_ii = std::sqrt(std::fabs(second_invariant(deviator(material_inputs.strain_rate[0]))));
-        const bool plastic_yielding = viscoplastic.is_yielding(material_inputs);
+        material_inputs.pressure[0] = solution[this->introspection().component_indices.pressure];
 
+        for (unsigned int d = 0; d < dim; ++d)
+          material_inputs.velocity[0][d] = solution[this->introspection().component_indices.velocities[d]];
 
-        auto &data = particle->get_properties();
-        const double theta_old = data[data_position];
+        for (unsigned int n = 0; n < this->n_compositional_fields(); ++n)
+          material_inputs.composition[0][n] = solution[this->introspection().component_indices.compositional_fields[n]];
 
-        //ToDo: get the actual critical_slip_distance
-        const double critical_slip_distance = 0.008;
+        Tensor<2,dim> grad_u;
+        for (unsigned int d=0; d<dim; ++d)
+          grad_u[d] = gradients[d];
+        material_inputs.strain_rate[0] = symmetrize (grad_u);
 
-        const double current_theta = theta_old + 2;/**viscoplastic.compute_theta(theta_old, edot_ii,
-                                     cellsize, critical_slip_distance) ;*/
-
-        // ToDo: Only update if plastically yielding?
-        data[data_position] = current_theta;
-        /**
-                material_inputs.temperature[0] = solution[this->introspection().component_indices.temperature];
-
-                material_inputs.pressure[0] = solution[this->introspection().component_indices.pressure];
-
-                for (unsigned int d = 0; d < dim; ++d)
-                  material_inputs.velocity[0][d] = solution[this->introspection().component_indices.velocities[d]];
-
-                for (unsigned int n = 0; n < this->n_compositional_fields(); ++n)
-                  material_inputs.composition[0][n] = solution[this->introspection().component_indices.compositional_fields[n]];
-
-                Tensor<2,dim> grad_u;
-                for (unsigned int d=0; d<dim; ++d)
-                  grad_u[d] = gradients[d];
-                material_inputs.strain_rate[0] = symmetrize (grad_u);
-
-                this->get_material_model().evaluate (material_inputs,material_outputs);
-
-                for (unsigned int i = 0; i < SymmetricTensor<2,dim>::n_independent_components ; ++i)
-                  particle->get_properties()[data_position + i] += material_outputs.reaction_terms[0][i];
-                  */
+        this->get_material_model().evaluate (material_inputs,material_outputs);
+        particle->get_properties()[data_position] += material_outputs.reaction_terms[0][this->introspection().compositional_index_for_name("theta")];
+        if (particle->get_properties()[data_position] < 1e-50)
+          particle->get_properties()[data_position] = 1e-50;
       }
 
 
