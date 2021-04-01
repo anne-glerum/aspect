@@ -324,12 +324,12 @@ namespace aspect
         double Mg_mantle_melting_temperature = 2174;          // Kelvin at reference pressure - reference melting temperature for Mg mantle endmember
 
         // Phipps Morgan Table 1A, ideal olivine, \Delta S^m in [J/ (mol K)]
-        // Q! units given in table are [mol K], but should be [J/mol/K]
+        // NB: units given in table are [mol K], but should be [J/mol/K] (typo)
         //const double Fe_mantle_melting_entropy = 60;         // molar entropy change of melting in J/mol K
         //const double Mg_mantle_melting_entropy = 60;         // molar entropy change of melting in J/mol K
 
         // Phipps Morgan Table 1A, olivine, \Delta S^m in [J/ (mol K)]
-        // Q! units given in table are [mol K], but should be [J/mol/K]
+        // NB: units given in table are [mol K], but should be [J/mol/K] (typo)
         const double Fe_mantle_melting_entropy = 59.9;         // molar entropy change of melting in J/mol K
         const double Mg_mantle_melting_entropy = 65.3;         // molar entropy change of melting in J/mol K
 
