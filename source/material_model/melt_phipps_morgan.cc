@@ -461,7 +461,7 @@ namespace aspect
         const double P = pressure;                   // pressure in Pa
         const double T = temperature;                // temperature in K
         const double R = constants::gas_constant;    // Ideal Gas Constant
-        Assert (P >= 0. && T >= 0., ExcMessage("T or P negative: " + std::to_string(T) + ", " +  std::to_string(P)));
+        Assert (P >= 0. && T > 0., ExcMessage("T or P negative: " + std::to_string(T) + ", " +  std::to_string(P)));
 
         // Free Energy Change Delta_G due to Melting as a function of temperature and pressure
         // eq 2 of Myhill 2018
@@ -485,40 +485,30 @@ namespace aspect
         //const double T_Mg_mantle = (Mg_delta_E + P * Mg_mantle_melting_volume + 0.5 * P * P * Mg_delta_V_prime_fusion) / Mg_mantle_melting_entropy;
         const double T_Fe_mantle = dG_Fe_mantle / Fe_mantle_melting_entropy;
         const double T_Mg_mantle = dG_Mg_mantle / Mg_mantle_melting_entropy;
-        //std::cout << "T, P, New T_Melt " << T << ", " << P << ", " << T_Fe_mantle << ", " << T_Mg_mantle << std::endl;
-
-        // TODO PM01 rm
-        {
-        const double old_dG_Fe_mantle = (Fe_mantle_melting_temperature - T) * Fe_mantle_melting_entropy
-                                    + (P - melting_reference_pressure) * Fe_mantle_melting_volume;
-        const double old_dG_Mg_mantle = (Mg_mantle_melting_temperature - T) * Mg_mantle_melting_entropy
-                                    + (P - melting_reference_pressure) * Mg_mantle_melting_volume;
-        const double old_T_Fe_mantle = old_dG_Fe_mantle / Fe_mantle_melting_entropy;
-        const double old_T_Mg_mantle = old_dG_Mg_mantle / Mg_mantle_melting_entropy;
-        //std::cout << "Old T_Melt Fe, Mg: " << old_T_Fe_mantle << ", " << old_T_Mg_mantle << std::endl;
-        } 
 
         double melt_molar_fraction = 0.;
+        // Mole composition of Fe in the solid
+        // eq 13 and eq A10 of PM11
+        const double Xss = Xls * p_Fe_mantle;
 
         // T_Fe_mantle = T_melting_Fe - T, so when T_Fe_mantle is negative,
         // the temperature T is above the melting temperature T_melting_Fe
         if (Xls <= molar_composition_of_bulk
             && 0 > std::min(T_Fe_mantle, T_Mg_mantle)) // above the liquidus
           {
-            //std::cout << "above liq " << std::endl;
             melt_molar_fraction = 1.0;
             // Composition of the solid value doesn't matter, as the fraction
             // of solid is zero.
             new_molar_composition_of_melt = molar_composition_of_bulk;
             new_molar_composition_of_solid = molar_composition_of_bulk;
           }
-        else // below liquidus
+        else if (Xss >= molar_composition_of_bulk) // below the solidus
+            {
+                melt_molar_fraction = 0.0;
+                new_molar_composition_of_solid = molar_composition_of_bulk;
+            }
+        else // below liquidus & above solidus
           {
-            //std::cout << "below liq " << std::endl;
-            // Mole composition of Fe in the solid
-            // eq 13 and eq A10 of PM11
-            const double Xss = Xls * p_Fe_mantle;
-
             new_molar_composition_of_solid = std::max(std::min(Xss, molar_composition_of_bulk), 0.0);
             new_molar_composition_of_melt = std::min(std::max(Xls, molar_composition_of_bulk), 1.0);
             melt_molar_fraction = std::min(std::max((molar_composition_of_bulk - Xss) / (Xls - Xss), 0.0), 1.0);
@@ -590,7 +580,6 @@ namespace aspect
           const double melt_molar_volume = endmember_mole_fractions_per_phase[fa_melt_idx] * endmembers.volumes[fa_melt_idx]
                                            + endmember_mole_fractions_per_phase[fo_melt_idx] * endmembers.volumes[fo_melt_idx];
 
-          std::cout << "Melt fractions solid, melt molar volume " << solid_molar_volume << ", " << melt_molar_volume << std::endl;
           melt_fractions[q] = eq_melt_molar_fraction * melt_molar_volume
                               / (eq_melt_molar_fraction * melt_molar_volume + (1.0 - eq_melt_molar_fraction) * solid_molar_volume);
         }
@@ -705,7 +694,6 @@ namespace aspect
               else
                 AssertThrow (false, ExcNotImplemented());
             }
-          std::cout << "Evaluate solid, melt molar volume " << solid_molar_volume << ", " << melt_molar_volume << std::endl;
 
           const double total_molar_mass = melt_molar_mass + solid_molar_mass;
           const double total_volume = melt_molar_volume + solid_molar_volume;
@@ -830,7 +818,6 @@ namespace aspect
               const double new_porosity = melt_molar_fraction * melt_molar_volume
                                           / (melt_molar_fraction * melt_molar_volume + (1.0 - melt_molar_fraction) * solid_molar_volume);
               const double porosity_change = new_porosity - old_porosity;
-              std::cout << "Old, new porosity " << old_porosity << ", " << new_porosity << std::endl;
 
               // For this simple model, we only track the iron in the solid and the iron in the melt
               // TODO: make this more general to work with the full equation of state
@@ -866,16 +853,6 @@ namespace aspect
                   const double Mg_delta_G_fusion = Mg_delta_E - in.temperature[q] * Mg_mantle_melting_entropy + pressure * Mg_mantle_melting_volume
                                                    + 0.5 * pressure * pressure * Mg_delta_V_prime_fusion;
                   const double Mg_enthalpy_of_fusion = in.temperature[q] * Mg_mantle_melting_entropy + Mg_delta_G_fusion;
-
-
-                  // eq 16
-                  // TODO PM01 rm
-                  const double old_Fe_enthalpy_of_fusion = Fe_mantle_melting_temperature * Fe_mantle_melting_entropy
-                                                           + (this->get_adiabatic_conditions().pressure(in.position[q]) - melting_reference_pressure) * Fe_mantle_melting_volume;
-                  const double old_Mg_enthalpy_of_fusion = Mg_mantle_melting_temperature * Mg_mantle_melting_entropy
-                                                           + (this->get_adiabatic_conditions().pressure(in.position[q]) - melting_reference_pressure) * Mg_mantle_melting_volume;
-                  //this->get_pcout() << "Fe elthalpy: reference, new " << old_Fe_enthalpy_of_fusion << ", " << Fe_enthalpy_of_fusion << std::endl;
-                  //this->get_pcout() << "Mg elthalpy: reference, new " << old_Mg_enthalpy_of_fusion << ", " << Mg_enthalpy_of_fusion << std::endl;
 
                   // mole-weighted enthalpy of fusion of the endmembers \Delta H = sum_i (X_bulk_i \Delta H_fus_i) / melt_molar_mass
                   // when above the liquidus
