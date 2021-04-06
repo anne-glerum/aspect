@@ -38,6 +38,7 @@ namespace aspect
       {
         std::vector<std::string> names;
         names.emplace_back("bulk_composition");
+        names.emplace_back("molar_volatiles_in_melt");
         return names;
       }
     }
@@ -46,7 +47,8 @@ namespace aspect
     PhippsMorganOutputs<dim>::PhippsMorganOutputs (const unsigned int n_points)
       :
       NamedAdditionalMaterialOutputs<dim>(make_phipps_morgan_additional_outputs_names()),
-      bulk_composition(n_points, numbers::signaling_nan<double>())
+      bulk_composition(n_points, numbers::signaling_nan<double>()),
+      molar_volatiles_in_melt(n_points, numbers::signaling_nan<double>())
     {}
 
     template <int dim>
@@ -56,6 +58,8 @@ namespace aspect
       AssertIndexRange (idx, 2);
       if (idx == 0)
         return bulk_composition;
+      else if (idx == 1)
+        return molar_volatiles_in_melt;
       else
         AssertThrow (false, ExcNotImplemented());
     }
@@ -448,12 +452,14 @@ namespace aspect
     melt_fraction (const double temperature,
                    const double pressure,
                    const double molar_composition_of_bulk,
+                   double &molar_volatiles_in_melt,
                    double &new_molar_composition_of_solid,
                    double &new_molar_composition_of_melt) const
     {
       if (temperature == 0)
         return 0;
 
+      const double molar_volatiles_in_bulk = 1.e-4;
       // TODO PM01 make this a loop over the melts instead of having separate Fe and Mg parameters
       {
         // after Phipps Morgan, Jason. "Thermodynamics of pressure release melting of a veined plum pudding mantle."
@@ -477,19 +483,26 @@ namespace aspect
         // Mole composition of Fe in the liquid (eq 12)
         // A12 in PM01, although
         // A12 computes X_Fe_l = (1-p_Mg)/(p_Fe-p_Mg)
-        const double Xls = 1. - ((1. - p_Fe_mantle) / (p_Mg_mantle - p_Fe_mantle));
+        //const double Xls = 1. - ((1. - p_Fe_mantle) / (p_Mg_mantle - p_Fe_mantle));
+
+        // Mole composition of the solid and liquid (corresponds to the molar fraction of X_Fe, the iron-bearing endmember).
+        // In addition to the Phipps Morgan model, we also include volatiles here.
+        // eq A7--A14
+        const double a = (p_Fe_mantle - p_Mg_mantle) * p_Fe_mantle/p_Mg_mantle;
+        const double b = p_Fe_mantle * (1. - 1./p_Mg_mantle) - molar_composition_of_bulk * (p_Fe_mantle - p_Mg_mantle)/p_Mg_mantle + molar_volatiles_in_bulk * (1. - p_Fe_mantle);
+        const double c = -molar_composition_of_bulk * (1. - 1./p_Mg_mantle);
+        const double Xls = (-b + std::sqrt(b*b - 4.*a*c))/(2.*a);
 
         // Melting occurs when delta G = 0
         // T_Fe_mantle = T_melting_Fe - T = delta_G / delta_S
-        //const double T_Fe_mantle = (Fe_delta_E + P * Fe_mantle_melting_volume + 0.5 * P * P * Fe_delta_V_prime_fusion) / Fe_mantle_melting_entropy;
-        //const double T_Mg_mantle = (Mg_delta_E + P * Mg_mantle_melting_volume + 0.5 * P * P * Mg_delta_V_prime_fusion) / Mg_mantle_melting_entropy;
         const double T_Fe_mantle = dG_Fe_mantle / Fe_mantle_melting_entropy;
         const double T_Mg_mantle = dG_Mg_mantle / Mg_mantle_melting_entropy;
 
-        double melt_molar_fraction = 0.;
         // Mole composition of Fe in the solid
         // eq 13 and eq A10 of PM11
         const double Xss = Xls * p_Fe_mantle;
+
+        double melt_molar_fraction = 0.;
 
         // T_Fe_mantle = T_melting_Fe - T, so when T_Fe_mantle is negative,
         // the temperature T is above the melting temperature T_melting_Fe
@@ -501,17 +514,20 @@ namespace aspect
             // of solid is zero.
             new_molar_composition_of_melt = molar_composition_of_bulk;
             new_molar_composition_of_solid = molar_composition_of_bulk;
+            molar_volatiles_in_melt = molar_volatiles_in_bulk;
           }
         else if (Xss >= molar_composition_of_bulk) // below the solidus
-            {
-                melt_molar_fraction = 0.0;
-                new_molar_composition_of_solid = molar_composition_of_bulk;
-            }
+          {
+            melt_molar_fraction = 0.0;
+            new_molar_composition_of_solid = molar_composition_of_bulk;
+            molar_volatiles_in_melt = 0.0;
+          }
         else // below liquidus & above solidus
           {
             new_molar_composition_of_solid = std::max(std::min(Xss, molar_composition_of_bulk), 0.0);
             new_molar_composition_of_melt = std::min(std::max(Xls, molar_composition_of_bulk), 1.0);
             melt_molar_fraction = std::min(std::max((molar_composition_of_bulk - Xss) / (Xls - Xss), 0.0), 1.0);
+            molar_volatiles_in_melt = molar_volatiles_in_bulk*(Xls - Xss)/(molar_composition_of_bulk - Xss);
           }
 
         return melt_molar_fraction;
@@ -559,9 +575,12 @@ namespace aspect
           const double solid_molar_fraction = 1.0 - melt_molar_fraction;
           double bulk_composition = melt_composition * melt_molar_fraction + solid_composition * solid_molar_fraction;
 
+          double molar_volatiles_in_melt = 0.0;
+
           const double eq_melt_molar_fraction = this->melt_fraction(in.temperature[q],
                                                                     this->get_adiabatic_conditions().pressure(in.position[q]),
                                                                     bulk_composition,
+                                                                    molar_volatiles_in_melt,
                                                                     solid_composition,
                                                                     melt_composition);
 
@@ -721,13 +740,13 @@ namespace aspect
             out.densities[q] = melt_molar_mass / melt_molar_volume;
 
           if (std::isnan(out.densities[q]))
-             std::cout << "Density nan" << std::endl;
+            std::cout << "Density nan" << std::endl;
           if (std::isnan(out.specific_heat[q]))
-             std::cout << "Cp nan" << std::endl;
+            std::cout << "Cp nan" << std::endl;
           if (out.densities[q] < 0.)
-             std::cout << "Density neg: " << solid_molar_mass << ", " << solid_molar_volume << ", " << melt_molar_mass << ", " << melt_molar_volume << std::endl;
+            std::cout << "Density neg: " << solid_molar_mass << ", " << solid_molar_volume << ", " << melt_molar_mass << ", " << melt_molar_volume << std::endl;
           if (out.specific_heat[q] < 0.)
-             std::cout << "Cp neg" << std::endl;
+            std::cout << "Cp neg" << std::endl;
 
           if (melt_out != nullptr)
             {
@@ -777,17 +796,20 @@ namespace aspect
               // Q! solid_composition is already defined above!
               // both compositions will be overwriten by melt_fraction
               double melt_composition = 0.;
+              double molar_volatiles_in_melt = 0.0;
               // calculate the melting rate as difference between the equilibrium melt fraction
               // and the solution of the previous time step, and also update melt and solid composition
               melt_molar_fraction = melt_fraction(in.temperature[q],
                                                   this->get_adiabatic_conditions().pressure(in.position[q]),
                                                   bulk_composition,
+                                                  molar_volatiles_in_melt,
                                                   solid_composition,
                                                   melt_composition);
 
               if (phipps_morgan_out != nullptr)
                 {
                   phipps_morgan_out->bulk_composition[q] = bulk_composition;
+                  phipps_morgan_out->molar_volatiles_in_melt[q] = molar_volatiles_in_melt;
                 }
 
               // We have to compute the update to the melt fraction in such a way that the bulk composition is conserved.
@@ -1146,6 +1168,14 @@ namespace aspect
                              "different endmember at the reference temperature and reference pressure. This coefficient describes "
                              "the part of the temperature dependence that scales as the inverse of the square root of the temperature"
                              "Units: J/K^(1/2)/mol.");
+          prm.declare_entry ("Molar fraction of volatiles in bulk", "1e-4",
+                             Patterns::Double(0),
+                             "The molar fraction of volatiles (e.g. CO2, H2O) in bulk, "
+                             "used to stabilize the melt parameterization. "
+                             "It avoids the discontinuity of the derivatives of the excess Gibbs energy "
+                             "at the onset of melting."
+                             "Units: none.");
+
         }
         prm.leave_subsection();
       }
@@ -1183,6 +1213,8 @@ namespace aspect
 
           reference_temperature             = prm.get_double ("Reference temperature");
           reference_pressure                = prm.get_double ("Reference pressure");
+
+          molar_volatiles_in_bulk           = prm.get_double ("Molar fraction of volatiles in bulk");
 
           if (this->convert_output_to_years() == true)
             melting_time_scale *= year_in_seconds;

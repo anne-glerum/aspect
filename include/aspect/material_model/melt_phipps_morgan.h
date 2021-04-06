@@ -177,7 +177,8 @@ namespace aspect
         // Forsterite Mg-endmember: Mg2SiO4
         // Fayalite Fe-endmember: Fe2SiO4
 
-        // number of moles of atoms mixing on pseudosite in mantle lattice (empirical model fitting the full phipps_morgan model)
+        // number of moles of atoms mixing on pseudosite in mantle lattice
+        // (empirical model fitting the full phipps_morgan model)
         double Fe_number_of_moles;
         double Mg_number_of_moles;
 
@@ -302,6 +303,7 @@ namespace aspect
         melt_fraction (const double temperature,
                        const double pressure,
                        const double bulk_composition,
+                       double &molar_volatiles_in_melt,
                        double &solid_composition,
                        double &melt_composition) const;
 
@@ -354,6 +356,9 @@ namespace aspect
         // nu_melt is only given for forsterite melt.
         double Fe_delta_V_prime_fusion = -3.752e-16;
         double Mg_delta_V_prime_fusion = -4.382e-16;
+
+        // A small number of volatiles is added for stabilization
+        double molar_volatiles_in_bulk = 1e-4;
     };
 
   }
