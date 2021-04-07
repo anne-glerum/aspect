@@ -454,7 +454,7 @@ namespace aspect
 
       double delta_theta_max_tot = 0;
       double critical_slip_distance_tot = 0;
-      const std::vector<double> volume_fractions = MaterialUtilities::compute_volume_fractions(composition, rheology->get_volumetric_composition_mask());
+      const std::vector<double> volume_fractions = MaterialUtilities::compute_composition_fractions(composition, rheology->get_volumetric_composition_mask());
 
       for (unsigned int j=0; j < volume_fractions.size(); ++j)
         {
@@ -498,16 +498,14 @@ namespace aspect
     ViscoPlastic<dim>::
     compute_min_healing_time_step (const std::vector<double> &composition) const
     {
-      const double min_healing_time_step = std::numeric_limits<double>::max(); /*
       double min_healing_time_step = 0.2 * composition[rheology->friction_options.theta_composition_index];
-//std::cout << " composition[rheology->friction_options.theta_composition_index]: "<<composition[rheology->friction_options.theta_composition_index]<<std::endl;
       AssertThrow((std::isinf( min_healing_time_step) || numbers::is_nan( min_healing_time_step)) == false, ExcMessage(
                     " min_healing_time_step needed for the Lapusta time stepping becomes nan or inf. Please "
                     "check all your friction parameters. In case of "
                     "rate-and-state like friction, don't forget to check on a,b, and the critical slip distance, or theta."));
       // ToDo: this time step somehow becomes negative, because theta still becomes negative. So in this case I make it very large so it does no harm
       if (min_healing_time_step <= 0)
-        min_healing_time_step =  std::numeric_limits<double>::max();*/
+        min_healing_time_step =  std::numeric_limits<double>::max();
       return min_healing_time_step;
     }
 
@@ -520,7 +518,7 @@ namespace aspect
     {
       double elastic_shear_modulus = 0;
       const std::vector<double> elastic_shear_moduli = rheology->elastic_rheology.get_elastic_shear_moduli();
-      const std::vector<double> volume_fractions = MaterialUtilities::compute_volume_fractions(composition, rheology->get_volumetric_composition_mask());
+      const std::vector<double> volume_fractions = MaterialUtilities::compute_composition_fractions(composition, rheology->get_volumetric_composition_mask());
       for (unsigned int j=0; j < volume_fractions.size(); ++j)
         elastic_shear_modulus += volume_fractions[j] * elastic_shear_moduli[j];
       return elastic_shear_modulus;

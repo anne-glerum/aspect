@@ -128,29 +128,18 @@ namespace aspect
                                                  std::min (min_displacement_time_step,
                                                            min_vep_relaxation_time_step)));
 
-      AssertThrow (min_state_weakening_time_step > 0,
-                   ExcMessage("The time step length for the each time step needs to be positive, "
-                              "but the computed step length was: " + std::to_string(min_lapusta_timestep) + ". "
-                              "Please check for non-positive material properties."));
-
-      AssertThrow (min_healing_time_step > 0,
-                   ExcMessage("The time step length for the each time step needs to be positive, "
-                              "but the computed step length was: " + std::to_string(min_lapusta_timestep) + ". "
-                              "Please check for non-positive material properties."));
-
-      AssertThrow (min_displacement_time_step > 0,
-                   ExcMessage("The time step length for the each time step needs to be positive, "
-                              "but the computed step length was: " + std::to_string(min_lapusta_timestep) + ". "
-                              "Please check for non-positive material properties."));
-
-      AssertThrow (min_vep_relaxation_time_step > 0,
-                   ExcMessage("The time step length for the each time step needs to be positive, "
-                              "but the computed step length was: " + std::to_string(min_lapusta_timestep) + ". "
-                              "Please check for non-positive material properties."));
-
       AssertThrow (min_lapusta_timestep > 0,
                    ExcMessage("The time step length for the each time step needs to be positive, "
-                              "but the computed step length was: " + std::to_string(min_lapusta_timestep) + ". "
+                              "but the computed step length of the overall Lapusta time step "
+                              "was: " + std::to_string(min_lapusta_timestep) + ". \n"
+                              "The computed step length of the min state weakening time step "
+                              "was: " + std::to_string(min_state_weakening_time_step) + ". \n"
+                              "The computed step length of the min healing time step "
+                              "was: " + std::to_string(min_healing_time_step) + ". \n"
+                              "The computed step length of the min displacement time step "
+                              "was: " + std::to_string(min_displacement_time_step) + ". \n"
+                              "The computed step length of the min vep relaxation time step "
+                              "was: " + std::to_string(min_vep_relaxation_time_step) + ". \n"
                               "Please check for non-positive material properties."));
 
       return min_lapusta_timestep;
