@@ -117,14 +117,15 @@ namespace aspect
             }
             case dynamic_friction:
             {
-              const double effective_friction_factor = get_effective_friction_factor(position,j);
+              const double effective_friction_factor = get_effective_friction_factor(position);
               // The dynamic characteristic strain rate is used to see what value between dynamic and static angle of internal friction should be used.
               // This is done as in the material model dynamic friction which is based on Equation (13) in van Dinther et al., (2013, JGR). Although here
               // the dynamic friction coefficient is directly specified. Furthermore a smoothness exponent X is added, which determines whether the
               // friction vs strain rate curve is rather step-like or more gradual.
               // mu  = mu_d + (mu_s - mu_d) / ( (1 + strain_rate_dev_inv2/dynamic_characteristic_strain_rate)^X );
               // Angles of friction are used in radians within ASPECT. The coefficient of friction is the tangent of the internal angle of friction.
-              const double mu = effective_friction_factor * (std::tan(dynamic_angles_of_internal_friction[j])
+              const double mu = (1 - effective_friction_factor) 
+              * (std::tan(dynamic_angles_of_internal_friction[j])
                                                              + (std::tan(current_friction) - std::tan(dynamic_angles_of_internal_friction[j]))
                                                              / (1. + std::pow((current_edot_ii / dynamic_characteristic_strain_rate),
                                                                               dynamic_friction_smoothness_exponent)));
@@ -142,9 +143,10 @@ namespace aspect
                   // Get the values for a and b and the critcal slip distance L
                   const double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(position,j).first;
                   const double rate_and_state_parameter_b = calculate_depth_dependent_a_and_b(position,j).second;
-                  const double effective_friction_factor = get_effective_friction_factor(position,j);
+                  const double effective_friction_factor = get_effective_friction_factor(position);
 
-                  const double mu = effective_friction_factor * (std::tan(current_friction)
+                  const double mu = (1 - effective_friction_factor)
+                   * (std::tan(current_friction)
                                                                  + (rate_and_state_parameter_a - rate_and_state_parameter_b)
                                                                  * std::log(steady_state_velocity
                                                                             / (quasi_static_strain_rate * cellsize)));
@@ -168,7 +170,7 @@ namespace aspect
                   double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(position,j).first;
                   const double rate_and_state_parameter_b = calculate_depth_dependent_a_and_b(position,j).second;
                   double critical_slip_distance = get_critical_slip_distance(position,j);
-                  const double effective_friction_factor = get_effective_friction_factor(position,j);
+                  const double effective_friction_factor = get_effective_friction_factor(position);
 
                   // theta_old is taken from the current compositional field theta
                   const double theta_old = composition[theta_composition_index];
@@ -212,7 +214,7 @@ namespace aspect
                           // As we use strain-rates and current_edot_ii instead of velocities, these
                           // are multiplied by the cellsize.
                           // Effective friction is explained below for the other friction option.
-                          mu = effective_friction_factor
+                          mu = (1 - effective_friction_factor)
                                * (rate_and_state_parameter_a
                                   * std::asinh(current_edot_ii / (2.0 * quasi_static_strain_rate)
                                                * std::exp((std::tan(current_friction)
@@ -233,7 +235,7 @@ namespace aspect
                       // effective_friction_factor to account for effects of pore fluid pressure:
                       // mu = mu(1-p_f/sigma_n) = mu*, with (1-p_f/sigma_n) = 0.03 for subduction zones.
                       //const double current_friction_old = current_friction; // also only for chasing negative friction
-                      mu = effective_friction_factor
+                      mu = (1 - effective_friction_factor)
                            * (std::tan(current_friction)
                               + rate_and_state_parameter_a
                               * std::log(current_edot_ii / quasi_static_strain_rate)
@@ -258,6 +260,7 @@ namespace aspect
                                 "rate-and-state like friction, don't forget to check on a,b, and the critical slip distance, or theta."
                                 "\n a is: "+  Utilities::to_string(rate_and_state_parameter_a) + ", b is: "
                                 + Utilities::to_string(rate_and_state_parameter_b)+ ", L is: " +  Utilities::to_string(critical_slip_distance) +
+                                ",\n effecitve friction factor is: "+ Utilities::to_string(effective_friction_factor) +
                                 ",\n friction angle [RAD] is: "+ Utilities::to_string(current_friction)+", friction coeff is: "+Utilities::to_string(mu)+
                                 ",\n theta is: "+ Utilities::to_string(theta)+", current edot_ii is: "
                                 + Utilities::to_string(current_edot_ii)+ ".\n The position is:\n dir 0 = "+ Utilities::to_string(coords[0])+
@@ -422,15 +425,16 @@ namespace aspect
 
       template <int dim>
       double
-      FrictionOptions<dim>::get_effective_friction_factor(const Point<dim> &position, const int j) const
+      FrictionOptions<dim>::get_effective_friction_factor(const Point<dim> &position) const
       {
         Utilities::NaturalCoordinate<dim> point =
           this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF);
 
         const double effective_friction_factor =
-          effective_friction_factor_function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),j);
+          effective_friction_factor_function.value(Utilities::convert_array_to_point<dim>(point.get_coordinates()));
 
-        AssertThrow(effective_friction_factor > 0, ExcMessage("Effective friction factor must be > 0."));
+        AssertThrow(effective_friction_factor > 0, ExcMessage("Effective friction factor must be < 1, "
+        "because anything else will cause negative or zero friction coefficients."));
 
         return effective_friction_factor;
       }
@@ -804,18 +808,10 @@ namespace aspect
         dynamic_friction_smoothness_exponent = prm.get_double("Dynamic friction smoothness exponent");
 
         // Rate and state friction parameters
-        /*
-        effective_friction_factor = Utilities::possibly_extend_from_1_to_N (Utilities::string_to_double(Utilities::split_string_list(prm.get("Effective friction factor"))),
-                                                                            n_fields,
-                                                                            "Effective friction factor");
-        */
-
         prm.enter_subsection("Effective friction factor function");
         try
           {
-            effective_friction_factor_function
-              = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(n_fields);
-            effective_friction_factor_function->parse_parameters (prm);
+            effective_friction_factor_function.parse_parameters (prm);
           }
         catch (...)
           {

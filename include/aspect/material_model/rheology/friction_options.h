@@ -210,7 +210,7 @@ namespace aspect
           /**
            * Function that gets the effective friction factor at a certain position for composition j.
            */
-          double get_effective_friction_factor(const Point<dim> &position, const int j) const;
+          double get_effective_friction_factor(const Point<dim> &position) const;
 
           /**
            * Create the additional material model outputs object that contains the
@@ -316,7 +316,7 @@ namespace aspect
            * account the influence of pore fluid pressure. This makes the friction
            * coefficient an effective friction coefficient as in Sobolev and Muldashev (2017).
            */
-          std::unique_ptr<Functions::ParsedFunction<dim> > effective_friction_factor_function;
+          Functions::ParsedFunction<dim> effective_friction_factor_function;
 
           /**
            * The critical slip distance in rate-and-state friction. Used to calculate the state
