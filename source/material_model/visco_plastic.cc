@@ -503,7 +503,11 @@ namespace aspect
                     " min_healing_time_step needed for the Lapusta time stepping becomes nan or inf. Please "
                     "check all your friction parameters. In case of "
                     "rate-and-state like friction, don't forget to check on a,b, and the critical slip distance, or theta."));
-      // ToDo: this time step somehow becomes negative, because theta still becomes negative. So in this case I make it very large so it does no harm
+      // ToDo: this time step somehow becomes negative, because theta still becomes negative. So in this case either I make it
+      // very large so it does no harm or dont do that, but have an asserthrow because this would remind us that its still a problem?
+      AssertThrow(composition[rheology->friction_options.theta_composition_index]<=0, ExcMessage(
+                    " min_healing_time_step needed for the Lapusta time stepping becomes negative, because theta is negative. "
+                    "Theta is: " + Utilities::to_string(composition[rheology->friction_options.theta_composition_index])));
       if (min_healing_time_step <= 0)
         min_healing_time_step =  std::numeric_limits<double>::max();
       return min_healing_time_step;
