@@ -157,17 +157,8 @@ namespace aspect
     evaluate(const MaterialModel::MaterialModelInputs<dim> &in,
              MaterialModel::MaterialModelOutputs<dim> &out) const
     {
-      // Evaluate the MM for the crust, but only when we're in the crust
-      MaterialModel::MaterialModelOutputs<dim> out_crust(out.n_evaluation_points(),
-                                                         this->n_compositional_fields());
-
-      out_crust.move_additional_outputs_from(out);
-      crust_model.evaluate(in, out_crust);
-      out.move_additional_outputs_from(out_crust);
-
       // Evaluate the melt MM
       melt_model.evaluate(in, out);
-      MeltOutputs<dim> *melt_out = out.template get_additional_output<MeltOutputs<dim> >();
 
       // Store which components do not represent volumetric compositions (e.g. strain components).
       ComponentMask volumetric_compositions = rheology->get_volumetric_composition_mask();
@@ -187,17 +178,7 @@ namespace aspect
       // Loop through all requested points
       for (unsigned int i=0; i < in.n_evaluation_points(); ++i)
         {
-          // max composition to decide on crust field
-          if (in.composition[i][crust_field_index] >= 0.5)
-            {
-              out.densities[i] = out_crust.densities[i];
-              out.thermal_expansion_coefficients[i] = out_crust.thermal_expansion_coefficients[i];
-              out.specific_heat[i] = out_crust.specific_heat[i];
-              out.thermal_conductivities[i] = out_crust.thermal_conductivities[i];
-              out.compressibilities[i] = out_crust.compressibilities[i];
-              // reaction terms?? TODO
-            }
-          // First compute the equation of state variables and thermodynamic properties
+           // First compute the equation of state variables and thermodynamic properties
           //equation_of_state.evaluate(in, i, eos_outputs_all_phases);
 
           //const double gravity_norm = this->get_gravity_model().gravity_vector(in.position[i]).norm();
@@ -454,15 +435,9 @@ namespace aspect
       melt_model.parse_parameters(prm);
       melt_model.initialize();
 
-      if (SimulatorAccess<dim> *sim = dynamic_cast<SimulatorAccess<dim>*>(&crust_model))
-        sim->initialize_simulator (this->get_simulator());
-      crust_model.parse_parameters(prm);
-      crust_model.initialize();
-
       porosity_field_index = this->introspection().compositional_index_for_name("porosity");
       fe_field_index = this->introspection().compositional_index_for_name("molar_Fe_in_solid");
       fe_melt_field_index = this->introspection().compositional_index_for_name("molar_Fe_in_melt");
-      crust_field_index = this->introspection().compositional_index_for_name("crust");
 
       // Declare dependencies on solution variables
       this->model_dependence.viscosity = NonlinearDependence::temperature | NonlinearDependence::pressure | NonlinearDependence::strain_rate | NonlinearDependence::compositional_fields;

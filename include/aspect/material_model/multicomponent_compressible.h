@@ -136,17 +136,6 @@ namespace aspect
         std::vector<double> thermal_conductivities;
 
         EquationOfState::MulticomponentCompressible<dim> equation_of_state;
-        /**
-         * The compositional field index for the porosity field
-         */
-        unsigned int porosity_field_index;
-
-        /**
-         * The compositional field index for the Fe field in the
-         * solid and liquid
-         */
-        unsigned int fe_field_index;
-        unsigned int fe_melt_field_index;
     };
 
   }
