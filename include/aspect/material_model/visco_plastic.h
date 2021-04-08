@@ -25,6 +25,7 @@
 #include <aspect/material_model/interface.h>
 #include <aspect/material_model/melt_boukare.h>
 #include <aspect/material_model/melt_phipps_morgan.h>
+#include <aspect/material_model/multicomponent_compressible.h>
 #include <aspect/material_model/equation_of_state/multicomponent_incompressible.h>
 #include <aspect/material_model/rheology/visco_plastic.h>
 
@@ -291,6 +292,7 @@ namespace aspect
          */
         //MaterialModel::MeltBoukare<dim> melt_model;
         MaterialModel::MeltPhippsMorgan<dim> melt_model;
+        MaterialModel::MulticomponentCompressible<dim> crust_model;
 
         /**
          * The compositional field index for the porosity field
@@ -304,6 +306,17 @@ namespace aspect
         unsigned int fe_field_index;
         unsigned int fe_melt_field_index;
 
+        /**
+         * The compositional field index for the crustal field
+         */
+        unsigned int crust_field_index;
+
+        /**
+         * Minimum and maximum viscosities used to improve the
+         * stability of the rheology model.
+         */
+        double min_visc;
+        double max_visc;
     };
 
   }
