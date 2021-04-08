@@ -37,12 +37,6 @@ namespace aspect
     {
       EquationOfStateOutputs<dim> eos_outputs (this->n_compositional_fields()+1);
 
-      // Set composition masks to exclude the melt fields
-      ComponentMask composition_mask(this->n_compositional_fields(),true);
-      composition_mask.set(porosity_field_index,false);
-      composition_mask.set(fe_field_index,false);
-      composition_mask.set(fe_melt_field_index,false);
-
       for (unsigned int i=0; i < in.n_evaluation_points(); ++i)
         {
           equation_of_state.evaluate(in, i, eos_outputs);
@@ -159,10 +153,6 @@ namespace aspect
         prm.leave_subsection();
       }
       prm.leave_subsection();
-
-      porosity_field_index = this->introspection().compositional_index_for_name("porosity");
-      fe_field_index = this->introspection().compositional_index_for_name("molar_Fe_in_solid");
-      fe_melt_field_index = this->introspection().compositional_index_for_name("molar_Fe_in_melt");
 
       // Declare dependencies on solution variables
       this->model_dependence.thermal_conductivity = NonlinearDependence::compositional_fields;
