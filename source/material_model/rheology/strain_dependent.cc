@@ -262,22 +262,22 @@ namespace aspect
         // nonlinear solver scheme does a single advection iteration. More than one nonlinear advection
         // iteration will result in the incorrect value of strain being used in the material model, as
         // the compositional fields representing strain are updated through the reaction terms.
-        if (weakening_mechanism != none)
-          {
-            AssertThrow((this->get_parameters().nonlinear_solver ==
-                         Parameters<dim>::NonlinearSolver::single_Advection_single_Stokes
-                         ||
-                         this->get_parameters().nonlinear_solver ==
-                         Parameters<dim>::NonlinearSolver::single_Advection_iterated_Stokes
-                         ||
-                         this->get_parameters().nonlinear_solver ==
-                         Parameters<dim>::NonlinearSolver::single_Advection_iterated_Newton_Stokes),
-                        ExcMessage("The material model will only work with the nonlinear "
-                                   "solver schemes 'single Advection, single Stokes', "
-                                   "'single Advection, iterated Stokes', and "
-                                   "'single Advection, iterated_Newton_Stokes' when strain "
-                                   "weakening is enabled."));
-          }
+//        if (weakening_mechanism != none)
+//          {
+//            AssertThrow((this->get_parameters().nonlinear_solver ==
+//                         Parameters<dim>::NonlinearSolver::single_Advection_single_Stokes
+//                         ||
+//                         this->get_parameters().nonlinear_solver ==
+//                         Parameters<dim>::NonlinearSolver::single_Advection_iterated_Stokes
+//                         ||
+//                         this->get_parameters().nonlinear_solver ==
+//                         Parameters<dim>::NonlinearSolver::single_Advection_iterated_Newton_Stokes),
+//                        ExcMessage("The material model will only work with the nonlinear "
+//                                   "solver schemes 'single Advection, single Stokes', "
+//                                   "'single Advection, iterated Stokes', and "
+//                                   "'single Advection, iterated_Newton_Stokes' when strain "
+//                                   "weakening is enabled."));
+//          }
 
 
 
@@ -484,6 +484,12 @@ namespace aspect
                              const bool plastic_yielding,
                              MaterialModel::MaterialModelOutputs<dim> &out) const
       {
+        // If an iterated Advection scheme is used,
+        // only fill the reaction outputs in the first nonlinear iteration
+        // of each timestep
+        if (this->get_parameters().nonlinear_solver == Parameters<dim>::NonlinearSolver::iterated_Advection_and_Stokes &&
+            this->get_nonlinear_iteration() > 0)
+        return;
 
         // If strain weakening is used, overwrite the first reaction term,
         // which represents the second invariant of the (plastic) strain tensor.
