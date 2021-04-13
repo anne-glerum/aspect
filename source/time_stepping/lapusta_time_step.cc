@@ -142,6 +142,21 @@ namespace aspect
                               "was: " + std::to_string(min_vep_relaxation_time_step) + ". \n"
                               "Please check for non-positive material properties."));
 
+      // Print lapusta timestep lengths
+      const char *unit = ( SimulatorAccess<dim>::convert_output_to_years() ? "years" : "seconds");
+      const double multiplier = ( SimulatorAccess<dim>::convert_output_to_years() ? 1./year_in_seconds : 1.0);
+      std::cout << "   Lapusta timestep length determined for next timestep: " ;
+      std::cout << min_lapusta_timestep * multiplier << ' ' << unit << std::endl;
+      std::cout << "      The components are:" << std::endl;
+      std::cout << "      - the min state weakening time step: " ;
+      std::cout << min_state_weakening_time_step * multiplier << ' ' << unit << std::endl;
+      std::cout << "      - the min healing time step: ";
+      std::cout << min_healing_time_step * multiplier << ' ' << unit << std::endl;
+      std::cout << "      - the min displacement time step: ";
+      std::cout << min_displacement_time_step * multiplier << ' ' << unit << std::endl;
+      std::cout << "      - the min vep relaxation time step: ";
+      std::cout << min_vep_relaxation_time_step* multiplier << ' ' << unit << std::endl << std::endl;
+
       return min_lapusta_timestep;
     }
 
