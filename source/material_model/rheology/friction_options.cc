@@ -124,11 +124,11 @@ namespace aspect
               // friction vs strain rate curve is rather step-like or more gradual.
               // mu  = mu_d + (mu_s - mu_d) / ( (1 + strain_rate_dev_inv2/dynamic_characteristic_strain_rate)^X );
               // Angles of friction are used in radians within ASPECT. The coefficient of friction is the tangent of the internal angle of friction.
-              const double mu = (1 - effective_friction_factor) 
-              * (std::tan(dynamic_angles_of_internal_friction[j])
-                                                             + (std::tan(current_friction) - std::tan(dynamic_angles_of_internal_friction[j]))
-                                                             / (1. + std::pow((current_edot_ii / dynamic_characteristic_strain_rate),
-                                                                              dynamic_friction_smoothness_exponent)));
+              const double mu = (1 - effective_friction_factor)
+                                * (std::tan(dynamic_angles_of_internal_friction[j])
+                                   + (std::tan(current_friction) - std::tan(dynamic_angles_of_internal_friction[j]))
+                                   / (1. + std::pow((current_edot_ii / dynamic_characteristic_strain_rate),
+                                                    dynamic_friction_smoothness_exponent)));
               current_friction = std::atan (mu);
               Assert((mu < 1) && (0 < current_friction <=1.6), ExcMessage(
                        "Something is wrong with the tan/atan conversion of friction coefficient to friction angle in RAD."));
@@ -146,10 +146,10 @@ namespace aspect
                   const double effective_friction_factor = get_effective_friction_factor(position);
 
                   const double mu = (1 - effective_friction_factor)
-                   * (std::tan(current_friction)
-                                                                 + (rate_and_state_parameter_a - rate_and_state_parameter_b)
-                                                                 * std::log(steady_state_velocity
-                                                                            / (quasi_static_strain_rate * cellsize)));
+                                    * (std::tan(current_friction)
+                                       + (rate_and_state_parameter_a - rate_and_state_parameter_b)
+                                       * std::log(steady_state_velocity
+                                                  / (quasi_static_strain_rate * cellsize)));
                   current_friction = std::atan (mu);
                 }
               break;
@@ -223,8 +223,9 @@ namespace aspect
                                                           / rate_and_state_parameter_a)));
                         }
                       else
-                        mu = std::tan(current_friction) + rate_and_state_parameter_b
-                             * std::log((theta * quasi_static_strain_rate  * cellsize) / critical_slip_distance);
+                        mu = (1 - effective_friction_factor)
+                             * (std::tan(current_friction) + rate_and_state_parameter_b
+                                * std::log((theta * quasi_static_strain_rate  * cellsize) / critical_slip_distance));
                     }
                   else
                     {
@@ -434,7 +435,7 @@ namespace aspect
           effective_friction_factor_function.value(Utilities::convert_array_to_point<dim>(point.get_coordinates()));
 
         AssertThrow(effective_friction_factor > 0, ExcMessage("Effective friction factor must be < 1, "
-        "because anything else will cause negative or zero friction coefficients."));
+                                                              "because anything else will cause negative or zero friction coefficients."));
 
         return effective_friction_factor;
       }
