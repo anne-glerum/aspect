@@ -25,6 +25,8 @@
 #include <aspect/newton.h>
 #include <aspect/adiabatic_conditions/interface.h>
 #include <aspect/gravity_model/interface.h>
+#include <aspect/introspection.h>
+#include <deal.II/fe/fe_values.h>
 
 namespace aspect
 {
@@ -175,10 +177,35 @@ namespace aspect
       // While the number of phases is fixed, the value of the phase function is updated for every point
       std::vector<double> phase_function_values(phase_function.n_phase_transitions(), 0.0);
 
+      std::vector<SymmetricTensor<2,dim> > old_strainrate_values;
+      std::vector<SymmetricTensor<2,dim> > old_old_strainrate_values;
+      if (this->get_parameters().nonlinear_solver == Parameters<dim>::NonlinearSolver::iterated_Advection_and_Stokes &&
+          this->get_timestep_number() > 0 &&
+          in.requests_property(MaterialProperties::reaction_terms) &&
+          in.current_cell.state() == IteratorState::valid)
+        {
+          const QGauss<dim> quadrature_formula (this->get_fe()
+                                                .base_element(this->introspection().base_elements.velocities).degree+1);
+          const unsigned int n_q_points = quadrature_formula.size();
+          old_strainrate_values.resize(n_q_points);
+          old_old_strainrate_values.resize(n_q_points);
+          FEValues<dim> fe_values (this->get_mapping(),
+                                   this->get_fe(),
+                                   quadrature_formula,
+                                   update_gradients   |
+                                   update_quadrature_points);
+          fe_values.reinit (in.current_cell);
+          fe_values[this->introspection().extractors.velocities].get_function_symmetric_gradients (this->get_old_solution(),old_strainrate_values);
+          if (this->get_timestep_number() > 1)
+            {
+              fe_values[this->introspection().extractors.velocities].get_function_symmetric_gradients (this->get_old_old_solution(),old_old_strainrate_values);
+            }
+        }
+
       // Loop through all requested points
       for (unsigned int i=0; i < in.n_evaluation_points(); ++i)
         {
-           // First compute the equation of state variables and thermodynamic properties
+          // First compute the equation of state variables and thermodynamic properties
           //equation_of_state.evaluate(in, i, eos_outputs_all_phases);
 
           //const double gravity_norm = this->get_gravity_model().gravity_vector(in.position[i]).norm();
@@ -278,7 +305,22 @@ namespace aspect
             }
 
           // Calculate changes in strain invariants and update the reaction terms
-          rheology->strain_rheology.fill_reaction_outputs(in, i, rheology->min_strain_rate, plastic_yielding, out);
+          double old_strainrate  = 0.;
+          if (this->get_parameters().nonlinear_solver == Parameters<dim>::NonlinearSolver::iterated_Advection_and_Stokes &&
+              this->get_timestep_number() > 0 &&
+              in.requests_property(MaterialProperties::reaction_terms) &&
+              in.current_cell.state() == IteratorState::valid)
+            {
+              if (this->get_timestep_number() > 1)
+                {
+                  SymmetricTensor<2,dim> linearization_strainrate = (1 + this->get_timestep()/this->get_old_timestep()) * old_strainrate_values[i]
+                                                                    - this->get_timestep()/ this->get_old_timestep() * old_old_strainrate_values[i];
+                  old_strainrate  = std::max(sqrt(std::fabs(second_invariant(deviator(linearization_strainrate)))),rheology->min_strain_rate);
+                }
+              else
+                old_strainrate  = std::max(sqrt(std::fabs(second_invariant(deviator(old_strainrate_values[i])))),rheology->min_strain_rate);
+            }
+          rheology->strain_rheology.fill_reaction_outputs(in, i, rheology->min_strain_rate, plastic_yielding, out, old_strainrate);
 
           // Fill plastic outputs if they exist.
           rheology->fill_plastic_outputs(i,volume_fractions,plastic_yielding,in,out);

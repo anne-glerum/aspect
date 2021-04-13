@@ -138,7 +138,8 @@ namespace aspect
                                       const int i,
                                       const double min_strain_rate,
                                       const bool plastic_yielding,
-                                      MaterialModel::MaterialModelOutputs<dim> &out) const;
+                                      MaterialModel::MaterialModelOutputs<dim> &out,
+                                      const double old_strainrate = 0.) const;
 
           /**
            * A function that returns a ComponentMask, which indicates that components
