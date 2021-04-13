@@ -25,6 +25,8 @@
 #include <aspect/newton.h>
 #include <aspect/adiabatic_conditions/interface.h>
 #include <aspect/gravity_model/interface.h>
+#include <aspect/introspection.h>
+#include <deal.II/fe/fe_values.h>
 
 namespace aspect
 {
@@ -72,7 +74,12 @@ namespace aspect
       in.composition[i] = composition;
       in.strain_rate[i] = strain_rate;
 
-      const std::vector<double> volume_fractions = MaterialUtilities::compute_volume_fractions(composition, rheology->get_volumetric_composition_mask());
+      // Do not use the porosity and Fe fields for visco-plasticity.
+      ComponentMask composition_mask = rheology->get_volumetric_composition_mask();
+      composition_mask.set(porosity_field_index,false);
+      composition_mask.set(fe_field_index,false);
+      composition_mask.set(fe_melt_field_index,false);
+      const std::vector<double> volume_fractions = MaterialUtilities::compute_volume_fractions(composition, composition_mask);
 
       const IsostrainViscosities isostrain_viscosities =
         rheology->calculate_isostrain_viscosities(in, i, volume_fractions);
@@ -92,7 +99,12 @@ namespace aspect
     {
       Assert(in.n_evaluation_points() == 1, ExcInternalError());
 
-      const std::vector<double> volume_fractions = MaterialUtilities::compute_volume_fractions(in.composition[0], rheology->get_volumetric_composition_mask());
+      // Do not use the porosity and Fe fields for visco-plasticity.
+      ComponentMask composition_mask = rheology->get_volumetric_composition_mask();
+      composition_mask.set(porosity_field_index,false);
+      composition_mask.set(fe_field_index,false);
+      composition_mask.set(fe_melt_field_index,false);
+      const std::vector<double> volume_fractions = MaterialUtilities::compute_volume_fractions(in.composition[0], composition_mask);
 
       /* The following handles phases in a similar way as in the 'evaluate' function.
       * Results then enter the calculation of plastic yielding.
@@ -147,10 +159,14 @@ namespace aspect
     evaluate(const MaterialModel::MaterialModelInputs<dim> &in,
              MaterialModel::MaterialModelOutputs<dim> &out) const
     {
+      // Evaluate the melt MM
       melt_model.evaluate(in, out);
 
       // Store which components do not represent volumetric compositions (e.g. strain components).
-      const ComponentMask volumetric_compositions = rheology->get_volumetric_composition_mask();
+      ComponentMask volumetric_compositions = rheology->get_volumetric_composition_mask();
+      volumetric_compositions.set(porosity_field_index,false);
+      volumetric_compositions.set(fe_field_index,false);
+      volumetric_compositions.set(fe_melt_field_index,false);
 
       EquationOfStateOutputs<dim> eos_outputs (this->n_compositional_fields()+1);
       EquationOfStateOutputs<dim> eos_outputs_all_phases (this->n_compositional_fields()+1+phase_function.n_phase_transitions());
@@ -161,41 +177,100 @@ namespace aspect
       // While the number of phases is fixed, the value of the phase function is updated for every point
       std::vector<double> phase_function_values(phase_function.n_phase_transitions(), 0.0);
 
+      std::vector<SymmetricTensor<2,dim> > old_strainrate_values;
+      std::vector<SymmetricTensor<2,dim> > old_old_strainrate_values;
+      if (this->get_parameters().nonlinear_solver == Parameters<dim>::NonlinearSolver::iterated_Advection_and_Stokes &&
+          this->get_timestep_number() > 0 &&
+          in.requests_property(MaterialProperties::reaction_terms) &&
+          in.current_cell.state() == IteratorState::valid)
+        {
+          const QGauss<dim> quadrature_formula (this->get_fe()
+                                                .base_element(this->introspection().base_elements.velocities).degree+1);
+          const unsigned int n_q_points = quadrature_formula.size();
+          old_strainrate_values.resize(n_q_points);
+          old_old_strainrate_values.resize(n_q_points);
+          FEValues<dim> fe_values (this->get_mapping(),
+                                   this->get_fe(),
+                                   quadrature_formula,
+                                   update_gradients   |
+                                   update_quadrature_points);
+          fe_values.reinit (in.current_cell);
+          fe_values[this->introspection().extractors.velocities].get_function_symmetric_gradients (this->get_old_solution(),old_strainrate_values);
+          if (this->get_timestep_number() > 1)
+            {
+              fe_values[this->introspection().extractors.velocities].get_function_symmetric_gradients (this->get_old_old_solution(),old_old_strainrate_values);
+            }
+        }
+
       // Loop through all requested points
       for (unsigned int i=0; i < in.n_evaluation_points(); ++i)
         {
           // First compute the equation of state variables and thermodynamic properties
-          equation_of_state.evaluate(in, i, eos_outputs_all_phases);
+          //equation_of_state.evaluate(in, i, eos_outputs_all_phases);
 
-          const double gravity_norm = this->get_gravity_model().gravity_vector(in.position[i]).norm();
-          const double reference_density = (this->get_adiabatic_conditions().is_initialized())
-                                           ?
-                                           this->get_adiabatic_conditions().density(in.position[i])
-                                           :
-                                           eos_outputs_all_phases.densities[0];
+          //const double gravity_norm = this->get_gravity_model().gravity_vector(in.position[i]).norm();
+          //const double reference_density = (this->get_adiabatic_conditions().is_initialized())
+          //                                 ?
+          //                                  this->get_adiabatic_conditions().density(in.position[i])
+          //                                 :
+          //                                 eos_outputs_all_phases.densities[0];
 
           // The phase index is set to invalid_unsigned_int, because it is only used internally
           // in phase_average_equation_of_state_outputs to loop over all existing phases
-          MaterialUtilities::PhaseFunctionInputs<dim> phase_inputs(in.temperature[i],
-                                                                   in.pressure[i],
-                                                                   this->get_geometry_model().depth(in.position[i]),
-                                                                   gravity_norm*reference_density,
-                                                                   numbers::invalid_unsigned_int);
+          //MaterialUtilities::PhaseFunctionInputs<dim> phase_inputs(in.temperature[i],
+          //                                                         in.pressure[i],
+          //                                                         this->get_geometry_model().depth(in.position[i]),
+          //                                                         gravity_norm*reference_density,
+          //                                                         numbers::invalid_unsigned_int);
 
           // Compute value of phase functions
-          for (unsigned int j=0; j < phase_function.n_phase_transitions(); j++)
-            {
-              phase_inputs.phase_index = j;
-              phase_function_values[j] = phase_function.compute_value(phase_inputs);
-            }
+          //for (unsigned int j=0; j < phase_function.n_phase_transitions(); j++)
+          //  {
+          //    phase_inputs.phase_index = j;
+          //    phase_function_values[j] = phase_function.compute_value(phase_inputs);
+          //  }
 
           // Average by value of gamma function to get value of compositions
-          phase_average_equation_of_state_outputs(eos_outputs_all_phases,
-                                                  phase_function_values,
-                                                  phase_function.n_phase_transitions_for_each_composition(),
-                                                  eos_outputs);
+          //phase_average_equation_of_state_outputs(eos_outputs_all_phases,
+          //                                        phase_function_values,
+          //                                        phase_function.n_phase_transitions_for_each_composition(),
+          //                                        eos_outputs);
 
           const std::vector<double> volume_fractions = MaterialUtilities::compute_volume_fractions(in.composition[i], volumetric_compositions);
+          // not strictly correct if thermal expansivities are different, since we are interpreting
+          // these compositions as volume fractions, but the error introduced should not be too bad.
+          ////out.densities[i] = MaterialUtilities::average_value (volume_fractions, eos_outputs.densities, MaterialUtilities::arithmetic);
+          ////out.thermal_expansion_coefficients[i] = MaterialUtilities::average_value (volume_fractions, eos_outputs.thermal_expansion_coefficients, MaterialUtilities::arithmetic);
+          ////out.specific_heat[i] = MaterialUtilities::average_value (volume_fractions, eos_outputs.specific_heat_capacities, MaterialUtilities::arithmetic);
+
+          ////if (define_conductivities == false)
+          ////  {
+          ////    double thermal_diffusivity = 0.0;
+
+          ////    for (unsigned int j=0; j < volume_fractions.size(); ++j)
+          ////      thermal_diffusivity += volume_fractions[j] * thermal_diffusivities[j];
+
+          // Thermal conductivity at the given positions. If the temperature equation uses
+          // the reference density profile formulation, use the reference density to
+          // calculate thermal conductivity. Otherwise, use the real density. If the adiabatic
+          // conditions are not yet initialized, the real density will still be used.
+          ////    if (this->get_parameters().formulation_temperature_equation ==
+          ////        Parameters<dim>::Formulation::TemperatureEquation::reference_density_profile &&
+          ////        this->get_adiabatic_conditions().is_initialized())
+          ////      out.thermal_conductivities[i] = thermal_diffusivity * out.specific_heat[i] *
+          ////                                      this->get_adiabatic_conditions().density(in.position[i]);
+          ////    else      out.thermal_conductivities[i] = thermal_diffusivity * out.specific_heat[i] * out.densities[i];
+          ////    }
+          ////  else
+          ////    {
+          // Use thermal conductivity values specified in the parameter file, if this
+          // option was selected.
+          ////      out.thermal_conductivities[i] = MaterialUtilities::average_value (volume_fractions, thermal_conductivities, MaterialUtilities::arithmetic);
+          ////    }
+
+          ////  out.compressibilities[i] = MaterialUtilities::average_value (volume_fractions, eos_outputs.compressibilities, MaterialUtilities::arithmetic);
+          // out.entropy_derivative_pressure[i] = MaterialUtilities::average_value (volume_fractions, eos_outputs.entropy_derivative_pressure, MaterialUtilities::arithmetic);
+          // out.entropy_derivative_temperature[i] = MaterialUtilities::average_value (volume_fractions, eos_outputs.entropy_derivative_temperature, MaterialUtilities::arithmetic);
 
           // Compute the effective viscosity if requested and retrieve whether the material is plastically yielding
           bool plastic_yielding = false;
@@ -212,7 +287,9 @@ namespace aspect
               // We have given the user freedom to apply alternative bounds, because in diffusion-dominated
               // creep (where n_diff=1) viscosities are stress and strain-rate independent, so the calculation
               // of compositional field viscosities is consistent with any averaging scheme.
-              //out.viscosities[i] = MaterialUtilities::average_value(volume_fractions, isostrain_viscosities.composition_viscosities, rheology->viscosity_averaging);
+              // Multiply the melt weakening factor given by the MeltPhippsMorgan model with the vp viscosity
+              out.viscosities[i] *= MaterialUtilities::average_value(volume_fractions, isostrain_viscosities.composition_viscosities, rheology->viscosity_averaging);
+              out.viscosities[i] = std::min(max_visc,std::max(min_visc, out.viscosities[i]));
 
               // Decide based on the maximum composition if material is yielding.
               // This avoids for example division by zero for harmonic averaging (as plastic_yielding
@@ -228,7 +305,22 @@ namespace aspect
             }
 
           // Calculate changes in strain invariants and update the reaction terms
-          rheology->strain_rheology.fill_reaction_outputs(in, i, rheology->min_strain_rate, plastic_yielding, out);
+          double old_strainrate  = 0.;
+          if (this->get_parameters().nonlinear_solver == Parameters<dim>::NonlinearSolver::iterated_Advection_and_Stokes &&
+              this->get_timestep_number() > 0 &&
+              in.requests_property(MaterialProperties::reaction_terms) &&
+              in.current_cell.state() == IteratorState::valid)
+            {
+              if (this->get_timestep_number() > 1)
+                {
+                  SymmetricTensor<2,dim> linearization_strainrate = (1 + this->get_timestep()/this->get_old_timestep()) * old_strainrate_values[i]
+                                                                    - this->get_timestep()/ this->get_old_timestep() * old_old_strainrate_values[i];
+                  old_strainrate  = std::max(sqrt(std::fabs(second_invariant(deviator(linearization_strainrate)))),rheology->min_strain_rate);
+                }
+              else
+                old_strainrate  = std::max(sqrt(std::fabs(second_invariant(deviator(old_strainrate_values[i])))),rheology->min_strain_rate);
+            }
+          rheology->strain_rheology.fill_reaction_outputs(in, i, rheology->min_strain_rate, plastic_yielding, out, old_strainrate);
 
           // Fill plastic outputs if they exist.
           rheology->fill_plastic_outputs(i,volume_fractions,plastic_yielding,in,out);
@@ -340,6 +432,9 @@ namespace aspect
       {
         prm.enter_subsection ("Visco Plastic");
         {
+          min_visc = prm.get_double ("Minimum viscosity");
+          max_visc = prm.get_double ("Maximum viscosity");
+
           // Phase transition parameters
           phase_function.initialize_simulator (this->get_simulator());
           phase_function.parse_parameters (prm);
@@ -382,6 +477,9 @@ namespace aspect
       melt_model.parse_parameters(prm);
       melt_model.initialize();
 
+      porosity_field_index = this->introspection().compositional_index_for_name("porosity");
+      fe_field_index = this->introspection().compositional_index_for_name("molar_Fe_in_solid");
+      fe_melt_field_index = this->introspection().compositional_index_for_name("molar_Fe_in_melt");
 
       // Declare dependencies on solution variables
       this->model_dependence.viscosity = NonlinearDependence::temperature | NonlinearDependence::pressure | NonlinearDependence::strain_rate | NonlinearDependence::compositional_fields;
