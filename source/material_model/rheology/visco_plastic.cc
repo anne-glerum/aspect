@@ -98,7 +98,8 @@ namespace aspect
                                        const unsigned int i,
                                        const std::vector<double> &volume_fractions,
                                        const std::vector<double> &phase_function_values,
-                                       const std::vector<unsigned int> &n_phases_per_composition) const
+                                       const std::vector<unsigned int> &n_phases_per_composition,
+                                       const double fluid_pressure) const
       {
         IsostrainViscosities output_parameters;
 
@@ -277,7 +278,8 @@ namespace aspect
             const double yield_stress = drucker_prager_plasticity.compute_yield_stress(current_cohesion,
                                                                                        current_friction,
                                                                                        pressure_for_plasticity,
-                                                                                       drucker_prager_parameters.max_yield_stress);
+                                                                                       drucker_prager_parameters.max_yield_stress,
+                                                                                       fluid_pressure);
 
             // Step 5b: select if yield viscosity is based on Drucker Prager or stress limiter rheology
             double viscosity_yield = viscosity_pre_yield;
@@ -303,7 +305,8 @@ namespace aspect
                                                                                     pressure_for_plasticity,
                                                                                     current_edot_ii,
                                                                                     drucker_prager_parameters.max_yield_stress,
-                                                                                    viscosity_pre_yield);
+                                                                                    viscosity_pre_yield,
+                                                                                    fluid_pressure);
                       output_parameters.composition_yielding[j] = true;
                     }
                   break;

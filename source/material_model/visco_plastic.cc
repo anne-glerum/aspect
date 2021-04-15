@@ -23,6 +23,8 @@
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/base/signaling_nan.h>
 #include <aspect/newton.h>
+#include <aspect/melt.h>
+#include <aspect/simulator.h>
 #include <aspect/adiabatic_conditions/interface.h>
 #include <aspect/gravity_model/interface.h>
 #include <aspect/introspection.h>
@@ -181,29 +183,29 @@ namespace aspect
       // While the number of phases is fixed, the value of the phase function is updated for every point
       std::vector<double> phase_function_values(phase_function.n_phase_transitions(), 0.0);
 
-      std::vector<SymmetricTensor<2,dim> > old_strainrate_values;
-      std::vector<SymmetricTensor<2,dim> > old_old_strainrate_values;
-      if (this->get_parameters().nonlinear_solver == Parameters<dim>::NonlinearSolver::iterated_Advection_and_Stokes &&
-          this->get_timestep_number() > 0 &&
-          in.requests_property(MaterialProperties::reaction_terms) &&
+      // Get the fluid pressures to modify the yield strength
+      std::vector<double> fluid_pressures(in.position.size());
+      if (this->include_melt_transport() &&
+          in.requests_property(MaterialProperties::viscosity) &&
+          this->get_melt_handler().is_melt_cell(in.current_cell) &&
           in.current_cell.state() == IteratorState::valid)
         {
-          const QGauss<dim> quadrature_formula (this->get_fe()
-                                                .base_element(this->introspection().base_elements.velocities).degree+1);
-          const unsigned int n_q_points = quadrature_formula.size();
-          old_strainrate_values.resize(n_q_points);
-          old_old_strainrate_values.resize(n_q_points);
+          std::vector<Point<dim> > quadrature_positions(in.position.size());
+
+          for (unsigned int i=0; i < in.position.size(); ++i)
+            quadrature_positions[i] = this->get_mapping().transform_real_to_unit_cell(in.current_cell, in.position[i]);
+
+          // FEValues requires a quadrature and we provide the default quadrature
+          // as we only need to evaluate the solution and gradients.
           FEValues<dim> fe_values (this->get_mapping(),
                                    this->get_fe(),
-                                   quadrature_formula,
-                                   update_gradients   |
-                                   update_quadrature_points);
+                                   Quadrature<dim>(quadrature_positions),
+                                   update_values | update_gradients);
           fe_values.reinit (in.current_cell);
-          fe_values[this->introspection().extractors.velocities].get_function_symmetric_gradients (this->get_old_solution(),old_strainrate_values);
-          if (this->get_timestep_number() > 1)
-            {
-              fe_values[this->introspection().extractors.velocities].get_function_symmetric_gradients (this->get_old_old_solution(),old_old_strainrate_values);
-            }
+          // get fluid pressure from the current solution
+          const FEValuesExtractors::Scalar extractor_pressure = this->introspection().variable("fluid pressure").extractor_scalar();
+          fe_values[extractor_pressure].get_function_values (this->get_solution(),
+                                                             fluid_pressures);
         }
 
       // Loop through all requested points
@@ -285,7 +287,7 @@ namespace aspect
               // TODO: This is only consistent with viscosity averaging if the arithmetic averaging
               // scheme is chosen. It would be useful to have a function to calculate isostress viscosities.
               const IsostrainViscosities isostrain_viscosities =
-                rheology->calculate_isostrain_viscosities(in, i, volume_fractions, phase_function_values, phase_function.n_phase_transitions_for_each_composition());
+                rheology->calculate_isostrain_viscosities(in, i, volume_fractions, phase_function_values, phase_function.n_phase_transitions_for_each_composition(),fluid_pressures[i]);
 
               // The isostrain condition implies that the viscosity averaging should be arithmetic (see above).
               // We have given the user freedom to apply alternative bounds, because in diffusion-dominated
@@ -309,22 +311,7 @@ namespace aspect
             }
 
           // Calculate changes in strain invariants and update the reaction terms
-          double old_strainrate  = 0.;
-          if (this->get_parameters().nonlinear_solver == Parameters<dim>::NonlinearSolver::iterated_Advection_and_Stokes &&
-              this->get_timestep_number() > 0 &&
-              in.requests_property(MaterialProperties::reaction_terms) &&
-              in.current_cell.state() == IteratorState::valid)
-            {
-              if (this->get_timestep_number() > 1)
-                {
-                  SymmetricTensor<2,dim> linearization_strainrate = (1 + this->get_timestep()/this->get_old_timestep()) * old_strainrate_values[i]
-                                                                    - this->get_timestep()/ this->get_old_timestep() * old_old_strainrate_values[i];
-                  old_strainrate  = std::max(sqrt(std::fabs(second_invariant(deviator(linearization_strainrate)))),rheology->min_strain_rate);
-                }
-              else
-                old_strainrate  = std::max(sqrt(std::fabs(second_invariant(deviator(old_strainrate_values[i])))),rheology->min_strain_rate);
-            }
-          rheology->strain_rheology.fill_reaction_outputs(in, i, rheology->min_strain_rate, plastic_yielding, out, old_strainrate);
+          rheology->strain_rheology.fill_reaction_outputs(in, i, rheology->min_strain_rate, plastic_yielding, out);
 
           // Fill plastic outputs if they exist.
           rheology->fill_plastic_outputs(i,volume_fractions,plastic_yielding,in,out, phase_function_values, phase_function.n_phase_transitions_for_each_composition());

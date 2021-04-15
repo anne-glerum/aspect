@@ -68,18 +68,21 @@ namespace aspect
       DruckerPrager<dim>::compute_yield_stress (const double cohesion,
                                                 const double angle_internal_friction,
                                                 const double pressure,
-                                                const double max_yield_stress) const
+                                                const double max_yield_stress,
+                                                const double fluid_pressure) const
       {
         const double sin_phi = std::sin(angle_internal_friction);
         const double cos_phi = std::cos(angle_internal_friction);
         const double stress_inv_part = 1. / (std::sqrt(3.0) * (3.0 + sin_phi));
+        const double fluid_pressure_sin_phi = fluid_pressure > 0. ? (1. - fluid_pressure/pressure)*sin_phi : sin_phi;
 
         // Initial yield stress (no stabilization terms)
         const double yield_stress = ( (dim==3)
                                       ?
-                                      ( 6.0 * cohesion * cos_phi + 6.0 * pressure * sin_phi) * stress_inv_part
+                                      ( 6.0 * cohesion * cos_phi + 6.0 * pressure * fluid_pressure_sin_phi) * stress_inv_part
                                       :
-                                      cohesion * cos_phi + pressure * sin_phi);
+                                      cohesion * cos_phi + pressure * fluid_pressure_sin_phi);
+//        std::cout << "yield_stress " << yield_stress << " pressure " << pressure << " fluid_pressure " << fluid_pressure << std::endl;
 
         return std::min(yield_stress, max_yield_stress);
       }
@@ -93,9 +96,10 @@ namespace aspect
                                              const double pressure,
                                              const double effective_strain_rate,
                                              const double max_yield_stress,
-                                             const double pre_yield_viscosity) const
+                                             const double pre_yield_viscosity,
+                                             const double fluid_pressure) const
       {
-        const double yield_stress = compute_yield_stress(cohesion, angle_internal_friction, pressure, max_yield_stress);
+        const double yield_stress = compute_yield_stress(cohesion, angle_internal_friction, pressure, max_yield_stress, fluid_pressure);
 
         const double strain_rate_effective_inv = 1./(2.*effective_strain_rate);
 
