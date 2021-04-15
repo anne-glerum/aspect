@@ -471,8 +471,10 @@ namespace aspect
 
         // Free Energy Change Delta_G due to Melting as a function of temperature and pressure
         // eq 2 of Myhill 2018
+        // Plus additional term for Fe endmember to stabilize melt at low temperatures
+        const double g = 1e-09, f = 0., e = -53311.;
         const double dG_Fe_mantle =  Fe_delta_E - T * Fe_mantle_melting_entropy + P * Fe_mantle_melting_volume
-                                     + 0.5 * P * P * Fe_delta_V_prime_fusion;
+                                     + 0.5 * P * P * Fe_delta_V_prime_fusion + e * std::exp(-(f+g*P));
         const double dG_Mg_mantle =  Mg_delta_E - T * Mg_mantle_melting_entropy + P * Mg_mantle_melting_volume
                                      + 0.5 * P * P * Mg_delta_V_prime_fusion;
 
@@ -497,6 +499,7 @@ namespace aspect
         // T_Fe_mantle = T_melting_Fe - T = delta_G / delta_S
         const double T_Fe_mantle = dG_Fe_mantle / Fe_mantle_melting_entropy;
         const double T_Mg_mantle = dG_Mg_mantle / Mg_mantle_melting_entropy;
+        //std::cout << "T, P, Tm " << T << ", " << P << ", " << T_Fe_mantle + T << std::endl;
 
         // Mole composition of Fe in the solid
         // eq 13 and eq A10 of PM11
