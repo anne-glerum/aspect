@@ -23,7 +23,6 @@
 
 #include <aspect/simulator_access.h>
 #include <aspect/material_model/interface.h>
-#include <aspect/material_model/melt_boukare.h>
 #include <aspect/material_model/melt_phipps_morgan.h>
 #include <aspect/material_model/equation_of_state/multicomponent_incompressible.h>
 #include <aspect/material_model/rheology/visco_plastic.h>

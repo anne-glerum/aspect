@@ -114,7 +114,8 @@ namespace aspect
                                             const std::vector<double> &volume_fractions,
                                             const std::vector<double> &phase_function_values = std::vector<double>(),
                                             const std::vector<unsigned int> &n_phases_per_composition =
-                                              std::vector<unsigned int>()) const;
+                                              std::vector<unsigned int>(),
+                                            const double fluid_pressure = 0.) const;
 
           /**
            * A function that fills the viscosity derivatives in the

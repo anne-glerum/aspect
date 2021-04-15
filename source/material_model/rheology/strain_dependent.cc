@@ -485,9 +485,9 @@ namespace aspect
                              const int i,
                              const double min_strain_rate,
                              const bool plastic_yielding,
-                             MaterialModel::MaterialModelOutputs<dim> &out,
-                             const double old_strainrate) const
+                             MaterialModel::MaterialModelOutputs<dim> &out) const
       {
+
         // If strain weakening is used, overwrite the first reaction term,
         // which represents the second invariant of the (plastic) strain tensor.
         // If plastic strain is tracked (so not the total strain), only overwrite
@@ -496,18 +496,7 @@ namespace aspect
         // Calculate changes in strain and update the reaction terms
         if  (this->simulator_is_past_initialization() && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms))
           {
-            // If an iterated Advection scheme is used,
-            // use the strain rate of the last timestep to compute
-            // a constant reaction term within one timestep.
-            // TODO plastic_yielding can have changed per nonlinear iteration
-//           std::cout << "current and old strain rate " << std::max(sqrt(std::fabs(second_invariant(deviator(in.strain_rate[i])))),min_strain_rate) << ", " << old_strainrate << std::endl;
-            double edot_ii = 0;
-            if (this->get_parameters().nonlinear_solver == Parameters<dim>::NonlinearSolver::iterated_Advection_and_Stokes
-                && this->get_nonlinear_iteration() > 0)
-              edot_ii = old_strainrate;
-            else
-              edot_ii = std::max(sqrt(std::fabs(second_invariant(deviator(in.strain_rate[i])))),min_strain_rate);
-
+            const double edot_ii = std::max(sqrt(std::fabs(second_invariant(deviator(in.strain_rate[i])))),min_strain_rate);
             double delta_e_ii = edot_ii*this->get_timestep();
 
             // Adjusting strain values to account for strain healing without exceeding an unreasonable range
