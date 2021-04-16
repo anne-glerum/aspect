@@ -174,6 +174,9 @@ namespace aspect
 
                   // theta_old is taken from the current compositional field theta
                   const double theta_old = composition[theta_composition_index];
+                  if(theta_old < 0)
+                    std::cout << "got a negative old theta before computing friction" << std::endl;
+                  //theta_old = std::max(theta_old,1e-50);
 
                   // if we do not assume always yielding, then theta should not be updated
                   // with the entire strain rate, but only with min strain rate
@@ -267,7 +270,7 @@ namespace aspect
                                 + Utilities::to_string(current_edot_ii)+ ".\n The position is:\n dir 0 = "+ Utilities::to_string(coords[0])+
                                 "\n dir 1 = "+ Utilities::to_string(coords[1])+ "\n dir 2 = "+ Utilities::to_string(coords[2])));
 
-                  /*// chasing the origin of negative friction angles
+                  // chasing the origin of negative friction angles
                   if (theta <= 0)
                     {
                       std::cout << "Theta is zero/negative: " << theta << " at time " << this->get_time() << std::endl;
@@ -277,7 +280,7 @@ namespace aspect
                       std::cout << "the friction coeff at this time is: " << tan(current_friction) << " and the friction angle in RAD is " << current_friction << std::endl;
                       std::cout << "the friction angle in degree is: " << current_friction*180/3.1516 << std::endl;
                       //AssertThrow(false, ExcMessage("Theta negative."));
-                    }
+                    }/*
                   if (current_friction <= 0)
                     {
                       std::cout << "current_friction is zero/negative!"<<std::endl;
@@ -312,6 +315,8 @@ namespace aspect
                     const double cellsize,
                     const double critical_slip_distance) const
       {
+        // this is a trial to check if it prevents current_theta from being negative if old_theta is limited to >=0
+        //theta_old = std::max(theta_old,1e-50);
         // Equation (7) from Sobolev and Muldashev (2017):
         // theta_{n+1} = L/V_{n+1} + (theta_n - L/V_{n+1})*exp(-(V_{n+1}dt)/L)
         // This is obtained from Equation (5): dtheta/dt = 1 - (theta V)/L
@@ -325,6 +330,8 @@ namespace aspect
         // values physically do not make sense but can occur as theta is advected
         // as a material field. A zero or negative value for theta also leads to nan
         // values for friction.
+        if (current_theta < 0)
+           std::cout << "got theta negative" << std::endl;
         current_theta = std::max(current_theta, 1e-50);
         return current_theta;
       }
@@ -357,6 +364,9 @@ namespace aspect
                                                           use_reference_strainrate, dte);
 
             const double theta_old = in.composition[q][theta_composition_index];
+            if(theta_old < 0)
+               std::cout << "got a negative old theta in theta reaction terms" << std::endl;
+            //theta_old = std::max(theta_old,1e-50);
             double current_theta = 0;
             double critical_slip_distance = 0.0;
 
@@ -377,6 +387,9 @@ namespace aspect
                                                                          in.current_cell->extent_in_direction(0), critical_slip_distance);
                   }
               }
+
+            if (current_theta == 1e-50)
+              std::cout << "got a cut theta in theta reaction terms" << std::endl;
 
             // prevent negative theta values in reaction terms by cutting the increment additionally to current_theta
             double theta_increment = current_theta - theta_old;
