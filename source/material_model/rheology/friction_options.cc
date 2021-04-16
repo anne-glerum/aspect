@@ -332,7 +332,7 @@ namespace aspect
         // values for friction.
         if (current_theta < 0)
            std::cout << "got theta negative" << std::endl;
-        //current_theta = std::max(current_theta, 1e-50);
+        current_theta = std::max(current_theta, 1e-50);
         return current_theta;
       }
 
@@ -393,8 +393,8 @@ namespace aspect
 
             // prevent negative theta values in reaction terms by cutting the increment additionally to current_theta
             double theta_increment = current_theta - theta_old;
-            //if (theta_old + theta_increment < 1e-50)
-            //  theta_increment = 1e-50 - theta_old;
+            if (theta_old + theta_increment < 1e-50)
+              theta_increment = 1e-50 - theta_old;
 
             out.reaction_terms[q][theta_composition_index] = theta_increment;
           }

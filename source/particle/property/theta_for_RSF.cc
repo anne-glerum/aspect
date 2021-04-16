@@ -97,8 +97,8 @@ namespace aspect
         particle->get_properties()[data_position] += material_outputs.reaction_terms[0][this->introspection().compositional_index_for_name("theta")];
         if (particle->get_properties()[data_position] < 0)
            std::cout << "got a negative current theta on the particle" << std::endl;
-        //if (particle->get_properties()[data_position] < 1e-50)
-        //  particle->get_properties()[data_position] = 1e-50;
+        if (particle->get_properties()[data_position] < 1e-50)
+          particle->get_properties()[data_position] = 1e-50;
       }
 
 
