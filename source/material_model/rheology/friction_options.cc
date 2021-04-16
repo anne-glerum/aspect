@@ -173,10 +173,10 @@ namespace aspect
                   const double effective_friction_factor = get_effective_friction_factor(position);
 
                   // theta_old is taken from the current compositional field theta
-                  const double theta_old = composition[theta_composition_index];
+                  double theta_old = composition[theta_composition_index];
                   if(theta_old < 0)
                     std::cout << "got a negative old theta before computing friction" << std::endl;
-                  //theta_old = std::max(theta_old,1e-50);
+                  theta_old = std::max(theta_old,1e-50);
 
                   // if we do not assume always yielding, then theta should not be updated
                   // with the entire strain rate, but only with min strain rate
@@ -316,7 +316,7 @@ namespace aspect
                     const double critical_slip_distance) const
       {
         // this is a trial to check if it prevents current_theta from being negative if old_theta is limited to >=0
-        //theta_old = std::max(theta_old,1e-50);
+        theta_old = std::max(theta_old,1e-50);
         // Equation (7) from Sobolev and Muldashev (2017):
         // theta_{n+1} = L/V_{n+1} + (theta_n - L/V_{n+1})*exp(-(V_{n+1}dt)/L)
         // This is obtained from Equation (5): dtheta/dt = 1 - (theta V)/L
@@ -332,7 +332,7 @@ namespace aspect
         // values for friction.
         if (current_theta < 0)
            std::cout << "got theta negative" << std::endl;
-        current_theta = std::max(current_theta, 1e-50);
+        //current_theta = std::max(current_theta, 1e-50);
         return current_theta;
       }
 
@@ -363,10 +363,10 @@ namespace aspect
                                                           average_elastic_shear_moduli, use_elasticity,
                                                           use_reference_strainrate, dte);
 
-            const double theta_old = in.composition[q][theta_composition_index];
+            double theta_old = in.composition[q][theta_composition_index];
             if(theta_old < 0)
                std::cout << "got a negative old theta in theta reaction terms" << std::endl;
-            //theta_old = std::max(theta_old,1e-50);
+            theta_old = std::max(theta_old,1e-50);
             double current_theta = 0;
             double critical_slip_distance = 0.0;
 
