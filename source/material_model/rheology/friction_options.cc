@@ -782,7 +782,7 @@ namespace aspect
         else
           AssertThrow(false, ExcMessage("Not a valid friction dependence option!"));
 
-        if (use_theta())
+        /*if (use_theta())
           {
             // Currently, it only makes sense to use a state variable when the nonlinear solver
             // scheme does a single Advection iteration and at minimum one Stokes iteration, as
@@ -804,7 +804,7 @@ namespace aspect
                                    "solver schemes 'single Advection, single Stokes' and "
                                    "'single Advection, iterated Stokes', 'single Advection, "
                                    "iterated defect correction Stokes', single advection, iterated Newton Stokes'"));
-          }
+          }*/
 
         // Dynamic friction parameters
         dynamic_characteristic_strain_rate = prm.get_double("Dynamic characteristic strain rate");
