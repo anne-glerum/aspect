@@ -434,7 +434,7 @@ namespace aspect
         const double effective_friction_factor =
           effective_friction_factor_function.value(Utilities::convert_array_to_point<dim>(point.get_coordinates()));
 
-        AssertThrow(effective_friction_factor > 0, ExcMessage("Effective friction factor must be < 1, "
+        AssertThrow((effective_friction_factor >= 0) && (effective_friction_factor <1), ExcMessage("Effective friction factor must be < 1 and >= 0, "
                                                               "because anything else will cause negative or zero friction coefficients."));
 
         return effective_friction_factor;
