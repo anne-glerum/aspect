@@ -176,6 +176,8 @@ namespace aspect
                   double theta_old = composition[theta_composition_index];
                   if(theta_old < 0)
                     std::cout << "got a negative old theta before computing friction" << std::endl;
+                    else
+                    std::cout << "got a positive old theta before computing friction" << std::endl;
                   theta_old = std::max(theta_old,1e-50);
 
                   // if we do not assume always yielding, then theta should not be updated
@@ -332,6 +334,8 @@ namespace aspect
         // values for friction.
         if (current_theta < 0)
            std::cout << "got theta negative" << std::endl;
+           else
+           std::cout << "got theta positive" << std::endl;
         current_theta = std::max(current_theta, 1e-50);
         return current_theta;
       }
@@ -366,6 +370,8 @@ namespace aspect
             double theta_old = in.composition[q][theta_composition_index];
             if(theta_old < 0)
                std::cout << "got a negative old theta in theta reaction terms" << std::endl;
+               esle
+               std::cout << "got a positive old theta in theta reaction terms" << std::endl;
             theta_old = std::max(theta_old,1e-50);
             double current_theta = 0;
             double critical_slip_distance = 0.0;
@@ -389,7 +395,9 @@ namespace aspect
               }
 
             if (current_theta == 1e-50)
-              std::cout << "got a cut theta in theta reaction terms" << std::endl;
+              std::cout << "got a cut, formerly negative theta in theta reaction terms" << std::endl;
+              else
+              std::cout << "got a noncut, positive theta in theta reaction terms" << std::endl;
 
             // prevent negative theta values in reaction terms by cutting the increment additionally to current_theta
             double theta_increment = current_theta - theta_old;
