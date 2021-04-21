@@ -370,7 +370,7 @@ namespace aspect
             double theta_old = in.composition[q][theta_composition_index];
             if(theta_old < 0)
                std::cout << "got a negative old theta in theta reaction terms" << std::endl;
-               esle
+               else
                std::cout << "got a positive old theta in theta reaction terms" << std::endl;
             theta_old = std::max(theta_old,1e-50);
             double current_theta = 0;
