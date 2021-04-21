@@ -508,7 +508,7 @@ namespace aspect
       /*AssertThrow(composition[rheology->friction_options.theta_composition_index]<=0, ExcMessage(
                     " min_healing_time_step needed for the Lapusta time stepping becomes negative, because theta is negative. "
                     "Theta is: " + Utilities::to_string(composition[rheology->friction_options.theta_composition_index])));*/
-      if (min_healing_time_step <= 0)
+      if (min_healing_time_step <= 1e-50)
         min_healing_time_step =  std::numeric_limits<double>::max();
       return min_healing_time_step;
     }
