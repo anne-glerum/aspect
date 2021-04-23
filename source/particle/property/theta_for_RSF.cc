@@ -96,10 +96,13 @@ namespace aspect
         this->get_material_model().evaluate (material_inputs,material_outputs);
         particle->get_properties()[data_position] += material_outputs.reaction_terms[0][this->introspection().compositional_index_for_name("theta")];
         if (particle->get_properties()[data_position] < 0)
-           std::cout << "got a negative current theta on the particle" << std::endl;
-           else
-           std::cout << "got a positive current theta on the particle" << std::endl;
-           
+          {
+            const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_natural_coordinates(material_inputs.position[0]);
+            std::cout << "got a negative current theta on the particle in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+          }
+        else
+          std::cout << "got a positive current theta on the particle" << std::endl;
+
         if (particle->get_properties()[data_position] < 1e-50)
           particle->get_properties()[data_position] = 1e-50;
       }
