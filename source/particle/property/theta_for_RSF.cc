@@ -98,7 +98,12 @@ namespace aspect
         if (particle->get_properties()[data_position] < 0)
           {
             const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_natural_coordinates(material_inputs.position[0]);
-            std::cout << "got a negative current theta on the particle in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+            std::cout << "got a negative current theta ( "<<particle->get_properties()[data_position]<< " ) on the particle in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+          }
+        else if (particle->get_properties()[data_position] == 0)
+          {
+            const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
+            std::cout << "got theta zero  ( "<<particle->get_properties()[data_position]<< " ) on the particle in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
           }
         else
           std::cout << "got a positive current theta on the particle" << std::endl;
