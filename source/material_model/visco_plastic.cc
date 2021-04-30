@@ -408,10 +408,11 @@ namespace aspect
                   const double current_edot_ii,
                   const double cellsize,
                   const double critical_slip_distance,
-                  const Point<dim> &position) const
+                  const Point<dim> &position,
+                  const int j) const
     {
       const double current_theta = rheology->friction_options.compute_theta(theta_old, current_edot_ii,
-                                                                            cellsize, critical_slip_distance, position);
+                                                                            cellsize, critical_slip_distance, position, j);
       return current_theta;
     }
 

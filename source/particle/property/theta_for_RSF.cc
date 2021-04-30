@@ -73,43 +73,51 @@ namespace aspect
                                               const std::vector<Tensor<1,dim> > &gradients,
                                               typename ParticleHandler<dim>::particle_iterator &particle) const
       {
-        material_inputs.position[0] = particle->get_location();
-
-        material_inputs.current_cell = typename DoFHandler<dim>::active_cell_iterator(*particle->get_surrounding_cell(this->get_triangulation()),
-                                                                                      &(this->get_dof_handler()));
-
-        material_inputs.temperature[0] = solution[this->introspection().component_indices.temperature];
-
-        material_inputs.pressure[0] = solution[this->introspection().component_indices.pressure];
-
-        for (unsigned int d = 0; d < dim; ++d)
-          material_inputs.velocity[0][d] = solution[this->introspection().component_indices.velocities[d]];
-
-        for (unsigned int n = 0; n < this->n_compositional_fields(); ++n)
-          material_inputs.composition[0][n] = solution[this->introspection().component_indices.compositional_fields[n]];
-
-        Tensor<2,dim> grad_u;
-        for (unsigned int d=0; d<dim; ++d)
-          grad_u[d] = gradients[d];
-        material_inputs.strain_rate[0] = symmetrize (grad_u);
-
-        this->get_material_model().evaluate (material_inputs,material_outputs);
-        particle->get_properties()[data_position] += material_outputs.reaction_terms[0][this->introspection().compositional_index_for_name("theta")];
-        if (particle->get_properties()[data_position] < 0)
+        // only update theta if we are after the zero timestep, as currently we
+        // do not have information about strain rate before updating the particle
+        if (this->get_timestep_number() > 0)
           {
-            const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_natural_coordinates(material_inputs.position[0]);
-            std::cout << "got a negative current theta ( "<<particle->get_properties()[data_position]<< " ) on the particle in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
-          }
-        else if (particle->get_properties()[data_position] == 0)
-          {
-            const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
-            std::cout << "got theta zero  ( "<<particle->get_properties()[data_position]<< " ) on the particle in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+            material_inputs.position[0] = particle->get_location();
+
+            material_inputs.current_cell = typename DoFHandler<dim>::active_cell_iterator(*particle->get_surrounding_cell(this->get_triangulation()),
+                                                                                          &(this->get_dof_handler()));
+
+            material_inputs.temperature[0] = solution[this->introspection().component_indices.temperature];
+
+            material_inputs.pressure[0] = solution[this->introspection().component_indices.pressure];
+
+            for (unsigned int d = 0; d < dim; ++d)
+              material_inputs.velocity[0][d] = solution[this->introspection().component_indices.velocities[d]];
+
+            for (unsigned int n = 0; n < this->n_compositional_fields(); ++n)
+              material_inputs.composition[0][n] = solution[this->introspection().component_indices.compositional_fields[n]];
+
+            Tensor<2,dim> grad_u;
+            for (unsigned int d=0; d<dim; ++d)
+              grad_u[d] = gradients[d];
+            material_inputs.strain_rate[0] = symmetrize (grad_u);
+
+
+            this->get_material_model().evaluate (material_inputs,material_outputs);
+            particle->get_properties()[data_position] += material_outputs.reaction_terms[0][this->introspection().compositional_index_for_name("theta")];
+            if (particle->get_properties()[data_position] < 0)
+              {
+                const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_natural_coordinates(material_inputs.position[0]);
+                std::cout << "got a negative current theta ( "<<particle->get_properties()[data_position]<< " ) on the particle in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+              }
+            else if (particle->get_properties()[data_position] == 0)
+              {
+                const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_natural_coordinates(material_inputs.position[0]);
+                std::cout << "got theta zero  ( "<<particle->get_properties()[data_position]<< " ) on the particle in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+              }
+            else
+              std::cout << "got a positive current theta on the particle" << std::endl;
+
+            if (particle->get_properties()[data_position] < 1e-50)
+              particle->get_properties()[data_position] = 1e-50;
           }
         else
-          std::cout << "got a positive current theta on the particle" << std::endl;
-
-        if (particle->get_properties()[data_position] < 1e-50)
-          particle->get_properties()[data_position] = 1e-50;
+          return;
       }
 
 

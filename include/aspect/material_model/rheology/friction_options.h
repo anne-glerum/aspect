@@ -162,13 +162,15 @@ namespace aspect
                                            const double min_strain_rate) const;
 
           /**
-           * A function that computes the current value for the state variable theta.
+           * A function that computes the current value for the state variable
+           * theta if inside RSF material (j).
            */
           double compute_theta(double theta_old,
                                const double current_edot_ii,
                                const double cellsize,
                                const double critical_slip_distance,
-                               const Point<dim> &position) const;
+                               const Point<dim> &position,
+                               const int j) const;
 
           /**
            * A function that fills the reaction terms for the state variable theta in

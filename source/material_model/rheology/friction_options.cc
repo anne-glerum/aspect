@@ -177,12 +177,12 @@ namespace aspect
                   if (theta_old < 0)
                     {
                       const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
-                      std::cout << "got a negative old theta ( "<<current_theta<< " ) before computing friction in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                      std::cout << "got a negative old theta ( "<<theta_old<< " ) before computing friction in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
                     }
                   else if (theta_old == 0)
                     {
-                      const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(in.position[q], coordinate_system_RSF).get_coordinates();
-                      std::cout << "got a zero old theta ( "<<current_theta<< " ) before computing friction in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                      const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
+                      std::cout << "got a zero old theta ( "<<theta_old<< " ) before computing friction in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
                     }
                   else
                     std::cout << "got a positive old theta before computing friction" << std::endl;
@@ -201,7 +201,7 @@ namespace aspect
                     current_edot_ii_for_theta = min_strain_rate;
 
                   // Calculate the state variable theta according to Equation (7) from Sobolev and Muldashev (2017)
-                  const double theta = compute_theta(theta_old, current_edot_ii_for_theta, cellsize, critical_slip_distance, position);
+                  const double theta = compute_theta(theta_old, current_edot_ii_for_theta, cellsize, critical_slip_distance, position,j);
 
                   //std::cout << "theta = "<<theta<<" - theta_old = "<< theta_old<<std::endl;
 
@@ -291,19 +291,19 @@ namespace aspect
                       std::cout << "the friction angle in degree is: " << current_friction*180/3.1516 << std::endl;
                       //AssertThrow(false, ExcMessage("Theta negative."));
                     }/*
-              if (current_friction <= 0)
-                {
-                  std::cout << "current_friction is zero/negative!"<<std::endl;
-                  std::cout << "Theta is " << theta << " at time " << this->get_time() << std::endl;
-                  std::cout << "Previous theta was: " << theta_old << std::endl;
-                  std::cout << "current edot ii * cellsize is " << current_edot_ii *cellsize << std::endl;
-                  std::cout << "current edot ii is " << current_edot_ii<< std::endl;
-                  std::cout << "the friction coeff at this time is: " << tan(current_friction) << " and the friction angle in RAD is " << current_friction << std::endl;
-                  std::cout << "the friction angle in degree is: " << current_friction*180/3.1516 << std::endl;
-                  std::cout << "the effective friction factor is: " << effective_friction_factor[j] << std::endl;
-                  std::cout << " the current_friction before the RSF is [RAD] " << current_friction_old << std::endl;
-                  std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_state_parameter_b << std::endl;
-                }*/
+          if (current_friction <= 0)
+            {
+              std::cout << "current_friction is zero/negative!"<<std::endl;
+              std::cout << "Theta is " << theta << " at time " << this->get_time() << std::endl;
+              std::cout << "Previous theta was: " << theta_old << std::endl;
+              std::cout << "current edot ii * cellsize is " << current_edot_ii *cellsize << std::endl;
+              std::cout << "current edot ii is " << current_edot_ii<< std::endl;
+              std::cout << "the friction coeff at this time is: " << tan(current_friction) << " and the friction angle in RAD is " << current_friction << std::endl;
+              std::cout << "the friction angle in degree is: " << current_friction*180/3.1516 << std::endl;
+              std::cout << "the effective friction factor is: " << effective_friction_factor[j] << std::endl;
+              std::cout << " the current_friction before the RSF is [RAD] " << current_friction_old << std::endl;
+              std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_state_parameter_b << std::endl;
+            }*/
                 }
               break;
             }
@@ -324,50 +324,58 @@ namespace aspect
                     const double current_edot_ii,
                     const double cellsize,
                     const double critical_slip_distance,
-                    const Point<dim> &position) const
+                    const Point<dim> &position,
+                    const int j) const
       {
-        // this is a trial to check if it prevents current_theta from being negative if old_theta is limited to >=0
-        theta_old = std::max(theta_old,1e-50);
-        // Equation (7) from Sobolev and Muldashev (2017):
-        // theta_{n+1} = L/V_{n+1} + (theta_n - L/V_{n+1})*exp(-(V_{n+1}dt)/L)
-        // This is obtained from Equation (5): dtheta/dt = 1 - (theta V)/L
-        // by integration using the assumption that velocities are constant at any time step.
-        double current_theta = critical_slip_distance / ( cellsize * current_edot_ii ) +
-                               (theta_old - critical_slip_distance / ( cellsize * current_edot_ii))
-                               * std::exp( - (current_edot_ii * cellsize) * this->get_timestep() / critical_slip_distance);
+        double current_theta = 0;
+        // theta only needs to change if we are in an RSF material, e.g. the fault.
+        if (j == fault_composition_index +1)
+          {
+            // this is a trial to check if it prevents current_theta from being negative if old_theta is limited to >=0
+            theta_old = std::max(theta_old,1e-50);
+            // Equation (7) from Sobolev and Muldashev (2017):
+            // theta_{n+1} = L/V_{n+1} + (theta_n - L/V_{n+1})*exp(-(V_{n+1}dt)/L)
+            // This is obtained from Equation (5): dtheta/dt = 1 - (theta V)/L
+            // by integration using the assumption that velocities are constant at any time step.
+            current_theta = critical_slip_distance / ( cellsize * current_edot_ii ) +
+                            (theta_old - critical_slip_distance / ( cellsize * current_edot_ii))
+                            * std::exp( - (current_edot_ii * cellsize) * this->get_timestep() / critical_slip_distance);
 
-        // TODO: make dt the min theta?
-        if (current_theta < 0)
-          {
-            const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
-            std::cout << "got theta negative ( "<<current_theta<< " ) in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
-          }
-        else if (current_theta == 0)
-          {
-            const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
-            std::cout << "got theta zero  ( "<<current_theta<< " ) in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
-          }
-        else
-          std::cout << "got theta positive" << std::endl;
-
-        // At very low strain rates the theta equation simply returns a zero,
-        // which physically does not make sense, as one would expect theta
-        // to grow at very low strain rates / velocities
-        // So here is a trial to handle that:
-        if ((current_theta <= 1e-50) && (current_edot_ii < 0.1*quasi_static_strain_rate))
-          {
-            current_theta = theta_old;
-            if (current_theta <= 0)
+            // TODO: make dt the min theta?
+            if (current_theta < 0)
               {
                 const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
-                std::cout << "theta got weird  ( "<<current_theta<< " ) after low V fix in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                std::cout << "got theta negative ( "<<current_theta<< " ) in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
               }
+            else if (current_theta == 0)
+              {
+                const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
+                std::cout << "got theta zero  ( "<<current_theta<< " ) in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+              }
+            else
+              std::cout << "got theta positive" << std::endl;
+
+            // At very low strain rates the theta equation simply returns a zero,
+            // which physically does not make sense, as one would expect theta
+            // to grow at very low strain rates / velocities
+            // So here is a trial to handle that:
+            if ((current_theta <= 1e-50) && (current_edot_ii < 0.1*quasi_static_strain_rate))
+              {
+                current_theta = theta_old;
+                if (current_theta <= 0)
+                  {
+                    const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
+                    std::cout << "theta got weird  ( "<<current_theta<< " ) after low V fix in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                  }
+              }
+            // Theta needs a cutoff towards zero and negative values, because these
+            // values physically do not make sense but can occur as theta is advected
+            // as a material field. A zero or negative value for theta also leads to nan
+            // values for friction.
+            current_theta = std::max(current_theta, 1e-50);
           }
-        // Theta needs a cutoff towards zero and negative values, because these
-        // values physically do not make sense but can occur as theta is advected
-        // as a material field. A zero or negative value for theta also leads to nan
-        // values for friction.
-        current_theta = std::max(current_theta, 1e-50);
+        else
+          current_theta = theta_old;
         return current_theta;
       }
 
@@ -402,12 +410,12 @@ namespace aspect
             if (theta_old < 0)
               {
                 const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(in.position[q], coordinate_system_RSF).get_coordinates();
-                std::cout << "got a negative old theta ( "<<current_theta<< " ) in theta reaction terms in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                std::cout << "got a negative old theta ( "<<theta_old<< " ) in theta reaction terms in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
               }
             else if (theta_old == 0)
               {
                 const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(in.position[q], coordinate_system_RSF).get_coordinates();
-                std::cout << "got a zero old theta ( "<<current_theta<< " ) in theta reaction terms in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                std::cout << "got a zero old theta ( "<<theta_old<< " ) in theta reaction terms in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
               }
             else
               std::cout << "got a positive old theta in theta reaction terms" << std::endl;
@@ -429,7 +437,7 @@ namespace aspect
                     // theta is also computed within the loop to keep it as similar as possible to the theta used
                     // within compute_dependent_friction which is also called from within a loop over volume_fractions.size()
                     current_theta += volume_fractions[j] * compute_theta(theta_old, current_edot_ii,
-                                                                         in.current_cell->extent_in_direction(0), critical_slip_distance, in.position[q]);
+                                                                         in.current_cell->extent_in_direction(0), critical_slip_distance, in.position[q],j);
                   }
               }
 
