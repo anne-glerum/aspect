@@ -177,12 +177,12 @@ namespace aspect
                   if (theta_old < 0)
                     {
                       const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
-                      std::cout << "got a negative old theta ( "<<theta_old<< " ) before computing friction in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                      std::cout << "got a negative old theta ( "<<theta_old<< " ) before computing friction at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
                     }
                   else if (theta_old == 0)
                     {
                       const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
-                      std::cout << "got a zero old theta ( "<<theta_old<< " ) before computing friction in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                      std::cout << "got a Zero old theta ( "<<theta_old<< " ) before computing friction at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
                     }
                   else
                     std::cout << "got a positive old theta before computing friction" << std::endl;
@@ -345,12 +345,12 @@ namespace aspect
             if (current_theta < 0)
               {
                 const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
-                std::cout << "got theta negative ( "<<current_theta<< " ) in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                std::cout << "got theta negative ( "<<current_theta<< " ) at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
               }
             else if (current_theta == 0)
               {
                 const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
-                std::cout << "got theta zero  ( "<<current_theta<< " ) in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                std::cout << "got theta Zero  ( "<<current_theta<< " ) at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
               }
             else
               std::cout << "got theta positive" << std::endl;
@@ -410,12 +410,12 @@ namespace aspect
             if (theta_old < 0)
               {
                 const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(in.position[q], coordinate_system_RSF).get_coordinates();
-                std::cout << "got a negative old theta ( "<<theta_old<< " ) in theta reaction terms in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                std::cout << "got a negative old theta ( "<<theta_old<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
               }
             else if (theta_old == 0)
               {
                 const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(in.position[q], coordinate_system_RSF).get_coordinates();
-                std::cout << "got a zero old theta ( "<<theta_old<< " ) in theta reaction terms in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                std::cout << "got a Zero old theta ( "<<theta_old<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
               }
             else
               std::cout << "got a positive old theta in theta reaction terms" << std::endl;
