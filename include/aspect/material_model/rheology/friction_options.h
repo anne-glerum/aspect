@@ -154,27 +154,20 @@ namespace aspect
                                            const std::vector<double> &composition,
                                            typename DoFHandler<dim>::active_cell_iterator current_cell,
                                            double current_friction,
-                                           const Point<dim> &position,
-                                           const double current_cohesion,
-                                           const double pressure_for_plasticity,
-                                           const double max_yield_stress,
-                                           const double current_stress,
-                                           const double min_strain_rate) const;
+                                           const Point<dim> &position) const;
 
           /**
-           * A function that computes the current value for the state variable
-           * theta if inside RSF material (j).
+           * A function that computes the current value for the state variable theta.
            */
           double compute_theta(double theta_old,
                                const double current_edot_ii,
                                const double cellsize,
                                const double critical_slip_distance,
-                               const Point<dim> &position,
-                               const int j) const;
+                               const Point<dim> &position) const;
 
           /**
            * A function that fills the reaction terms for the state variable theta in
-           * the MaterialModelOutputs object that is handed over.
+           * the MaterialModelOutputs object that is handed over if inside RSF material.
            */
           void compute_theta_reaction_terms(const int q,
                                             const std::vector<double> &volume_fractions,

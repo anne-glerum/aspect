@@ -76,7 +76,12 @@ namespace aspect
         // only update theta if we are after the zero timestep, as currently we
         // do not have information about strain rate before updating the particle
         if (this->get_timestep_number() > 0)
+          //  && this->get_initial_composition(data_position,this->introspection().compositional_index_for_name("fault"))>0.5)
           {
+            /*AssertThrow(this->get_initial_composition(data_position,this->introspection().compositional_index_for_name("fault"))>0.5,
+            ExcMessage("I am in fault now, the fault value is: "
+            + Utilities::to_string( this->get_initial_composition(data_position,this->introspection().compositional_index_for_name("fault"))) + ' ! \n'));*/
+
             material_inputs.position[0] = particle->get_location();
 
             material_inputs.current_cell = typename DoFHandler<dim>::active_cell_iterator(*particle->get_surrounding_cell(this->get_triangulation()),
@@ -99,7 +104,11 @@ namespace aspect
 
 
             this->get_material_model().evaluate (material_inputs,material_outputs);
+            // ToDo(?): should I directly call compute_theta instead of using the reaction terms?
+            // Then I could use the old particle value directly as old theta without any averaging etc in  between
+            // The tricky pat would however be to get all the necessary parameters to compute edot_ii
             particle->get_properties()[data_position] += material_outputs.reaction_terms[0][this->introspection().compositional_index_for_name("theta")];
+
             if (particle->get_properties()[data_position] < 0)
               {
                 const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_natural_coordinates(material_inputs.position[0]);
@@ -110,8 +119,8 @@ namespace aspect
                 const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_natural_coordinates(material_inputs.position[0]);
                 std::cout << "got theta Zero  ( "<<particle->get_properties()[data_position]<< " ) on the particle at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
               }
-            else
-              std::cout << "got a positive current theta on the particle" << std::endl;
+           /* else
+              std::cout << "got a positive current theta on the particle" << std::endl;*/
 
             if (particle->get_properties()[data_position] < 1e-50)
               particle->get_properties()[data_position] = 1e-50;

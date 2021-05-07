@@ -372,18 +372,14 @@ namespace aspect
             if (allow_negative_pressures_in_plasticity == false)
               pressure_for_plasticity = std::max(in.pressure[i], 0.0);
 
-            // Steb 4c: calculate friction angle dependent on rate and/or state if specified
-            output_parameters.current_friction_angles[j] = friction_options.compute_dependent_friction_angle(current_edot_ii,
-                                                           j, in.composition[i], current_cell,
-                                                           output_parameters.current_friction_angles[j],
-                                                           in.position[i],current_cohesion,
-                                                           pressure_for_plasticity,
-                                                           drucker_prager_parameters.max_yield_stress,
-                                                           current_stress,
-                                                           min_strain_rate);
-
-
-
+            // Steb 4c: calculate friction angle dependent on rate and/or state if specified and we are inside the fault
+            if (friction_options.use_theta()
+                && (j== friction_options.fault_composition_index + 1)
+                && (volume_fractions[j] > 0.5))
+              output_parameters.current_friction_angles[j] = friction_options.compute_dependent_friction_angle(current_edot_ii,
+                                                             j, in.composition[i], current_cell,
+                                                             output_parameters.current_friction_angles[j],
+                                                             in.position[i]);
 
             // Step 5a: calculate Drucker-Prager yield stress
             const double yield_stress = drucker_prager_plasticity.compute_yield_stress(current_cohesion,
@@ -415,6 +411,7 @@ namespace aspect
                   if ((non_yielding_stress >= yield_stress)
                       || (friction_options.use_theta()
                           && (j== friction_options.fault_composition_index + 1)
+                          && (volume_fractions[j] > 0.5)
                           && friction_options.use_always_yielding))
                     {
                       effective_viscosity = drucker_prager_plasticity.compute_viscosity(current_cohesion,
@@ -445,6 +442,7 @@ namespace aspect
                   if ((current_stress >= fault_strength)
                       || (friction_options.use_theta()
                           && (j== friction_options.fault_composition_index + 1)
+                          && (volume_fractions[j] > 0.5)
                           && friction_options.use_always_yielding))
                     {
                       // I had put this line here, but during revision Anne suggested to remove it:

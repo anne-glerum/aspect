@@ -259,8 +259,7 @@ namespace aspect
                       const double current_edot_ii,
                       const double cellsize,
                       const double critical_slip_distance,
-                      const Point<dim> &position,
-                      const int j) const;
+                      const Point<dim> &position) const;
 
       private:
 
