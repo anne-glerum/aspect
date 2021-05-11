@@ -230,11 +230,11 @@ namespace aspect
          */
         DEAL_II_DEPRECATED
         bool
-        is_yielding ( const double &pressure,
-                      const double &temperature,
-                      const std::vector<double> &composition,
-                      const SymmetricTensor<2,dim> &strain_rate,
-                      typename DoFHandler<dim>::active_cell_iterator current_cell) const;
+        is_yielding (const double pressure,
+                     const double temperature,
+                     const std::vector<double> &composition,
+                     const SymmetricTensor<2,dim> &strain_rate,
+                     typename DoFHandler<dim>::active_cell_iterator current_cell) const;
 
         /**
          * A function that returns whether the material is plastically
@@ -267,7 +267,7 @@ namespace aspect
                       const double cellsize,
                       const double critical_slip_distance,
                       const Point<dim> &position) const;
-                      
+
         /** A function that returns delta_theta_max which is needed to calculate the necessary
          * minimum time step needed for rate-and-state friction models. The calculation of the
          * timestep is done following \cite{lapusta_elastodynamic_2000},
