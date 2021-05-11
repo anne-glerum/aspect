@@ -250,6 +250,11 @@ namespace aspect
           bool use_radiation_damping;
 
           /**
+           *  Whether to print negative/Zero (old) thetas. ToDo: This should only be a temporary feature!
+           */
+          bool print_thetas;
+
+          /**
            * Whether or not to cut edot ii after radiation damping.
            */
           bool cut_edot_ii;

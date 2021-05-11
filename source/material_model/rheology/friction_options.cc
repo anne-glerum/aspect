@@ -170,31 +170,34 @@ namespace aspect
                   // theta_old is taken from the current compositional field theta
                   //double theta_old = composition[theta_composition_index];
                   double theta = composition[theta_composition_index];
-                  /*if (theta_old < 0)
+                  if (print_thetas)
                     {
-                      const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
-                      std::cout << "got a negative old theta ( "<<theta_old<< " ) before computing friction at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                      /*if (theta_old < 0)
+                        {
+                          const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
+                          std::cout << "got a negative old theta ( "<<theta_old<< " ) before computing friction at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                        }
+                      else if (theta_old == 0)
+                        {
+                          const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
+                          std::cout << "got a Zero old theta ( "<<theta_old<< " ) before computing friction at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                        }
+                      else
+                        std::cout << "got a positive old theta before computing friction" << std::endl;
+                      theta_old = std::max(theta_old,1e-50);*/
+                      if (theta < 0)
+                        {
+                          const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
+                          std::cout << "got a negative theta ( "<<theta<< " ) before computing friction at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                        }
+                      else if (theta == 0)
+                        {
+                          const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
+                          std::cout << "got a Zero theta ( "<<theta<< " ) before computing friction at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                        }/*
+            else
+              std::cout << "got a positive theta before computing friction" << std::endl;*/
                     }
-                  else if (theta_old == 0)
-                    {
-                      const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
-                      std::cout << "got a Zero old theta ( "<<theta_old<< " ) before computing friction at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
-                    }
-                  else
-                    std::cout << "got a positive old theta before computing friction" << std::endl;
-                  theta_old = std::max(theta_old,1e-50);*/
-                  if (theta < 0)
-                    {
-                      const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
-                      std::cout << "got a negative theta ( "<<theta<< " ) before computing friction at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
-                    }
-                  else if (theta == 0)
-                    {
-                      const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
-                      std::cout << "got a Zero theta ( "<<theta<< " ) before computing friction at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
-                    }/*
-                  else
-                    std::cout << "got a positive theta before computing friction" << std::endl;*/
                   theta = std::max(theta,1e-50);
 
                   // Calculate the state variable theta according to Equation (7) from Sobolev and Muldashev (2017)
@@ -335,18 +338,21 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
                         * std::exp( - (current_edot_ii * cellsize) * this->get_timestep() / critical_slip_distance);
 
         // TODO: make dt the min theta?
-        if (current_theta < 0)
+        if (print_thetas)
           {
-            const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
-            std::cout << "got theta negative ( "<<current_theta<< " ) at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
-          }
-        else if (current_theta == 0)
-          {
-            const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
-            std::cout << "got theta Zero  ( "<<current_theta<< " ) at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
-          }/*
+            if (current_theta < 0)
+              {
+                const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
+                std::cout << "got theta negative ( "<<current_theta<< " ) at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+              }
+            else if (current_theta == 0)
+              {
+                const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
+                std::cout << "got theta Zero  ( "<<current_theta<< " ) at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+              }/*
         else
           std::cout << "got theta positive" << std::endl;*/
+          }
 
         // At very low strain rates the theta equation simply returns a zero,
         // which physically does not make sense, as one would expect theta
@@ -395,18 +401,21 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
                                                               use_reference_strainrate, dte);
 
                 double theta_old = in.composition[q][theta_composition_index];
-                if (theta_old < 0)
+                if (print_thetas )
                   {
-                    const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(in.position[q], coordinate_system_RSF).get_coordinates();
-                    std::cout << "got a negative old theta ( "<<theta_old<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
-                  }
-                else if (theta_old == 0)
-                  {
-                    const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(in.position[q], coordinate_system_RSF).get_coordinates();
-                    std::cout << "got a Zero old theta ( "<<theta_old<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
-                  }/*
+                    if (theta_old < 0)
+                      {
+                        const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(in.position[q], coordinate_system_RSF).get_coordinates();
+                        std::cout << "got a negative old theta ( "<<theta_old<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                      }
+                    else if (theta_old == 0)
+                      {
+                        const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(in.position[q], coordinate_system_RSF).get_coordinates();
+                        std::cout << "got a Zero old theta ( "<<theta_old<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                      }/*
                 else
                   std::cout << "got a positive old theta in theta reaction terms" << std::endl;*/
+                  }
                 theta_old = std::max(theta_old,1e-50);
                 double current_theta = 0;
 
@@ -753,6 +762,10 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
                            "during earthquakelike episodes. Unlike an inertial term it cannot be used to model rupture "
                            "propagation as it approximates seismic waves as energy outflow only. ");
 
+        prm.declare_entry ("Print positions of negative theta", "false",
+                           Patterns::Bool (),
+                           "Whether to print the position, value and timestep of a negative/Zero (old) theta.");
+
         prm.declare_entry ("Cut edot_ii after radiation damping", "true",
                            Patterns::Bool (),
                            "Whether to cut edot_ii after applying radiation damping or not. A parameter for debugging my issues. ");
@@ -905,6 +918,8 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
         effective_normal_stress_on_fault = prm.get_double("Effective normal stress on fault");
 
         use_radiation_damping = prm.get_bool("Use radiation damping");
+
+        print_thetas = prm.get_bool("Print positions of negative theta");
 
         cut_edot_ii = prm.get_bool("Cut edot_ii after radiation damping");
 

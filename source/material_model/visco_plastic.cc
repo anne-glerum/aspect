@@ -402,6 +402,16 @@ namespace aspect
 
 
     template <int dim>
+    bool
+    ViscoPlastic<dim>::
+    use_print_thetas () const
+    {
+      return  rheology->friction_options.print_thetas;
+    }
+
+
+
+    template <int dim>
     double
     ViscoPlastic<dim>::
     compute_theta(double theta_old,
