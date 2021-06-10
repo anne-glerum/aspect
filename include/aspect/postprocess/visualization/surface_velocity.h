@@ -36,7 +36,7 @@ namespace aspect
     {
       /**
        * A class derived from DataPostprocessor that takes an output vector
-       * and computes a variable that represents the 2 or 3 
+       * and computes a variable that represents the 2 or 3
        * components (in 2d and 3d, respectively) of the velocity vector at every
        * point of the surface of the domain.
        *
@@ -67,7 +67,7 @@ namespace aspect
            * components of output files that consist of more than one data set
            * are to be interpreted. The returned value is
            * DataComponentInterpretation::component_is_scalar repeated
-           * dim times. 
+           * dim times.
            */
           std::vector<DataComponentInterpretation::DataComponentInterpretation>
           get_data_component_interpretation () const override;

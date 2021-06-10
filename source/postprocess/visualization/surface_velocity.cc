@@ -41,8 +41,8 @@ namespace aspect
                 ExcInternalError());
         Assert (input_data.solution_values[0].size() == this->introspection().n_components,   ExcInternalError());
 
-            const double velocity_scaling_factor =
-              this->convert_output_to_years() ? year_in_seconds : 1.0;
+        const double velocity_scaling_factor =
+          this->convert_output_to_years() ? year_in_seconds : 1.0;
 
         for (unsigned int q=0; q<n_quadrature_points; ++q)
           {
