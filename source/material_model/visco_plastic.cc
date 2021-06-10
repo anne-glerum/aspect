@@ -498,7 +498,7 @@ namespace aspect
     ViscoPlastic<dim>::
     compute_min_healing_time_step (const std::vector<double> &composition) const
     {
-      double min_healing_time_step = 0.2 * composition[rheology->friction_options.theta_composition_index];
+      double min_healing_time_step = 0.2 * std::max(1e-50,composition[rheology->friction_options.theta_composition_index]);
       AssertThrow((std::isinf( min_healing_time_step) || numbers::is_nan( min_healing_time_step)) == false, ExcMessage(
                     " min_healing_time_step needed for the Lapusta time stepping becomes nan or inf. Please "
                     "check all your friction parameters. In case of "

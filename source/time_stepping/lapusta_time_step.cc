@@ -86,7 +86,7 @@ namespace aspect
                 const double local_velocity = velocity_values[q].norm();
 
                 std::pair<double,double> delta_theta_max_and_critical_slip_distance = viscoplastic.compute_delta_theta_max(
-                                                                                        in.composition[0],  // should this be 0 or q? for all the times I hand over composition.. found 0 in some part of the code, but q intuitively makes more sense
+                                                                                        in.composition[q],
                                                                                         in.position[q],
                                                                                         delta_x,
                                                                                         in.pressure[q]);
@@ -108,14 +108,14 @@ namespace aspect
                 // to capture the increasing slip rate in case of a purely rate-dependent friction, i.e. if b = 0
                 min_vep_relaxation_time_step = std::min (min_vep_relaxation_time_step,
                                                          0.2 * out.viscosities[q]
-                                                         / viscoplastic.get_elastic_shear_modulus(in.composition[0]));
+                                                         / viscoplastic.get_elastic_shear_modulus(in.composition[q]));
               }
 
             // minimum displacement time step: Delta t_d = Delta d_max * min(|Delta x/v_x|,|Delta x/v_y|),
             // with Delta d_max = 1e-3 in Herrendörfer et al. 2018
             // here, the term  min(|Delta x/v_x|,|Delta x/v_y|) is simplified to min Delta x / max_local_velocity
             min_displacement_time_step = std::min (min_displacement_time_step,
-                                                   1.e-3 * cell->minimum_vertex_distance() / max_local_velocity);
+                                                   1.e-3 * delta_x / max_local_velocity);
 
           }
 
@@ -123,10 +123,17 @@ namespace aspect
 
       // take the minimum of the four criteria
       // TODO: is there a more elegant way to take the minimum of four values?
+      // Annes answer: Instead of having 4 doubles, you could have a vector timestep of 4 doubles.
+      // Then you could do min_lapusta_timestep = *std::min_element(timestep.begin(), timestep.end());
+      // At the moment I prefer the doubles though, because then it is easier to see which component is which timestep
       min_lapusta_timestep = std::min (min_state_weakening_time_step,
                                        std::min (min_healing_time_step,
                                                  std::min (min_displacement_time_step,
                                                            min_vep_relaxation_time_step)));
+
+      // communicate the min lapusta timestep between the processes
+      const double min_global_lapusta_timestep
+        = Utilities::MPI::min (min_lapusta_timestep, this->get_mpi_communicator());
 
       AssertThrow (min_lapusta_timestep > 0,
                    ExcMessage("The time step length for the each time step needs to be positive, "
@@ -157,7 +164,7 @@ namespace aspect
       std::cout << "      - the min vep relaxation time step: ";
       std::cout << min_vep_relaxation_time_step *multiplier << ' ' << unit << std::endl << std::endl;
 
-      return min_lapusta_timestep;
+      return min_global_lapusta_timestep;
     }
 
 
