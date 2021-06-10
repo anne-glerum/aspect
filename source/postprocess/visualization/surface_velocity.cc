@@ -41,10 +41,13 @@ namespace aspect
                 ExcInternalError());
         Assert (input_data.solution_values[0].size() == this->introspection().n_components,   ExcInternalError());
 
+            const double velocity_scaling_factor =
+              this->convert_output_to_years() ? year_in_seconds : 1.0;
+
         for (unsigned int q=0; q<n_quadrature_points; ++q)
           {
             for (unsigned int d=0; d<dim; ++d)
-              computed_quantities[q](d) = input_data.solution_values[q][d];
+              computed_quantities[q](d) = input_data.solution_values[q][d] * velocity_scaling_factor;
           }
 
       }
@@ -54,12 +57,13 @@ namespace aspect
       std::vector<std::string>
       SurfaceVelocity<dim>::get_names () const
       {
-        std::vector<std::string> names;
-              names.emplace_back("surface_velocity_x");
-              names.emplace_back("surface_velocity_y");
-
-            if (dim == 3)
-              names.emplace_back("surface_velocity_z");
+        std::vector<std::string> names (dim, "surface_velocity");
+//        std::vector<std::string> names;
+//              names.emplace_back("surface_velocity_x");
+//              names.emplace_back("surface_velocity_y");
+//
+//            if (dim == 3)
+//              names.emplace_back("surface_velocity_z");
 
         return names;
       }
@@ -72,7 +76,8 @@ namespace aspect
         return
           std::vector<DataComponentInterpretation::DataComponentInterpretation>
           (dim,
-           DataComponentInterpretation::component_is_scalar);
+           DataComponentInterpretation::component_is_part_of_vector);
+//           DataComponentInterpretation::component_is_scalar);
       }
 
 
