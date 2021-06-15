@@ -108,7 +108,7 @@ namespace aspect
 
       // if max velocities stayed the same or decreased, take the CFL number specified in the input file.
       // else, take 0.5 as the CFL number to let the timestep increase faster
-      if ((max_global_speed_over_meshsize != 0.0) && (max_global_speed_over_meshsize <= max_global_speed_over_meshsize_old *100)
+      if ((max_global_speed_over_meshsize != 0.0) && (max_global_speed_over_meshsize <= max_global_speed_over_meshsize_old *2)
       || (this->get_timestep_number()==1))
         min_RSF_convection_timestep = this->get_parameters().CFL_number / (this->get_parameters().temperature_degree * max_global_speed_over_meshsize);
       else
