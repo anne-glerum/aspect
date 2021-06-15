@@ -291,7 +291,8 @@ namespace aspect
         /**
          * A function that returns the elastic shear modulus according to the volume fractions
          */
-        double get_elastic_shear_modulus (const std::vector<double> &composition) const;
+        double
+        get_elastic_shear_modulus (const std::vector<double> &composition) const;
 
       private:
 

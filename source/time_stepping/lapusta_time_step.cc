@@ -65,59 +65,68 @@ namespace aspect
       double min_vep_relaxation_time_step =  std::numeric_limits<double>::max();
 
       for (const auto &cell : this->get_dof_handler().active_cell_iterators())
-        if (cell->is_locally_owned())
-          {
-            fe_values.reinit (cell);
-            in.reinit(fe_values,
-                      cell,
-                      this->introspection(),
-                      this->get_solution());
+        {
+          if (cell->is_locally_owned())
+            {
+              fe_values.reinit (cell);
+              in.reinit(fe_values,
+                        cell,
+                        this->introspection(),
+                        this->get_solution());
 
-            this->get_material_model().evaluate(in, out);
+              this->get_material_model().evaluate(in, out);
 
-            fe_values[this->introspection().extractors.velocities].get_function_values (this->get_solution(),
-                                                                                        velocity_values);
-            double max_local_velocity = 0;
-            const double delta_x = cell->minimum_vertex_distance();
-            for (unsigned int q=0; q<n_q_points; ++q)
-              {
-                // TODO in Lapusta, this should be plastic velocity. But just taking the full velocity
-                // should be the most conservative approach, so it should be ok...
-                const double local_velocity = velocity_values[q].norm();
+              fe_values[this->introspection().extractors.velocities].get_function_values (this->get_solution(),
+                                                                                          velocity_values);
+              double max_local_velocity = 0;
+              const double delta_x = cell->minimum_vertex_distance();
+              // Lapusta timestep is only relevant for the processes within the fault (RSF material), so dont compute it outside
+              for (unsigned int q=0; q<n_q_points; ++q)
+                {
+                  if (in.composition[q][this->introspection().compositional_index_for_name("fault")] > 0.5)
+                    {
+                      // TODO in Lapusta, this should be plastic velocity. But just taking the full velocity
+                      // should be the most conservative approach, so it should be ok...
+                      const double local_velocity = velocity_values[q].norm();
 
-                std::pair<double,double> delta_theta_max_and_critical_slip_distance = viscoplastic.compute_delta_theta_max(
-                                                                                        in.composition[q],
-                                                                                        in.position[q],
-                                                                                        delta_x,
-                                                                                        in.pressure[q]);
+                      std::pair<double,double> delta_theta_max_and_critical_slip_distance = viscoplastic.compute_delta_theta_max(
+                                                                                              in.composition[q],
+                                                                                              in.position[q],
+                                                                                              delta_x,
+                                                                                              in.pressure[q]);
 
-                min_state_weakening_time_step = std::min (min_state_weakening_time_step,
-                                                          delta_theta_max_and_critical_slip_distance.first
-                                                          * delta_theta_max_and_critical_slip_distance.second / local_velocity);
+                      min_state_weakening_time_step = std::min (min_state_weakening_time_step,
+                                                                delta_theta_max_and_critical_slip_distance.first
+                                                                * delta_theta_max_and_critical_slip_distance.second
+                                                                / local_velocity);
 
-                // state healing time step is: Deltat_h = 0.2 * theta.
-                min_healing_time_step = std::min (min_healing_time_step,
-                                                  viscoplastic.compute_min_healing_time_step(in.composition[q]));
+                      // state healing time step is: Deltat_h = 0.2 * theta.
+                      min_healing_time_step = std::min (min_healing_time_step,
+                                                        viscoplastic.compute_min_healing_time_step(in.composition[q]));
 
-                // the maximum local velocity needed for the displacement time step
-                max_local_velocity = std::max (max_local_velocity,
-                                               local_velocity);
+                      // the maximum local velocity needed for the displacement time step
+                      max_local_velocity = std::max (max_local_velocity,
+                                                     local_velocity);
 
-                // the viscoelastoplastic relaxation time step using the relaxation time scale: f_max * viscoplastic viscosity / shear modulus
-                // with f_max = 0.2 in Herrendörfer et al. 2018
-                // to capture the increasing slip rate in case of a purely rate-dependent friction, i.e. if b = 0
-                min_vep_relaxation_time_step = std::min (min_vep_relaxation_time_step,
-                                                         0.2 * out.viscosities[q]
-                                                         / viscoplastic.get_elastic_shear_modulus(in.composition[q]));
-              }
+                      // the viscoelastoplastic relaxation time step using the relaxation time scale:
+                      // f_max * viscoplastic viscosity / shear modulus
+                      // with f_max = 0.2 in Herrendörfer et al. 2018
+                      // to capture the increasing slip rate in case of a purely rate-dependent friction, i.e. if b = 0
+                      min_vep_relaxation_time_step = std::min (min_vep_relaxation_time_step,
+                                                               0.2 * out.viscosities[q]
+                                                               / viscoplastic.get_elastic_shear_modulus(in.composition[q]));
+                    }
+                }
 
-            // minimum displacement time step: Delta t_d = Delta d_max * min(|Delta x/v_x|,|Delta x/v_y|),
-            // with Delta d_max = 1e-3 in Herrendörfer et al. 2018
-            // here, the term  min(|Delta x/v_x|,|Delta x/v_y|) is simplified to min Delta x / max_local_velocity
-            min_displacement_time_step = std::min (min_displacement_time_step,
-                                                   1.e-3 * delta_x / max_local_velocity);
-
-          }
+              // minimum displacement time step: Delta t_d = Delta d_max * min(|Delta x/v_x|,|Delta x/v_y|),
+              // with Delta d_max = 1e-3 in Herrendörfer et al. 2018
+              // here, the term  min(|Delta x/v_x|,|Delta x/v_y|) is simplified to min Delta x / max_local_velocity
+              // ToDo: check how different the min displacement timestep is from the convection timestep. Do
+              // we need them both? Should it also be constraint to within the fault or used everywhere?
+              min_displacement_time_step = std::min (min_displacement_time_step,
+                                                     1.e-3 * delta_x / max_local_velocity);
+            }
+        }
 
       double min_lapusta_timestep = std::numeric_limits<double>::max();
 
@@ -150,6 +159,7 @@ namespace aspect
                               "Please check for non-positive material properties."));
 
       // Print lapusta timestep lengths
+      // ToDo only print this once and not for all processors! Or better print it once within the statistics file
       const char *unit = ( SimulatorAccess<dim>::convert_output_to_years() ? "years" : "seconds");
       const double multiplier = ( SimulatorAccess<dim>::convert_output_to_years() ? 1./year_in_seconds : 1.0);
       std::cout << "   Lapusta timestep length determined for next timestep: " ;
@@ -166,8 +176,6 @@ namespace aspect
 
       return min_global_lapusta_timestep;
     }
-
-
   }
 }
 
