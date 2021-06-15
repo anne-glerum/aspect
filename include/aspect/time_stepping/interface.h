@@ -291,6 +291,11 @@ namespace aspect
         double minimum_time_step_size;
 
         /**
+         * Take the minimum time step size for the first time step.
+         */
+        bool min_time_step_size_for_first_time_step;
+
+        /**
          * Whether to do a final checkpoint before termination. This is
          * specified in the parameters.
          */
