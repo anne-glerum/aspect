@@ -73,10 +73,10 @@ namespace aspect
                                               const std::vector<Tensor<1,dim> > &gradients,
                                               typename ParticleHandler<dim>::particle_iterator &particle) const
       {
-        AssertThrow(this->introspection().compositional_name_exists("initial_fault"),
+        AssertThrow(this->introspection().compositional_name_exists("fault"),
                     ExcMessage("Particle property theta for RSF only works if"
-                               "there is a compositional particle field called initial_fault."));
-        const unsigned int initial_fault_idx = this->introspection().compositional_index_for_name("initial_fault");
+                               "there is a compositional particle field called fault."));
+        const unsigned int initial_fault_idx = this->introspection().compositional_index_for_name("fault");
         const double initial_fault_value = material_inputs.composition[0][initial_fault_idx]; // is it correct to have [0]? that is how it is used below...
         // This way it also works, but asks for solution again...
         //const double initial_fault_value = solution[this->introspection().component_indices.compositional_fields[initial_fault_idx]];
