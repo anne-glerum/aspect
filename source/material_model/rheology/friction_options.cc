@@ -196,7 +196,7 @@ namespace aspect
                           std::cout << "got a Zero theta ( "<<theta<< " ) before computing friction at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
                         }/*
 else
-  std::cout << "got a positive theta before computing friction" << std::endl;*/
+std::cout << "got a positive theta before computing friction" << std::endl;*/
                     }
                   theta = std::max(theta,1e-50);
 

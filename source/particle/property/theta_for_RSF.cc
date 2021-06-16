@@ -73,15 +73,20 @@ namespace aspect
                                               const std::vector<Tensor<1,dim> > &gradients,
                                               typename ParticleHandler<dim>::particle_iterator &particle) const
       {
+        AssertThrow(this->introspection().compositional_name_exists("initial_fault"),
+                    ExcMessage("Particle property theta for RSF only works if"
+                               "there is a compositional particle field called initial_fault."));
+        const unsigned int initial_fault_idx = this->introspection().compositional_index_for_name("initial_fault");
+        const double initial_fault_value = material_inputs.composition[0][initial_fault_idx]; // is it correct to have [0]? that is how it is used below...
+        // This way it also works, but asks for solution again...
+        //const double initial_fault_value = solution[this->introspection().component_indices.compositional_fields[initial_fault_idx]];
+
         // only update theta if we are after the zero timestep, as currently we
         // do not have information about strain rate before updating the particle
-        if (this->get_timestep_number() > 0)
-          //  && this->get_initial_composition(data_position,this->introspection().compositional_index_for_name("fault"))>0.5)
+        // it also only makes sense to update theta within the rate-and-state material, which currently must be called fault.
+        if ((this->get_timestep_number() > 0)
+           && (initial_fault_value > 0.5))
           {
-            /*AssertThrow(this->get_initial_composition(data_position,this->introspection().compositional_index_for_name("fault"))>0.5,
-            ExcMessage("I am in fault now, the fault value is: "
-            + Utilities::to_string( this->get_initial_composition(data_position,this->introspection().compositional_index_for_name("fault"))) + ' ! \n'));*/
-
             material_inputs.position[0] = particle->get_location();
 
             material_inputs.current_cell = typename DoFHandler<dim>::active_cell_iterator(*particle->get_surrounding_cell(this->get_triangulation()),
