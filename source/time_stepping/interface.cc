@@ -292,7 +292,7 @@ namespace aspect
         // models up a bit because else they would repeat the first time step several times.
         // ToDo: Remove, once the models are faster again!
         prm.declare_entry("Minimum time step size for first time step", "false",
-                          Patterns::Double (0.),
+                          Patterns::Bool (),
                           "Whether to use the minimum time step size for the very first time step.");
 
         const std::string pattern_of_names
