@@ -77,9 +77,9 @@ namespace aspect
                     ExcMessage("Particle property theta for RSF only works if"
                                "there is a compositional particle field called fault."));
         const unsigned int initial_fault_idx = this->introspection().compositional_index_for_name("fault");
-        const double initial_fault_value = material_inputs.composition[0][initial_fault_idx]; // is it correct to have [0]? that is how it is used below...
+        //const double initial_fault_value = material_inputs.composition[0][initial_fault_idx]; // is it correct to have [0]? that is how it is used below...
         // This way it also works, but asks for solution again...
-        //const double initial_fault_value = solution[this->introspection().component_indices.compositional_fields[initial_fault_idx]];
+        const double initial_fault_value = solution[this->introspection().component_indices.compositional_fields[initial_fault_idx]];
 
         // only update theta if we are after the zero timestep, as currently we
         // do not have information about strain rate before updating the particle
