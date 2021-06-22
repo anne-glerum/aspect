@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2011 - 2020 by the authors of the ASPECT code.
+  Copyright (C) 2011 - 2021 by the authors of the ASPECT code.
 
   This file is part of ASPECT.
 
@@ -34,8 +34,8 @@ namespace aspect
     template <int dim>
     bool
     ViscoPlastic<dim>::
-    is_yielding (const double &pressure,
-                 const double &temperature,
+    is_yielding (const double pressure,
+                 const double temperature,
                  const std::vector<double> &composition,
                  const SymmetricTensor<2,dim> &strain_rate) const
     {
@@ -44,7 +44,8 @@ namespace aspect
        */
       bool plastic_yielding = false;
 
-      MaterialModel::MaterialModelInputs <dim> in (1 /*n_evaluation_points*/, this->n_compositional_fields());
+      MaterialModel::MaterialModelInputs <dim> in (/*n_evaluation_points=*/1,
+                                                                           this->n_compositional_fields());
       unsigned int i = 0;
 
       in.pressure[i] = pressure;
@@ -52,13 +53,18 @@ namespace aspect
       in.composition[i] = composition;
       in.strain_rate[i] = strain_rate;
 
-      const std::vector<double> volume_fractions = MaterialUtilities::compute_composition_fractions(composition, rheology->get_volumetric_composition_mask());
+      const std::vector<double> volume_fractions
+        = MaterialUtilities::compute_composition_fractions(composition,
+                                                           rheology->get_volumetric_composition_mask());
 
-      const IsostrainViscosities isostrain_viscosities =
-        rheology->calculate_isostrain_viscosities(in, i, volume_fractions);
+      const IsostrainViscosities isostrain_viscosities
+        = rheology->calculate_isostrain_viscosities(in, i, volume_fractions);
 
-      std::vector<double>::const_iterator max_composition = std::max_element(volume_fractions.begin(),volume_fractions.end());
-      plastic_yielding = isostrain_viscosities.composition_yielding[std::distance(volume_fractions.begin(),max_composition)];
+      std::vector<double>::const_iterator max_composition
+        = std::max_element(volume_fractions.begin(),volume_fractions.end());
+
+      plastic_yielding = isostrain_viscosities.composition_yielding[std::distance(volume_fractions.begin(),
+                                                                                  max_composition)];
 
       return plastic_yielding;
     }
@@ -75,8 +81,8 @@ namespace aspect
       const std::vector<double> volume_fractions = MaterialUtilities::compute_composition_fractions(in.composition[0], rheology->get_volumetric_composition_mask());
 
       /* The following handles phases in a similar way as in the 'evaluate' function.
-      * Results then enter the calculation of plastic yielding.
-      */
+       * Results then enter the calculation of plastic yielding.
+       */
       std::vector<double> phase_function_values(phase_function.n_phase_transitions(), 0.0);
 
       if (phase_function.n_phase_transitions() > 0)
@@ -430,9 +436,9 @@ namespace aspect
                                    "composite viscous flow laws. Prior to yielding, one may select to "
                                    "modify the viscosity to account for viscoelastic effects. Plasticity "
                                    "limits viscous stresses through a Drucker Prager yield criterion. "
-                                   "Note that this material model is based heavily on the "
-                                   "DiffusionDislocation (Bob Myhill), DruckerPrager "
-                                   "(Anne Glerum), and Viscoelastic (John Naliboff) material models. "
+                                   "The implementation of this material model is based heavily on the "
+                                   "`DiffusionDislocation' (Bob Myhill), `DruckerPrager' "
+                                   "(Anne Glerum), and `Viscoelastic' (John Naliboff) material models. "
                                    "\n\n "
                                    "The viscosity for dislocation or diffusion creep is defined as "
                                    "\\[v = \\frac 12 A^{-\\frac{1}{n}} d^{\\frac{m}{n}} "
@@ -456,7 +462,7 @@ namespace aspect
                                    "should carefully check how the viscous prefactor and grain size "
                                    "terms are defined. "
                                    "\n\n "
-                                   "One may select to use the diffusion ($v_{\\text{diff}}$; $n=1$, $m!=0$), "
+                                   "One may select to use the diffusion ($v_{\\text{diff}}$; $n=1$, $m\neq 0$), "
                                    "dislocation ($v_{\\text{disl}}$, $n>1$, $m=0$) or composite "
                                    "$\\frac{v_{\\text{diff}} v_{\\text{disl}}}{v_{\\text{diff}}+v_{\\text{disl}}}$ equation form. "
                                    "\n\n "
@@ -468,7 +474,7 @@ namespace aspect
                                    "The first plasticity mechanism limits viscous stress through a "
                                    "Drucker Prager yield criterion, where the yield stress in 3D is  "
                                    "$\\sigma_y = \\frac{6C\\cos(\\phi) + 2P\\sin(\\phi)} "
-                                   "{\\sqrt(3)(3+\\sin(\\phi))}$ "
+                                   "{\\sqrt{3}(3+\\sin(\\phi))}$ "
                                    "and "
                                    "$\\sigma_y = C\\cos(\\phi) + P\\sin(\\phi)$ "
                                    "in 2D. Above, $C$ is cohesion and $\\phi$  is the angle of "

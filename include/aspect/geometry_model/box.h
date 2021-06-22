@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2011 - 2019 by the authors of the ASPECT code.
+  Copyright (C) 2011 - 2020 by the authors of the ASPECT code.
 
   This file is part of ASPECT.
 
@@ -70,6 +70,13 @@ namespace aspect
          */
         virtual
         Point<dim> get_extents () const;
+
+        /**
+         * Return a point that denotes the repetitions of the box in each dimension
+         * of the domain.
+         */
+        unsigned int
+        get_repetitions(unsigned int dimension) const;
 
         /**
          * Return a point that denotes the lower left corner of the box

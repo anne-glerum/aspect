@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2011 - 2020 by the authors of the ASPECT code.
+  Copyright (C) 2011 - 2021 by the authors of the ASPECT code.
 
   This file is part of ASPECT.
 
@@ -157,7 +157,7 @@ namespace aspect
                           }
                         else
                           {
-                            for (unsigned int subface=0; subface < face->number_of_children(); ++subface)
+                            for (unsigned int subface=0; subface < face->n_children(); ++subface)
                               {
                                 const typename DoFHandler<dim>::active_cell_iterator neighbor_sub =
                                   (cell_has_periodic_neighbor

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2011 - 2020 by the authors of the ASPECT code.
+  Copyright (C) 2011 - 2021 by the authors of the ASPECT code.
 
   This file is part of ASPECT.
 
@@ -68,7 +68,10 @@ DEAL_II_ENABLE_EXTRA_DIAGNOSTICS
 
 #include <boost/iostreams/tee.hpp>
 #include <boost/iostreams/stream.hpp>
+
 #include <memory>
+#include <thread>
+
 
 namespace aspect
 {
@@ -500,16 +503,16 @@ namespace aspect
       /**
        * Compute the factor by which we scale the second of
        * the Stokes equations (the "pressure scaling factor").
-       * We do this for the current time step by taking some kind
-       * of average of the viscosities we find on the cells in this domain.
+       * We do this for the current time step by taking the logarithmic
+       * average of the viscosities we find on the cells in this domain.
        *
-       * This function then updates the pressure_scaling variable using
+       * This function then returns the pressure_scaling variable using
        * this computed reference viscosity.
        *
        * This function is implemented in
        * <code>source/simulator/helper_functions.cc</code>.
        */
-      void compute_pressure_scaling_factor ();
+      double compute_pressure_scaling_factor () const;
 
       /**
        * Do some housekeeping at the beginning of each time step. This
@@ -1882,7 +1885,7 @@ namespace aspect
        * either if we want to write the statistics object for the next thread,
        * or if we want to terminate altogether.
        */
-      Threads::Thread<>                   output_statistics_thread;
+      std::thread                         output_statistics_thread;
       /**
        * @}
        */
@@ -1913,6 +1916,12 @@ namespace aspect
        * The world holding the particles
        */
       std::unique_ptr<Particle::World<dim> > particle_world;
+
+      /**
+       * A copy of the particle handler to reset the particles
+       * when repeating a time step.
+       */
+      dealii::Particles::ParticleHandler<dim> particle_handler_copy;
 
       /**
        * @}

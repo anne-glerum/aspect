@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2011 - 2020 by the authors of the ASPECT code.
+  Copyright (C) 2011 - 2021 by the authors of the ASPECT code.
 
   This file is part of ASPECT.
 
@@ -264,7 +264,8 @@ namespace aspect
     // Before we can start working on a new thread, we need to
     // make sure that the previous thread is done or they'll
     // step on each other's feet.
-    output_statistics_thread.join();
+    if (output_statistics_thread.joinable())
+      output_statistics_thread.join();
 
     // TODO[C++14]: The following code could be made significantly simpler
     // if we could just copy the statistics table as part of the capture
@@ -369,19 +370,93 @@ namespace aspect
       statistics_last_write_size = statistics_contents.size();
       statistics_last_hash       = std::hash<std::string>()(statistics_contents);
     };
-    output_statistics_thread = Threads::new_thread (write_statistics);
+    output_statistics_thread = std::thread (write_statistics);
   }
 
 
 
   template <int dim>
-  void
+  double
   Simulator<dim>::
-  compute_pressure_scaling_factor()
+  compute_pressure_scaling_factor() const
   {
-    // Determine how to treat the pressure. we have to scale it for the solver
-    // to make velocities and pressures of roughly the same (numerical) size
-    pressure_scaling = material_model->reference_viscosity() / geometry_model->length_scale();
+    // Determine how to treat the pressure. We have to scale it for the solver
+    // to make velocities and pressures of roughly the same (numerical) size,
+    // and we may have to fix up the right hand side vector before solving for
+    // compressible models if there are no in-/outflow boundaries
+    //
+    // We do this by scaling the divergence equation by a constant factor that
+    // is equal to a reference viscosity divided by a length scale.
+    // We get the latter from the geometry model, and the former
+    // by looping over all cells and averaging the "order of magnitude"
+    // of the viscosity. The order of magnitude is the logarithm of
+    // the viscosity, so
+    //
+    //   \eta_{ref} = exp ( 1/N * (log(eta_1) + log(eta_2) + ... + log(eta_N))
+    //
+    // where the \eta_i are typical viscosities on the cells of the mesh.
+    // For this, we just take the viscosity at the cell center.
+    //
+    // The formula above computes the exponential of the average of the
+    // logarithms. It is easy to verify that this is equivalent to
+    // computing the *geometric* mean of the viscosities, but the
+    // formula above is numerically stable.
+
+    const QMidpoint<dim> quadrature_formula;
+
+    FEValues<dim> fe_values (*mapping,
+                             finite_element,
+                             quadrature_formula,
+                             update_values |
+                             update_gradients |
+                             update_quadrature_points |
+                             update_JxW_values);
+
+    const unsigned int n_q_points = quadrature_formula.size();
+
+    double local_integrated_viscosity_logarithm = 0.;
+    double local_volume = 0.;
+
+    MaterialModel::MaterialModelInputs<dim> in(n_q_points,
+                                               introspection.n_compositional_fields);
+    MaterialModel::MaterialModelOutputs<dim> out(n_q_points,
+                                                 introspection.n_compositional_fields);
+
+    for (const auto &cell : dof_handler.active_cell_iterators())
+      if (cell->is_locally_owned())
+        {
+          fe_values.reinit (cell);
+          in.reinit(fe_values,
+                    cell,
+                    introspection,
+                    solution);
+
+          // We do not call the cell-wise average function of the
+          // material model, because we average globally below
+          material_model->evaluate(in, out);
+
+          // Evaluate viscosity at the mid-point of each cell and
+          // calculate the volume weighted harmonic average of all cells
+          for (unsigned int q=0; q<n_q_points; ++q)
+            {
+              Assert(out.viscosities[q] > 0,
+                     ExcMessage ("The viscosity needs to be a "
+                                 "positive quantity."));
+
+              const double JxW = fe_values.JxW(q);
+              local_integrated_viscosity_logarithm += std::log(out.viscosities[q]) * JxW;
+              local_volume += JxW;
+            }
+        }
+
+    // vector for packing local values before MPI summing them
+    double values[2] = {local_integrated_viscosity_logarithm, local_volume};
+
+    Utilities::MPI::sum(values, mpi_communicator, values);
+
+    const double reference_viscosity = std::exp(values[0]/values[1]);
+
+    return reference_viscosity / geometry_model->length_scale();
   }
 
 
@@ -1839,6 +1914,7 @@ namespace aspect
     // updating the ghost elements of the 'solution' vector.
     const unsigned int advection_block = adv_field.block_index(introspection);
     distributed_vector.block(advection_block).compress(VectorOperation::insert);
+    current_constraints.distribute (distributed_vector);
     solution.block(advection_block) = distributed_vector.block(advection_block);
   }
 
@@ -2329,7 +2405,7 @@ namespace aspect
   template void Simulator<dim>::denormalize_pressure(const double pressure_adjustment, \
                                                      LinearAlgebra::BlockVector &vector, \
                                                      const LinearAlgebra::BlockVector &relevant_vector) const; \
-  template void Simulator<dim>::compute_pressure_scaling_factor (); \
+  template double Simulator<dim>::compute_pressure_scaling_factor () const; \
   template double Simulator<dim>::get_maximal_velocity (const LinearAlgebra::BlockVector &solution) const; \
   template std::pair<double,double> Simulator<dim>::get_extrapolated_advection_field_range (const AdvectionField &advection_field) const; \
   template void Simulator<dim>::maybe_write_timing_output () const; \

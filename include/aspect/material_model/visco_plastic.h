@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2011 - 2020 by the authors of the ASPECT code.
+  Copyright (C) 2011 - 2021 by the authors of the ASPECT code.
 
   This file is part of ASPECT.
 
@@ -77,9 +77,9 @@ namespace aspect
      * representing these components must be named and listed in a very specific
      * format, which is designed to minimize mislabeling stress tensor components
      * as distinct 'compositional rock types' (or vice versa). For 2D models,
-     * the first three compositional fields must be labeled stress_xx, stress_yy
-     * and stress_xy. In 3D, the first six compositional fields must be labeled
-     * stress_xx, stress_yy, stress_zz, stress_xy, stress_xz, stress_yz.
+     * the first three compositional fields must be labeled ve_stress_xx, ve_stress_yy
+     * and ve_stress_xy. In 3D, the first six compositional fields must be labeled
+     * ve_stress_xx, ve_stress_yy, ve_stress_zz, ve_stress_xy, ve_stress_xz, ve_stress_yz.
      *
      * Combining this viscoelasticity implementation with non-linear viscous flow
      * and plasticity produces a constitutive relationship commonly referred to
@@ -220,16 +220,16 @@ namespace aspect
          */
         DEAL_II_DEPRECATED
         bool
-        is_yielding ( const double &pressure,
-                      const double &temperature,
-                      const std::vector<double> &composition,
-                      const SymmetricTensor<2,dim> &strain_rate) const;
+        is_yielding (const double pressure,
+                     const double temperature,
+                     const std::vector<double> &composition,
+                     const SymmetricTensor<2,dim> &strain_rate) const;
 
         /**
-        * A function that returns whether the material is plastically yielding at
-        * the given input variables (pressure, temperature, composition, strain rate,
-        * and so on).
-        */
+         * A function that returns whether the material is plastically
+         * yielding at the given input variables (pressure, temperature,
+         * composition, strain rate, and so on).
+         */
         bool
         is_yielding (const MaterialModelInputs<dim> &in) const;
 

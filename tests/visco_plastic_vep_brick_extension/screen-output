@@ -6,9 +6,9 @@ Number of mesh deformation degrees of freedom: 252
 *** Timestep 0:  t=0 years, dt=0 years
    Solving mesh velocity system... 0 iterations.
    Solving temperature system... 0 iterations.
-   Skipping stress_xx composition solve because RHS is zero.
-   Skipping stress_yy composition solve because RHS is zero.
-   Skipping stress_xy composition solve because RHS is zero.
+   Skipping ve_stress_xx composition solve because RHS is zero.
+   Skipping ve_stress_yy composition solve because RHS is zero.
+   Skipping ve_stress_xy composition solve because RHS is zero.
    Solving inclusion system ... 0 iterations.
    Rebuilding Stokes preconditioner...
    Solving Stokes system... 0+14 iterations.
@@ -16,7 +16,7 @@ Number of mesh deformation degrees of freedom: 252
 
    Rebuilding Stokes preconditioner...
    Solving Stokes system... 0+0 iterations.
-      Relative nonlinear residual (Stokes system) after nonlinear iteration 2: 6.04966e-08
+      Relative nonlinear residual (Stokes system) after nonlinear iteration 2: 7.74306e-08
 
 
    Postprocessing:
@@ -28,17 +28,17 @@ Number of mesh deformation degrees of freedom: 252
 *** Timestep 1:  t=1000 years, dt=1000 years
    Solving mesh velocity system... 1 iterations.
    Solving temperature system... 0 iterations.
-   Solving stress_xx system ... 11 iterations.
-   Solving stress_yy system ... 11 iterations.
-   Solving stress_xy system ... 12 iterations.
+   Solving ve_stress_xx system ... 11 iterations.
+   Solving ve_stress_yy system ... 11 iterations.
+   Solving ve_stress_xy system ... 12 iterations.
    Solving inclusion system ... 8 iterations.
    Rebuilding Stokes preconditioner...
    Solving Stokes system... 0+12 iterations.
-      Relative nonlinear residual (Stokes system) after nonlinear iteration 1: 0.0514541
+      Relative nonlinear residual (Stokes system) after nonlinear iteration 1: 0.0441144
 
    Rebuilding Stokes preconditioner...
    Solving Stokes system... 0+0 iterations.
-      Relative nonlinear residual (Stokes system) after nonlinear iteration 2: 5.57228e-08
+      Relative nonlinear residual (Stokes system) after nonlinear iteration 2: 7.1323e-08
 
 
    Postprocessing:
@@ -50,17 +50,17 @@ Number of mesh deformation degrees of freedom: 252
 *** Timestep 2:  t=2000 years, dt=1000 years
    Solving mesh velocity system... 1 iterations.
    Solving temperature system... 0 iterations.
-   Solving stress_xx system ... 10 iterations.
-   Solving stress_yy system ... 10 iterations.
-   Solving stress_xy system ... 11 iterations.
+   Solving ve_stress_xx system ... 10 iterations.
+   Solving ve_stress_yy system ... 10 iterations.
+   Solving ve_stress_xy system ... 11 iterations.
    Solving inclusion system ... 7 iterations.
    Rebuilding Stokes preconditioner...
    Solving Stokes system... 0+11 iterations.
-      Relative nonlinear residual (Stokes system) after nonlinear iteration 1: 0.00674878
+      Relative nonlinear residual (Stokes system) after nonlinear iteration 1: 0.00578837
 
    Rebuilding Stokes preconditioner...
    Solving Stokes system... 0+0 iterations.
-      Relative nonlinear residual (Stokes system) after nonlinear iteration 2: 4.04555e-08
+      Relative nonlinear residual (Stokes system) after nonlinear iteration 2: 5.18021e-08
 
 
    Postprocessing:
@@ -72,17 +72,17 @@ Number of mesh deformation degrees of freedom: 252
 *** Timestep 3:  t=3000 years, dt=1000 years
    Solving mesh velocity system... 1 iterations.
    Solving temperature system... 0 iterations.
-   Solving stress_xx system ... 10 iterations.
-   Solving stress_yy system ... 10 iterations.
-   Solving stress_xy system ... 10 iterations.
+   Solving ve_stress_xx system ... 10 iterations.
+   Solving ve_stress_yy system ... 10 iterations.
+   Solving ve_stress_xy system ... 10 iterations.
    Solving inclusion system ... 7 iterations.
    Rebuilding Stokes preconditioner...
    Solving Stokes system... 0+10 iterations.
-      Relative nonlinear residual (Stokes system) after nonlinear iteration 1: 0.00257958
+      Relative nonlinear residual (Stokes system) after nonlinear iteration 1: 0.00221258
 
    Rebuilding Stokes preconditioner...
    Solving Stokes system... 0+0 iterations.
-      Relative nonlinear residual (Stokes system) after nonlinear iteration 2: 4.64182e-08
+      Relative nonlinear residual (Stokes system) after nonlinear iteration 2: 5.94395e-08
 
 
    Postprocessing:
@@ -94,17 +94,17 @@ Number of mesh deformation degrees of freedom: 252
 *** Timestep 4:  t=4000 years, dt=1000 years
    Solving mesh velocity system... 1 iterations.
    Solving temperature system... 0 iterations.
-   Solving stress_xx system ... 9 iterations.
-   Solving stress_yy system ... 9 iterations.
-   Solving stress_xy system ... 10 iterations.
+   Solving ve_stress_xx system ... 9 iterations.
+   Solving ve_stress_yy system ... 9 iterations.
+   Solving ve_stress_xy system ... 10 iterations.
    Solving inclusion system ... 7 iterations.
    Rebuilding Stokes preconditioner...
-   Solving Stokes system... 0+10 iterations.
-      Relative nonlinear residual (Stokes system) after nonlinear iteration 1: 0.00318365
+   Solving Stokes system... 0+11 iterations.
+      Relative nonlinear residual (Stokes system) after nonlinear iteration 1: 0.00273082
 
    Rebuilding Stokes preconditioner...
    Solving Stokes system... 0+10 iterations.
-      Relative nonlinear residual (Stokes system) after nonlinear iteration 2: 0.00115308
+      Relative nonlinear residual (Stokes system) after nonlinear iteration 2: 0.000989079
 
 
    Postprocessing:
@@ -116,17 +116,17 @@ Number of mesh deformation degrees of freedom: 252
 *** Timestep 5:  t=5000 years, dt=1000 years
    Solving mesh velocity system... 1 iterations.
    Solving temperature system... 0 iterations.
-   Solving stress_xx system ... 10 iterations.
-   Solving stress_yy system ... 10 iterations.
-   Solving stress_xy system ... 10 iterations.
+   Solving ve_stress_xx system ... 10 iterations.
+   Solving ve_stress_yy system ... 10 iterations.
+   Solving ve_stress_xy system ... 10 iterations.
    Solving inclusion system ... 6 iterations.
    Rebuilding Stokes preconditioner...
-   Solving Stokes system... 0+11 iterations.
-      Relative nonlinear residual (Stokes system) after nonlinear iteration 1: 0.0436673
+   Solving Stokes system... 0+12 iterations.
+      Relative nonlinear residual (Stokes system) after nonlinear iteration 1: 0.0374629
 
    Rebuilding Stokes preconditioner...
    Solving Stokes system... 0+12 iterations.
-      Relative nonlinear residual (Stokes system) after nonlinear iteration 2: 0.0107972
+      Relative nonlinear residual (Stokes system) after nonlinear iteration 2: 0.00926309
 
 
    Postprocessing:

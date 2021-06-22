@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2019 by the authors of the ASPECT code.
+  Copyright (C) 2019 - 2020 by the authors of the ASPECT code.
 
   This file is part of ASPECT.
 
@@ -106,13 +106,13 @@ namespace aspect
                              const std::vector<unsigned int> &n_phases_per_composition = std::vector<unsigned int>()) const;
 
           /**
-            * Compute the strain rate and first stress derivative
-            * as a function of stress based on the diffusion creep law.
-            * If @p expected_n_phases_per_composition points to a vector of
-            * unsigned integers this is considered the number of phase transitions
-            * for each compositional field and viscosity will be first computed on
-            * each phase and then averaged for each compositional field.
-            */
+           * Compute the strain rate and first stress derivative as a function
+           * of stress based on the diffusion creep law. If @p
+           * expected_n_phases_per_composition points to a vector of unsigned
+           * integers this is considered the number of phase transitions for
+           * each compositional field and viscosity will be first computed on
+           * each phase and then averaged for each compositional field.
+           */
           std::pair<double, double>
           compute_strain_rate_and_derivative (const double stress,
                                               const double pressure,

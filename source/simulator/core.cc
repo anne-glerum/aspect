@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2011 - 2020 by the authors of the ASPECT code.
+  Copyright (C) 2011 - 2021 by the authors of the ASPECT code.
 
   This file is part of ASPECT.
 
@@ -438,7 +438,11 @@ namespace aspect
 
     // After creating the coarse mesh, initialize mapping cache if one is used
     if (MappingQCache<dim> *map = dynamic_cast<MappingQCache<dim>*>(&(*mapping)))
-      map->initialize(triangulation,MappingQGeneric<dim>(4));
+#if DEAL_II_VERSION_GTE(9,3,0)
+      map->initialize(MappingQGeneric<dim>(4), triangulation);
+#else
+      map->initialize(triangulation, MappingQGeneric<dim>(4));
+#endif
 
     for (const auto &p : parameters.prescribed_traction_boundary_indicators)
       {
@@ -523,7 +527,8 @@ namespace aspect
     particle_world.reset(nullptr);
     // wait if there is a thread that's still writing the statistics
     // object (set from the output_statistics() function)
-    output_statistics_thread.join();
+    if (output_statistics_thread.joinable())
+      output_statistics_thread.join();
 
     // If an exception is being thrown (for example due to AssertThrow()), we
     // might end up here with currently active timing sections. The destructor
@@ -554,6 +559,11 @@ namespace aspect
 
     nonlinear_iteration = 0;
 
+    // Copy particle handler to restore particle location and properties
+    // before repeating a timestep
+    if (particle_world.get() != nullptr)
+      particle_world->backup_particles();
+
     // Re-compute the pressure scaling factor. In some sense, it would be nice
     // if we did this not just once per time step, but once for each solve --
     // i.e., multiple times per time step if we iterate out the nonlinearity
@@ -567,7 +577,7 @@ namespace aspect
     // of constraints because some kinds of constraints require scaling
     // pressure degrees of freedom to a size adjusted by the pressure_scaling
     // factor.
-    compute_pressure_scaling_factor();
+    pressure_scaling = compute_pressure_scaling_factor();
 
     // then interpolate the current boundary velocities. copy constraints
     // into current_constraints and then add to current_constraints
@@ -1646,7 +1656,11 @@ namespace aspect
 
       triangulation.execute_coarsening_and_refinement ();
       if (MappingQCache<dim> *map = dynamic_cast<MappingQCache<dim>*>(&(*mapping)))
-        map->initialize(triangulation,MappingQGeneric<dim>(4));
+#if DEAL_II_VERSION_GTE(9,3,0)
+        map->initialize(MappingQGeneric<dim>(4), triangulation);
+#else
+        map->initialize(triangulation, MappingQGeneric<dim>(4));
+#endif
     } // leave the timed section
 
     setup_dofs ();
@@ -1895,7 +1909,11 @@ namespace aspect
             mesh_refinement_manager.tag_additional_cells ();
             triangulation.execute_coarsening_and_refinement();
             if (MappingQCache<dim> *map = dynamic_cast<MappingQCache<dim>*>(&(*mapping)))
-              map->initialize(triangulation,MappingQGeneric<dim>(4));
+#if DEAL_II_VERSION_GTE(9,3,0)
+              map->initialize(MappingQGeneric<dim>(4), triangulation);
+#else
+              map->initialize(triangulation, MappingQGeneric<dim>(4));
+#endif
           }
 
         setup_dofs();
@@ -1985,16 +2003,19 @@ namespace aspect
           {
             pcout << "Repeating the current time step based on the time stepping manager ..." << std::endl;
 
-            // TODO: We need to make a copy of the particle world and then restore it here.
-            AssertThrow(!this->particle_world,
-                        ExcNotImplemented("Repeating time steps with particles is currently not supported!"));
-
             if (mesh_deformation)
               mesh_deformation->mesh_displacements = mesh_deformation->old_mesh_displacements;
 
             // adjust time and time_step size:
             time = time - time_step + new_time_step_size;
             time_step = new_time_step_size;
+
+            // Restore particles through stored copy of particle handler,
+            // created in start_timestep(),
+            // but only if this timestep is to be repeated.
+            if (particle_world.get() != nullptr)
+              particle_world->restore_particles();
+
             continue; // repeat time step loop
           }
 

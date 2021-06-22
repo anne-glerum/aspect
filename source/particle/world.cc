@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2015 - 2020 by the authors of the ASPECT code.
+  Copyright (C) 2015 - 2021 by the authors of the ASPECT code.
 
   This file is part of ASPECT.
 
@@ -67,6 +67,10 @@ namespace aspect
                                                                       this->get_mapping(),
                                                                       property_manager->get_n_property_components());
 
+      particle_handler_backup.initialize(this->get_triangulation(),
+                                         this->get_mapping(),
+                                         property_manager->get_n_property_components());
+
       auto size_callback_function
       = [&] () -> std::size_t
       {
@@ -92,6 +96,10 @@ namespace aspect
                                                                  store_callback_function,
                                                                  load_callback_function);
 
+      particle_handler_backup.register_additional_store_load_functions(size_callback_function,
+                                                                       store_callback_function,
+                                                                       load_callback_function);
+
       connect_to_signals(this->get_signals());
     }
 
@@ -107,6 +115,15 @@ namespace aspect
     template <int dim>
     const Particles::ParticleHandler<dim> &
     World<dim>::get_particle_handler() const
+    {
+      return *particle_handler.get();
+    }
+
+
+
+    template <int dim>
+    Particles::ParticleHandler<dim> &
+    World<dim>::get_particle_handler()
     {
       return *particle_handler.get();
     }
@@ -130,8 +147,6 @@ namespace aspect
         to_particle_handler.initialize(this->get_triangulation(),
                                        this->get_mapping(),
                                        n_properties);
-
-        connect_particle_handler_signals(this->get_signals(),to_particle_handler);
 
         std::multimap<typename Triangulation<dim>::active_cell_iterator, Particles::Particle<dim> > new_particles;
 
@@ -217,6 +232,8 @@ namespace aspect
       });
 
       connect_particle_handler_signals(signals,*particle_handler);
+      // Particle handler backup will not be stored for checkpointing
+      connect_particle_handler_signals(signals, particle_handler_backup, false);
 
       signals.post_refinement_load_user_data.connect(
         [&] (typename parallel::distributed::Triangulation<dim> &)
@@ -236,7 +253,8 @@ namespace aspect
     template <int dim>
     void
     World<dim>::connect_particle_handler_signals(aspect::SimulatorSignals<dim> &signals,
-                                                 ParticleHandler<dim> &particle_handler_) const
+                                                 ParticleHandler<dim> &particle_handler_,
+                                                 const bool connect_to_checkpoint_signals) const
     {
       signals.pre_refinement_store_user_data.connect(
         [&] (typename parallel::distributed::Triangulation<dim> &)
@@ -250,17 +268,21 @@ namespace aspect
         particle_handler_.register_load_callback_function(false);
       });
 
-      signals.pre_checkpoint_store_user_data.connect(
-        [&] (typename parallel::distributed::Triangulation<dim> &)
-      {
-        particle_handler_.register_store_callback_function();
-      });
+      // Only connect to checkpoint signals if requested
+      if (connect_to_checkpoint_signals)
+        {
+          signals.pre_checkpoint_store_user_data.connect(
+            [&] (typename parallel::distributed::Triangulation<dim> &)
+          {
+            particle_handler_.register_store_callback_function();
+          });
 
-      signals.post_resume_load_user_data.connect(
-        [&] (typename parallel::distributed::Triangulation<dim> &)
-      {
-        particle_handler_.register_load_callback_function(true);
-      });
+          signals.post_resume_load_user_data.connect(
+            [&] (typename parallel::distributed::Triangulation<dim> &)
+          {
+            particle_handler_.register_load_callback_function(true);
+          });
+        }
 
       if (update_ghost_particles &&
           dealii::Utilities::MPI::n_mpi_processes(this->get_mpi_communicator()) > 1)
@@ -378,7 +400,8 @@ namespace aspect
                     while (particle_ids_to_remove.size() < n_particles_to_remove)
                       particle_ids_to_remove.insert(random_number_generator() % n_particles_in_cell);
 
-                    std::list<typename ParticleHandler<dim>::particle_iterator> particles_to_remove;
+                    std::vector<typename ParticleHandler<dim>::particle_iterator> particles_to_remove;
+                    particles_to_remove.reserve(n_particles_to_remove);
 
                     for (const auto id : particle_ids_to_remove)
                       {
@@ -388,10 +411,14 @@ namespace aspect
                         particles_to_remove.push_back(particle_to_remove);
                       }
 
+#if DEAL_II_VERSION_GTE(10,0,0)
+                    particle_handler->remove_particles(particles_to_remove);
+#else
                     for (const auto &particle : particles_to_remove)
                       {
                         particle_handler->remove_particle(particle);
                       }
+#endif
                   }
               }
 
@@ -723,6 +750,8 @@ namespace aspect
                                        this->get_timestep());
     }
 
+
+
     template <int dim>
     void
     World<dim>::setup_initial_state ()
@@ -735,6 +764,8 @@ namespace aspect
       // conditions on the current mesh
       initialize_particles();
     }
+
+
 
     template <int dim>
     void
@@ -756,16 +787,19 @@ namespace aspect
       particle_handler->insert_particles(new_particles);
     }
 
+
+
     template <int dim>
     void
     World<dim>::initialize_particles()
     {
+#if !DEAL_II_VERSION_GTE(10,0,0)
       // Initialize the particle's access to the property_pool. This is necessary
       // even if the Particle do not carry properties, because they need a
       // way to determine the number of properties they carry.
       for (ParticleIterator<dim> particle = particle_handler->begin(); particle!=particle_handler->end(); ++particle)
         particle->set_property_pool(particle_handler->get_property_pool());
-
+#endif
 
       // TODO: Change this loop over all cells to use the WorkStream interface
       if (property_manager->get_n_property_components() > 0)
@@ -774,18 +808,11 @@ namespace aspect
 
           particle_handler->get_property_pool().reserve(2 * particle_handler->n_locally_owned_particles());
 
-          // Loop over all cells and initialize the particles cell-wise
-          for (const auto &cell : this->get_dof_handler().active_cell_iterators())
-            if (cell->is_locally_owned())
-              {
-                typename ParticleHandler<dim>::particle_iterator_range
-                particles_in_cell = particle_handler->particles_in_cell(cell);
 
-                // Only initialize particles, if there are any in this cell
-                if (particles_in_cell.begin() != particles_in_cell.end())
-                  local_initialize_particles(particles_in_cell.begin(),
-                                             particles_in_cell.end());
-              }
+          if (particle_handler->n_locally_owned_particles() > 0)
+            local_initialize_particles(particle_handler->begin(),
+                                       particle_handler->end());
+
           if (update_ghost_particles &&
               dealii::Utilities::MPI::n_mpi_processes(this->get_mpi_communicator()) > 1)
             {
@@ -794,6 +821,8 @@ namespace aspect
             }
         }
     }
+
+
 
     template <int dim>
     void
@@ -820,6 +849,8 @@ namespace aspect
               }
         }
     }
+
+
 
     template <int dim>
     void
@@ -857,6 +888,8 @@ namespace aspect
       }
     }
 
+
+
     template <int dim>
     void
     World<dim>::advance_timestep()
@@ -884,6 +917,8 @@ namespace aspect
         }
     }
 
+
+
     template <int dim>
     void
     World<dim>::save (std::ostringstream &os) const
@@ -892,6 +927,8 @@ namespace aspect
       oa << (*this);
     }
 
+
+
     template <int dim>
     void
     World<dim>::load (std::istringstream &is)
@@ -899,6 +936,8 @@ namespace aspect
       aspect::iarchive ia (is);
       ia >> (*this);
     }
+
+
 
     template <int dim>
     void
@@ -967,6 +1006,7 @@ namespace aspect
       Interpolator::declare_parameters<dim>(prm);
       Property::Manager<dim>::declare_parameters(prm);
     }
+
 
 
     template <int dim>

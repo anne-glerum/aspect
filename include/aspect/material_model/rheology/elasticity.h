@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2019 - 2020 by the authors of the ASPECT code.
+  Copyright (C) 2019 - 2021 by the authors of the ASPECT code.
 
   This file is part of ASPECT.
 
@@ -160,6 +160,15 @@ namespace aspect
            * Double for fixed elastic time step value, read from parameter file
            */
           double fixed_elastic_time_step;
+
+          /**
+           * A stabilization factor for the elastic stresses that influences how
+           * fast elastic stresses adjust to deformation. 1.0 is equivalent to no
+           * stabilization, and infinity is equivalent to not applying elastic
+           * stresses at all. The factor is multiplied with the computational
+           * time step to create a time scale.
+           */
+          double stabilization_time_scale_factor;
       };
     }
   }

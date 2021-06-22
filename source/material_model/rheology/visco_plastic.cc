@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2020 by the authors of the ASPECT code.
+  Copyright (C) 2020 - 2021 by the authors of the ASPECT code.
 
   This file is part of ASPECT.
 
@@ -573,6 +573,8 @@ namespace aspect
         min_visc = prm.get_double ("Minimum viscosity");
         max_visc = prm.get_double ("Maximum viscosity");
         ref_visc = prm.get_double ("Reference viscosity");
+
+        AssertThrow(max_visc >= min_visc, ExcMessage("Maximum viscosity should be larger or equal to the minimum viscosity. "));
 
         viscosity_averaging = MaterialUtilities::parse_compositional_averaging_operation ("Viscosity averaging scheme",
                               prm);

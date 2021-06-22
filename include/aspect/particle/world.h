@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2012 - 2019 by the authors of the ASPECT code.
+ Copyright (C) 2012 - 2021 by the authors of the ASPECT code.
 
  This file is part of ASPECT.
 
@@ -110,6 +110,20 @@ namespace aspect
          */
         const Particles::ParticleHandler<dim> &
         get_particle_handler() const;
+
+        /**
+         * Get the particle handler for this particle world.
+         * There is no get_particles() function in the deal.II
+         * ParticleHandler, so we get and set the positions
+         * of the particles. These getter/setter functions are
+         * not const, and neither are the calling functions,
+         * but the existing get_particle_handler is.
+         * Therefore this non-const function is added.
+         *
+         * @return The particle handler for this world.
+         */
+        Particles::ParticleHandler<dim> &
+        get_particle_handler();
 
         /**
          * Copy the state of particle handler @p from_particle_handler into the
@@ -420,7 +434,8 @@ namespace aspect
          */
         void
         connect_particle_handler_signals(aspect::SimulatorSignals<dim> &signals,
-                                         ParticleHandler<dim> &particle_handler) const;
+                                         ParticleHandler<dim> &particle_handler,
+                                         const bool connect_to_checkpoint_signals = true) const;
     };
 
     /* -------------------------- inline and template functions ---------------------- */

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2011 - 2020 by the authors of the ASPECT code.
+  Copyright (C) 2011 - 2021 by the authors of the ASPECT code.
 
   This file is part of ASPECT.
 
@@ -246,7 +246,12 @@ namespace aspect
                                    "compositing",
                                    "The ``compositing'' Material model selects material model properties from a "
                                    "given set of other material models, and is intended to make mixing different "
-                                   "material models easier."
+                                   "material models easier. This is useful, for example, when wanting to "
+                                   "use the melting parameterization of the ``melt simple'' model (which has "
+                                   "a relatively simple viscosity model that only allows for a "
+                                   "temperature- but not strain rate-dependent viscosity) with a more "
+                                   "realistic viscosity model such as that provided by the "
+                                   "``diffusion dislocation'' model."
                                    "\n\n"
                                    "Specifically, this material model works by allowing to specify "
                                    "the name of another material model for each coefficient that material "

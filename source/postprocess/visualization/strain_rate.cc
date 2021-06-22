@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2011 - 2020 by the authors of the ASPECT code.
+  Copyright (C) 2011 - 2021 by the authors of the ASPECT code.
 
   This file is part of ASPECT.
 
@@ -58,14 +58,7 @@ namespace aspect
               grad_u[d] = input_data.solution_gradients[q][d];
 
             const SymmetricTensor<2,dim> strain_rate = symmetrize (grad_u);
-            const SymmetricTensor<2,dim> deviatoric_strain_rate
-              = (this->get_material_model().is_compressible()
-                 ?
-                 strain_rate - 1./3 * trace(strain_rate) * unit_symmetric_tensor<dim>()
-                 :
-                 strain_rate);
-            computed_quantities[q](0) = std::sqrt(deviatoric_strain_rate *
-                                                  deviatoric_strain_rate);
+            computed_quantities[q](0) = std::sqrt(std::fabs(second_invariant(deviator(strain_rate))));
           }
 
         // average the values if requested

@@ -26,7 +26,14 @@ problems during the installation, please consult our
 problems or specific instructions for MacOS users, before asking your question
 on the mailing list.
 
-
+In short, ASPECT is configured using CMake and has the following requirements:
+- CMake 2.8.12
+- GCC, Clang, or Intel compiler with C++11 support
+- [deal.II](https://github.com/dealii/dealii) 9.2 or newer configured with:
+  - MPI, Trilinos, p4est (required)
+  - BLAS/LAPACK, zlib (strongly recommended)
+  - HDF5 (optional)
+- optional: PerpleX, LIBDAP, NETCDF
 
 Running and extending ASPECT
 ----------------------------
@@ -62,6 +69,7 @@ For more information see:
  - The current [manual](http://www.math.clemson.edu/~heister/manual.pdf)
  - [How to cite ASPECT](https://aspect.geodynamics.org/cite.html)
  - For questions on the source code of ASPECT, portability, installation, new or existing features, etc., use the [ASPECT forum](https://community.geodynamics.org/c/aspect). This forum is where the ASPECT users and developers all hang out. Archived discussions from the inactive aspect-devel mailing list can be downloaded at [aspect-devel archives](http://lists.geodynamics.org/pipermail/aspect-devel).
+ - See the [Future Plan Board](https://github.com/geodynamics/aspect/projects/2) for a high level overview of items in development.
  - ASPECT is primarily based on the deal.II library. If you have particular questions about deal.II, contact the [deal.II discussion groups](https://www.dealii.org/mail.html).
  - In case of more general questions about mantle convection, you can contact the [CIG mantle convection mailing lists](http://lists.geodynamics.org/cgi-bin/mailman/listinfo/cig-MC).
  - ASPECT is being developed by a large, collaborative, and inclusive community. It is currently maintained by the following people:

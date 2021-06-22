@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2015 - 2018 by the authors of the ASPECT code.
+  Copyright (C) 2015 - 2021 by the authors of the ASPECT code.
 
  This file is part of ASPECT.
 
@@ -35,6 +35,17 @@ namespace aspect
         for (unsigned int i = 0; i < this->n_compositional_fields(); i++)
           data.push_back(this->get_initial_composition_manager().initial_composition(position,i));
       }
+
+
+
+      template <int dim>
+      InitializationModeForLateParticles
+      InitialComposition<dim>::late_initialization_mode () const
+      {
+        return interpolate_respect_boundary;
+      }
+
+
 
       template <int dim>
       std::vector<std::pair<std::string, unsigned int> >

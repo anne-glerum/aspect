@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2015 - 2020 by the authors of the ASPECT code.
+  Copyright (C) 2015 - 2021 by the authors of the ASPECT code.
 
  This file is part of ASPECT.
 
@@ -51,7 +51,12 @@ namespace aspect
         const std::vector<double> accumulated_cell_weights = compute_local_accumulated_cell_weights();
 
         // Sum the local integrals over all nodes
-        double local_weight_integral = accumulated_cell_weights.back();
+        double local_weight_integral = (accumulated_cell_weights.size() > 0)
+                                       ?
+                                       accumulated_cell_weights.back()
+                                       :
+                                       0.0;
+
         const double global_weight_integral = Utilities::MPI::sum (local_weight_integral,
                                                                    this->get_mpi_communicator());
 

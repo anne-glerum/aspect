@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2011 - 2020 by the authors of the ASPECT code.
+  Copyright (C) 2011 - 2021 by the authors of the ASPECT code.
 
   This file is part of ASPECT.
 
@@ -27,6 +27,7 @@
 #include <deal.II/base/mpi.h>
 #include <deal.II/grid/grid_tools.h>
 #include <deal.II/distributed/solution_transfer.h>
+#include <deal.II/fe/mapping_q_cache.h>
 
 #ifdef DEAL_II_WITH_ZLIB
 #  include <zlib.h>
@@ -456,6 +457,15 @@ namespace aspect
       {
         AssertThrow(false, ExcMessage("Cannot open snapshot mesh file or read the triangulation stored there."));
       }
+
+    // if using a cached mapping, update the cache with the new triangulation
+    if (MappingQCache<dim> *map = dynamic_cast<MappingQCache<dim>*>(&(*mapping)))
+#if DEAL_II_VERSION_GTE(9,3,0)
+      map->initialize(MappingQGeneric<dim>(4), triangulation);
+#else
+      map->initialize(triangulation, MappingQGeneric<dim>(4));
+#endif
+
     setup_dofs();
     global_volume = GridTools::volume (triangulation, *mapping);
 

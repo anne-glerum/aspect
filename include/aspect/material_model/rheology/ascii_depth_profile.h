@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2020 by the authors of the ASPECT code.
+  Copyright (C) 2020 - 2021 by the authors of the ASPECT code.
 
   This file is part of ASPECT.
 
@@ -62,8 +62,8 @@ namespace aspect
           using Utilities::AsciiDataProfile<dim>::initialize;
 
           /**
-          * Return the viscosity at a given point of the domain.
-          */
+           * Return the viscosity at a given point of the domain.
+           */
           double compute_viscosity (const double depth) const;
 
           /**

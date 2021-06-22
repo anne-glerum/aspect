@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2019 - 2020 by the authors of the ASPECT code.
+  Copyright (C) 2019 - 2021 by the authors of the ASPECT code.
 
   This file is part of ASPECT.
 
@@ -271,12 +271,17 @@ namespace aspect
                          Parameters<dim>::NonlinearSolver::single_Advection_iterated_Stokes
                          ||
                          this->get_parameters().nonlinear_solver ==
-                         Parameters<dim>::NonlinearSolver::single_Advection_iterated_Newton_Stokes),
+                         Parameters<dim>::NonlinearSolver::single_Advection_iterated_Newton_Stokes
+                         ||
+                         this->get_parameters().nonlinear_solver ==
+                         Parameters<dim>::NonlinearSolver::single_Advection_iterated_defect_correction_Stokes),
                         ExcMessage("The material model will only work with the nonlinear "
                                    "solver schemes 'single Advection, single Stokes', "
-                                   "'single Advection, iterated Stokes', and "
-                                   "'single Advection, iterated_Newton_Stokes' when strain "
-                                   "weakening is enabled."));
+                                   "'single Advection, iterated Stokes', "
+                                   "'single Advection, iterated Newton Stokes', and "
+                                   "'single Advection, iterated defect correction Stokes' "
+                                   "when strain weakening is enabled, because more than one nonlinear "
+                                   "advection iteration will result in the incorrect value of strain."));
           }
 
 

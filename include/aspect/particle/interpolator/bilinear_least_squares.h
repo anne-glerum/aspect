@@ -1,5 +1,5 @@
 /*
- Copyright (C) 2017 - 2019 by the authors of the ASPECT code.
+ Copyright (C) 2017 - 2021 by the authors of the ASPECT code.
 
  This file is part of ASPECT.
 
@@ -23,6 +23,8 @@
 
 #include <aspect/particle/interpolator/interface.h>
 #include <aspect/simulator_access.h>
+
+#include <aspect/particle/interpolator/nearest_neighbor.h>
 
 namespace aspect
 {
@@ -80,6 +82,12 @@ namespace aspect
            */
           std::vector<double> global_maximum_particle_properties;
           std::vector<double> global_minimum_particle_properties;
+
+          /**
+           * Fallback method if there are too few particles in a cell to
+           * perform a bilinear least squares interpolation.
+           */
+          Interpolator::NearestNeighbor<dim> fallback_interpolator;
       };
     }
   }

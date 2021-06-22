@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2015 - 2019 by the authors of the ASPECT code.
+  Copyright (C) 2015 - 2021 by the authors of the ASPECT code.
 
   This file is part of ASPECT.
 
@@ -43,6 +43,7 @@ namespace aspect
        * 2\eta (\varepsilon(\mathbf u) - \frac 13 (\nabla \cdot \mathbf u)
        * \mathbf I) + pI$.  The second term in the parentheses is zero if the
        * model is incompressible.
+       * If elasticity is used, the elastic contribution is being accounted for.
        *
        * The member functions are all implementations of those declared in the
        * base class. See there for their meaning.

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2011 - 2020 by the authors of the ASPECT code.
+  Copyright (C) 2011 - 2021 by the authors of the ASPECT code.
 
   This file is part of ASPECT.
 
@@ -28,6 +28,8 @@
 #include <deal.II/base/revision.h>
 #include <csignal>
 #include <string>
+#include <thread>
+#include <chrono>
 
 #ifdef DEBUG
 #ifdef ASPECT_USE_FP_EXCEPTIONS
@@ -861,6 +863,11 @@ int main (int argc, char *argv[])
       // root when we already know that processor 0 will generate
       // an exception. We do this to avoid creating too much
       // (duplicate) screen output.
+
+      // Sleep a few seconds before aborting. This allows text output from
+      // other ranks to be printed before the MPI implementation might kill
+      // the computation.
+      std::this_thread::sleep_for(std::chrono::seconds(5));
       return 1;
     }
   catch (...)

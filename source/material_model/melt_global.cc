@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2015 - 2020 by the authors of the ASPECT code.
+  Copyright (C) 2015 - 2021 by the authors of the ASPECT code.
 
   This file is part of ASPECT.
 
@@ -117,7 +117,11 @@ namespace aspect
           && this->get_timestep_number() > 0 && !this->get_parameters().use_operator_splitting)
         {
           // Prepare the field function
+#if DEAL_II_VERSION_GTE(10,0,0)
+          Functions::FEFieldFunction<dim, LinearAlgebra::BlockVector>
+#else
           Functions::FEFieldFunction<dim, DoFHandler<dim>, LinearAlgebra::BlockVector>
+#endif
           fe_value(this->get_dof_handler(), this->get_old_solution(), this->get_mapping());
 
           const unsigned int porosity_idx = this->introspection().compositional_index_for_name("porosity");

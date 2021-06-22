@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2018 - 2020 by the authors of the ASPECT code.
+  Copyright (C) 2018 - 2021 by the authors of the ASPECT code.
 
   This file is part of ASPECT.
 
@@ -721,10 +721,18 @@ namespace aspect
 
         velocity.reinit (cell);
         velocity.read_dof_values (src.block(0));
+#if DEAL_II_VERSION_GTE(9,3,0)
+        velocity.evaluate (EvaluationFlags::gradients);
+#else
         velocity.evaluate (false,true,false);
+#endif
         pressure.reinit (cell);
         pressure.read_dof_values (src.block(1));
+#if DEAL_II_VERSION_GTE(9,3,0)
+        pressure.evaluate (EvaluationFlags::values);
+#else
         pressure.evaluate (true,false,false);
+#endif
 
         for (unsigned int q=0; q<velocity.n_q_points; ++q)
           {
@@ -750,9 +758,17 @@ namespace aspect
             velocity.submit_symmetric_gradient(sym_grad_u, q);
           }
 
+#if DEAL_II_VERSION_GTE(9,3,0)
+        velocity.integrate (EvaluationFlags::gradients);
+#else
         velocity.integrate (false,true);
+#endif
         velocity.distribute_local_to_global (dst.block(0));
+#if DEAL_II_VERSION_GTE(9,3,0)
+        pressure.integrate (EvaluationFlags::values);
+#else
         pressure.integrate (true,false);
+#endif
         pressure.distribute_local_to_global (dst.block(1));
       }
   }
@@ -825,7 +841,11 @@ namespace aspect
 
         pressure.reinit (cell);
         pressure.read_dof_values(src);
-        pressure.evaluate (true, false);
+#if DEAL_II_VERSION_GTE(9,3,0)
+        pressure.evaluate (EvaluationFlags::values);
+#else
+        pressure.evaluate (true,false);
+#endif
         for (unsigned int q=0; q<pressure.n_q_points; ++q)
           {
             // Only update the viscosity if a Q1 projection is used.
@@ -846,7 +866,11 @@ namespace aspect
             pressure.submit_value(one_over_viscosity*
                                   pressure.get_value(q),q);
           }
-        pressure.integrate (true, false);
+#if DEAL_II_VERSION_GTE(9,3,0)
+        pressure.integrate (EvaluationFlags::values);
+#else
+        pressure.integrate (true,false);
+#endif
         pressure.distribute_local_to_global (dst);
       }
   }
@@ -885,16 +909,21 @@ namespace aspect
 
     this->set_constrained_entries_to_one(diagonal);
     inverse_diagonal = diagonal;
-    const unsigned int local_size = inverse_diagonal.local_size();
-    for (unsigned int i=0; i<local_size; ++i)
+
+    // Finally loop over all of the computed diagonal elements and invert them.
+    // The following loop relies on the fact that inverse_diagonal.begin()/end()
+    // iterates only over the *locally owned* elements of the vector in which
+    // we store inverse_diagonal.
+    for (auto &local_element : inverse_diagonal)
       {
-        Assert(inverse_diagonal.local_element(i) > 0.,
+        Assert(local_element > 0.,
                ExcMessage("No diagonal entry in a positive definite operator "
-                          "should be zero"));
-        inverse_diagonal.local_element(i)
-          =1./inverse_diagonal.local_element(i);
+                          "should be zero or negative."));
+        local_element = 1./local_element;
       }
   }
+
+
 
   template <int dim, int degree_p, typename number>
   void
@@ -905,6 +934,8 @@ namespace aspect
                             const std::pair<unsigned int,unsigned int>       &cell_range) const
   {
     FEEvaluation<dim,degree_p,degree_p+2,1,number> pressure (data, 0);
+
+    AlignedVector<VectorizedArray<number> > diagonal(pressure.dofs_per_cell);
 
     const bool use_viscosity_at_quadrature_points
       = (viscosity->size(1) == pressure.n_q_points);
@@ -926,14 +957,17 @@ namespace aspect
           one_over_viscosity[c] = pressure_scaling*pressure_scaling/one_over_viscosity[c];
 
         pressure.reinit (cell);
-        AlignedVector<VectorizedArray<number> > diagonal(pressure.dofs_per_cell);
         for (unsigned int i=0; i<pressure.dofs_per_cell; ++i)
           {
             for (unsigned int j=0; j<pressure.dofs_per_cell; ++j)
               pressure.begin_dof_values()[j] = VectorizedArray<number>();
             pressure.begin_dof_values()[i] = make_vectorized_array<number> (1.);
 
+#if DEAL_II_VERSION_GTE(9,3,0)
+            pressure.evaluate (EvaluationFlags::values);
+#else
             pressure.evaluate (true,false,false);
+#endif
             for (unsigned int q=0; q<pressure.n_q_points; ++q)
               {
                 // Only update the viscosity if a Q1 projection is used.
@@ -954,7 +988,11 @@ namespace aspect
                 pressure.submit_value(one_over_viscosity*
                                       pressure.get_value(q),q);
               }
+#if DEAL_II_VERSION_GTE(9,3,0)
+            pressure.integrate (EvaluationFlags::values);
+#else
             pressure.integrate (true,false);
+#endif
 
             diagonal[i] = pressure.begin_dof_values()[i];
           }
@@ -965,6 +1003,8 @@ namespace aspect
       }
   }
 
+
+
   /**
    * Velocity block operator
    */
@@ -974,6 +1014,8 @@ namespace aspect
     MatrixFreeOperators::Base<dim, dealii::LinearAlgebra::distributed::Vector<number> >()
   {}
 
+
+
   template <int dim, int degree_v, typename number>
   void
   MatrixFreeStokesOperators::ABlockOperator<dim,degree_v,number>::clear ()
@@ -981,6 +1023,8 @@ namespace aspect
     viscosity = nullptr;
     MatrixFreeOperators::Base<dim,dealii::LinearAlgebra::distributed::Vector<number> >::clear();
   }
+
+
 
   template <int dim, int degree_v, typename number>
   void
@@ -991,6 +1035,8 @@ namespace aspect
     viscosity = &viscosity_table;
     this->is_compressible = is_compressible;
   }
+
+
 
   template <int dim, int degree_v, typename number>
   void
@@ -1011,7 +1057,11 @@ namespace aspect
 
         velocity.reinit (cell);
         velocity.read_dof_values(src);
-        velocity.evaluate (false, true, false);
+#if DEAL_II_VERSION_GTE(9,3,0)
+        velocity.evaluate (EvaluationFlags::gradients);
+#else
+        velocity.evaluate (false,true,false);
+#endif
         for (unsigned int q=0; q<velocity.n_q_points; ++q)
           {
             // Only update the viscosity if a Q1 projection is used.
@@ -1030,10 +1080,16 @@ namespace aspect
               }
             velocity.submit_symmetric_gradient(sym_grad_u, q);
           }
-        velocity.integrate (false, true);
+#if DEAL_II_VERSION_GTE(9,3,0)
+        velocity.integrate (EvaluationFlags::gradients);
+#else
+        velocity.integrate (false,true);
+#endif
         velocity.distribute_local_to_global (dst);
       }
   }
+
+
 
   template <int dim, int degree_v, typename number>
   void
@@ -1044,6 +1100,8 @@ namespace aspect
     MatrixFreeOperators::Base<dim,dealii::LinearAlgebra::distributed::Vector<number> >::
     data->cell_loop(&ABlockOperator::local_apply, this, dst, src);
   }
+
+
 
   template <int dim, int degree_v, typename number>
   void
@@ -1061,15 +1119,20 @@ namespace aspect
 
     this->set_constrained_entries_to_one(inverse_diagonal);
 
-    for (unsigned int i=0; i<inverse_diagonal.local_size(); ++i)
+    // Finally loop over all of the computed diagonal elements and invert them.
+    // The following loop relies on the fact that inverse_diagonal.begin()/end()
+    // iterates only over the *locally owned* elements of the vector in which
+    // we store inverse_diagonal.
+    for (auto &local_element : inverse_diagonal)
       {
-        Assert(inverse_diagonal.local_element(i) > 0.,
+        Assert(local_element > 0.,
                ExcMessage("No diagonal entry in a positive definite operator "
-                          "should be zero"));
-        inverse_diagonal.local_element(i) =
-          1./inverse_diagonal.local_element(i);
+                          "should be zero or negative."));
+        local_element = 1./local_element;
       }
   }
+
+
 
   template <int dim, int degree_v, typename number>
   void
@@ -1084,19 +1147,24 @@ namespace aspect
     const bool use_viscosity_at_quadrature_points
       = (viscosity->size(1) == velocity.n_q_points);
 
+    AlignedVector<VectorizedArray<number> > diagonal(velocity.dofs_per_cell);
+
     for (unsigned int cell=cell_range.first; cell<cell_range.second; ++cell)
       {
         VectorizedArray<number> viscosity_x_2 = 2.0*(*viscosity)(cell, 0);
 
         velocity.reinit (cell);
-        AlignedVector<VectorizedArray<number> > diagonal(velocity.dofs_per_cell);
         for (unsigned int i=0; i<velocity.dofs_per_cell; ++i)
           {
             for (unsigned int j=0; j<velocity.dofs_per_cell; ++j)
               velocity.begin_dof_values()[j] = VectorizedArray<number>();
             velocity.begin_dof_values()[i] = make_vectorized_array<number> (1.);
 
+#if DEAL_II_VERSION_GTE(9,3,0)
+            velocity.evaluate (EvaluationFlags::gradients);
+#else
             velocity.evaluate (false,true,false);
+#endif
             for (unsigned int q=0; q<velocity.n_q_points; ++q)
               {
                 // Only update the viscosity if a Q1 projection is used.
@@ -1117,7 +1185,11 @@ namespace aspect
 
                 velocity.submit_symmetric_gradient(sym_grad_u, q);
               }
+#if DEAL_II_VERSION_GTE(9,3,0)
+            velocity.integrate (EvaluationFlags::gradients);
+#else
             velocity.integrate (false,true);
+#endif
 
             diagonal[i] = velocity.begin_dof_values()[i];
           }
@@ -1145,13 +1217,16 @@ namespace aspect
 
     this->set_constrained_entries_to_one(inverse_diagonal);
 
-    for (unsigned int i=0; i<inverse_diagonal.local_size(); ++i)
+    // Finally loop over all of the computed diagonal elements and invert them.
+    // The following loop relies on the fact that inverse_diagonal.begin()/end()
+    // iterates only over the *locally owned* elements of the vector in which
+    // we store inverse_diagonal.
+    for (auto &local_element : inverse_diagonal)
       {
-        Assert(inverse_diagonal.local_element(i) > 0.,
+        Assert(local_element > 0.,
                ExcMessage("No diagonal entry in a positive definite operator "
-                          "should be zero"));
-        inverse_diagonal.local_element(i) =
-          1./inverse_diagonal.local_element(i);
+                          "should be zero or negative."));
+        local_element = 1./local_element;
       }
   }
 
@@ -1549,10 +1624,19 @@ namespace aspect
         // with the zero boundary used by the stokes_matrix operator.
         velocity.reinit (cell);
         velocity.read_dof_values_plain (u0.block(0));
+#if DEAL_II_VERSION_GTE(9,3,0)
+        velocity.evaluate (EvaluationFlags::gradients);
+#else
         velocity.evaluate (false,true,false);
+#endif
+
         pressure.reinit (cell);
         pressure.read_dof_values_plain (u0.block(1));
+#if DEAL_II_VERSION_GTE(9,3,0)
+        pressure.evaluate (EvaluationFlags::values);
+#else
         pressure.evaluate (true,false,false);
+#endif
 
         for (unsigned int q=0; q<velocity.n_q_points; ++q)
           {
@@ -1578,9 +1662,17 @@ namespace aspect
             velocity.submit_symmetric_gradient(-1.0*sym_grad_u, q);
           }
 
+#if DEAL_II_VERSION_GTE(9,3,0)
+        velocity.integrate (EvaluationFlags::gradients);
+#else
         velocity.integrate (false,true);
+#endif
         velocity.distribute_local_to_global (rhs_correction.block(0));
+#if DEAL_II_VERSION_GTE(9,3,0)
+        pressure.integrate (EvaluationFlags::values);
+#else
         pressure.integrate (true,false);
+#endif
         pressure.distribute_local_to_global (rhs_correction.block(1));
       }
     rhs_correction.compress(VectorOperation::add);

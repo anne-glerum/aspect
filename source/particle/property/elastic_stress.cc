@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2015 - 2020 by the authors of the ASPECT code.
+  Copyright (C) 2015 - 2021 by the authors of the ASPECT code.
 
  This file is part of ASPECT.
 
@@ -64,23 +64,23 @@ namespace aspect
                                                            std::vector<double> &data) const
       {
         // Give each elastic stress field its initial composition if one is prescribed.
-        data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("stress_xx")));
+        data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_xx")));
 
-        data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("stress_yy")));
+        data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_yy")));
 
         if (dim == 2)
           {
-            data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("stress_xy")));
+            data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_xy")));
           }
         else if (dim == 3)
           {
-            data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("stress_zz")));
+            data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_zz")));
 
-            data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("stress_xy")));
+            data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_xy")));
 
-            data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("stress_xz")));
+            data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_xz")));
 
-            data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("stress_yz")));
+            data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_yz")));
           }
 
       }
@@ -96,9 +96,13 @@ namespace aspect
       {
         material_inputs.position[0] = particle->get_location();
 
+#if DEAL_II_VERSION_GTE(10,0,0)
+        material_inputs.current_cell = typename DoFHandler<dim>::active_cell_iterator(*particle->get_surrounding_cell(),
+                                                                                      &(this->get_dof_handler()));
+#else
         material_inputs.current_cell = typename DoFHandler<dim>::active_cell_iterator(*particle->get_surrounding_cell(this->get_triangulation()),
                                                                                       &(this->get_dof_handler()));
-
+#endif
         material_inputs.temperature[0] = solution[this->introspection().component_indices.temperature];
 
         material_inputs.pressure[0] = solution[this->introspection().component_indices.pressure];
@@ -147,30 +151,30 @@ namespace aspect
         std::vector<std::pair<std::string,unsigned int> > property_information;
 
         //Check which fields are used in model and make an output for each.
-        if (this->introspection().compositional_name_exists("stress_xx"))
-          property_information.emplace_back("stress_xx",1);
+        if (this->introspection().compositional_name_exists("ve_stress_xx"))
+          property_information.emplace_back("ve_stress_xx",1);
 
-        if (this->introspection().compositional_name_exists("stress_yy"))
-          property_information.emplace_back("stress_yy",1);
+        if (this->introspection().compositional_name_exists("ve_stress_yy"))
+          property_information.emplace_back("ve_stress_yy",1);
 
         if (dim == 2)
           {
-            if (this->introspection().compositional_name_exists("stress_xy"))
-              property_information.emplace_back("stress_xy",1);
+            if (this->introspection().compositional_name_exists("ve_stress_xy"))
+              property_information.emplace_back("ve_stress_xy",1);
           }
         else if (dim == 3)
           {
-            if (this->introspection().compositional_name_exists("stress_zz"))
-              property_information.emplace_back("stress_zz",1);
+            if (this->introspection().compositional_name_exists("ve_stress_zz"))
+              property_information.emplace_back("ve_stress_zz",1);
 
-            if (this->introspection().compositional_name_exists("stress_xy"))
-              property_information.emplace_back("stress_xy",1);
+            if (this->introspection().compositional_name_exists("ve_stress_xy"))
+              property_information.emplace_back("ve_stress_xy",1);
 
-            if (this->introspection().compositional_name_exists("stress_xz"))
-              property_information.emplace_back("stress_xz",1);
+            if (this->introspection().compositional_name_exists("ve_stress_xz"))
+              property_information.emplace_back("ve_stress_xz",1);
 
-            if (this->introspection().compositional_name_exists("stress_yz"))
-              property_information.emplace_back("stress_yz",1);
+            if (this->introspection().compositional_name_exists("ve_stress_yz"))
+              property_information.emplace_back("ve_stress_yz",1);
           }
 
         return property_information;
