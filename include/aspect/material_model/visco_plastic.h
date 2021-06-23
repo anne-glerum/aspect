@@ -274,8 +274,7 @@ namespace aspect
         * \cite{lapusta_three-dimensional_2009} and \cite{herrendorfer_invariant_2018}
          */
         std::pair<double,double>
-        compute_delta_theta_max (const std::vector<double> &composition,
-                                 const Point<dim> &position,
+        compute_delta_theta_max (const Point<dim> &position,
                                  const double delta_x,
                                  const double pressure) const;
 

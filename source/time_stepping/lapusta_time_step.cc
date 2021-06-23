@@ -59,6 +59,7 @@ namespace aspect
                                                    this->introspection().n_compositional_fields);
 
       // The Lapusta adaptive time stepping is based on four individual minimum time step criteria
+      // ToDo: make them into a vector that can be used in other parts again, e.g. for the statistics file
       double min_state_weakening_time_step =  std::numeric_limits<double>::max();
       double min_healing_time_step =  std::numeric_limits<double>::max();
       double min_displacement_time_step =  std::numeric_limits<double>::max();
@@ -90,7 +91,6 @@ namespace aspect
                       const double local_velocity = velocity_values[q].norm();
 
                       std::pair<double,double> delta_theta_max_and_critical_slip_distance = viscoplastic.compute_delta_theta_max(
-                                                                                              in.composition[q],
                                                                                               in.position[q],
                                                                                               delta_x,
                                                                                               in.pressure[q]);
@@ -120,7 +120,7 @@ namespace aspect
 
               // minimum displacement time step: Delta t_d = Delta d_max * min(|Delta x/v_x|,|Delta x/v_y|),
               // with Delta d_max = 1e-3 in Herrendörfer et al. 2018
-              // here, the term  min(|Delta x/v_x|,|Delta x/v_y|) is simplified to min Delta x / max_local_velocity
+              // here, the term  min(|Delta x/v_x|,|Delta x/v_y|) is simplified to min(|Delta x / max_local_velocity|)
               // ToDo: check how different the min displacement timestep is from the convection timestep. Do
               // we need them both? Should it also be constraint to within the fault or used everywhere?
               min_displacement_time_step = std::min (min_displacement_time_step,
@@ -134,7 +134,6 @@ namespace aspect
       // TODO: is there a more elegant way to take the minimum of four values?
       // Annes answer: Instead of having 4 doubles, you could have a vector timestep of 4 doubles.
       // Then you could do min_lapusta_timestep = *std::min_element(timestep.begin(), timestep.end());
-      // At the moment I prefer the doubles though, because then it is easier to see which component is which timestep
       min_lapusta_timestep = std::min (min_state_weakening_time_step,
                                        std::min (min_healing_time_step,
                                                  std::min (min_displacement_time_step,
@@ -159,7 +158,7 @@ namespace aspect
                               "Please check for non-positive material properties."));
 
       // Print lapusta timestep lengths
-      // ToDo only print this once and not for all processors! Or better print it once within the statistics file
+      // ToDo: only print this once and not for all processors! Or better print it once within the statistics file
       const char *unit = ( SimulatorAccess<dim>::convert_output_to_years() ? "years" : "seconds");
       const double multiplier = ( SimulatorAccess<dim>::convert_output_to_years() ? 1./year_in_seconds : 1.0);
       std::cout << "   Lapusta timestep length determined for next timestep: " ;

@@ -400,7 +400,7 @@ namespace aspect
     }
 
 
-
+    // ToDo: remove this function and parameter, once the theta issue is solved
     template <int dim>
     bool
     ViscoPlastic<dim>::
@@ -439,8 +439,7 @@ namespace aspect
     template <int dim>
     std::pair<double,double>
     ViscoPlastic<dim>::
-    compute_delta_theta_max (const std::vector<double> &composition,
-                             const Point<dim> &position,
+    compute_delta_theta_max (const Point<dim> &position,
                              const double delta_x,
                              const double pressure) const
     {
@@ -452,43 +451,36 @@ namespace aspect
       // TODO: get the actual Poissons ration if at some point compressibility is possible
       const std::vector<double> elastic_shear_moduli = rheology->elastic_rheology.get_elastic_shear_moduli();
 
-      double delta_theta_max_tot = 0;
-      double critical_slip_distance_tot = 0;
-      const std::vector<double> volume_fractions = MaterialUtilities::compute_composition_fractions(composition, rheology->get_volumetric_composition_mask());
+      // fault composition index + 1 gives the index for vectors over volume fractions, hence including background
+      // compute delta_theta_max for for the fault material only, as the others are not RSF materials
+      const int j = rheology->friction_options.fault_composition_index + 1;
 
-      for (unsigned int j=0; j < volume_fractions.size(); ++j)
-        {
-          const double G_star = elastic_shear_moduli[j]/(1-nu);
-          const double k_param = 2 / numbers::PI * G_star / delta_x;
+      const double G_star = elastic_shear_moduli[j]/(1-nu);
+      const double k_param = 2 / numbers::PI * G_star / delta_x;
+      const double RSF_parameter_a = rheology->friction_options.calculate_depth_dependent_a_and_b(position,j).first;
+      const double RSF_parameter_b = rheology->friction_options.calculate_depth_dependent_a_and_b(position,j).second;
+      const double critical_slip_distance = rheology->friction_options.get_critical_slip_distance(position, j);
+      const double kLaP = (k_param * critical_slip_distance) / (RSF_parameter_a * pressure);
+      const double xi = 0.25 * std::pow((kLaP - (RSF_parameter_b - RSF_parameter_a) / RSF_parameter_a),2) - kLaP;
+      double delta_theta_max = 0;
+      if (xi > 0)
+        delta_theta_max += std::min(((RSF_parameter_a * pressure)
+                                    / (k_param * critical_slip_distance - (RSF_parameter_b - RSF_parameter_a)
+                                       * pressure)), 0.2);
+      else
+        delta_theta_max += std::min((1 - ((RSF_parameter_b - RSF_parameter_a) * pressure)
+                                    / (k_param * critical_slip_distance)), 0.2);
 
-          // compute delta_theta_max for each volume fraction
-          const double RSF_parameter_a = rheology->friction_options.calculate_depth_dependent_a_and_b(position,j).first;
-          const double RSF_parameter_b = rheology->friction_options.calculate_depth_dependent_a_and_b(position,j).second;
-          const double critical_slip_distance = rheology->friction_options.get_critical_slip_distance(position, j);
-          const double kLaP = (k_param * critical_slip_distance) / (RSF_parameter_a * pressure);
-          const double xi = 0.25 * std::pow((kLaP - (RSF_parameter_b - RSF_parameter_a) / RSF_parameter_a),2) - kLaP;
-          double delta_theta_max = 0;
-          if (xi > 0)
-            delta_theta_max = std::min(((RSF_parameter_a * pressure)
-                                        / (k_param * critical_slip_distance - (RSF_parameter_b - RSF_parameter_a)
-                                           * pressure)), 0.2);
-          else
-            delta_theta_max = std::min((1 - ((RSF_parameter_b - RSF_parameter_a) * pressure)
-                                        / (k_param * critical_slip_distance)), 0.2);
-
-          delta_theta_max_tot +=  volume_fractions[j] * delta_theta_max;
-          critical_slip_distance_tot += volume_fractions[j] * critical_slip_distance;
-        }
       // 0 is the initializing value for delta_theta_max, but will lead to problems later on when
       // determining time step size. nan or inf are also possible values, e.g. in case of RSF_parameter_a = 0.
       // A negative delta_theta_max would lead to a negative time step size and also does not make sense.
-      // According to Herrendoerfer 2018 delta_theta_max is not allowed > 0.2, so this velue is used if the rest
+      // According to Herrendoerfer 2018 delta_theta_max is not allowed > 0.2, so this value is used if the rest
       // gives non-sense.
-      if ((delta_theta_max_tot <= 0) || std::isinf(delta_theta_max_tot) || numbers::is_nan(delta_theta_max_tot))
-        delta_theta_max_tot = 0.2;
+      if ((delta_theta_max <= 0) || std::isinf(delta_theta_max) || numbers::is_nan(delta_theta_max))
+        delta_theta_max = 0.2;
 
-      return std::pair<double,double>(delta_theta_max_tot,
-                                      critical_slip_distance_tot);
+      return std::pair<double,double>(delta_theta_max,
+                                      critical_slip_distance);
     }
 
 
@@ -498,16 +490,18 @@ namespace aspect
     ViscoPlastic<dim>::
     compute_min_healing_time_step (const std::vector<double> &composition) const
     {
+      // read theta value and make sure it is positive
       double min_healing_time_step = 0.2 * std::max(1e-50,composition[rheology->friction_options.theta_composition_index]);
       AssertThrow((std::isinf( min_healing_time_step) || numbers::is_nan( min_healing_time_step)) == false, ExcMessage(
                     " min_healing_time_step needed for the Lapusta time stepping becomes nan or inf. Please "
                     "check all your friction parameters. In case of "
                     "rate-and-state like friction, don't forget to check on a,b, and the critical slip distance, or theta."));
-      // ToDo: this time step somehow becomes negative, because theta still becomes negative. So in this case either I make it
+      // ToDo: this time step somehow becomes negative, because theta still becomes negative or because of some other reason. 
+      // So in this case either I make it
       // very large so it does no harm or dont do that, but have an asserthrow because this would remind us that its still a problem?
-      /*AssertThrow(composition[rheology->friction_options.theta_composition_index]<=0, ExcMessage(
+      AssertThrow(composition[rheology->friction_options.theta_composition_index]>0, ExcMessage(
                     " min_healing_time_step needed for the Lapusta time stepping becomes negative, because theta is negative. "
-                    "Theta is: " + Utilities::to_string(composition[rheology->friction_options.theta_composition_index])));*/
+                    "Theta is: " + Utilities::to_string(composition[rheology->friction_options.theta_composition_index])));
       if (min_healing_time_step <= 1e-50)
         min_healing_time_step =  std::numeric_limits<double>::max();
       return min_healing_time_step;

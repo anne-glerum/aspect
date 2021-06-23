@@ -77,21 +77,21 @@ namespace aspect
                     ExcMessage("Particle property theta for RSF only works if"
                                "there is a compositional particle field called fault."));
         const unsigned int initial_fault_idx = this->introspection().compositional_index_for_name("fault");
-        //const double initial_fault_value = material_inputs.composition[0][initial_fault_idx]; // is it correct to have [0]? that is how it is used below...
-        // This way it also works, but asks for solution again...
         const double initial_fault_value = solution[this->introspection().component_indices.compositional_fields[initial_fault_idx]];
 
-        // only update theta if we are after the zero timestep, as currently we
+        // only update theta if we are after time step 0, as currently we
         // do not have information about strain rate before updating the particle
         // it also only makes sense to update theta within the rate-and-state material, which currently must be called fault.
         if ((this->get_timestep_number() > 0)
-           && (initial_fault_value > 0.5))
+            && (initial_fault_value > 0.5))
           {
             material_inputs.position[0] = particle->get_location();
 
             material_inputs.current_cell = typename DoFHandler<dim>::active_cell_iterator(*particle->get_surrounding_cell(this->get_triangulation()),
                                                                                           &(this->get_dof_handler()));
 
+            // ToDo: Do I need to set temperature and pressure? THis is something that I copied from
+            // the particle property elastic_stress, where it is set, but also not (visibly) used.
             material_inputs.temperature[0] = solution[this->introspection().component_indices.temperature];
 
             material_inputs.pressure[0] = solution[this->introspection().component_indices.pressure];
@@ -111,7 +111,9 @@ namespace aspect
             this->get_material_model().evaluate (material_inputs,material_outputs);
             // ToDo(?): should I directly call compute_theta instead of using the reaction terms?
             // Then I could use the old particle value directly as old theta without any averaging etc in  between
-            // The tricky pat would however be to get all the necessary parameters to compute edot_ii
+            // The tricky part would however be to get all the necessary parameters to compute edot_ii
+            // TOdo: How dooes it work with the reaction terms and particles? Are the reaction terms computed for the element or for each particle? 
+            // Might make quite a difference here!
             particle->get_properties()[data_position] += material_outputs.reaction_terms[0][this->introspection().compositional_index_for_name("theta")];
 
             // ToDo: find the problem with theta becoming negative/Zero and remove the next three lines and {}
@@ -133,6 +135,9 @@ namespace aspect
                    std::cout << "got a positive current theta on the particle" << std::endl;*/
               }
 
+            // if theta got negative for whatever reason, set a positive value instead
+            // ToDo: find out why this happens at all. Or more precisely: Why that explicitly positive value
+            // can become negative once I read it in again in the next time step
             if (particle->get_properties()[data_position] < 1e-50)
               particle->get_properties()[data_position] = 1e-50;
           }
