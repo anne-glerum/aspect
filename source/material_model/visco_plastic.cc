@@ -411,6 +411,12 @@ namespace aspect
 
 
 
+    // ToDo: Currently I cannot find that this function is used anyway.
+    // I think I created it, to be able to compute theta directly on the
+    // particle, but then it was so difficult to get all the ingredients
+    // for edot_ii that I used the reaction_terms instead. However, this
+    // function would make it more transparent / correct maybe?
+    // If not useful: remove it!
     template <int dim>
     double
     ViscoPlastic<dim>::

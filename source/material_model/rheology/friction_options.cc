@@ -64,12 +64,6 @@ namespace aspect
     FrictionAdditionalOutputs<dim>::get_nth_output(const unsigned int idx) const
     {
       (void)idx; // suppress warning in release mode
-      /*
-      TODO:
-      I copied this from elasticity.cc. However I get this warning during 'make':
-      /home/hecken/code/aspect/source/material_model/rheology/friction_options.cc: In member function ‘std::vector<double, std::allocator<double> > aspect::MaterialModel::FrictionAdditionalOutputs<dim>::get_nth_output(unsigned int) const [with int dim = 3]’:
-      /home/hecken/code/aspect/source/material_model/rheology/friction_options.cc:82:5: warning: control reaches end of non-void function [-Wreturn-type]
-      */
       AssertIndexRange (idx, 4);
       switch (idx)
         {
@@ -149,7 +143,7 @@ namespace aspect
                 }
               break;
             }
-            // default is for case rate_and_state_dependent_friction with the other rate-and-state variations as if statements
+            // default is for case rate_and_state_dependent_friction with the other rate-and-state variations as if-statements
             default:
             {
               // Cellsize is needed for theta and the friction angle
@@ -170,6 +164,7 @@ namespace aspect
                   // theta_old is taken from the current compositional field theta
                   //double theta_old = composition[theta_composition_index];
                   double theta = composition[theta_composition_index];
+                  // ToDo: remove this if once the theta issue is solved
                   if (print_thetas)
                     {
                       /*if (theta_old < 0)
@@ -195,15 +190,10 @@ namespace aspect
                           const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
                           std::cout << "got a Zero theta ( "<<theta<< " ) before computing friction at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
                         }/*
-else
-std::cout << "got a positive theta before computing friction" << std::endl;*/
+                      else
+                          std::cout << "got a positive theta before computing friction" << std::endl;*/
                     }
                   theta = std::max(theta,1e-50);
-
-                  // Calculate the state variable theta according to Equation (7) from Sobolev and Muldashev (2017)
-                  //const double theta = compute_theta(theta_old, current_edot_ii_for_theta, cellsize, critical_slip_distance, position);
-
-                  //std::cout << "theta = "<<theta<<" - theta_old = "<< theta_old<<std::endl;
 
                   if (friction_dependence_mechanism == slip_rate_dependent_rate_and_state_dependent_friction)
                     {
@@ -248,7 +238,7 @@ std::cout << "got a positive theta before computing friction" << std::endl;*/
                       // Effective friction is calculated by multiplying the friction coefficient with the
                       // effective_friction_factor to account for effects of pore fluid pressure:
                       // mu = mu(1-p_f/sigma_n) = mu*, with (1-p_f/sigma_n) = 0.03 for subduction zones.
-                      //const double current_friction_old = current_friction; // also only for chasing negative friction
+                      //const double current_friction_old = current_friction; // also only for chasing negative friction (ToDo: remove once this works fine)
                       mu = (1 - effective_friction_factor)
                            * (std::tan(current_friction)
                               + rate_and_state_parameter_a
@@ -327,7 +317,8 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
                     const Point<dim> &position) const
       {
         double current_theta = 0;
-        // this is a trial to check if it prevents current_theta from being negative if old_theta is limited to >=0
+        // this is a trial to check if it prevents current_theta from being negative if old_theta is limited to >=1e-50
+        // ToDo: Remove eventually?
         theta_old = std::max(theta_old,1e-50);
         // Equation (7) from Sobolev and Muldashev (2017):
         // theta_{n+1} = L/V_{n+1} + (theta_n - L/V_{n+1})*exp(-(V_{n+1}dt)/L)
@@ -336,6 +327,7 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
         current_theta = critical_slip_distance / ( cellsize * current_edot_ii ) +
                         (theta_old - critical_slip_distance / ( cellsize * current_edot_ii))
                         * std::exp( - (current_edot_ii * cellsize) * this->get_timestep() / critical_slip_distance);
+        // ToDo: which timestep size is correct? current or previous?
 
         // TODO: make dt the min theta?
         if (print_thetas)
@@ -366,6 +358,8 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
         // values physically do not make sense but can occur as theta is advected
         // as a material field. A zero or negative value for theta also leads to nan
         // values for friction.
+        // TODO: do we need an assert here? I guess this would be good in general, 
+        // but would currently make all my models fail
         current_theta = std::max(current_theta, 1e-50);
         return current_theta;
       }

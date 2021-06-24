@@ -373,9 +373,13 @@ namespace aspect
               pressure_for_plasticity = std::max(in.pressure[i], 0.0);
 
             // Steb 4c: calculate friction angle dependent on rate and/or state if specified and we are inside the fault
-            if (friction_options.use_theta()
+            // or if dynamic friction is used
+            // ToDo: like this, we do not take the effective friction factor into account for "independent"
+            // friction option. Should we? Would that be useful?
+            if ((friction_options.use_theta()
                 && (j== friction_options.fault_composition_index + 1)
                 && (volume_fractions[j] > 0.5))
+                || friction_options.get_friction_dependence_mechanism() == dynamic_friction)
               output_parameters.current_friction_angles[j] = friction_options.compute_dependent_friction_angle(current_edot_ii,
                                                              j, in.composition[i], current_cell,
                                                              output_parameters.current_friction_angles[j],
