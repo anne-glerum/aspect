@@ -86,8 +86,10 @@ namespace aspect
             && (initial_fault_value > 0.5))
           {
             material_inputs.position[0] = particle->get_location();
+            // ask for size of position! if it is 1 it is correct
+            // print: material_inputs.position.size()
 
-            material_inputs.current_cell = typename DoFHandler<dim>::active_cell_iterator(*particle->get_surrounding_cell(this->get_triangulation()),
+            material_inputs.current_cell  = typename DoFHandler<dim>::active_cell_iterator(*particle->get_surrounding_cell(this->get_triangulation()),
                                                                                           &(this->get_dof_handler()));
 
             // ToDo: Do I need to set temperature and pressure? THis is something that I copied from
@@ -111,7 +113,7 @@ namespace aspect
             this->get_material_model().evaluate (material_inputs,material_outputs);
             // ToDo(?): should I directly call compute_theta instead of using the reaction terms?
             // Then I could use the old particle value directly as old theta without any averaging etc in  between
-            // The tricky part would however be to get all the necessary parameters to compute edot_ii
+            // The tricky part would however be to get all the necessary parameters to compute edot_ii -> call material model with material model inputs to have all information -> make a new function to test it with input: material_inputs
             // TOdo: How dooes it work with the reaction terms and particles? Are the reaction terms computed for the element or for each particle? 
             // Might make quite a difference here!
             particle->get_properties()[data_position] += material_outputs.reaction_terms[0][this->introspection().compositional_index_for_name("theta")];

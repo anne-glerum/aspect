@@ -331,8 +331,10 @@ namespace aspect
             // radiation damping is normally substracted from the shear stress. Here we use current stress instead.
             // As current stress is only used to compare to yield stress but does not affect material properties,
             // it is used here to modify effective_edot_ii
+            // ToDo: the entire radiation damping thing must still be properly tested and verified that it really works.
+            // At the moment, I do not use it in my models any more to first see if everything else works 
             double radiation_damping_term = 0.0;
-            if (friction_options.use_radiation_damping)
+            if (friction_options.use_radiation_damping && friction_options.use_theta())
               {
                 AssertThrow(use_elasticity, ExcMessage("Usage of radiation damping only makes sense when elasticity is enabled."));
 
@@ -347,6 +349,9 @@ namespace aspect
                 //std::cout << " current edot_ii is " << effective_edot_ii << std::endl;
                 radiation_damping_term = effective_edot_ii * cellsize * elastic_shear_moduli[j]
                                          / (2.0 * std::sqrt(elastic_shear_moduli[j] / reference_density));
+
+                // If tresca yielding (or whatever else it should be called) is used, radiation damping is
+                // applied later in the code
                 if (yield_mechanism != tresca)
                   {
                     current_stress -= radiation_damping_term;
@@ -376,6 +381,7 @@ namespace aspect
             // or if dynamic friction is used
             // ToDo: like this, we do not take the effective friction factor into account for "independent"
             // friction option. Should we? Would that be useful?
+            // ToDo: should dynamic friction also only be computed for within the fault?
             if ((friction_options.use_theta()
                 && (j== friction_options.fault_composition_index + 1)
                 && (volume_fractions[j] > 0.5))
@@ -410,9 +416,7 @@ namespace aspect
                   // rescale the viscosity back to yield surface
                   // If this is the fault material and rate-and-state friction is used,
                   // assume that we are always yielding
-                  // TODO: always yielding should be done where faut has > 70 or so volume percentage. Can be circumvented
-                  // right now by using max composition for viscosity averaging
-                  if ((non_yielding_stress >= yield_stress)
+                  if ((current_stress >= yield_stress)
                       || (friction_options.use_theta()
                           && (j== friction_options.fault_composition_index + 1)
                           && (volume_fractions[j] > 0.5)
@@ -434,15 +438,13 @@ namespace aspect
                   // not actually correct. Update all documentation with it!
 
                   // This is according to \\cite{erickson_community_2020}, a benchmark paper for
-                  // rate-and-state friction models. They state state that
+                  // rate-and-state friction models. They state that
                   // the fault strength is equal to the shear stress on the fault.
                   // In \\cite{pipping_variational_2015} it is stated that this is the
                   // equation for Tresca friction
                   const double fault_strength = friction_options.effective_normal_stress_on_fault
                                                 * std::tan(output_parameters.current_friction_angles[j]) * current_edot_ii
                                                 * current_cell->extent_in_direction(0) - radiation_damping_term;
-                  // TODO: always yielding should be done where faut has > 70 or so volume percentage. Can be circumvented
-                  // right now by using max composition for viscosity averaging
                   if ((current_stress >= fault_strength)
                       || (friction_options.use_theta()
                           && (j== friction_options.fault_composition_index + 1)
