@@ -471,11 +471,11 @@ namespace aspect
       double delta_theta_max = 0;
       if (xi > 0)
         delta_theta_max += std::min(((RSF_parameter_a * pressure)
-                                    / (k_param * critical_slip_distance - (RSF_parameter_b - RSF_parameter_a)
-                                       * pressure)), 0.2);
+                                     / (k_param * critical_slip_distance - (RSF_parameter_b - RSF_parameter_a)
+                                        * pressure)), 0.2);
       else
         delta_theta_max += std::min((1 - ((RSF_parameter_b - RSF_parameter_a) * pressure)
-                                    / (k_param * critical_slip_distance)), 0.2);
+                                     / (k_param * critical_slip_distance)), 0.2);
 
       // 0 is the initializing value for delta_theta_max, but will lead to problems later on when
       // determining time step size. nan or inf are also possible values, e.g. in case of RSF_parameter_a = 0.
@@ -502,7 +502,7 @@ namespace aspect
                     " min_healing_time_step needed for the Lapusta time stepping becomes nan or inf. Please "
                     "check all your friction parameters. In case of "
                     "rate-and-state like friction, don't forget to check on a,b, and the critical slip distance, or theta."));
-      // ToDo: this time step somehow becomes negative, because theta still becomes negative or because of some other reason. 
+      // ToDo: this time step somehow becomes negative, because theta still becomes negative or because of some other reason.
       // So in this case either I make it
       // very large so it does no harm or dont do that, but have an asserthrow because this would remind us that its still a problem?
       AssertThrow(composition[rheology->friction_options.theta_composition_index]>0, ExcMessage(

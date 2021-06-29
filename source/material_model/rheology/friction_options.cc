@@ -190,8 +190,8 @@ namespace aspect
                           const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
                           std::cout << "got a Zero theta ( "<<theta<< " ) before computing friction at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
                         }/*
-                      else
-                          std::cout << "got a positive theta before computing friction" << std::endl;*/
+                  else
+                      std::cout << "got a positive theta before computing friction" << std::endl;*/
                     }
                   theta = std::max(theta,1e-50);
 
@@ -358,7 +358,7 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
         // values physically do not make sense but can occur as theta is advected
         // as a material field. A zero or negative value for theta also leads to nan
         // values for friction.
-        // TODO: do we need an assert here? I guess this would be good in general, 
+        // TODO: do we need an assert here? I guess this would be good in general,
         // but would currently make all my models fail
         current_theta = std::max(current_theta, 1e-50);
         return current_theta;
@@ -397,18 +397,13 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
                 double theta_old = in.composition[q][theta_composition_index];
                 if (print_thetas )
                   {
+                    const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(in.position[q], coordinate_system_RSF).get_coordinates();
                     if (theta_old < 0)
-                      {
-                        const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(in.position[q], coordinate_system_RSF).get_coordinates();
-                        std::cout << "got a negative old theta ( "<<theta_old<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
-                      }
+                      std::cout << "got a negative old theta                     ( "<<theta_old<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
                     else if (theta_old == 0)
-                      {
-                        const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(in.position[q], coordinate_system_RSF).get_coordinates();
-                        std::cout << "got a Zero old theta ( "<<theta_old<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
-                      }/*
-                else
-                  std::cout << "got a positive old theta in theta reaction terms" << std::endl;*/
+                      std::cout << "got a Zero old theta                         ( "<<theta_old<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                    else
+                      std::cout << "got a positive old theta                     ( "<<theta_old<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
                   }
                 theta_old = std::max(theta_old,1e-50);
                 double current_theta = 0;
@@ -423,6 +418,18 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
                 else
                   current_theta += compute_theta(theta_old, current_edot_ii,
                                                  in.current_cell->extent_in_direction(0), critical_slip_distance, in.position[q]);
+
+
+                if (print_thetas )
+                  {
+                    const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(in.position[q], coordinate_system_RSF).get_coordinates();
+                    if (theta_old < 0)
+                      std::cout << "got a negative current theta                 ( "<<current_theta<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                    else if (theta_old == 0)
+                      std::cout << "got a Zero current theta                     ( "<<current_theta<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                    else
+                      std::cout << "got a positive current theta                 ( "<<current_theta<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                  }
 
                 /* if (current_theta == 1e-50)
                    {

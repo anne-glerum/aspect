@@ -332,7 +332,7 @@ namespace aspect
             // As current stress is only used to compare to yield stress but does not affect material properties,
             // it is used here to modify effective_edot_ii
             // ToDo: the entire radiation damping thing must still be properly tested and verified that it really works.
-            // At the moment, I do not use it in my models any more to first see if everything else works 
+            // At the moment, I do not use it in my models any more to first see if everything else works
             double radiation_damping_term = 0.0;
             if (friction_options.use_radiation_damping && friction_options.use_theta())
               {
@@ -383,8 +383,8 @@ namespace aspect
             // friction option. Should we? Would that be useful?
             // ToDo: should dynamic friction also only be computed for within the fault?
             if ((friction_options.use_theta()
-                && (j== friction_options.fault_composition_index + 1)
-                && (volume_fractions[j] > 0.5))
+                 && (j== friction_options.fault_composition_index + 1)
+                 && (volume_fractions[j] > 0.5))
                 || friction_options.get_friction_dependence_mechanism() == dynamic_friction)
               output_parameters.current_friction_angles[j] = friction_options.compute_dependent_friction_angle(current_edot_ii,
                                                              j, in.composition[i], current_cell,
