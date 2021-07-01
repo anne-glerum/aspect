@@ -183,15 +183,20 @@ namespace aspect
                       if (theta < 0)
                         {
                           const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
-                          std::cout << "got a negative theta ( "<<theta<< " ) before computing friction at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                          std::cout << "got a negative theta ( "<<theta<< " ) before computing friction at dt "<< this->get_timestep_number() <<" in position (x-y-z):               "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
                         }
                       else if (theta == 0)
                         {
                           const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
-                          std::cout << "got a Zero theta ( "<<theta<< " ) before computing friction at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                          std::cout << "got a Zero theta ( "<<theta<< " ) before computing friction at dt "<< this->get_timestep_number() <<" in position (x-y-z):               "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                        }
+                      else
+                        {
+                          const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
+                          std::cout << "got a positive theta ( "<<theta<< " ) before computing friction at dt "<< this->get_timestep_number() <<" in position (x-y-z):               "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
                         }/*
-                  else
-                      std::cout << "got a positive theta before computing friction" << std::endl;*/
+          else
+              std::cout << "got a positive theta before computing friction" << std::endl;*/
                     }
                   theta = std::max(theta,1e-50);
 
@@ -253,6 +258,7 @@ namespace aspect
                       mu -= deltamustartvonD;
                       }*/
                     }
+
                   // All equations for the different friction options are for friction coefficient, while
                   // ASPECT takes friction angle in radians, so conversion with tan/atan().
                   current_friction = std::atan (mu);
@@ -399,14 +405,15 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
                   {
                     const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(in.position[q], coordinate_system_RSF).get_coordinates();
                     if (theta_old < 0)
-                      std::cout << "got a negative old theta                     ( "<<theta_old<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                      std::cout << "got a negative old theta          ( "<<theta_old<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z):        "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
                     else if (theta_old == 0)
-                      std::cout << "got a Zero old theta                         ( "<<theta_old<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                      std::cout << "got a Zero old theta              ( "<<theta_old<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z):        "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
                     else
-                      std::cout << "got a positive old theta                     ( "<<theta_old<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                      std::cout << "got a positive old theta          ( "<<theta_old<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z):        "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
                   }
                 theta_old = std::max(theta_old,1e-50);
                 double current_theta = 0;
+                    const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(in.position[q], coordinate_system_RSF).get_coordinates();
 
                 // ToDo: Probably now, with only using this function if fault material has more than 50% of the volume, this part should maybe be restructured,
                 // e.g. only taken the fault material distribution? not sure though if that would be correct or if all distributions should be taken into account
@@ -416,19 +423,19 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
                 if (friction_dependence_mechanism == steady_state_rate_and_state_dependent_friction)
                   current_theta += critical_slip_distance / steady_state_velocity;
                 else
-                  current_theta += compute_theta(theta_old, current_edot_ii,
-                                                 in.current_cell->extent_in_direction(0), critical_slip_distance, in.position[q]);
+                  current_theta += theta_old + coords[0]*0.5 + coords[1]*0.25;//compute_theta(theta_old, current_edot_ii,
+                //in.current_cell->extent_in_direction(0), critical_slip_distance, in.position[q]);
 
 
                 if (print_thetas )
                   {
                     const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(in.position[q], coordinate_system_RSF).get_coordinates();
                     if (theta_old < 0)
-                      std::cout << "got a negative current theta                 ( "<<current_theta<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                      std::cout << "got a negative current theta      ( "<<current_theta<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z):        "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
                     else if (theta_old == 0)
-                      std::cout << "got a Zero current theta                     ( "<<current_theta<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                      std::cout << "got a Zero current theta          ( "<<current_theta<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z):        "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
                     else
-                      std::cout << "got a positive current theta                 ( "<<current_theta<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                      std::cout << "got a positive current theta      ( "<<current_theta<< " ) in theta reaction terms at dt "<< this->get_timestep_number() <<" in position (x-y-z):        "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
                   }
 
                 /* if (current_theta == 1e-50)
@@ -444,7 +451,7 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
                 if (theta_old + theta_increment < 1e-50)
                   theta_increment = 1e-50 - theta_old;
 
-                out.reaction_terms[q][theta_composition_index] = theta_increment;
+                out.reaction_terms[q][theta_composition_index] =  + coords[0]*0.5 + coords[1]*0.25; // theta_increment;
               }
             else
               {

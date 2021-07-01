@@ -41,7 +41,9 @@ namespace aspect
       void
       ThetaRSF<dim>::initialize ()
       {
+        // ToDo: only select reaction_terms
         material_inputs = MaterialModel::MaterialModelInputs<dim>(1, this->n_compositional_fields());
+        //material_inputs.requested_properties = MaterialModel::MaterialProperties::Property::reaction_terms;
 
         material_outputs = MaterialModel::MaterialModelOutputs<dim>(1, this->n_compositional_fields());
 
@@ -94,6 +96,8 @@ namespace aspect
 
             // ToDo: Do I need to set temperature and pressure? THis is something that I copied from
             // the particle property elastic_stress, where it is set, but also not (visibly) used.
+            // It is to be safe :)
+            // When I outcomment the lines, I get an error about negative diffusion viscosity being detected
             material_inputs.temperature[0] = solution[this->introspection().component_indices.temperature];
 
             material_inputs.pressure[0] = solution[this->introspection().component_indices.pressure];
@@ -120,7 +124,24 @@ namespace aspect
                 else if (particle->get_properties()[data_position] == 0)
                   std::cout << std::endl << "got Zero old     theta ( "<<particle->get_properties()[data_position]<< " ) on the particle "<<particle->get_id() << " at dt "<< this->get_timestep_number() <<" in position (x-y-z):       "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
                 else
-                  std::cout << std::endl << "got a positive old     theta on the particle ( "<<particle->get_properties()[data_position]<< " ) on the particle "<<particle->get_id() << " at dt "<< this->get_timestep_number() <<" in position (x-y-z):       "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                  {
+                    std::cout << std::endl << "got a positive old     theta on the particle ( "<<particle->get_properties()[data_position]<< " ) on the particle "<<particle->get_id() << " at dt "<< this->get_timestep_number() <<" in position (x-y-z):       "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                    std::cout << "got a positive old     theta on the solution ( "<<solution[this->introspection().component_indices.compositional_fields[this->introspection().compositional_index_for_name("theta")]]<< " ) on the particle "<<particle->get_id() << " at dt "<< this->get_timestep_number() <<" in position (x-y-z):       "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                    std::cout << "got a pos old theta before changing MatInput ( "<<material_inputs.composition[0][this->introspection().compositional_index_for_name("theta")]<< " ) on the particle "<<particle->get_id() << " at dt "<< this->get_timestep_number() <<" in position (x-y-z):       "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                  }
+              }
+
+            // Overwrite the value of theta in the solution with the current theta value of the particle.
+            // Otherwise the particle and the solution will have slightly different theta values.
+            material_inputs.composition[0][this->introspection().compositional_index_for_name("theta")] = particle->get_properties()[data_position];
+            // print both: particle get properties and solution for theta -> should be the same when doing it on quad points
+            // then do another generator for uniform theta (and later real theta) and it should also be the correct value.
+            // add x or and y to make the theta change space dependent -> check the different interpolation scheemes
+
+            if (viscoplastic.use_print_thetas ())
+              {
+                const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_natural_coordinates(material_inputs.position[0]);
+                std::cout << "got a pos curr theta after changing MatInput ( "<<material_inputs.composition[0][this->introspection().compositional_index_for_name("theta")]<< " ) on the particle "<<particle->get_id() << " at dt "<< this->get_timestep_number() <<" in position (x-y-z):       "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
               }
 
             this->get_material_model().evaluate (material_inputs,material_outputs);
@@ -140,7 +161,10 @@ namespace aspect
                 else if (particle->get_properties()[data_position] == 0)
                   std::cout << "got Zero current theta on the particle       ( "<<particle->get_properties()[data_position]<< " ) on the particle "<<particle->get_id() << " at dt "<< this->get_timestep_number() <<" in position (x-y-z):       "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl<< std::endl;
                 else
-                  std::cout << "got a positive current theta on the particle ( "<<particle->get_properties()[data_position]<< " ) on the particle "<<particle->get_id() << " at dt "<< this->get_timestep_number() <<" in position (x-y-z):       "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl<< std::endl;
+                  {
+                    std::cout << "got a positive current theta on the particle ( "<<particle->get_properties()[data_position]<< " ) on the particle "<<particle->get_id() << " at dt "<< this->get_timestep_number() <<" in position (x-y-z):       "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+                    std::cout << "got a positive current theta on the solution ( "<<solution[this->introspection().component_indices.compositional_fields[this->introspection().compositional_index_for_name("theta")]]<< " ) on the particle "<<particle->get_id() << " at dt "<< this->get_timestep_number() <<" in position (x-y-z):       "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl << std::endl;
+                  }
               }
 
             // if theta got negative for whatever reason, set a positive value instead
