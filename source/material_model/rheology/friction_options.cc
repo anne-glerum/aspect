@@ -423,7 +423,7 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
                 if (friction_dependence_mechanism == steady_state_rate_and_state_dependent_friction)
                   current_theta += critical_slip_distance / steady_state_velocity;
                 else
-                  current_theta += theta_old + coords[0]*0.5 + coords[1]*0.25;//compute_theta(theta_old, current_edot_ii,
+                  current_theta += compute_theta(theta_old, current_edot_ii,
                 //in.current_cell->extent_in_direction(0), critical_slip_distance, in.position[q]);
 
 
@@ -451,7 +451,7 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
                 if (theta_old + theta_increment < 1e-50)
                   theta_increment = 1e-50 - theta_old;
 
-                out.reaction_terms[q][theta_composition_index] =  + coords[0]*0.5 + coords[1]*0.25; // theta_increment;
+                out.reaction_terms[q][theta_composition_index] =  theta_increment;
               }
             else
               {

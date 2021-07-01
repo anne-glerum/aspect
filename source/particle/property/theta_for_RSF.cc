@@ -43,6 +43,8 @@ namespace aspect
       {
         // ToDo: only select reaction_terms
         material_inputs = MaterialModel::MaterialModelInputs<dim>(1, this->n_compositional_fields());
+        // ToDo: the following line would make sense, but does not have any effect atm, probably
+        // because some flag is not set yet. Wait till after the hack
         //material_inputs.requested_properties = MaterialModel::MaterialProperties::Property::reaction_terms;
 
         material_outputs = MaterialModel::MaterialModelOutputs<dim>(1, this->n_compositional_fields());
