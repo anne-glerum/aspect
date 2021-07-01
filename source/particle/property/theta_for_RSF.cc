@@ -147,6 +147,10 @@ namespace aspect
               }
 
             this->get_material_model().evaluate (material_inputs,material_outputs);
+            Assert(particle->get_properties()[data_position] > 0,
+                   ExcMessage("Particle property theta got smaller / equal zero. This is unphysical. "
+                              "The value of old theta is: "
+                              +  Utilities::to_string(particle->get_properties()[data_position])));
             // ToDo(?): should I directly call compute_theta instead of using the reaction terms?
             // Then I could use the old particle value directly as old theta without any averaging etc in  between
             // The tricky part would however be to get all the necessary parameters to compute edot_ii -> call material model with material model inputs to have all information -> make a new function to test it with input: material_inputs
@@ -172,6 +176,10 @@ namespace aspect
             // if theta got negative for whatever reason, set a positive value instead
             // ToDo: find out why this happens at all. Or more precisely: Why that explicitly positive value
             // can become negative once I read it in again in the next time step
+            Assert(particle->get_properties()[data_position] > 0,
+                   ExcMessage("Particle property theta got smaller / equal zero. This is unphysical. "
+                              "The value of current theta is: "
+                              +  Utilities::to_string(particle->get_properties()[data_position])));
             if (particle->get_properties()[data_position] < 1e-50)
               {
                 particle->get_properties()[data_position] = 1e-50;

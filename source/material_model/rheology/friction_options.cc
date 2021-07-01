@@ -195,8 +195,8 @@ namespace aspect
                           const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
                           std::cout << "got a positive theta ( "<<theta<< " ) before computing friction at dt "<< this->get_timestep_number() <<" in position (x-y-z):               "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
                         }/*
-          else
-              std::cout << "got a positive theta before computing friction" << std::endl;*/
+        else
+            std::cout << "got a positive theta before computing friction" << std::endl;*/
                     }
                   theta = std::max(theta,1e-50);
 
@@ -325,6 +325,10 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
         double current_theta = 0;
         // this is a trial to check if it prevents current_theta from being negative if old_theta is limited to >=1e-50
         // ToDo: Remove eventually?
+        Assert(theta_old > 0,
+               ExcMessage("Old theta within 'compute_theta' got smaller / equal zero. This is unphysical. "
+                          "The value of old theta is: "
+                          +  Utilities::to_string(theta_old)));
         theta_old = std::max(theta_old,1e-50);
         // Equation (7) from Sobolev and Muldashev (2017):
         // theta_{n+1} = L/V_{n+1} + (theta_n - L/V_{n+1})*exp(-(V_{n+1}dt)/L)
@@ -333,7 +337,10 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
         current_theta = critical_slip_distance / ( cellsize * current_edot_ii ) +
                         (theta_old - critical_slip_distance / ( cellsize * current_edot_ii))
                         * std::exp( - (current_edot_ii * cellsize) * this->get_timestep() / critical_slip_distance);
-        // ToDo: which timestep size is correct? current or previous?
+        Assert(current_theta > 0,
+               ExcMessage("Theta within 'compute_theta' got smaller / equal zero. This is unphysical. "
+                          "The value of current theta is: "
+                          +  Utilities::to_string(current_theta)));
 
         // TODO: make dt the min theta?
         if (print_thetas)
@@ -401,6 +408,10 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
                                                               use_reference_strainrate, dte);
 
                 double theta_old = in.composition[q][theta_composition_index];
+                Assert(theta_old > 0,
+                       ExcMessage("Theta within 'compute_theta_reaction_terms' got smaller / equal zero. This is unphysical. "
+                                  "The value of current theta is: "
+                                  +  Utilities::to_string(theta_old)));
                 if (print_thetas )
                   {
                     const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(in.position[q], coordinate_system_RSF).get_coordinates();
@@ -413,7 +424,6 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
                   }
                 theta_old = std::max(theta_old,1e-50);
                 double current_theta = 0;
-                    const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(in.position[q], coordinate_system_RSF).get_coordinates();
 
                 // ToDo: Probably now, with only using this function if fault material has more than 50% of the volume, this part should maybe be restructured,
                 // e.g. only taken the fault material distribution? not sure though if that would be correct or if all distributions should be taken into account
@@ -424,7 +434,11 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
                   current_theta += critical_slip_distance / steady_state_velocity;
                 else
                   current_theta += compute_theta(theta_old, current_edot_ii,
-                //in.current_cell->extent_in_direction(0), critical_slip_distance, in.position[q]);
+                                                 in.current_cell->extent_in_direction(0), critical_slip_distance, in.position[q]);
+                Assert(current_theta > 0,
+                       ExcMessage("Theta within 'compute_theta_reaction_terms' got smaller / equal zero. This is unphysical. "
+                                  "The value of current theta is: "
+                                  +  Utilities::to_string(current_theta)));
 
 
                 if (print_thetas )
