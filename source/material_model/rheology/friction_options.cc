@@ -405,7 +405,7 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
                 double theta_old = in.composition[q][theta_composition_index];
                 Assert(theta_old > 0,
                        ExcMessage("Theta within 'compute_theta_reaction_terms' got smaller / equal zero. This is unphysical. "
-                                  "The value of current theta is: "
+                                  "The value of old theta is: "
                                   +  Utilities::to_string(theta_old)));
                 if (print_thetas )
                   {
