@@ -369,6 +369,15 @@ namespace aspect
           grad_u[d] = gradients[d];
         material_inputs.strain_rate[0] = symmetrize (grad_u);
 
+        // overwrite stress values with values from the particle
+        for (unsigned int i = 0; i < SymmetricTensor<2,dim>::n_independent_components ; ++i)
+        {
+          material_inputs.composition[0][this->introspection().compositional_index_for_name("ve_stress_xx") + i] += particle->get_properties()[data_position + i];
+          std::cout << "this is the particle stress value " << i << " : "<< particle->get_properties()[data_position + i]  << std::endl;
+          std::cout << "while the solution stress value " << i << " is: "<< solution[this->introspection().component_indices.compositional_fields[i]] << std::endl;
+        }
+std::cout << std::endl;
+
         this->get_material_model().evaluate (material_inputs,material_outputs);
 
         // For the second set of stresses, the ve_stress_*_old fields, the update will be zero
