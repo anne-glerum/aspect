@@ -325,12 +325,12 @@ namespace aspect
           std::unique_ptr<Functions::ParsedFunction<dim> > critical_slip_distance_function;
 
           /**
-           * Arbitrary strain rate at which friction equals the reference friction angle in
+           * Arbitrary slip rate at which friction equals the reference friction angle in
            * rate-and-state friction. There are different names for this parameter in the
-           * literature varying between steady state strain rate, reference strain rate,
-           * quasi-static strain rate.
+           * literature varying between steady state slip rate, reference slip rate,
+           * quasi-static slip rate.
            */
-          double quasi_static_strain_rate;
+          double RSF_ref_velocity;
 
           /**
            * The velocity used in 'steady state rate and state dependent friction' that is

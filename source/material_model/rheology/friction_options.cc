@@ -125,10 +125,8 @@ namespace aspect
             }
             case steady_state_rate_and_state_dependent_friction:
             {
-              double cellsize = 1.;
               if (current_cell.state() == IteratorState::valid)
                 {
-                  cellsize = current_cell->extent_in_direction(0);
                   // Get the values for a and b and the critcal slip distance L
                   const double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(position,j).first;
                   const double rate_and_state_parameter_b = calculate_depth_dependent_a_and_b(position,j).second;
@@ -137,8 +135,7 @@ namespace aspect
                   const double mu = (1 - effective_friction_factor)
                                     * (std::tan(current_friction)
                                        + (rate_and_state_parameter_a - rate_and_state_parameter_b)
-                                       * std::log(steady_state_velocity
-                                                  / (quasi_static_strain_rate * cellsize)));
+                                       * std::log(steady_state_velocity / RSF_ref_velocity));
                   current_friction = std::atan (mu);
                 }
               break;
@@ -224,16 +221,16 @@ namespace aspect
                           // Effective friction is explained below for the other friction option.
                           mu = (1 - effective_friction_factor)
                                * (rate_and_state_parameter_a
-                                  * std::asinh(current_edot_ii / (2.0 * quasi_static_strain_rate)
+                                  * std::asinh(current_edot_ii / (2.0 * RSF_ref_velocity / cellsize)
                                                * std::exp((std::tan(current_friction)
                                                            + rate_and_state_parameter_b
-                                                           * std::log((theta * quasi_static_strain_rate * cellsize) / critical_slip_distance))
+                                                           * std::log((theta * RSF_ref_velocity) / critical_slip_distance))
                                                           / rate_and_state_parameter_a)));
                         }
                       else
                         mu = (1 - effective_friction_factor)
                              * (std::tan(current_friction) + rate_and_state_parameter_b
-                                * std::log((theta * quasi_static_strain_rate  * cellsize) / critical_slip_distance));
+                                * std::log((theta * RSF_ref_velocity) / critical_slip_distance));
                     }
                   else
                     {
@@ -247,9 +244,9 @@ namespace aspect
                       mu = (1 - effective_friction_factor)
                            * (std::tan(current_friction)
                               + rate_and_state_parameter_a
-                              * std::log(current_edot_ii / quasi_static_strain_rate)
+                              * std::log(current_edot_ii / (RSF_ref_velocity / cellsize))
                               + rate_and_state_parameter_b
-                              * std::log((theta * quasi_static_strain_rate  * cellsize) / critical_slip_distance));
+                              * std::log((theta * RSF_ref_velocity) / critical_slip_distance));
 
                       /* TODO: from Sobolev and Muldashev appendix.
                       if (friction_dependence_mechanism == rate_and_state_dependent_friction_plus_linear_slip_weakening)
@@ -363,10 +360,8 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
         // which physically does not make sense, as one would expect theta
         // to grow at very low strain rates / velocities
         // So here theta is set to its steady state value in this case:
-        if ((current_theta <= 1e-50) && (current_edot_ii < 0.1*quasi_static_strain_rate))
-          {
-            current_theta = critical_slip_distance / quasi_static_strain_rate * cellsize;
-          }
+        if ((current_theta <= 1e-50) && (current_edot_ii < 0.1 * (RSF_ref_velocity / cellsize)))
+            current_theta = critical_slip_distance / RSF_ref_velocity;
         // Theta needs a cutoff towards zero and negative values, because these
         // values physically do not make sense but can occur as theta is advected
         // as a material field. A zero or negative value for theta also leads to nan
@@ -624,7 +619,7 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
                            "This parameter should be changed when the level of mesh refinement de- or increases. "
                            "I has the Unit: \\si{\\meter}."
                            "The parameters a, b, and the critical slip distance L are specified as functions in a separate subsections."
-                           "The $V_{st}$ is the quasi-static strain-rate at which the friction coefficient will match the reference "
+                           "The $V_{st}$ is the 'RSF reference slip rate' at which the friction coefficient will match the reference "
                            "friction coefficient $\\mu_{st}$ which is defined through the 'angle of internal friction' parameter. "
                            "\n\n"
                            "\\item ``rate and state dependent friction plus linear slip weakening'': ToDo: all, this is an empty model atm. "
@@ -751,15 +746,15 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
         }
         prm.leave_subsection();
 
-        prm.declare_entry ("Quasi static strain rate", "1e-14",
+        prm.declare_entry ("RSF reference slip rate", "1e-6",
                            Patterns::Double (0),
-                           "The quasi static or reference strain rate used in rate and state friction. It is an "
-                           "arbitrary strain rate at which friction equals the reference friction angle. "
+                           "The quasi static or reference slip rate used in rate and state friction. It is an "
+                           "arbitrary slip rate at which friction equals the reference friction angle. "
                            "This happens when slip rate (which is represented in ASPECT as strain rate * cell size) "
                            "enters a steady state. Friction at this steady state is defined as: "
                            "$\\mu = \\mu_{st} = \\mu_0 + (a-b)ln\\big( \\frac{V}{V_0} \\big). "
                            "It should not be confused with the characteristic strain rate in dynamic friction. "
-                           "Units: \\si{\\per\\second}.");
+                           "Units: \\si{\\meter\\per\\second}.");
 
         prm.declare_entry ("Steady state velocity for RSF", "1.75e-2",
                            Patterns::Double (0),
@@ -932,7 +927,7 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
           }
         prm.leave_subsection();
 
-        quasi_static_strain_rate = prm.get_double("Quasi static strain rate");
+        RSF_ref_velocity = prm.get_double("RSF reference slip rate");
 
         steady_state_velocity = prm.get_double("Steady state velocity for RSF");
 
