@@ -106,7 +106,9 @@ namespace aspect
             }
             case dynamic_friction:
             {
-              const double effective_friction_factor = get_effective_friction_factor(position);
+              // ToDo: properly remove eff friction factor here instead of just setting it to zero.
+              // It probs needs to be applied to p instead of to friction
+              const double effective_friction_factor = 0;// get_effective_friction_factor(position);
               // The dynamic characteristic strain rate is used to see what value between dynamic and static angle of internal friction should be used.
               // This is done as in the material model dynamic friction which is based on Equation (13) in van Dinther et al., (2013, JGR). Although here
               // the dynamic friction coefficient is directly specified. Furthermore a smoothness exponent X is added, which determines whether the
@@ -130,7 +132,7 @@ namespace aspect
                   // Get the values for a and b and the critcal slip distance L
                   const double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(position,j).first;
                   const double rate_and_state_parameter_b = calculate_depth_dependent_a_and_b(position,j).second;
-                  const double effective_friction_factor = get_effective_friction_factor(position);
+                  const double effective_friction_factor = 0 ; // get_effective_friction_factor(position);
 
                   const double mu = (1 - effective_friction_factor)
                                     * (std::tan(current_friction)
@@ -156,7 +158,7 @@ namespace aspect
                   double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(position,j).first;
                   const double rate_and_state_parameter_b = calculate_depth_dependent_a_and_b(position,j).second;
                   double critical_slip_distance = get_critical_slip_distance(position,j);
-                  const double effective_friction_factor = get_effective_friction_factor(position);
+                  const double effective_friction_factor = 0;// get_effective_friction_factor(position);
 
                   // theta_old is taken from the current compositional field theta
                   //double theta_old = composition[theta_composition_index];

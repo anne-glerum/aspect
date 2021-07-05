@@ -390,8 +390,10 @@ namespace aspect
                                                              j, in.composition[i], current_cell,
                                                              output_parameters.current_friction_angles[j],
                                                              in.position[i]);
-
+            if (friction_options.use_theta())
+              pressure_for_plasticity = (1-friction_options.get_effective_friction_factor(in.position[i]))*pressure_for_plasticity;
             // Step 5a: calculate Drucker-Prager yield stress
+
             const double yield_stress = drucker_prager_plasticity.compute_yield_stress(current_cohesion,
                                                                                        output_parameters.current_friction_angles[j],
                                                                                        pressure_for_plasticity,
