@@ -462,19 +462,23 @@ namespace aspect
       const int j = rheology->friction_options.fault_composition_index + 1;
 
       const double G_star = elastic_shear_moduli[j]/(1-nu);
-      const double k_param = 2 / numbers::PI * G_star / delta_x;
+      const double k_param = 2 / numbers::PI * G_star / delta_x;  // this is stiffness
       const double RSF_parameter_a = rheology->friction_options.calculate_depth_dependent_a_and_b(position,j).first;
       const double RSF_parameter_b = rheology->friction_options.calculate_depth_dependent_a_and_b(position,j).second;
       const double critical_slip_distance = rheology->friction_options.get_critical_slip_distance(position, j);
-      const double kLaP = (k_param * critical_slip_distance) / (RSF_parameter_a * pressure);
+      const double kLaP = (k_param * critical_slip_distance)
+                          / (RSF_parameter_a * pressure * rheology->friction_options.get_effective_friction_factor(position));
       const double xi = 0.25 * std::pow((kLaP - (RSF_parameter_b - RSF_parameter_a) / RSF_parameter_a),2) - kLaP;
       double delta_theta_max = 0;
       if (xi > 0)
-        delta_theta_max += std::min(((RSF_parameter_a * pressure)
-                                     / (k_param * critical_slip_distance - (RSF_parameter_b - RSF_parameter_a)
-                                        * pressure)), 0.2);
+        delta_theta_max += std::min(((RSF_parameter_a
+                                      * pressure * rheology->friction_options.get_effective_friction_factor(position))
+                                     / (k_param * critical_slip_distance
+                                        - (RSF_parameter_b - RSF_parameter_a)
+                                        * pressure * rheology->friction_options.get_effective_friction_factor(position))), 0.2);
       else
-        delta_theta_max += std::min((1 - ((RSF_parameter_b - RSF_parameter_a) * pressure)
+        delta_theta_max += std::min((1 - ((RSF_parameter_b - RSF_parameter_a)
+                                          * pressure * rheology->friction_options.get_effective_friction_factor(position))
                                      / (k_param * critical_slip_distance)), 0.2);
 
       // 0 is the initializing value for delta_theta_max, but will lead to problems later on when
@@ -505,6 +509,7 @@ namespace aspect
       // ToDo: this time step somehow becomes negative, because theta still becomes negative or because of some other reason.
       // So in this case either I make it
       // very large so it does no harm or dont do that, but have an asserthrow because this would remind us that its still a problem?
+      // ToDo: circumvent this problem by querying theta on the particle, if particles are used. There, theta will not become negative!
       AssertThrow(composition[rheology->friction_options.theta_composition_index]>0, ExcMessage(
                     " min_healing_time_step needed for the Lapusta time stepping becomes negative, because theta is negative. "
                     "Theta is: " + Utilities::to_string(composition[rheology->friction_options.theta_composition_index])));

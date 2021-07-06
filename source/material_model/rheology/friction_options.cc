@@ -194,8 +194,8 @@ namespace aspect
                           const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
                           std::cout << "got a positive theta ( "<<theta<< " ) before computing friction at dt "<< this->get_timestep_number() <<" in position (x-y-z):               "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
                         }/*
-        else
-            std::cout << "got a positive theta before computing friction" << std::endl;*/
+  else
+      std::cout << "got a positive theta before computing friction" << std::endl;*/
                     }
                   theta = std::max(theta,1e-50);
 
@@ -363,7 +363,7 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
         // to grow at very low strain rates / velocities
         // So here theta is set to its steady state value in this case:
         if ((current_theta <= 1e-50) && (current_edot_ii < 0.1 * (RSF_ref_velocity / cellsize)))
-            current_theta = critical_slip_distance / RSF_ref_velocity;
+          current_theta = critical_slip_distance / RSF_ref_velocity;
         // Theta needs a cutoff towards zero and negative values, because these
         // values physically do not make sense but can occur as theta is advected
         // as a material field. A zero or negative value for theta also leads to nan
