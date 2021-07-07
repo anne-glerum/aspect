@@ -522,7 +522,7 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
         const double effective_friction_factor = 1 -
           effective_friction_factor_function.value(Utilities::convert_array_to_point<dim>(point.get_coordinates()));
 
-        AssertThrow((effective_friction_factor < 1) && (effective_friction_factor >= 0), ExcMessage("Effective friction factor must be < 1, "
+        AssertThrow(((1 - effective_friction_factor) < 1) && ((1 - effective_friction_factor) >= 0), ExcMessage("Effective friction factor must be < 1, "
                     "because anything else will cause negative or zero friction coefficients."));
 
         return effective_friction_factor;
