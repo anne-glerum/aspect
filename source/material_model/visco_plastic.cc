@@ -37,7 +37,8 @@ namespace aspect
     is_yielding (const double pressure,
                  const double temperature,
                  const std::vector<double> &composition,
-                 const SymmetricTensor<2,dim> &strain_rate) const
+                 const SymmetricTensor<2,dim> &strain_rate,
+                 typename DoFHandler<dim>::active_cell_iterator current_cell) const
     {
       /* The following returns whether or not the material is plastically yielding
        * as documented in evaluate.
@@ -57,8 +58,8 @@ namespace aspect
         = MaterialUtilities::compute_composition_fractions(composition,
                                                            rheology->get_volumetric_composition_mask());
 
-      const IsostrainViscosities isostrain_viscosities
-        = rheology->calculate_isostrain_viscosities(in, i, volume_fractions);
+      const IsostrainViscosities isostrain_viscosities =
+        rheology->calculate_isostrain_viscosities(in, i, volume_fractions, current_cell);
 
       std::vector<double>::const_iterator max_composition
         = std::max_element(volume_fractions.begin(),volume_fractions.end());
@@ -117,7 +118,7 @@ namespace aspect
       /* The following returns whether or not the material is plastically yielding
        * as documented in evaluate.
        */
-      const IsostrainViscosities isostrain_viscosities = rheology->calculate_isostrain_viscosities(in, 0, volume_fractions, phase_function_values, phase_function.n_phase_transitions_for_each_composition());
+      const IsostrainViscosities isostrain_viscosities = rheology->calculate_isostrain_viscosities(in, 0, volume_fractions, in.current_cell, phase_function_values, phase_function.n_phase_transitions_for_each_composition());
 
       std::vector<double>::const_iterator max_composition = std::max_element(volume_fractions.begin(), volume_fractions.end());
       const bool plastic_yielding = isostrain_viscosities.composition_yielding[std::distance(volume_fractions.begin(), max_composition)];
@@ -219,6 +220,10 @@ namespace aspect
 
           // Compute the effective viscosity if requested and retrieve whether the material is plastically yielding
           bool plastic_yielding = false;
+
+          // initialize vector to be filled with values of current_edot_ii which is needed for friction additional output
+          std::vector<double> current_edot_ii_for_friction_output(volume_fractions.size(),0.);
+
           if (in.requests_property(MaterialProperties::viscosity))
             {
               // Currently, the viscosities for each of the compositional fields are calculated assuming
@@ -226,7 +231,7 @@ namespace aspect
               // TODO: This is only consistent with viscosity averaging if the arithmetic averaging
               // scheme is chosen. It would be useful to have a function to calculate isostress viscosities.
               const IsostrainViscosities isostrain_viscosities =
-                rheology->calculate_isostrain_viscosities(in, i, volume_fractions, phase_function_values, phase_function.n_phase_transitions_for_each_composition());
+                rheology->calculate_isostrain_viscosities(in, i, volume_fractions, in.current_cell, phase_function_values, phase_function.n_phase_transitions_for_each_composition());
 
               // The isostrain condition implies that the viscosity averaging should be arithmetic (see above).
               // We have given the user freedom to apply alternative bounds, because in diffusion-dominated
@@ -245,6 +250,9 @@ namespace aspect
               if (MaterialModel::MaterialModelDerivatives<dim> *derivatives =
                     out.template get_additional_output<MaterialModel::MaterialModelDerivatives<dim> >())
                 rheology->compute_viscosity_derivatives(i, volume_fractions, isostrain_viscosities.composition_viscosities, in, out, phase_function_values, phase_function.n_phase_transitions_for_each_composition());
+
+              // Fill vector with values of current_edot_ii which is needed for friction additional output
+              current_edot_ii_for_friction_output = isostrain_viscosities.current_edot_ii;
             }
 
           // Now compute changes in the compositional fields (i.e. the accumulated strain).
@@ -255,7 +263,7 @@ namespace aspect
           rheology->strain_rheology.fill_reaction_outputs(in, i, rheology->min_strain_rate, plastic_yielding, out);
 
           // Fill plastic outputs if they exist.
-          rheology->fill_plastic_outputs(i,volume_fractions,plastic_yielding,in,out);
+          rheology->fill_plastic_outputs(i,volume_fractions,plastic_yielding,phase_function_values,in,out);
 
           if (rheology->use_elasticity)
             {
@@ -269,7 +277,21 @@ namespace aspect
                 {
                   elastic_out->elastic_shear_moduli[i] = average_elastic_shear_moduli[i];
                 }
+
+              // Update the state variable theta if used
+              if (rheology->friction_options.use_theta())
+                {
+                  const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
+                                                        (in.strain_rate[i].norm() <= std::numeric_limits<double>::min());
+                  const double dte = rheology->elastic_rheology.elastic_timestep();
+                  rheology->friction_options.compute_theta_reaction_terms(i, volume_fractions, in, get_min_strain_rate(), rheology->ref_strain_rate, rheology->use_elasticity,
+                                                                          use_reference_strainrate, average_elastic_shear_moduli[i], dte, out);
+                }
             }
+
+          // if rate and state friction is used, fill the additional output fields
+          if (rheology->friction_options.use_theta())
+            rheology->friction_options.fill_friction_outputs(i,volume_fractions,in,out,current_edot_ii_for_friction_output);
         }
 
       // If we use the full strain tensor, compute the change in the individual tensor components.
@@ -305,10 +327,160 @@ namespace aspect
 
 
     template <int dim>
+    bool
+    ViscoPlastic<dim>::
+    use_theta () const
+    {
+      return  rheology->friction_options.use_theta();
+    }
+
+
+    // ToDo: remove this function and parameter, once the theta issue is solved
+    template <int dim>
+    bool
+    ViscoPlastic<dim>::
+    use_print_thetas () const
+    {
+      return  rheology->friction_options.print_thetas;
+    }
+
+
+
+    // ToDo: Currently I cannot find that this function is used anyway.
+    // I think I created it, to be able to compute theta directly on the
+    // particle, but then it was so difficult to get all the ingredients
+    // for edot_ii that I used the reaction_terms instead. However, this
+    // function would make it more transparent / correct maybe?
+    // If not useful: remove it!
+    template <int dim>
+    double
+    ViscoPlastic<dim>::
+    compute_theta(double theta_old,
+                  const double current_edot_ii,
+                  const double cellsize,
+                  const double critical_slip_distance,
+                  const Point<dim> &position) const
+    {
+      const double current_theta = rheology->friction_options.compute_theta(theta_old, current_edot_ii,
+                                                                            cellsize, critical_slip_distance, position);
+      return current_theta;
+    }
+
+
+
+    template <int dim>
     double ViscoPlastic<dim>::
     get_min_strain_rate () const
     {
       return rheology->min_strain_rate;
+    }
+
+
+
+    template <int dim>
+    std::pair<double,double>
+    ViscoPlastic<dim>::
+    compute_delta_theta_max (const Point<dim> &position,
+                             const double delta_x,
+                             const double pressure) const
+    {
+      AssertThrow(rheology->friction_options.use_theta() == true,
+                  ExcMessage("The Lapusta-timestepping scheeme only works "
+                             "when a state variable 'theta' is used in the friction formulation."));
+      const double nu = 0.5;
+      // poisson ratio (0.25 in herrendoerfer 2018), but we are incompressible, so it must be 0.5.
+      // TODO: get the actual Poissons ration if at some point compressibility is possible
+      const std::vector<double> elastic_shear_moduli = rheology->elastic_rheology.get_elastic_shear_moduli();
+
+      // fault composition index + 1 gives the index for vectors over volume fractions, hence including background
+      // compute delta_theta_max for for the fault material only, as the others are not RSF materials
+      const int j = rheology->friction_options.fault_composition_index + 1;
+
+      const double G_star = elastic_shear_moduli[j]/(1-nu);
+      const double k_param = 2 / numbers::PI * G_star / delta_x;  // this is stiffness
+      const double RSF_parameter_a = rheology->friction_options.calculate_depth_dependent_a_and_b(position,j).first;
+      const double RSF_parameter_b = rheology->friction_options.calculate_depth_dependent_a_and_b(position,j).second;
+      const double critical_slip_distance = rheology->friction_options.get_critical_slip_distance(position, j);
+      const double kLaP = (k_param * critical_slip_distance)
+                          / (RSF_parameter_a * pressure * rheology->friction_options.get_effective_friction_factor(position));
+      const double xi = 0.25 * std::pow((kLaP - (RSF_parameter_b - RSF_parameter_a) / RSF_parameter_a),2) - kLaP;
+      double delta_theta_max = 0;
+      if (xi > 0)
+        delta_theta_max += std::min(((RSF_parameter_a
+                                      * pressure * rheology->friction_options.get_effective_friction_factor(position))
+                                     / (k_param * critical_slip_distance
+                                        - (RSF_parameter_b - RSF_parameter_a)
+                                        * pressure * rheology->friction_options.get_effective_friction_factor(position))), 0.2);
+      else
+        delta_theta_max += std::min((1 - ((RSF_parameter_b - RSF_parameter_a)
+                                          * pressure * rheology->friction_options.get_effective_friction_factor(position))
+                                     / (k_param * critical_slip_distance)), 0.2);
+
+      // 0 is the initializing value for delta_theta_max, but will lead to problems later on when
+      // determining time step size. nan or inf are also possible values, e.g. in case of RSF_parameter_a = 0.
+      // A negative delta_theta_max would lead to a negative time step size and also does not make sense.
+      // According to Herrendoerfer 2018 delta_theta_max is not allowed > 0.2, so this value is used if the rest
+      // gives non-sense.
+      if ((delta_theta_max <= 0) || std::isinf(delta_theta_max) || numbers::is_nan(delta_theta_max))
+        delta_theta_max = 0.2;
+
+      return std::pair<double,double>(delta_theta_max,
+                                      critical_slip_distance);
+    }
+
+
+
+    template <int dim>
+    double
+    ViscoPlastic<dim>::
+    compute_min_healing_time_step (const std::vector<double> &composition) const
+    {
+      // read theta value and make sure it is positive
+      double min_healing_time_step = 0.2 * std::max(1e-50,composition[rheology->friction_options.theta_composition_index]);
+      AssertThrow((std::isinf( min_healing_time_step) || numbers::is_nan( min_healing_time_step)) == false, ExcMessage(
+                    " min_healing_time_step needed for the Lapusta time stepping becomes nan or inf. Please "
+                    "check all your friction parameters. In case of "
+                    "rate-and-state like friction, don't forget to check on a,b, and the critical slip distance, or theta."));
+      // ToDo: this time step somehow becomes negative, because theta still becomes negative or because of some other reason.
+      // So in this case either I make it
+      // very large so it does no harm or dont do that, but have an asserthrow because this would remind us that its still a problem?
+      // ToDo: circumvent this problem by querying theta on the particle, if particles are used. There, theta will not become negative!
+      AssertThrow(composition[rheology->friction_options.theta_composition_index]>0, ExcMessage(
+                    " min_healing_time_step needed for the Lapusta time stepping becomes negative, because theta is negative. "
+                    "Theta is: " + Utilities::to_string(composition[rheology->friction_options.theta_composition_index])));
+      if (min_healing_time_step <= 1e-50)
+        min_healing_time_step =  std::numeric_limits<double>::max();
+      return min_healing_time_step;
+    }
+
+
+
+    template <int dim>
+    double
+    ViscoPlastic<dim>::
+    get_elastic_shear_modulus (const std::vector<double> &composition) const
+    {
+      double elastic_shear_modulus = 0;
+      const std::vector<double> elastic_shear_moduli = rheology->elastic_rheology.get_elastic_shear_moduli();
+      const std::vector<double> volume_fractions = MaterialUtilities::compute_composition_fractions(composition, rheology->get_volumetric_composition_mask());
+      for (unsigned int j=0; j < volume_fractions.size(); ++j)
+        elastic_shear_modulus += volume_fractions[j] * elastic_shear_moduli[j];
+      return elastic_shear_modulus;
+    }
+
+
+
+    template <int dim>
+    void
+    ViscoPlastic<dim>::create_additional_named_outputs (MaterialModel::MaterialModelOutputs<dim> &out) const
+    {
+      rheology->create_plastic_outputs(out);
+
+      if (rheology->use_elasticity)
+        rheology->elastic_rheology.create_elastic_outputs(out);
+
+      if (rheology->friction_options.use_theta())
+        rheology->friction_options.create_friction_outputs(out);
     }
 
 
@@ -408,19 +580,6 @@ namespace aspect
       this->model_dependence.specific_heat = NonlinearDependence::none;
       this->model_dependence.thermal_conductivity = NonlinearDependence::temperature | NonlinearDependence::pressure | NonlinearDependence::compositional_fields;
     }
-
-
-
-    template <int dim>
-    void
-    ViscoPlastic<dim>::create_additional_named_outputs (MaterialModel::MaterialModelOutputs<dim> &out) const
-    {
-      rheology->create_plastic_outputs(out);
-
-      if (rheology->use_elasticity)
-        rheology->elastic_rheology.create_elastic_outputs(out);
-    }
-
   }
 }
 

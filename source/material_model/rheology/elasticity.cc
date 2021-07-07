@@ -129,7 +129,6 @@ namespace aspect
           AssertThrow(false, ExcMessage("'Use fixed elastic time step' must be set to 'true' or 'false'"));
 
         use_stress_averaging = prm.get_bool ("Use stress averaging");
-
         stabilization_time_scale_factor = prm.get_double ("Stabilization time scale factor");
 
         fixed_elastic_time_step = prm.get_double ("Fixed elastic time step");
@@ -174,26 +173,27 @@ namespace aspect
         else
           AssertThrow(false, ExcNotImplemented());
 
-        // Currently, it only makes sense to use this material model when the nonlinear solver
-        // scheme does a single Advection iteration and at minimum one Stokes iteration. More
-        // than one nonlinear Advection iteration will produce an unrealistic build-up of
-        // viscoelastic stress, which are tracked through compositional fields.
-        AssertThrow((this->get_parameters().nonlinear_solver ==
-                     Parameters<dim>::NonlinearSolver::single_Advection_single_Stokes
-                     ||
-                     this->get_parameters().nonlinear_solver ==
-                     Parameters<dim>::NonlinearSolver::single_Advection_iterated_Stokes
-                     ||
-                     this->get_parameters().nonlinear_solver ==
-                     Parameters<dim>::NonlinearSolver::single_Advection_iterated_Newton_Stokes
-                     ||
-                     this->get_parameters().nonlinear_solver ==
-                     Parameters<dim>::NonlinearSolver::single_Advection_iterated_defect_correction_Stokes),
-                    ExcMessage("The material model will only work with the nonlinear "
-                               "solver schemes 'single Advection, single Stokes', "
-                               "'single Advection, iterated Stokes', "
-                               "'single Advection, iterated Newton Stokes', and "
-                               "'single Advection, iterated defect correction Stokes' "));
+        /*
+                // Currently, it only makes sense to use this material model when the nonlinear solver
+                // scheme does a single Advection iteration and at minimum one Stokes iteration. More
+                // than one nonlinear Advection iteration will produce an unrealistic build-up of
+                // viscoelastic stress, which are tracked through compositional fields.
+                AssertThrow((this->get_parameters().nonlinear_solver ==
+                             Parameters<dim>::NonlinearSolver::single_Advection_single_Stokes
+                             ||
+                             this->get_parameters().nonlinear_solver ==
+                             Parameters<dim>::NonlinearSolver::single_Advection_iterated_Stokes
+                             ||
+                             this->get_parameters().nonlinear_solver ==
+                             Parameters<dim>::NonlinearSolver::single_Advection_iterated_Newton_Stokes
+                             ||
+                             this->get_parameters().nonlinear_solver ==
+                             Parameters<dim>::NonlinearSolver::single_Advection_iterated_defect_correction_Stokes),
+                            ExcMessage("The material model will only work with the nonlinear "
+                                       "solver schemes 'single Advection, single Stokes', "
+                                       "'single Advection, iterated Stokes', "
+                                       "'single Advection, iterated Newton Stokes', and "
+                                       "'single Advection, iterated defect correction Stokes' ")); */
 
         // Functionality to average the additional RHS terms over the cell is not implemented.
         // Consequently, it is only possible to use elasticity with the Material averaging schemes

@@ -23,6 +23,7 @@
 #include <aspect/geometry_model/interface.h>
 #include <aspect/geometry_model/sphere.h>
 #include <aspect/geometry_model/spherical_shell.h>
+#include <aspect/material_model/visco_plastic.h>
 #include <aspect/global.h>
 #include <deal.II/numerics/vector_tools.h>
 
@@ -141,9 +142,20 @@ namespace aspect
                       ExcInternalError());
               for (unsigned int i=0; i<evaluation_points_cartesian.size(); ++i)
                 {
-                  f << /* time = */ time_point.first / (this->convert_output_to_years() ? year_in_seconds : 1.)
-                    << ' '
-                    << /* location = */ evaluation_points_cartesian[i] << ' ';
+                  // if this as a rate-and-state friction model, the time scale varies so much,
+                  // that the default precision for the time output is not enough to properly analyse models
+                  if (Plugins::get_plugin_as_type<const MaterialModel::ViscoPlastic<dim>>(this->get_material_model()).use_theta())
+                    {
+                      f << /* time = */ std::setprecision(20) << time_point.first / (this->convert_output_to_years() ? year_in_seconds : 1.)
+                        << ' '
+                        << /* location = */ evaluation_points_cartesian[i] << ' ';
+                    }
+                  else
+                    {
+                      f << /* time = */ time_point.first / (this->convert_output_to_years() ? year_in_seconds : 1.)
+                        << ' '
+                        << /* location = */ evaluation_points_cartesian[i] << ' ';
+                    }
 
                   for (unsigned int c=0; c<time_point.second[i].size(); ++c)
                     {

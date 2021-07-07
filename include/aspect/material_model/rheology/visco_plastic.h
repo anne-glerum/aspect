@@ -25,6 +25,7 @@
 #include <aspect/material_model/interface.h>
 #include <aspect/material_model/utilities.h>
 #include <aspect/material_model/rheology/strain_dependent.h>
+#include <aspect/material_model/rheology/friction_options.h>
 #include <aspect/material_model/rheology/diffusion_creep.h>
 #include <aspect/material_model/rheology/dislocation_creep.h>
 #include <aspect/material_model/rheology/frank_kamenetskii.h>
@@ -90,6 +91,16 @@ namespace aspect
        * The composition yielding.
        */
       std::vector<bool> composition_yielding;
+
+      /**
+       * the current angle of friction
+       */
+      std::vector<double> current_friction_angles;
+
+      /**
+       * the current edot ii - second invariant of the deviatoric stress tensor
+       */
+      std::vector<double> current_edot_ii;
     };
 
     namespace Rheology
@@ -112,6 +123,7 @@ namespace aspect
           calculate_isostrain_viscosities ( const MaterialModel::MaterialModelInputs<dim> &in,
                                             const unsigned int i,
                                             const std::vector<double> &volume_fractions,
+                                            typename DoFHandler<dim>::active_cell_iterator current_cell,
                                             const std::vector<double> &phase_function_values = std::vector<double>(),
                                             const std::vector<unsigned int> &n_phases_per_composition =
                                               std::vector<unsigned int>()) const;
@@ -172,6 +184,7 @@ namespace aspect
           void fill_plastic_outputs (const unsigned int point_index,
                                      const std::vector<double> &volume_fractions,
                                      const bool plastic_yielding,
+                                     const std::vector<double> &phase_function_values,
                                      const MaterialModel::MaterialModelInputs<dim> &in,
                                      MaterialModel::MaterialModelOutputs<dim> &out) const;
 
@@ -186,6 +199,12 @@ namespace aspect
           double min_strain_rate;
 
           /**
+           * Reference strain rate for the first non-linear iteration
+           * in the first time step.
+           */
+          double ref_strain_rate;
+
+          /**
            * Enumeration for selecting which viscosity averaging scheme to use.
            */
           MaterialUtilities::CompositionalAveragingOperation viscosity_averaging;
@@ -194,6 +213,11 @@ namespace aspect
            * Object for computing the strain dependence of the rheology model.
            */
           Rheology::StrainDependent<dim> strain_rheology;
+
+          /**
+           * Object for computing the friction dependence of the rheology model.
+           */
+          Rheology::FrictionOptions<dim> friction_options;
 
           /**
            * Object for computing viscoelastic viscosities and stresses.
@@ -207,12 +231,6 @@ namespace aspect
 
 
         private:
-
-          /**
-           * Reference strain rate for the first non-linear iteration
-           * in the first time step.
-           */
-          double ref_strain_rate;
 
           /**
            * Minimum and maximum viscosities used to improve the
@@ -235,12 +253,14 @@ namespace aspect
 
           /**
            * Enumeration for selecting which type of yield mechanism to use.
-           * Select between Drucker Prager and stress limiter.
+           * Select between Drucker Prager, stress limiter and Tresca which is sometimes
+           * used in rate and state models, e.g. \\cite{erickson_community_2020}.
            */
           enum YieldScheme
           {
             stress_limiter,
-            drucker_prager
+            drucker_prager,
+            tresca
           } yield_mechanism;
 
           /**
