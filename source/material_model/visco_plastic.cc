@@ -471,15 +471,21 @@ namespace aspect
       const double xi = 0.25 * std::pow((kLaP - (RSF_parameter_b - RSF_parameter_a) / RSF_parameter_a),2) - kLaP;
       double delta_theta_max = 0;
       if (xi > 0)
-        delta_theta_max += std::min(((RSF_parameter_a
-                                      * pressure * rheology->friction_options.get_effective_friction_factor(position))
-                                     / (k_param * critical_slip_distance
-                                        - (RSF_parameter_b - RSF_parameter_a)
-                                        * pressure * rheology->friction_options.get_effective_friction_factor(position))), 0.2);
+        {
+          delta_theta_max += std::min(((RSF_parameter_a
+                                        * pressure * rheology->friction_options.get_effective_friction_factor(position))
+                                       / (k_param * critical_slip_distance
+                                          - (RSF_parameter_b - RSF_parameter_a)
+                                          * pressure * rheology->friction_options.get_effective_friction_factor(position))), 0.2);
+        //  std::cout << "this is delta theta max without rescaling to 0.2: "<< ((RSF_parameter_a * pressure * rheology->friction_options.get_effective_friction_factor(position)) / (k_param * critical_slip_distance - (RSF_parameter_b - RSF_parameter_a)* pressure * rheology->friction_options.get_effective_friction_factor(position))) << std::endl;
+        }
       else
-        delta_theta_max += std::min((1 - ((RSF_parameter_b - RSF_parameter_a)
-                                          * pressure * rheology->friction_options.get_effective_friction_factor(position))
-                                     / (k_param * critical_slip_distance)), 0.2);
+        {
+          delta_theta_max += std::min((1 - ((RSF_parameter_b - RSF_parameter_a)
+                                            * pressure * rheology->friction_options.get_effective_friction_factor(position))
+                                       / (k_param * critical_slip_distance)), 0.2);
+      //    std::cout << "this is delta theta max without rescaling to 0.2: "<< (1 - ((RSF_parameter_b - RSF_parameter_a) * pressure * rheology->friction_options.get_effective_friction_factor(position)) / (k_param * critical_slip_distance)) << std::endl;
+        }
 
       // 0 is the initializing value for delta_theta_max, but will lead to problems later on when
       // determining time step size. nan or inf are also possible values, e.g. in case of RSF_parameter_a = 0.
@@ -488,6 +494,39 @@ namespace aspect
       // gives non-sense.
       if ((delta_theta_max <= 0) || std::isinf(delta_theta_max) || numbers::is_nan(delta_theta_max))
         delta_theta_max = 0.2;
+
+/*
+      std::cout <<"The components for the min state weakening dt are:"<<std::endl;
+      std::cout <<"a: " << RSF_parameter_a <<std::endl;
+      std::cout <<"b: " <<RSF_parameter_b<<std::endl;
+      std::cout <<   "L: "<<critical_slip_distance<<std::endl;
+      std::cout <<      "p: " <<pressure<<std::endl;
+      std::cout <<         "G star: "<<G_star<<std::endl;
+      std::cout <<             "k: " <<k_param<<std::endl;
+      std::cout <<       "kLaP: "<<kLaP<<std::endl;
+      std::cout <<        "xi: "<<xi<<std::endl;
+      std::cout <<        "delta theta max: " <<delta_theta_max<<std::endl; */
+      const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, rheology->friction_options.coordinate_system_RSF).get_coordinates();
+     // std::cout << "these are the coordinates (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+
+// these lines are copied and modified from  boundary_traction/initial_lithostatic_pressure.cc but I couldnt make it compile
+       // const aspect::GeometryModel::Box<dim> &box_geometry_model =
+          //  Plugins::get_plugin_as_type<const aspect::GeometryModel::Box<dim>> (this->get_geometry_model());
+        //  const Point<dim> extent = aspect::GeometryModel::Box< dim >::get_extents();
+ //         const Point<dim> extent = this->get_geometry_model().get_extents();
+ // instead I hardcoded here, what I intended to do:
+ // This is needed, because for whatever reason the pressure is very very low (e.g. 17Pa) for the points of the bottom boundary. 
+ // these values do NOT show up in paraview.
+ // this in turn leads to very low min state weakening time steps (like 1e-7 seconds or so)
+ // this only happens when I use years in output but not if I use seconds. 
+ // If I do not take those bottom boundary points into account, I end up with a very similar min state weakening time step
+ // regardless of if I use years or seconds. 
+ // ToDo: Two questions remain:
+ // (1) Should I exclude those points based on the question if they are at the bottom boundary or are there other possible
+ // scenarios with weird pressures such that I should find another criterion? E.g. if pressure is below a certain value, but that could end up weird potentially when setting up very small scale models I guess.
+ // (2) If I use the bottom boundary as the criterion, how do I access it from within here?
+      if (coords[2] == 24000)
+         delta_theta_max = 0.2;
 
       return std::pair<double,double>(delta_theta_max,
                                       critical_slip_distance);
@@ -502,6 +541,7 @@ namespace aspect
     {
       // read theta value and make sure it is positive
       double min_healing_time_step = 0.2 * std::max(1e-50,composition[rheology->friction_options.theta_composition_index]);
+
       AssertThrow((std::isinf( min_healing_time_step) || numbers::is_nan( min_healing_time_step)) == false, ExcMessage(
                     " min_healing_time_step needed for the Lapusta time stepping becomes nan or inf. Please "
                     "check all your friction parameters. In case of "

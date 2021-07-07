@@ -263,6 +263,12 @@ namespace aspect
            */
           bool use_always_yielding;
 
+          /**
+           * The coordinate representation to evaluate the functions for a, b, and critical slip
+           * distance L. Possible choices are depth, cartesian and spherical.
+           */
+          Utilities::Coordinates::CoordinateSystem coordinate_system_RSF;
+
         private:
           /**
            * Input parameters for the drucker prager plasticity.
@@ -345,12 +351,6 @@ namespace aspect
            */
           std::unique_ptr<Functions::ParsedFunction<dim> > rate_and_state_parameter_a_function;
           std::unique_ptr<Functions::ParsedFunction<dim> > rate_and_state_parameter_b_function;
-
-          /**
-           * The coordinate representation to evaluate the functions for a, b, and critical slip
-           * distance L. Possible choices are depth, cartesian and spherical.
-           */
-          Utilities::Coordinates::CoordinateSystem coordinate_system_RSF;
 
           /**
            * Slip-rate dependent rate-and-state friction
