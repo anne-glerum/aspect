@@ -507,7 +507,7 @@ namespace aspect
       std::cout <<        "xi: "<<xi<<std::endl;
       std::cout <<        "delta theta max: " <<delta_theta_max<<std::endl; */
       const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, rheology->friction_options.coordinate_system_RSF).get_coordinates();
-     // std::cout << "these are the coordinates (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
+      std::cout << "these are the coordinates (x-y-z): "<< coords[0]<< " -- "<< coords[1]<< " -- "<< coords[2] << std::endl;
 
 // these lines are copied and modified from  boundary_traction/initial_lithostatic_pressure.cc but I couldnt make it compile
        // const aspect::GeometryModel::Box<dim> &box_geometry_model =
