@@ -271,16 +271,6 @@ namespace aspect
 
         private:
           /**
-           * Input parameters for the drucker prager plasticity.
-           */
-          Rheology::DruckerPragerParameters drucker_prager_parameters;
-
-          /*
-           * Object for computing plastic stresses, viscosities, and additional outputs
-           */
-          Rheology::DruckerPrager<dim> drucker_prager_plasticity;
-
-          /**
            * Select the mechanism to be used for the friction dependence.
            * Possible options: none | dynamic friction | rate and state dependent friction
            * | rate and state dependent friction plus linear slip weakening | slip rate

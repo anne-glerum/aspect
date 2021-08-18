@@ -13,7 +13,7 @@
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
 
-  You should have received a copy of the GNU General Public License
+  You should have received a copy of the GNU General Public Licensecompute_yied
   along with ASPECT; see the file LICENSE.  If not see
   <http://www.gnu.org/licenses/>.
 */
@@ -68,18 +68,53 @@ namespace aspect
       DruckerPrager<dim>::compute_yield_stress (const double cohesion,
                                                 const double angle_internal_friction,
                                                 const double pressure,
-                                                const double max_yield_stress) const
+                                                const double max_yield_stress,
+                                                const double current_edot_ii,
+                                                const double cellsize,
+                                                const bool use_radiation_damping,
+                                                const bool use_theta) const
       {
         const double sin_phi = std::sin(angle_internal_friction);
         const double cos_phi = std::cos(angle_internal_friction);
         const double stress_inv_part = 1. / (std::sqrt(3.0) * (3.0 + sin_phi));
 
         // Initial yield stress (no stabilization terms)
-        const double yield_stress = ( (dim==3)
-                                      ?
-                                      ( 6.0 * cohesion * cos_phi + 6.0 * pressure * sin_phi) * stress_inv_part
-                                      :
-                                      cohesion * cos_phi + pressure * sin_phi);
+        double yield_stress = ( (dim==3)
+                                ?
+                                ( 6.0 * cohesion * cos_phi + 6.0 * pressure * sin_phi) * stress_inv_part
+                                :
+                                cohesion * cos_phi + pressure * sin_phi);
+
+        // compute radiation damping if it is used.
+        // radiation damping is n approximation for the inertial term aka seismic waves.
+        // radiation damping is normally substracted from the shear stress. Here we add it to yield stress instead.
+        // ToDo: the entire radiation damping thing must still be properly tested and verified that it really works.
+        // At the moment, I do not use it in my models any more to first see if everything else works
+        // ToDo: Do we not to hand over both, use radiation damping and use theta, or should I make an assert
+        // within friction options that you can ony use radiation damping within the RSF framework? Is there
+        // another setting where it might be used?
+        if (use_radiation_damping && use_theta)
+          {
+            // The radiation damping term normally is a factor*velocity. This factor can be expressed in terms of
+            // material properties:
+            //   elastic_shear_moduli[j] / (2.0 * std::sqrt(elastic_shear_moduli[j] / reference_density))
+            // or it can be approximated as a constant coefficient as it is done in van den Ende et al. 2018,
+            // which is the way it is done here. The radiation damping coefficient is  0.5e6.
+            // Instead of velocity, current_edot_ii*cellsize is used.
+
+            // ToDo: maybe change it to use the material properties at some point.
+            // old comments that might become relevant again, if it is changed back:
+            // - TODO: this is not exactly the right way to get the density, as it is only reference densities.
+            // - Anne said once: ideally, you would take the actual densities from out.densities[I],
+            // - i.e. computed as out.densities[i] = MaterialUtilities::average_value (volume_fractions, eos_outputs.densities, MaterialUtilities::arithmetic);
+            // - but at the moment I don't have access to out in this function
+            // - const double reference_density = this->get_adiabatic_conditions().density(in.position[0]);
+            // TODO: use the plastic strain rate instead of current_edot_ii
+
+            // ToDo: rethink properly: plus or minus RDT?
+
+            yield_stress += current_edot_ii * cellsize *  0.5e6;
+          }
 
         return std::min(yield_stress, max_yield_stress);
       }
@@ -93,9 +128,14 @@ namespace aspect
                                              const double pressure,
                                              const double effective_strain_rate,
                                              const double max_yield_stress,
-                                             const double non_yielding_viscosity) const
+                                             const double non_yielding_viscosity,
+                                             const double cellsize,
+                                             const bool use_radiation_damping,
+                                             const bool use_theta) const
       {
-        const double yield_stress = compute_yield_stress(cohesion, angle_internal_friction, pressure, max_yield_stress);
+        const double strain_rate_effective_inv = 1./(2.*effective_strain_rate);
+        
+        const double yield_stress = compute_yield_stress(cohesion, angle_internal_friction, pressure, max_yield_stress, strain_rate_effective_inv, cellsize, use_radiation_damping, use_theta);
 
         // If there is no damper, the yielding plastic element accommodates all the strain
         double apparent_viscosity = yield_stress / (2. * effective_strain_rate);
@@ -125,7 +165,9 @@ namespace aspect
                                                               const double pressure,
                                                               const DruckerPragerParameters p) const
       {
-
+        // ToDo: if this function will be used from another rheology than composite_visco_plastic, or if
+        // rate-and-state friction will be possible to use with composite_visco_plastic rheology, this function
+        // needs to hand over edot_ii and cellsize to take radiation damping into account.
         const double yield_stress = compute_yield_stress(p.cohesion, p.angle_internal_friction, pressure, p.max_yield_stress);
 
         if (stress > yield_stress)
@@ -193,6 +235,8 @@ namespace aspect
         prm.declare_entry ("Plastic damper viscosity", "0.0", Patterns::Double(0),
                            "Viscosity of the damper that acts in parallel with the plastic viscosity "
                            "to produce mesh-independent behavior at sufficient resolutions. Units: \\si{\\pascal\\second}");
+
+        Rheology::FrictionOptions<dim>::declare_parameters (prm);
       }
 
 
@@ -202,6 +246,7 @@ namespace aspect
       DruckerPrager<dim>::parse_parameters (ParameterHandler &prm,
                                             const std::unique_ptr<std::vector<unsigned int>> &expected_n_phases_per_composition)
       {
+
         // Retrieve the list of composition names
         const std::vector<std::string> list_of_composition_names = this->introspection().get_composition_names();
         // Establish that a background field is required here

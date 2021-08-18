@@ -147,13 +147,13 @@ namespace aspect
       // communicate the min lapusta timestep between the processes
       const double min_global_lapusta_timestep
         = Utilities::MPI::min (min_lapusta_timestep, this->get_mpi_communicator());
-        
-      // ToDo ? In Herrendörfer 2018 they multiply the min lapusta time step with a 
-      // "time step factor". Its size is investigated in their section 4 and in table 1 
-      // they set it to 1.0. Hence, there is no point in making a new variable for it, 
-      // but to have the same approach as them and be able to modify it, we could do 
+
+      // ToDo ? In Herrendörfer 2018 they multiply the min lapusta time step with a
+      // "time step factor". Its size is investigated in their section 4 and in table 1
+      // they set it to 1.0. Hence, there is no point in making a new variable for it,
+      // but to have the same approach as them and be able to modify it, we could do
       // this:
-      // min_global_lapusta_timestep = min_global_lapusta_timestep*timestepfactor; 
+      // min_global_lapusta_timestep = min_global_lapusta_timestep*timestepfactor;
 
       AssertThrow (min_lapusta_timestep > 0,
                    ExcMessage("The time step length for the each time step needs to be positive, "
