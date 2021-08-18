@@ -65,8 +65,6 @@ namespace aspect
       double min_displacement_time_step =  std::numeric_limits<double>::max();
       double min_vep_relaxation_time_step =  std::numeric_limits<double>::max();
 
-
-      //std::cout << " the INITIAL min healing time step: "<< min_healing_time_step << std::endl<<std::endl;
       for (const auto &cell : this->get_dof_handler().active_cell_iterators())
         {
           if (cell->is_locally_owned())
@@ -94,8 +92,6 @@ namespace aspect
 
                       if (local_velocity >0)
                         {
-
-                          //std::cout << "this is the local velocity: "<< local_velocity <<std::endl;
                           std::pair<double,double> delta_theta_max_and_critical_slip_distance = viscoplastic.compute_delta_theta_max(
                                                                                                   in.position[q],
                                                                                                   delta_x,
@@ -105,8 +101,6 @@ namespace aspect
                                                                     delta_theta_max_and_critical_slip_distance.first
                                                                     * delta_theta_max_and_critical_slip_distance.second
                                                                     / local_velocity);
-                          //std::cout << "this is the current min state weakening dt: "<< delta_theta_max_and_critical_slip_distance.first *delta_theta_max_and_critical_slip_distance.second / local_velocity <<std::endl<< std::endl;
-                          //std::cout << "this is the total min state weakening dt: "<< min_state_weakening_time_step <<std::endl<< std::endl;
 
                           // the maximum local velocity needed for the displacement time step
                           max_local_velocity = std::max (max_local_velocity,
@@ -115,8 +109,6 @@ namespace aspect
                       // state healing time step is: Deltat_h = 0.2 * theta.
                       min_healing_time_step = std::min (min_healing_time_step,
                                                         viscoplastic.compute_min_healing_time_step(in.composition[q]));
-                      //std::cout << " the new value for the min healing time step: "<< min_healing_time_step <<std::endl;
-
 
                       // the viscoelastoplastic relaxation time step using the relaxation time scale:
                       // f_max * viscoplastic viscosity / shear modulus
@@ -129,9 +121,7 @@ namespace aspect
                       std::cout<< "the new vep relaxation time step is: "<< min_vep_relaxation_time_step <<std::endl;
                       std::cout<< "the shear modulus is: "<<viscoplastic.get_elastic_shear_modulus(in.composition[q]) << " and the viscosity is: "<<  out.viscosities[q] << std::endl<<std::endl;
                     }
-                  //  std::cout << "after closing the 1. } the value for the min healing time step: "<< min_healing_time_step <<std::endl;
                 }
-              //  std::cout << "after closing the 2. } the value for the min healing time step: "<< min_healing_time_step <<std::endl;
 
               // minimum displacement time step: Delta t_d = Delta d_max * min(|Delta x/v_x|,|Delta x/v_y|),
               // with Delta d_max = 1e-3 in Herrendörfer et al. 2018
@@ -140,12 +130,8 @@ namespace aspect
               // we need them both? Should it also be constraint to within the fault or used everywhere?
               min_displacement_time_step = std::min (min_displacement_time_step,
                                                      1.e-3 * delta_x / max_local_velocity );
-              //   std::cout << "the current min displacement dt is: "<<1.e-3 * delta_x / max_local_velocity  <<" with delta x: "<< delta_x<<" and max_local_v: "<< max_local_velocity<< " and max velocity * mutliplier: "<<max_local_velocity*multiplier<< std::endl;
-              // std::cout << "the new total min displacement dt is: "<<min_displacement_time_step << std::endl;
             }
-          //  std::cout << "after closing the 3. } the value for the min healing time step: "<< min_healing_time_step <<std::endl;
         }
-      //  std::cout << "after closing the 4. } the value for the min healing time step: "<< min_healing_time_step <<std::endl;
 
       double min_lapusta_timestep = std::numeric_limits<double>::max();
 
@@ -157,11 +143,17 @@ namespace aspect
                                        std::min (min_healing_time_step,
                                                  std::min (min_displacement_time_step,
                                                            min_vep_relaxation_time_step)));
-     // std::cout << "after computation of min lapusta timestep the value for the min healing time step: "<< min_healing_time_step <<std::endl;
 
       // communicate the min lapusta timestep between the processes
       const double min_global_lapusta_timestep
         = Utilities::MPI::min (min_lapusta_timestep, this->get_mpi_communicator());
+        
+      // ToDo ? In Herrendörfer 2018 they multiply the min lapusta time step with a 
+      // "time step factor". Its size is investigated in their section 4 and in table 1 
+      // they set it to 1.0. Hence, there is no point in making a new variable for it, 
+      // but to have the same approach as them and be able to modify it, we could do 
+      // this:
+      // min_global_lapusta_timestep = min_global_lapusta_timestep*timestepfactor; 
 
       AssertThrow (min_lapusta_timestep > 0,
                    ExcMessage("The time step length for the each time step needs to be positive, "
@@ -192,12 +184,7 @@ namespace aspect
       std::cout << min_displacement_time_step *multiplier << ' ' << unit << std::endl;
       std::cout << "      - the min vep relaxation time step: ";
       std::cout << min_vep_relaxation_time_step *multiplier << ' ' << unit << std::endl << std::endl;
-/*
-      std::cout << "after printing all lengths the value for the min state weakening time step: "<< min_state_weakening_time_step << " with the multiplier being: "<< multiplier <<std::endl;
-      std::cout << "after printing all lengths the value for the min healing time step: "<< min_healing_time_step << " with the multiplier being: "<< multiplier <<std::endl;
-      std::cout << "after printing all lengths the value for the min displacement time step: "<< min_displacement_time_step << " with the multiplier being: "<< multiplier <<std::endl;
-      std::cout << "after printing all lengths the value for the min vep relaxation time step: "<< min_vep_relaxation_time_step << " with the multiplier being: "<< multiplier <<std::endl;
-*/
+
       return min_global_lapusta_timestep;
     }
   }
