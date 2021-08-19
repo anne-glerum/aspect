@@ -729,7 +729,7 @@ namespace aspect
 
         use_elasticity = prm.get_bool ("Include viscoelasticity");
 
-        AssertThrow(use_elasticity && friction_options.use_radiation_damping,
+        AssertThrow((use_elasticity && friction_options.use_radiation_damping) || (use_elasticity && friction_options.use_radiation_damping==false) || (use_elasticity==false && friction_options.use_radiation_damping==false),
                     ExcMessage("Usage of radiation damping only makes sense when elasticity is enabled."));
 
 
