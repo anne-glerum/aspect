@@ -254,11 +254,6 @@ namespace aspect
           bool print_thetas;
 
           /**
-           * Whether or not to cut edot ii after radiation damping.
-           */
-          bool cut_edot_ii;
-
-          /**
            * Whether to assume always yielding in the fault material.
            */
           bool use_always_yielding;

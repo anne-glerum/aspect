@@ -945,8 +945,6 @@ std::cout << "a is: "<<rate_and_state_parameter_a<< " and b is: "<< rate_and_sta
 
         print_thetas = prm.get_bool("Print positions of negative theta");
 
-        cut_edot_ii = prm.get_bool("Cut edot_ii after radiation damping");
-
         use_always_yielding = prm.get_bool("Use always yielding");
 
         coordinate_system_RSF = Utilities::Coordinates::string_to_coordinate_system(prm.get("Coordinate system for RSF parameters"));
