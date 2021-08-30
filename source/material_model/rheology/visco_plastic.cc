@@ -318,6 +318,13 @@ namespace aspect
             current_stress *= weakening_factors[2];
             output_parameters.current_edot_ii[j] = current_edot_ii;
 
+            const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(in.position[i], friction_options.coordinate_system_RSF).get_coordinates();
+            if ((coords[0] < 188) && (coords[0] > 186)
+                && (coords[1] < 708) && (coords[1] > 706)
+                && (coords[2] < 12333) && (coords[2] > 12331))
+              {
+                std::cout << std::endl << coords[0] << "-" << coords[1] << "-" << coords[2] << "---" << "before plasticity  : edot_ii: "<<current_edot_ii<<" current_stress: "<<current_stress<<" viscosity_pre_yield: "<<viscosity_pre_yield << std::endl;
+              }
             // Step 5: plastic yielding
 
             // Determine if the pressure used in Drucker Prager plasticity will be capped at 0 (default).
@@ -356,6 +363,12 @@ namespace aspect
 
             // Step 5b: select if the yield viscosity is based on Drucker Prager or a stress limiter rheology
             double effective_viscosity = non_yielding_viscosity;
+            if ((coords[0] < 188) && (coords[0] > 186)
+                && (coords[1] < 708) && (coords[1] > 706)
+                && (coords[2] < 12333) && (coords[2] > 12331))
+              {
+                std::cout << coords[0] << "-" << coords[1] << "-" << coords[2] << "---" << "before the yielding: edot_ii: "<<current_edot_ii<<" current_stress: "<<current_stress<<"     viscosity_yield: "<<viscosity_yield << std::endl;
+              }
             switch (yield_mechanism)
               {
                 case stress_limiter:
@@ -389,6 +402,14 @@ namespace aspect
                                                                                     friction_options.use_radiation_damping,
                                                                                     friction_options.use_theta());
                       output_parameters.composition_yielding[j] = true;
+
+
+                      if ((coords[0] < 188) && (coords[0] > 186)
+                          && (coords[1] < 708) && (coords[1] > 706)
+                          && (coords[2] < 12333) && (coords[2] > 12331))
+                        {
+                          std::cout << coords[0] << "-" << coords[1] << "-" << coords[2] << "---" << "within the yielding: edot_ii: "<<current_edot_ii<<"   yield_stress: "<<yield_stress<< "     viscosity_yield: "<<viscosity_yield << std::endl;
+                        }
                     }
                   break;
                 }
