@@ -117,9 +117,9 @@ namespace aspect
                       min_vep_relaxation_time_step = std::min (min_vep_relaxation_time_step,
                                                                0.2 * out.viscosities[q]
                                                                / viscoplastic.get_elastic_shear_modulus(in.composition[q]));
-                      std::cout<< "the current vep relaxation time step is: "<< 0.2 * out.viscosities[q] / viscoplastic.get_elastic_shear_modulus(in.composition[q]) <<std::endl;
+                      /*std::cout<< "the current vep relaxation time step is: "<< 0.2 * out.viscosities[q] / viscoplastic.get_elastic_shear_modulus(in.composition[q]) <<std::endl;
                       std::cout<< "the new vep relaxation time step is: "<< min_vep_relaxation_time_step <<std::endl;
-                      std::cout<< "the shear modulus is: "<<viscoplastic.get_elastic_shear_modulus(in.composition[q]) << " and the viscosity is: "<<  out.viscosities[q] << std::endl<<std::endl;
+                      std::cout<< "the shear modulus is: "<<viscoplastic.get_elastic_shear_modulus(in.composition[q]) << " and the viscosity is: "<<  out.viscosities[q] << std::endl<<std::endl;*/
                     }
                 }
 
