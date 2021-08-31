@@ -249,11 +249,6 @@ namespace aspect
           bool use_radiation_damping;
 
           /**
-           *  Whether to print negative/Zero (old) thetas. ToDo: This should only be a temporary feature!
-           */
-          bool print_thetas;
-
-          /**
            * Whether to assume always yielding in the fault material.
            */
           bool use_always_yielding;

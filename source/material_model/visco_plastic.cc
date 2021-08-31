@@ -400,16 +400,6 @@ namespace aspect
     }
 
 
-    // ToDo: remove this function and parameter, once the theta issue is solved
-    template <int dim>
-    bool
-    ViscoPlastic<dim>::
-    use_print_thetas () const
-    {
-      return  rheology->friction_options.print_thetas;
-    }
-
-
 
     // ToDo: Currently I cannot find that this function is used anyway.
     // I think I created it, to be able to compute theta directly on the
@@ -487,7 +477,7 @@ namespace aspect
       // According to Herrendoerfer 2018 delta_theta_max is not allowed > 0.2, so this value is used if the rest
       // gives non-sense.
       // Furthermore, the computation of the min state weakening time step at the surface gives very very low time
-      // step sizes because pressure at the surface is zero. So the surface points are excluded from the routine
+      // step sizes because pressure at the surface is zero. So the surface points are excluded from the routine 
       // to determine delta_theta_max.
       // ToDo: maybe 1e-20 is too small to avoid these points. But so far it looked like I only run into troubles
       // if I am directly at the surface....

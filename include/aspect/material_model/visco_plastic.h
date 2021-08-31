@@ -251,13 +251,6 @@ namespace aspect
         bool
         use_theta () const;
 
-        /**
-         * A function that returns whether to print negative/Zero (old) thetas
-         * ToDo: findout why they still CAN get negative/Zero and remove this parameter.
-         */
-        bool
-        use_print_thetas () const;
-
         /** calls the function compute_theta from friction_options and returns
          * the current value for the state variable theta from rate-and-state friction.
          */
