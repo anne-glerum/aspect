@@ -251,16 +251,6 @@ namespace aspect
         bool
         use_theta () const;
 
-        /** calls the function compute_theta from friction_options and returns
-         * the current value for the state variable theta from rate-and-state friction.
-         */
-        double
-        compute_theta(double theta_old,
-                      const double current_edot_ii,
-                      const double cellsize,
-                      const double critical_slip_distance,
-                      const Point<dim> &position) const;
-
         /** A function that returns delta_theta_max which is needed to calculate the necessary
          * minimum time step needed for rate-and-state friction models. The calculation of the
          * timestep is done following \cite{lapusta_elastodynamic_2000},
