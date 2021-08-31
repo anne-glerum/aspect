@@ -109,7 +109,7 @@ namespace aspect
             for (unsigned int d=0; d<dim; ++d)
               grad_u[d] = gradients[d];
             material_inputs.strain_rate[0] = symmetrize (grad_u);
-            
+
             // Overwrite the value of theta in the solution with the current theta value of the particle.
             // Otherwise the particle and the solution will have slightly different theta values.
             material_inputs.composition[0][this->introspection().compositional_index_for_name("theta")] = particle->get_properties()[data_position];

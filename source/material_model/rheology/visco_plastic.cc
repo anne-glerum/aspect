@@ -322,9 +322,7 @@ namespace aspect
             if ((coords[0] < 188) && (coords[0] > 186)
                 && (coords[1] < 708) && (coords[1] > 706)
                 && (coords[2] < 12333) && (coords[2] > 12331))
-              {
-                std::cout << std::endl << coords[0] << "-" << coords[1] << "-" << coords[2] << "---" << "before plasticity  : edot_ii: "<<current_edot_ii<<" current_stress: "<<current_stress<<" viscosity_pre_yield: "<<viscosity_pre_yield << std::endl;
-              }
+              std::cout << std::endl << coords[0] << "-" << coords[1] << "-" << coords[2] << "---" << "before plasticity  : edot_ii: "<<current_edot_ii<<" current_stress: "<<current_stress << std::endl;
             // Step 5: plastic yielding
 
             // Determine if the pressure used in Drucker Prager plasticity will be capped at 0 (default).
@@ -366,9 +364,7 @@ namespace aspect
             if ((coords[0] < 188) && (coords[0] > 186)
                 && (coords[1] < 708) && (coords[1] > 706)
                 && (coords[2] < 12333) && (coords[2] > 12331))
-              {
-                std::cout << coords[0] << "-" << coords[1] << "-" << coords[2] << "---" << "before the yielding: edot_ii: "<<current_edot_ii<<" current_stress: "<<current_stress<<"     viscosity_yield: "<<viscosity_yield << std::endl;
-              }
+              std::cout << coords[0] << "-" << coords[1] << "-" << coords[2] << "---" << "before the yielding: edot_ii: "<<current_edot_ii<<"   yield_stress: "<<yield_stress<< std::endl;
             switch (yield_mechanism)
               {
                 case stress_limiter:
@@ -402,16 +398,6 @@ namespace aspect
                                                                                     friction_options.use_radiation_damping,
                                                                                     friction_options.use_theta());
                       output_parameters.composition_yielding[j] = true;
-
-
-                      if ((coords[0] < 188) && (coords[0] > 186)
-                          && (coords[1] < 708) && (coords[1] > 706)
-                          && (coords[2] < 12333) && (coords[2] > 12331))
-                        {
-                          std::cout << coords[0] << "-" << coords[1] << "-" << coords[2] << "---" << "within the yielding: edot_ii: "<<current_edot_ii<<"   yield_stress: "<<yield_stress<< "     viscosity_yield: "<<viscosity_yield << std::endl;
-                          std::cout << "tresca fault strength would be:  "<< friction_options.effective_normal_stress_on_fault *std::tan(output_parameters.current_friction_angles[j]) * current_edot_ii *current_cell->extent_in_direction(0)- 0.5e6 * current_edot_ii *current_cell->extent_in_direction(0) << std::endl;
-                          std::cout << "RSF fault strength would be   :  "<< 0.01 * pressure_for_plasticity *std::asinh(current_edot_ii * current_cell->extent_in_direction(0)/(2*1e-6)*exp((tan(31)+0.015*in.composition[i][friction_options.theta_composition_index])/0.01));
-                        }
                     }
                   break;
                 }

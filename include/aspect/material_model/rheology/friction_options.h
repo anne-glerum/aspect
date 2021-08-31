@@ -162,8 +162,7 @@ namespace aspect
           double compute_theta(double theta_old,
                                const double current_edot_ii,
                                const double cellsize,
-                               const double critical_slip_distance,
-                               const Point<dim> &position) const;
+                               const double critical_slip_distance) const;
 
           /**
            * A function that fills the reaction terms for the state variable theta in

@@ -260,8 +260,7 @@ namespace aspect
       compute_theta(double theta_old,
                     const double current_edot_ii,
                     const double cellsize,
-                    const double critical_slip_distance,
-                    const Point<dim> &position) const
+                    const double critical_slip_distance) const
       {
         double current_theta = 0;
         // this is a trial to check if it prevents current_theta from being negative if old_theta is limited to >=1e-50
@@ -349,7 +348,7 @@ namespace aspect
                   current_theta += critical_slip_distance / steady_state_velocity;
                 else
                   current_theta += compute_theta(theta_old, current_edot_ii,
-                                                 in.current_cell->extent_in_direction(0), critical_slip_distance, in.position[q]);
+                                                 in.current_cell->extent_in_direction(0), critical_slip_distance);
                 Assert(current_theta > 0,
                        ExcMessage("Theta within 'compute_theta_reaction_terms' got smaller / equal zero. This is unphysical. "
                                   "The value of current theta is: "
