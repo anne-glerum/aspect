@@ -398,7 +398,6 @@ namespace aspect
                                                                                     friction_options.use_radiation_damping,
                                                                                     friction_options.use_theta());
                       output_parameters.composition_yielding[j] = true;
-                      std::cout << "yielded" << std::endl;
                     }
                   break;
                 }
