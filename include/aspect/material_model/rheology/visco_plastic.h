@@ -74,6 +74,12 @@ namespace aspect
          * and viscosity is rescaled back to the yield envelope.
          */
         std::vector<double> yielding;
+
+        /**
+         * The area where the viscous stress exceeds the plastic yield stress,
+         * and viscosity is rescaled back to the yield envelope.
+         */
+        std::vector<double> yield_stresses;
     };
 
     /**

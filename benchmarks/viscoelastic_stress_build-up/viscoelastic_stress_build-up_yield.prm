@@ -51,3 +51,11 @@ subsection Material model
   end
 
 end
+
+# Post processing
+subsection Postprocess
+  subsection Visualization
+    set List of output variables = material properties, strain rate, stress, named additional outputs, stress residual
+    set Time between graphical output = 1
+  end
+end
