@@ -262,7 +262,7 @@ namespace aspect
                     const double cellsize,
                     const double critical_slip_distance) const
       {
-        double current_theta = 0;
+        double current_theta = 0.;
         // this is a trial to check if it prevents current_theta from being negative if old_theta is limited to >=1e-50
         // ToDo: Remove eventually?
         Assert(theta_old > 0,
@@ -337,13 +337,14 @@ namespace aspect
                                   +  Utilities::to_string(theta_old)));
 
                 theta_old = std::max(theta_old,1e-50);
-                double current_theta = 0;
+                double current_theta = 0.;
 
-                // ToDo: Probably now, with only using this function if fault material has more than 50% of the volume, this part should maybe be restructured,
-                // e.g. only taken the fault material distribution? not sure though if that would be correct or if all distributions should be taken into account
-                double critical_slip_distance = 0.0;
-                for (unsigned int j=0; j < volume_fractions.size(); ++j)
-                  critical_slip_distance += volume_fractions[j] * get_critical_slip_distance(in.position[q], j);
+                // Because this function is only entered if fault material has more than 50% of the volume, 
+                // the critical slip distance is only taken from the fault material and not from the other materials.
+                // ToDo: not sure though if that would be correct or if all distributions should be taken into account
+                // ToDo: Maybe I only need one critical slip distance function then and not one for each composition?
+                double critical_slip_distance = get_critical_slip_distance(in.position[q], fault_composition_index + 1);
+
                 if (friction_dependence_mechanism == steady_state_rate_and_state_dependent_friction)
                   current_theta += critical_slip_distance / steady_state_velocity;
                 else
@@ -364,7 +365,7 @@ namespace aspect
             else
               {
                 // Do I need to set this? Or is it zero by default?
-                out.reaction_terms[q][theta_composition_index] = 0;
+                out.reaction_terms[q][theta_composition_index] = 0.;
               }
           }
       }
@@ -399,7 +400,9 @@ namespace aspect
         const double critical_slip_distance =
           critical_slip_distance_function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),j);
 
-        AssertThrow(critical_slip_distance > 0, ExcMessage("Critical slip distance in a rate-and-state material must be > 0."));
+        const int fault_volume_index = fault_composition_index + 1;
+        if (use_theta() && (fault_volume_index == j))
+          AssertThrow(critical_slip_distance > 0, ExcMessage("Critical slip distance in a rate-and-state material must be > 0."));
 
         return critical_slip_distance;
       }
