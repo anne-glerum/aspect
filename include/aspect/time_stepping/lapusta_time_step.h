@@ -54,6 +54,18 @@ namespace aspect
         double
         execute() override;
 
+
+        /**
+         * Returns the four components of the lapusta time stepping criterium for the current cell.
+         * It is based on section 2.2.4 in \cite{herrendorfer_invariant_2018}.
+         */
+        std::vector<double>
+        compute_lapusta_timestep_components(const double delta_x,
+                                            MaterialModel::MaterialModelInputs<dim> &in,
+                                            MaterialModel::MaterialModelOutputs<dim> &out,
+                                            const unsigned int n_q_points,
+                                            std::vector<Tensor<1,dim> > velocity_values) const;
+
       private:
     };
   }

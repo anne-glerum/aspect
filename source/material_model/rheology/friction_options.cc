@@ -258,8 +258,8 @@ namespace aspect
         // theta_{n+1} = L/V_{n+1} + (theta_n - L/V_{n+1})*exp(-(V_{n+1}dt)/L)
         // This is obtained from Equation (5): dtheta/dt = 1 - (theta V)/L
         // by integration using the assumption that velocities are constant at any time step.
-        current_theta = critical_slip_distance / ( cellsize * current_edot_ii ) +
-                        (theta_old - critical_slip_distance / ( cellsize * current_edot_ii))
+        current_theta = critical_slip_distance / (cellsize * current_edot_ii ) +
+                        (theta_old - critical_slip_distance / (cellsize * current_edot_ii))
                         * std::exp( - (current_edot_ii * cellsize) * this->get_timestep() / critical_slip_distance);
         Assert(current_theta > 0,
                ExcMessage("Theta within 'compute_theta' got smaller / equal zero. This is unphysical. "
