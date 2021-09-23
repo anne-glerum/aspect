@@ -818,6 +818,10 @@ namespace aspect
           }
         prm.leave_subsection();
 
+
+        if ((prm.get ("Friction dependence mechanism") != "none")
+        && (prm.get ("Friction dependence mechanism") != "dynamic friction"))
+        {
         prm.enter_subsection("Critical slip distance function");
         try
           {
@@ -834,18 +838,6 @@ namespace aspect
             throw;
           }
         prm.leave_subsection();
-
-        RSF_ref_velocity = prm.get_double("RSF reference slip rate");
-
-        steady_state_velocity = prm.get_double("Steady state velocity for RSF");
-
-        effective_normal_stress_on_fault = prm.get_double("Effective normal stress on fault");
-
-        use_radiation_damping = prm.get_bool("Use radiation damping");
-
-        use_always_yielding = prm.get_bool("Use always yielding");
-
-        coordinate_system_RSF = Utilities::Coordinates::string_to_coordinate_system(prm.get("Coordinate system for RSF parameters"));
 
         prm.enter_subsection("Rate and state parameter a function");
         try
@@ -880,6 +872,20 @@ namespace aspect
             throw;
           }
         prm.leave_subsection();
+
+        }
+
+        RSF_ref_velocity = prm.get_double("RSF reference slip rate");
+
+        steady_state_velocity = prm.get_double("Steady state velocity for RSF");
+
+        effective_normal_stress_on_fault = prm.get_double("Effective normal stress on fault");
+
+        use_radiation_damping = prm.get_bool("Use radiation damping");
+
+        use_always_yielding = prm.get_bool("Use always yielding");
+
+        coordinate_system_RSF = Utilities::Coordinates::string_to_coordinate_system(prm.get("Coordinate system for RSF parameters"));
 
         // parameters for slip rate dependent rate and state friction
 
