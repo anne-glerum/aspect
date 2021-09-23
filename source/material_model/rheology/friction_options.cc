@@ -405,7 +405,7 @@ namespace aspect
         // an input for the user.
         const double effective_friction_factor = 1 - effective_friction_factor_function.value(Utilities::convert_array_to_point<dim>(point.get_coordinates()));
 
-        AssertThrow((effective_friction_factor < 1) && (effective_friction_factor >= 0), ExcMessage("Effective friction factor must be < 1 and >=0, "
+        AssertThrow((1 - (effective_friction_factor) < 1) && (1 - (effective_friction_factor) >= 0), ExcMessage("The final effective friction factor must be < 1 and >=0, "
                     "because anything else will cause negative or zero friction coefficients / pressure. Keep in mind that the input values given in the "
                     "'effective friction factor function' are substracted from 1 during computation as: final_factor = 1 - input_value."));
 
