@@ -106,20 +106,16 @@ namespace aspect
             }
             case dynamic_friction:
             {
-              // ToDo: properly remove eff friction factor here instead of just setting it to zero.
-              // It probs needs to be applied to p instead of to friction
-              const double effective_friction_factor = 0;// get_effective_friction_factor(position);
               // The dynamic characteristic strain rate is used to see what value between dynamic and static angle of internal friction should be used.
               // This is done as in the material model dynamic friction which is based on Equation (13) in van Dinther et al., (2013, JGR). Although here
               // the dynamic friction coefficient is directly specified. Furthermore a smoothness exponent X is added, which determines whether the
               // friction vs strain rate curve is rather step-like or more gradual.
               // mu  = mu_d + (mu_s - mu_d) / ( (1 + strain_rate_dev_inv2/dynamic_characteristic_strain_rate)^X );
               // Angles of friction are used in radians within ASPECT. The coefficient of friction is the tangent of the internal angle of friction.
-              const double mu = (1 - effective_friction_factor)
-                                * (std::tan(dynamic_angles_of_internal_friction[j])
-                                   + (std::tan(current_friction) - std::tan(dynamic_angles_of_internal_friction[j]))
-                                   / (1. + std::pow((current_edot_ii / dynamic_characteristic_strain_rate),
-                                                    dynamic_friction_smoothness_exponent)));
+              const double mu = std::tan(dynamic_angles_of_internal_friction[j])
+                                + (std::tan(current_friction) - std::tan(dynamic_angles_of_internal_friction[j]))
+                                / (1. + std::pow((current_edot_ii / dynamic_characteristic_strain_rate),
+                                                 dynamic_friction_smoothness_exponent));
               current_friction = std::atan (mu);
               Assert((mu < 1) && (0 < current_friction <=1.6), ExcMessage(
                        "Something is wrong with the tan/atan conversion of friction coefficient to friction angle in RAD."));
@@ -132,12 +128,10 @@ namespace aspect
                   // Get the values for a and b and the critcal slip distance L
                   const double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(position,j).first;
                   const double rate_and_state_parameter_b = calculate_depth_dependent_a_and_b(position,j).second;
-                  const double effective_friction_factor = 0; // get_effective_friction_factor(position);
 
-                  const double mu = (1 - effective_friction_factor)
-                                    * (std::tan(current_friction)
-                                       + (rate_and_state_parameter_a - rate_and_state_parameter_b)
-                                       * std::log(steady_state_velocity / RSF_ref_velocity));
+                  const double mu = std::tan(current_friction)
+                                    + (rate_and_state_parameter_a - rate_and_state_parameter_b)
+                                    * std::log(steady_state_velocity / RSF_ref_velocity);
                   current_friction = std::atan (mu);
                 }
               break;
@@ -158,7 +152,6 @@ namespace aspect
                   double rate_and_state_parameter_a = calculate_depth_dependent_a_and_b(position,j).first;
                   const double rate_and_state_parameter_b = calculate_depth_dependent_a_and_b(position,j).second;
                   double critical_slip_distance = get_critical_slip_distance(position,j);
-                  const double effective_friction_factor = 0;// get_effective_friction_factor(position);
 
                   // the state variable theta is taken from the current compositional field theta
                   double theta = composition[theta_composition_index];
@@ -185,35 +178,27 @@ namespace aspect
                           // Their equation is for friction coefficient.
                           // As we use strain-rates and current_edot_ii instead of velocities, these
                           // are multiplied by the cellsize.
-                          // Effective friction is explained below for the other friction option.
-                          mu = (1 - effective_friction_factor)
-                               * (rate_and_state_parameter_a
-                                  * std::asinh(current_edot_ii / (2.0 * RSF_ref_velocity / cellsize)
-                                               * std::exp((std::tan(current_friction)
-                                                           + rate_and_state_parameter_b
-                                                           * std::log((theta * RSF_ref_velocity) / critical_slip_distance))
-                                                          / rate_and_state_parameter_a)));
+                          mu = rate_and_state_parameter_a
+                               * std::asinh(current_edot_ii / (2.0 * RSF_ref_velocity / cellsize)
+                                            * std::exp((std::tan(current_friction)
+                                                        + rate_and_state_parameter_b
+                                                        * std::log((theta * RSF_ref_velocity) / critical_slip_distance))
+                                                       / rate_and_state_parameter_a));
                         }
                       else
-                        mu = (1 - effective_friction_factor)
-                             * (std::tan(current_friction) + rate_and_state_parameter_b
-                                * std::log((theta * RSF_ref_velocity) / critical_slip_distance));
+                        mu = std::tan(current_friction) + rate_and_state_parameter_b
+                             * std::log((theta * RSF_ref_velocity) / critical_slip_distance);
                     }
                   else
                     {
-                      // Calculate effective friction according to Equation (4) in Sobolev and Muldashev (2017):
+                      // Calculate friction according to Equation (4) in Sobolev and Muldashev (2017):
                       // mu = mu_st + a ln(V/V_st) + b ln((theta V_st)/L)
                       // Their equation is for friction coefficient.
-                      // Effective friction is calculated by multiplying the friction coefficient with the
-                      // effective_friction_factor to account for effects of pore fluid pressure:
-                      // mu = mu(1-p_f/sigma_n) = mu*, with (1-p_f/sigma_n) = 0.03 for subduction zones.
-                      //const double current_friction_old = current_friction; // also only for chasing negative friction (ToDo: remove once this works fine)
-                      mu = (1 - effective_friction_factor)
-                           * (std::tan(current_friction)
-                              + rate_and_state_parameter_a
-                              * std::log(current_edot_ii / (RSF_ref_velocity / cellsize))
-                              + rate_and_state_parameter_b
-                              * std::log((theta * RSF_ref_velocity) / critical_slip_distance));
+                      mu = std::tan(current_friction)
+                           + rate_and_state_parameter_a
+                           * std::log(current_edot_ii / (RSF_ref_velocity / cellsize))
+                           + rate_and_state_parameter_b
+                           * std::log((theta * RSF_ref_velocity) / critical_slip_distance);
 
                       /* TODO: from Sobolev and Muldashev appendix.
                       if (friction_dependence_mechanism == rate_and_state_dependent_friction_plus_linear_slip_weakening)
@@ -234,7 +219,6 @@ namespace aspect
                                 "rate-and-state like friction, don't forget to check on a,b, and the critical slip distance, or theta."
                                 "\n a is: "+  Utilities::to_string(rate_and_state_parameter_a) + ", b is: "
                                 + Utilities::to_string(rate_and_state_parameter_b)+ ", L is: " +  Utilities::to_string(critical_slip_distance) +
-                                ",\n effecitve friction factor is: "+ Utilities::to_string(effective_friction_factor) +
                                 ",\n friction angle [RAD] is: "+ Utilities::to_string(current_friction)+", friction coeff is: "+Utilities::to_string(mu)+
                                 ",\n theta is: "+ Utilities::to_string(theta)+", current edot_ii is: "
                                 + Utilities::to_string(current_edot_ii)+ ".\n The position is:\n dir 0 = "+ Utilities::to_string(coords[0])+
@@ -339,7 +323,7 @@ namespace aspect
                 theta_old = std::max(theta_old,1e-50);
                 double current_theta = 0.;
 
-                // Because this function is only entered if fault material has more than 50% of the volume, 
+                // Because this function is only entered if fault material has more than 50% of the volume,
                 // the critical slip distance is only taken from the fault material and not from the other materials.
                 // ToDo: not sure though if that would be correct or if all distributions should be taken into account
                 // ToDo: Maybe I only need one critical slip distance function then and not one for each composition?
@@ -421,8 +405,9 @@ namespace aspect
         // an input for the user.
         const double effective_friction_factor = 1 - effective_friction_factor_function.value(Utilities::convert_array_to_point<dim>(point.get_coordinates()));
 
-        AssertThrow(((1 - effective_friction_factor) < 1) && ((1 - effective_friction_factor) >= 0), ExcMessage("Effective friction factor must be < 1, "
-                    "because anything else will cause negative or zero friction coefficients / pressure."));
+        AssertThrow((effective_friction_factor < 1) && (effective_friction_factor >= 0), ExcMessage("Effective friction factor must be < 1 and >=0, "
+                    "because anything else will cause negative or zero friction coefficients / pressure. Keep in mind that the input values given in the "
+                    "'effective friction factor function' are substracted from 1 during computation as: final_factor = 1 - input_value."));
 
         return effective_friction_factor;
       }
@@ -502,7 +487,11 @@ namespace aspect
                            "Assuming that velocities are constant at any time step, this can be analytically integrated: \n"
                            "$\\theta_{n+1} = \\frac{L}{V_{n+1}} + \\big(\\theta_n - \\frac{L}{V_{n+1}}\\big)*exp\\big(-\\frac{V_{n+1}\\Delta t}{L}\\big)$.\n"
                            "Pore fluid pressure can be taken into account by specifying the 'Effective friction "
-                           "factor', which uses $\\mu* = \\mu\\big(1-\\frac{P_f}{\\sigma_n} \\big)$. "
+                           "factor', which uses the relation $\\mu* = \\mu\\big(1-\\frac{P_f}{\\sigma_n} \\big)$ for the "
+                           "drucker prager yield stress formulation $\\tau_y = \\mu*\\sigma_n + c$ \\citep{sobolev_modeling_2017}. "
+                           "As Aspect uses another drucker prager formulation, the effective friction factor is applied "
+                           "to pressure (normal stress $\\sigma_n$) instead. When specifying this factor in the input file, "
+                           "be aware that during computation the input value is substracted from 1 as: $final\\_value = 1-input\\_value$. \n"
                            "In ASPECT the state variable is confined to values > 1e-50: if it becomes $<1e-50$ during the computation "
                            "it is set to 1e-50. The same applies to the friction angle which is set to 1e-30 if smaller than that. "
                            "The term $a \\cdot ln\\big( \\frac{V}{V_{st}} \\big)$ is often referred to as the instantaneous 'viscosity-like' "
@@ -620,13 +609,6 @@ namespace aspect
           Functions::ParsedFunction<dim>::declare_parameters(prm,1);
         }
         prm.leave_subsection();
-
-        prm.declare_entry ("Effective friction factor", "1",
-                           Patterns::List(Patterns::Double(0)),
-                           "A number that is multiplied with the coefficient of friction to take into "
-                           "account the influence of pore fluid pressure. This makes the friction "
-                           "coefficient an effective friction coefficient as in \\cite{sobolev_modeling_2017}. "
-                           "Units: none.");
 
         prm.declare_entry ("Effective normal stress on fault", "1",
                            Patterns::List(Patterns::Double(0)),
@@ -804,6 +786,13 @@ namespace aspect
 
         // Rate and state friction parameters
         prm.enter_subsection("Effective friction factor function");
+        // Effective friction is calculated by multiplying the pressure with the
+        // effective_friction_factor to account for effects of pore fluid pressure.
+        // When using a different formulation of the drucker prager yield stress
+        // (tau_y = mu*sigma_n + C) this coefficient could be used to be multiplied
+        // with the friction coefficient like this:
+        // mu = mu(1-p_f/sigma_n) = mu*, with (1-p_f/sigma_n) = 0.03 for subduction zones.
+        // But aspects drucker prager is written differently so we need to apply it to pressure / sigma_n.
         try
           {
             effective_friction_factor_function.parse_parameters (prm);
@@ -820,60 +809,60 @@ namespace aspect
 
 
         if ((prm.get ("Friction dependence mechanism") != "none")
-        && (prm.get ("Friction dependence mechanism") != "dynamic friction"))
-        {
-        prm.enter_subsection("Critical slip distance function");
-        try
+            && (prm.get ("Friction dependence mechanism") != "dynamic friction"))
           {
-            critical_slip_distance_function
-              = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(n_fields);
-            critical_slip_distance_function->parse_parameters (prm);
-          }
-        catch (...)
-          {
-            std::cerr << "FunctionParser failed to parse\n"
-                      << "\t RSF critical slip distance function\n"
-                      << "with expression \n"
-                      << "\t' " << prm.get("Function expression") << "'";
-            throw;
-          }
-        prm.leave_subsection();
+            prm.enter_subsection("Critical slip distance function");
+            try
+              {
+                critical_slip_distance_function
+                  = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(n_fields);
+                critical_slip_distance_function->parse_parameters (prm);
+              }
+            catch (...)
+              {
+                std::cerr << "FunctionParser failed to parse\n"
+                          << "\t RSF critical slip distance function\n"
+                          << "with expression \n"
+                          << "\t' " << prm.get("Function expression") << "'";
+                throw;
+              }
+            prm.leave_subsection();
 
-        prm.enter_subsection("Rate and state parameter a function");
-        try
-          {
-            rate_and_state_parameter_a_function
-              = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(n_fields);
-            rate_and_state_parameter_a_function->parse_parameters (prm);
-          }
-        catch (...)
-          {
-            std::cerr << "FunctionParser failed to parse\n"
-                      << "\t RSF a function\n"
-                      << "with expression \n"
-                      << "\t' " << prm.get("Function expression") << "'";
-            throw;
-          }
-        prm.leave_subsection();
+            prm.enter_subsection("Rate and state parameter a function");
+            try
+              {
+                rate_and_state_parameter_a_function
+                  = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(n_fields);
+                rate_and_state_parameter_a_function->parse_parameters (prm);
+              }
+            catch (...)
+              {
+                std::cerr << "FunctionParser failed to parse\n"
+                          << "\t RSF a function\n"
+                          << "with expression \n"
+                          << "\t' " << prm.get("Function expression") << "'";
+                throw;
+              }
+            prm.leave_subsection();
 
-        prm.enter_subsection("Rate and state parameter b function");
-        try
-          {
-            rate_and_state_parameter_b_function
-              = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(n_fields);
-            rate_and_state_parameter_b_function->parse_parameters (prm);
-          }
-        catch (...)
-          {
-            std::cerr << "FunctionParser failed to parse\n"
-                      << "\t RSF b function\n"
-                      << "with expression \n"
-                      << "\t' " << prm.get("Function expression") << "'";
-            throw;
-          }
-        prm.leave_subsection();
+            prm.enter_subsection("Rate and state parameter b function");
+            try
+              {
+                rate_and_state_parameter_b_function
+                  = std_cxx14::make_unique<Functions::ParsedFunction<dim>>(n_fields);
+                rate_and_state_parameter_b_function->parse_parameters (prm);
+              }
+            catch (...)
+              {
+                std::cerr << "FunctionParser failed to parse\n"
+                          << "\t RSF b function\n"
+                          << "with expression \n"
+                          << "\t' " << prm.get("Function expression") << "'";
+                throw;
+              }
+            prm.leave_subsection();
 
-        }
+          }
 
         RSF_ref_velocity = prm.get_double("RSF reference slip rate");
 
