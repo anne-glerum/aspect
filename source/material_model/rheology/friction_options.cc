@@ -623,9 +623,6 @@ namespace aspect
         prm.enter_subsection("Critical slip distance function");
         {
           Functions::ParsedFunction<dim>::declare_parameters(prm,1);
-          // ToDo: make a default option! The line below with "declare_entry"
-          // does not work, because I need as many expressions as I have compositions. But how to do that?
-          // prm.declare_entry("Function expression","0.008");
         }
         prm.leave_subsection();
 
