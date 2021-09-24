@@ -405,8 +405,9 @@ namespace aspect
         // an input for the user.
         const double effective_friction_factor = 1 - effective_friction_factor_function.value(Utilities::convert_array_to_point<dim>(point.get_coordinates()));
 
-        AssertThrow((1 - (effective_friction_factor) < 1) && (1 - (effective_friction_factor) >= 0), ExcMessage("The final effective friction factor must be < 1 and >=0, "
-                    "because anything else will cause negative or zero friction coefficients / pressure. Keep in mind that the input values given in the "
+        AssertThrow((1 - (effective_friction_factor) < 1) && (1 - (effective_friction_factor) >= 0), ExcMessage("The 'effective friction factor function' "
+                    "must return values < 1 and >=0, which gives a final effective friction factor <= 1 and > 0 as is used during computation. "
+                    "Any other value will cause negative or zero friction coefficients / pressure. Keep in mind that the input values given in the "
                     "'effective friction factor function' are substracted from 1 during computation as: final_factor = 1 - input_value."));
 
         return effective_friction_factor;
@@ -434,9 +435,9 @@ namespace aspect
         // it also comes from the RSF framework and can potentially be used to compute a
         // longterm model that will then be restarted with real RSF. Real RSF needs the
         // compositional field theta, so theta needs to be in the longterm model too. However,
-        // if steady-state RSF is not listed here to use theta, theta will not be excluded
+        // if steady state RSF is not listed here to use theta, theta will not be excluded
         // from volume_fractions, except for it being zero. However, for real RSF theta is
-        // not allowed to be 0. So probably it is easiest if steady-state RSF also sets the
+        // not allowed to be 0. So probably it is easiest if steady state RSF also sets the
         // use_theta flag to true.
         if ((mechanism == rate_and_state_dependent_friction)
             || (mechanism == rate_and_state_dependent_friction_plus_linear_slip_weakening)
@@ -468,38 +469,33 @@ namespace aspect
                            "\\item ``none'': No rate or state dependence of the friction angle is applied. "
                            "\n\n"
                            "\\item ``dynamic friction'': The friction angle is rate dependent."
-                           "When dynamic angles of friction are specified, "
+                           "When dynamic angles of internal friction are specified, "
                            "the friction angle will be weakened for high strain rates with: "
                            "$\\mu = \\mu_d + \\frac(\\mu_s-\\mu_d)(1+(\\frac(\\dot{\\epsilon}_{ii})(\\dot{\\epsilon}_C)))^x$  "
-                           "where $\\mu_s$ and $\\mu_d$ are the friction angle at low and high strain rates, "
+                           "where $\\mu_s$ and $\\mu_d$ are the friction angles at low and high strain rates, "
                            "respectively. $\\dot{\\epsilon}_{ii}$ is the second invariant of the strain rate and "
-                           "$\\dot{\\epsilon}_C$ is the characterisitc strain rate where $\\mu = (\\mu_s+\\mu_d)/2$. "
+                           "$\\dot{\\epsilon}_C$ is the characteristic strain rate where $\\mu = (\\mu_s+\\mu_d)/2$. "
                            "x controls how smooth or step-like the change from $\\mu_s$ to $\\mu_d$ is. "
                            "The equation is modified after Equation (13) in \\cite{van_dinther_seismic_2013}. "
                            "$\\mu_s$ and $\\mu_d$ can be specified by setting 'Angles of internal friction' and "
                            "'Dynamic angles of internal friction', respectively."
                            "\n\n"
-                           "\\item ``rate and state dependent friction'': A state variable theta is introduced "
+                           "\\item ``rate and state dependent friction'': A state variable theta "
+                           "- tracked as a compositional field - is introduced "
                            "and the friction angle is calculated using classic aging rate-and-state friction by "
                            "Ruina (1983) as described by Equations (4--7) in \\cite{sobolev_modeling_2017}:\n"
                            "$\\mu = \\mu_{st} + a \\cdot ln\\big( \\frac{V}{V_{st}} \\big) + b \\cdot ln\\big( \\frac{\\theta V_{st}}{L} \\big)$,\n"
                            "$\\frac{d\\theta}{dt} = 1-\\frac{\\theta V}{L} $.\n"
                            "Assuming that velocities are constant at any time step, this can be analytically integrated: \n"
                            "$\\theta_{n+1} = \\frac{L}{V_{n+1}} + \\big(\\theta_n - \\frac{L}{V_{n+1}}\\big)*exp\\big(-\\frac{V_{n+1}\\Delta t}{L}\\big)$.\n"
-                           "Pore fluid pressure can be taken into account by specifying the 'Effective friction "
-                           "factor', which uses the relation $\\mu* = \\mu\\big(1-\\frac{P_f}{\\sigma_n} \\big)$ for the "
-                           "drucker prager yield stress formulation $\\tau_y = \\mu*\\sigma_n + c$ \\citep{sobolev_modeling_2017}. "
-                           "As Aspect uses another drucker prager formulation, the effective friction factor is applied "
-                           "to pressure (normal stress $\\sigma_n$) instead. When specifying this factor in the input file, "
-                           "be aware that during computation the input value is substracted from 1 as: $final\\_value = 1-input\\_value$. \n"
                            "In ASPECT the state variable is confined to values > 1e-50: if it becomes $<1e-50$ during the computation "
-                           "it is set to 1e-50. The same applies to the friction angle which is set to 1e-30 if smaller than that. "
+                           "it is set to 1e-50. The same applies to the friction angle which is set to 1e-30 if smaller than that. \n"
                            "The term $a \\cdot ln\\big( \\frac{V}{V_{st}} \\big)$ is often referred to as the instantaneous 'viscosity-like' "
                            "direct effect, and the rate-and-state parameter a describes its magnitude. "
                            "The term $b \\cdot ln\\big( \\frac{\\theta V_{st}}{L} \\big)$ is referred to as the evolution effect as it is described "
                            "by the evolving state variable $\\theta$. The magnitude of the evolution effect is determined by the "
                            "rate-and-state parameter b. See \\cite{herrendorfer_invariant_2018} for a comprehensive explanation of all parameters. "
-                           "Reasonable values for a and b are 0.01 and 0.015, respectively, see \\cite{sobolev_modeling_2017}. "
+                           "Reasonable values for a and b are 0.01 and 0.015, respectively, see \\cite{sobolev_modeling_2017}. \n"
                            "The critical slip distance L in rate-and-state friction is used to calculate the "
                            "state variable theta using the aging law: $\\frac{d\\theta}{dt}=1-\\frac{\\theta V}{L}$. "
                            "At steady state: $\\theta = \\frac{L}{V} $. The critical slip distance "
@@ -510,28 +506,16 @@ namespace aspect
                            "order of microns. For geodynamic modelling \\cite{sobolev_modeling_2017} set this parameter "
                            "to 1--10 cm. In the SCEC-SEAS benchmark initiative \\citep{erickson_community_2020} they use 4 and 8 mm. "
                            "This parameter should be changed when the level of mesh refinement de- or increases. "
-                           "I has the Unit: \\si{\\meter}."
-                           "The parameters a, b, and the critical slip distance L are specified as functions in a separate subsections."
+                           "I has the Unit: \\si{\\meter}.\n"
+                           "The parameters a, b, and the critical slip distance L are specified as functions in separate subsections.\n"
                            "The $V_{st}$ is the 'RSF reference slip rate' at which the friction coefficient will match the reference "
-                           "friction coefficient $\\mu_{st}$ which is defined through the 'angle of internal friction' parameter. "
-                           "\n\n"
-                           "\\item ``rate and state dependent friction plus linear slip weakening'': ToDo: all, this is an empty model atm. "
-                           "Method taken from \\cite{sobolev_modeling_2017}. The friction coefficient is computed as "
-                           "$\\mu = \\mu_{st} + a \\cdot ln\\big( \\frac{V}{V_{st}} \\big) + b \\cdot ln\\big( \\frac{\\theta V_{st}}{L} \\big) - \\Delta \\mu(D)$"
-                           "where D is the slip at point in fault at the first timestep of earthquake. "
-                           "\n\n"
-                           "\\item ``slip rate dependent rate and state dependent friction'': The rate-and-state "
-                           "parameters and the critical slip distance L are made slip-rate dependent. The friction "
-                           "coefficient is computed as in 'rate and state dependent friction'. But a and L are not "
-                           "constant, but are computed as follows, see \\citep{Im_im_slip-rate-dependent_2020} for details."
-                           "$a(V) = a_0 + s_a log_{10}\\left(\\frac{V_a+V}{V_a}\\right)$ and "
-                           "$L(V) = L_0 + s_L log_{10}\\left(\\frac{V_L+V}{V_L}\\right)$."
-                           "So a and L have a log linear dependence on velocity with slopes od $s_a$ and $s_L$. "
-                           "Parameters in their paper have the following values: "
-                           "$L_0=10\\mu m$, $s_L=60\\mu m$, $V_L=100\\mu m/s$ and "
-                           "$a_0=0.005$, $s_a=0.0003$, $V_a=100\\mu m/s$. "
-                           "In ASPECT the initial values $a_0$ and $L_0$ are the rate-and-state friction parameters "
-                           "indicated in 'Critical slip distance function' and 'Rate and state parameter a function'."
+                           "friction coefficient $\\mu_{st}$ which is defined through the 'angle of internal friction' parameter. \n"
+                           "Pore fluid pressure can be taken into account by specifying the 'Effective friction "
+                           "factor function', which uses the relation $\\mu* = \\mu\\big(1-\\frac{P_f}{\\sigma_n} \\big)$ for the "
+                           "drucker prager yield stress formulation $\\tau_y = \\mu*\\sigma_n + c$ \\citep{sobolev_modeling_2017}. "
+                           "As Aspect uses another drucker prager formulation, the effective friction factor is applied "
+                           "to pressure (normal stress $\\sigma_n$) instead of friction. When specifying this factor in the input file, "
+                           "be aware that during computation the input value is substracted from 1 as: $final\\_value = 1-input\\_value$. "
                            "\n\n"
                            "\\item ``regularized rate and state dependent friction'': The friction coefficient is computed using: "
                            "$\\mu = a\\cdot sinh^{-1}\\left[\\frac{V}{2V_0}exp\\left(\\frac{\\mu_0+b\\cdot ln(V_0\\theta/L)}{a}\\right)\\right]$ "
@@ -539,8 +523,8 @@ namespace aspect
                            "This formulation overcomes the problem of ill-posedness and the possibility of negative friction for "
                            "$V<<V_0$. It is for example used in \\cite{herrendorfer_invariant_2018}. "
                            "\n\n"
-                           "\\item ``steady state rate and state dependent friction'': friction "
-                           "is computed as the steady-state friction coefficient in rate-and-state friction: "
+                           "\\item ``steady state rate and state dependent friction'': The friction coefficient "
+                           "is computed as the steady state friction coefficient in rate-and-state friction: "
                            "$\\mu_{ss} =\\mu_{st}}+(a-b)ln(V_{ss}/V_{st}})$"
                            "This friction is reached when state evolves toward a steady state $\\theta_{ss} = L/V_{ss}$"
                            "at constant slip velocities. The velocity $V_{ss}$ can be specified with the parameter "
@@ -551,17 +535,38 @@ namespace aspect
                            "but not on rate nor state, e.g. in a model run with long timesteps to acquire the initial conditions "
                            "for a rate-and-state model. Even though a state variable theta is not used to compute the friction "
                            "angle, a compositional field 'theta' must be provided to ensure a smooth restart with one of the "
-                           "rate-and-state friction formulations. Theta is computed to equal $\\theta_{ss}$.");
+                           "rate-and-state friction formulations. Theta is computed to equal $\\theta_{ss}$."
+                           "\n\n"
+                           "\\item ``slip rate dependent rate and state dependent friction'': The rate-and-state "
+                           "parameter a and the critical slip distance L are made slip-rate dependent. The friction "
+                           "coefficient is computed as in 'rate and state dependent friction'. But a and L are not "
+                           "constant, but are computed as follows, see \\citep{Im_im_slip-rate-dependent_2020} for details."
+                           "$a(V) = a_0 + s_a log_{10}\\left(\\frac{V_a+V}{V_a}\\right)$ and "
+                           "$L(V) = L_0 + s_L log_{10}\\left(\\frac{V_L+V}{V_L}\\right)$."
+                           "So a and L have a log linear dependence on velocity with slopes of $s_a$ and $s_L$. "
+                           "Parameters in their paper have the following values: "
+                           "$L_0=10\\mu m$, $s_L=60\\mu m$, $V_L=100\\mu m/s$ and "
+                           "$a_0=0.005$, $s_a=0.0003$, $V_a=100\\mu m/s$. "
+                           "In ASPECT the initial values $a_0$ and $L_0$ are the rate-and-state friction parameters "
+                           "indicated in 'Critical slip distance function' and 'Rate and state parameter a function'. "
+                           "$V_a$ and $V_L$ can be specified with 'Reference velocity for rate and state parameter a' or '... L', "
+                           "respectively. Similarly $s_a and $s_L$ can be set with 'Slope of log dependence for rate and state "
+                           "parameter a' or '... L', respectively."
+                           "\n\n"
+                           "\\item ``rate and state dependent friction plus linear slip weakening'': ToDo: all, this is an empty model atm. "
+                           "Method taken from \\cite{sobolev_modeling_2017}. The friction coefficient is computed as "
+                           "$\\mu = \\mu_{st} + a \\cdot ln\\big( \\frac{V}{V_{st}} \\big) + b \\cdot ln\\big( \\frac{\\theta V_{st}}{L} \\big) - \\Delta \\mu(D)$"
+                           "where D is the slip at point in fault at the first timestep of earthquake. ");
 
         // Dynamic friction paramters
         prm.declare_entry ("Dynamic characteristic strain rate", "1e-12",
                            Patterns::Double (0),
-                           "The characteristic strain rate value, where the angle of friction takes the middle "
-                           "between the dynamic and the static angle of friction. When the effective strain rate "
-                           "in a cell is very high, the dynamic angle of friction is taken, when it is very low "
-                           "the static angle of internal friction is chosen. Around the dynamic characteristic "
-                           "strain rate, there is a smooth gradient from the static to the dynamic friction "
-                           "angle. "
+                           "The characteristic strain rate value, where the angle of friction is "
+                           "equal to $\\mu = (\\mu_s+\\mu_d)/2$. When the effective strain rate "
+                           "is very high, the dynamic angle of friction is taken for computation, when it is very low, "
+                           "the static angle of internal friction is used. Around the dynamic characteristic "
+                           "strain rate, there is a smooth gradient from the static to the dynamic angle "
+                           "of internal friction. "
                            "Units: \\si{\\per\\second}.");
 
         prm.declare_entry ("Dynamic angles of internal friction", "2",
@@ -569,15 +574,15 @@ namespace aspect
                            "List of dynamic angles of internal friction, $\\phi$, for background material and compositional "
                            "fields, for a total of N+1 values, where N is the number of compositional fields. "
                            "Dynamic angles of friction are used as the current friction angle when the effective "
-                           "strain rate in a cell is well above the characteristic strain rate. "
+                           "strain rate is well above the 'dynamic characteristic strain rate'. "
                            "Units: \\si{\\degree}.");
 
         prm.declare_entry ("Dynamic friction smoothness exponent", "1",
                            Patterns::Double (0),
-                           "An exponential factor in the equation for the calculation of the friction angle "
-                           "when a static and a dynamic friction angle are specified. A factor of 1 returns the equation "
+                           "An exponential factor in the equation for the calculation of the friction angle when a "
+                           "static and a dynamic angle of internal friction are specified. A factor of 1 returns the equation "
                            "to Equation (13) in \\cite{van_dinther_seismic_2013}. A factor between 0 and 1 makes the "
-                           "curve of the friction angle vs. the strain rate more smooth, while a factor $>$ 1 makes "
+                           "curve of the friction angle vs. the strain rate smoother, while a factor $>$ 1 makes "
                            "the change between static and dynamic friction angle more steplike. "
                            "Units: none.");
 
@@ -604,21 +609,12 @@ namespace aspect
           Functions::ParsedFunction<dim>::declare_parameters(prm,1);
         }
         prm.leave_subsection();
+
         prm.enter_subsection("Rate and state parameter b function");
         {
           Functions::ParsedFunction<dim>::declare_parameters(prm,1);
         }
         prm.leave_subsection();
-
-        prm.declare_entry ("Effective normal stress on fault", "1",
-                           Patterns::List(Patterns::Double(0)),
-                           "This is a scalar value for the effective normal stress on a fault. It "
-                           "replaces the solution-dependent normal stress in Tresca friction formulation. "
-                           "This is for example used in \\cite{erickson_community_2020} and "
-                           "\\cite{pipping_variational_2015} in simple rate-and-state friction models. "
-                           "This parameter only becomes effective when the yield mechanism tresca "
-                           "is specified in the input file. "
-                           "Units: Pa.");
 
         prm.enter_subsection("Critical slip distance function");
         {
@@ -634,26 +630,27 @@ namespace aspect
 
         prm.declare_entry ("RSF reference slip rate", "1e-6",
                            Patterns::Double (0),
-                           "The quasi static or reference slip rate used in rate and state friction. It is an "
+                           "The quasi static or reference slip rate used in rate-and-state friction. It is an "
                            "arbitrary slip rate at which friction equals the reference friction angle. "
                            "This happens when slip rate (which is represented in ASPECT as strain rate * cell size) "
                            "enters a steady state. Friction at this steady state is defined as: "
-                           "$\\mu = \\mu_{st} = \\mu_0 + (a-b)ln\\big( \\frac{V}{V_0} \\big). "
-                           "It should not be confused with the characteristic strain rate in dynamic friction. "
+                           "$\\mu = \\mu_{st} = \\mu_0 + (a-b)ln\\big( \\frac{V}{V_0} \\big). It should not be "
+                           "confused with the 'dynamic characteristic strain rate' in 'dynamic friction'. "
                            "Units: \\si{\\meter\\per\\second}.");
 
         prm.declare_entry ("Steady state velocity for RSF", "1.75e-2",
                            Patterns::Double (0),
                            "This is velocity $V_{st}$ used in 'steady state rate and state dependent friction'. "
                            "In the rate-and-state friction framework, when the velocity remains constant "
-                           "friction will cease to change and evolve to a steady-state that depends on a and b. "
-                           "This is the input parameter to choose the desired velocity, that does not actually "
-                           "is the velocity in the model but is used to determine the friction angle based on the "
+                           "friction will cease to change and evolve to a steady state that depends on a and b. "
+                           "This is the input parameter to choose the desired velocity, which is not the actual "
+                           "velocity in the model but is used to determine the friction angle based on the "
                            "equation in 'steady state rate and state dependent friction'. So this velocity is "
                            "assumed to have remained constant over a long period such that the friction angle "
-                           "evolved to a steady-state."
+                           "evolved to a steady state."
                            "Units: \\si{\\meter\\per\\second}.");
 
+        // ToDo: check this entry again, once RDT is working to update the description of how we actually do it.
         prm.declare_entry ("Use radiation damping", "false",
                            Patterns::Bool (),
                            "Whether to include radiation damping or not. Radiation damping adds the term "
@@ -664,18 +661,26 @@ namespace aspect
                            "during earthquakelike episodes. Unlike an inertial term it cannot be used to model rupture "
                            "propagation as it approximates seismic waves as energy outflow only. ");
 
-        prm.declare_entry ("Print positions of negative theta", "false",
-                           Patterns::Bool (),
-                           "Whether to print the position, value and timestep of a negative/Zero (old) theta.");
-
+        // ToDo: Remove this parameter eventually once RDT is working.
         prm.declare_entry ("Cut edot_ii after radiation damping", "true",
                            Patterns::Bool (),
                            "Whether to cut edot_ii after applying radiation damping or not. A parameter for debugging my issues. ");
 
+        // ToDo: Remove this parameter eventually and make it similar to use_theta?
         prm.declare_entry ("Use always yielding", "false",
                            Patterns::Bool (),
                            "Whether to assume always yielding for the compositional field 'fault'. In the "
                            "rate-and-state friction framework material is assumed to always be at yield. ");
+
+        prm.declare_entry ("Effective normal stress on fault", "1",
+                           Patterns::List(Patterns::Double(0)),
+                           "This is a scalar value for the effective normal stress on a fault. It "
+                           "replaces the solution-dependent normal stress in Tresca friction formulation. "
+                           "This is for example used in \\cite{erickson_community_2020} and "
+                           "\\cite{pipping_variational_2015} in simple rate-and-state friction models. "
+                           "This parameter only becomes effective when the yield mechanism tresca "
+                           "is specified in the input file. "
+                           "Units: Pa.");
 
         /* TODO:
         prm.declare_entry ("Friction state variable law", "aging law",
