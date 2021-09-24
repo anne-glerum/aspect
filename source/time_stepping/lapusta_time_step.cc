@@ -67,18 +67,18 @@ namespace aspect
         {
           if (cell->is_locally_owned())
             {
-      fe_values.reinit (cell);
-      in.reinit(fe_values,
-                cell,
-                this->introspection(),
-                this->get_solution());
+              fe_values.reinit (cell);
+              in.reinit(fe_values,
+                        cell,
+                        this->introspection(),
+                        this->get_solution());
 
-      this->get_material_model().evaluate(in, out);
+              this->get_material_model().evaluate(in, out);
 
-      fe_values[this->introspection().extractors.velocities].get_function_values (this->get_solution(),
-                                                                                  velocity_values);
+              fe_values[this->introspection().extractors.velocities].get_function_values (this->get_solution(),
+                                                                                          velocity_values);
 
-      const double delta_x = cell->minimum_vertex_distance();
+              const double delta_x = cell->minimum_vertex_distance();
 
               std::vector<double> timestep_for_this_cell = compute_lapusta_timestep_components(delta_x,
                                                            in,
