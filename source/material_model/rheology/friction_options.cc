@@ -481,7 +481,7 @@ namespace aspect
                            "'Dynamic angles of internal friction', respectively."
                            "\n\n"
                            "\\item ``rate and state dependent friction'': A state variable theta "
-                           "- tracked as a compositional field - is introduced "
+                           "- tracked as a compositional field with the Units: \\si{\\second} - is introduced "
                            "and the friction angle is calculated using classic aging rate-and-state friction by "
                            "Ruina (1983) as described by Equations (4--7) in \\cite{sobolev_modeling_2017}:\n"
                            "$\\mu = \\mu_{st} + a \\cdot ln\\big( \\frac{V}{V_{st}} \\big) + b \\cdot ln\\big( \\frac{\\theta V_{st}}{L} \\big)$,\n"
