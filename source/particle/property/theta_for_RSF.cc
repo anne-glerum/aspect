@@ -85,18 +85,15 @@ namespace aspect
 
         // only update theta if we are after time step 0, as currently we
         // do not have information about strain rate before updating the particle
+        // ToDo: Also update theta at dt 0 if at some point we do have info on SR at this point
         // it also only makes sense to update theta within the rate-and-state material, which currently must be called fault.
         if ((this->get_timestep_number() > 0)
             && (initial_fault_value > 0.5))
           {
             material_inputs.position[0] = particle->get_location();
-            // ask for size of position! if it is 1 it is correct
-            // print: material_inputs.position.size()
-
             material_inputs.current_cell  = typename DoFHandler<dim>::active_cell_iterator(*particle->get_surrounding_cell(this->get_triangulation()),
                                                                                            &(this->get_dof_handler()));
             material_inputs.temperature[0] = solution[this->introspection().component_indices.temperature];
-
             material_inputs.pressure[0] = solution[this->introspection().component_indices.pressure];
 
             for (unsigned int d = 0; d < dim; ++d)
@@ -113,25 +110,14 @@ namespace aspect
             // Overwrite the value of theta in the solution with the current theta value of the particle.
             // Otherwise the particle and the solution will have slightly different theta values.
             material_inputs.composition[0][this->introspection().compositional_index_for_name("theta")] = particle->get_properties()[data_position];
-            // print both: particle get properties and solution for theta -> should be the same when doing it on quad points
-            // then do another generator for uniform theta (and later real theta) and it should also be the correct value.
-            // add x or and y to make the theta change space dependent -> check the different interpolation scheemes
-
             this->get_material_model().evaluate (material_inputs,material_outputs);
-            Assert(particle->get_properties()[data_position] > 0,
-                   ExcMessage("Particle property theta got smaller / equal zero. This is unphysical. "
-                              "The value of old theta is: "
-                              +  Utilities::to_string(particle->get_properties()[data_position])));
             particle->get_properties()[data_position] += material_outputs.reaction_terms[0][this->introspection().compositional_index_for_name("theta")];
 
-            // if theta got negative for whatever reason, set a positive value instead
-            // ToDo: make it an assertthrow again (and all the other asserts for theta too?)
+            // ToDo: Do I need this assert or is it enough to have it within compute_theta?
             Assert(particle->get_properties()[data_position] > 0,
                    ExcMessage("Particle property theta got smaller / equal zero. This is unphysical. "
                               "The value of current theta is: "
                               +  Utilities::to_string(particle->get_properties()[data_position])));
-            if (particle->get_properties()[data_position] < 1e-50)
-              particle->get_properties()[data_position] = 1e-50;
           }
         else
           return;

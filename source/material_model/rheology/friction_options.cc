@@ -155,8 +155,8 @@ namespace aspect
 
                   // the state variable theta is taken from the current compositional field theta
                   double theta = composition[theta_composition_index];
-                  theta = std::max(theta,1e-50);
 
+                  // ToDo: Option: slip rate dependent regularized RSF
                   if (friction_dependence_mechanism == slip_rate_dependent_rate_and_state_dependent_friction)
                     {
                       // compute slip-rate dependence following Equations 8 and 9 in \\cite{im_slip-rate-dependent_2020}
@@ -230,7 +230,9 @@ namespace aspect
         // A negative friction angle, that does not make sense and will get rate-and-state friction
         // into trouble, so return some very small value
         Assert(current_friction > 0, ExcMessage("The friction angle is negative: " + Utilities::to_string(current_friction) +
-                                                "This does not make sense. In release the negative value is replaced by a very small value (1e-30)"));
+                                                "This does not make sense. In release the negative value is replaced by a very "
+                                                "small value (1e-30). If you encountered this problem with 'rate-and-state dependent "
+                                                "friction', use 'regularized rate-and-state dependent friction' instead."));
         if (friction_dependence_mechanism != regularized_rate_and_state_dependent_friction)
           current_friction = std::max(current_friction, 1e-30);
         return current_friction;
@@ -247,13 +249,13 @@ namespace aspect
                     const double critical_slip_distance) const
       {
         double current_theta = 0.;
-        // this is a trial to check if it prevents current_theta from being negative if old_theta is limited to >=1e-50
-        // ToDo: Remove eventually?
-        Assert(theta_old > 0,
-               ExcMessage("Old theta within 'compute_theta' got smaller / equal zero. This is unphysical. "
-                          "The value of old theta is: "
-                          +  Utilities::to_string(theta_old)));
+        
+        // Theta needs a cutoff towards zero and negative values, because these
+        // values physically do not make sense but can occur as theta is advected
+        // as a material field. A zero or negative value for theta also leads to nan
+        // values for friction.
         theta_old = std::max(theta_old,1e-50);
+        
         // Equation (7) from Sobolev and Muldashev (2017):
         // theta_{n+1} = L/V_{n+1} + (theta_n - L/V_{n+1})*exp(-(V_{n+1}dt)/L)
         // This is obtained from Equation (5): dtheta/dt = 1 - (theta V)/L
@@ -261,26 +263,24 @@ namespace aspect
         current_theta = critical_slip_distance / (cellsize * current_edot_ii ) +
                         (theta_old - critical_slip_distance / (cellsize * current_edot_ii))
                         * std::exp( - (current_edot_ii * cellsize) * this->get_timestep() / critical_slip_distance);
-        Assert(current_theta > 0,
-               ExcMessage("Theta within 'compute_theta' got smaller / equal zero. This is unphysical. "
-                          "The value of current theta is: "
-                          +  Utilities::to_string(current_theta)));
-
-        // TODO: make dt the min theta?
 
         // At very low strain rates the theta equation simply returns a zero,
         // which physically does not make sense, as one would expect theta
         // to grow at very low strain rates / velocities
         // So here theta is set to its steady state value in this case:
-        if ((current_theta <= 1e-50) && (current_edot_ii < 0.1 * (RSF_ref_velocity / cellsize)))
+        if ((current_theta <= 0) && (current_edot_ii < 0.1 * (RSF_ref_velocity / cellsize)))
           current_theta = critical_slip_distance / RSF_ref_velocity;
-        // Theta needs a cutoff towards zero and negative values, because these
-        // values physically do not make sense but can occur as theta is advected
-        // as a material field. A zero or negative value for theta also leads to nan
-        // values for friction.
-        // TODO: do we need an assert here? I guess this would be good in general,
-        // but would currently make all my models fail
-        current_theta = std::max(current_theta, 1e-50);
+          
+        Assert((current_theta > 0) || (theta_old > 0),
+               ExcMessage("Current or old theta within 'compute_theta' got smaller / equal zero. "
+                          "This is unphysical. A possible solution, if you are not already doing "
+                          "that anyway, is to track theta on particles. "
+                          "Note: a negative old theta is automatically cut to be 1e-50. "
+                          "The value of current theta is: "
+                          +  Utilities::to_string(current_theta)
+                          + "The value of old theta is: "
+                          +  Utilities::to_string(theta_old)));
+
         return current_theta;
       }
 
@@ -314,13 +314,7 @@ namespace aspect
                                                               average_elastic_shear_moduli, use_elasticity,
                                                               use_reference_strainrate, dte);
 
-                double theta_old = in.composition[q][theta_composition_index];
-                Assert(theta_old > 0,
-                       ExcMessage("Theta old got smaller / equal zero. This is unphysical. "
-                                  "The value of old theta is: "
-                                  +  Utilities::to_string(theta_old)));
-
-                theta_old = std::max(theta_old,1e-50);
+                const double theta_old = in.composition[q][theta_composition_index];
                 double current_theta = 0.;
 
                 // Because this function is only entered if fault material has more than 50% of the volume,
@@ -334,21 +328,11 @@ namespace aspect
                 else
                   current_theta += compute_theta(theta_old, current_edot_ii,
                                                  in.current_cell->extent_in_direction(0), critical_slip_distance);
-                Assert(current_theta > 0,
-                       ExcMessage("Theta within 'compute_theta_reaction_terms' got smaller / equal zero. This is unphysical. "
-                                  "The value of current theta is: "
-                                  +  Utilities::to_string(current_theta)));
-
-                // prevent negative theta values in reaction terms by cutting the increment additionally to current_theta
-                double theta_increment = current_theta - theta_old;
-                if (theta_old + theta_increment < 1e-50)
-                  theta_increment = 1e-50 - theta_old;
-
-                out.reaction_terms[q][theta_composition_index] =  theta_increment;
+                out.reaction_terms[q][theta_composition_index] = current_theta - theta_old;
               }
             else
               {
-                // Do I need to set this? Or is it zero by default?
+                // ToDo: Do I need to set this? Or is it zero by default?
                 out.reaction_terms[q][theta_composition_index] = 0.;
               }
           }
@@ -489,7 +473,7 @@ namespace aspect
                            "Assuming that velocities are constant at any time step, this can be analytically integrated: \n"
                            "$\\theta_{n+1} = \\frac{L}{V_{n+1}} + \\big(\\theta_n - \\frac{L}{V_{n+1}}\\big)*exp\\big(-\\frac{V_{n+1}\\Delta t}{L}\\big)$.\n"
                            "In ASPECT the state variable is confined to values > 1e-50: if it becomes $<1e-50$ during the computation "
-                           "it is set to 1e-50. The same applies to the friction angle which is set to 1e-30 if smaller than that. \n"
+                           "$\\theta_{old}$ is set to 1e-50. The same applies to the friction angle which is set to 1e-30 if smaller than that. \n"
                            "The term $a \\cdot ln\\big( \\frac{V}{V_{st}} \\big)$ is often referred to as the instantaneous 'viscosity-like' "
                            "direct effect, and the rate-and-state parameter a describes its magnitude. "
                            "The term $b \\cdot ln\\big( \\frac{\\theta V_{st}}{L} \\big)$ is referred to as the evolution effect as it is described "
