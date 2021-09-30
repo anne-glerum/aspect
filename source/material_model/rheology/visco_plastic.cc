@@ -443,6 +443,14 @@ namespace aspect
                 }
               }
 
+            // TODO: Implement fixed-point iterations. 
+            // Explanation: The variables in Eq. 36 of Moresi et al. (2003) for the effective viscosity
+            // (i.e. yield stress, viscous viscosity, shear modulus, elastic timestep and lambda) are not
+            // likely to be constant within a timestep, as through the nonlinear iterations the viscous
+            // viscosity (strain rate and pressure dependency) and the yield stress (pressure dependency)
+            // are likely to be updated. In this case, local iterations between the viscoelastic stress
+            // and the plastic stress need to be performed to find lambda.
+
             // Step 6: limit the viscosity with specified minimum and maximum bounds
             const double maximum_viscosity_for_composition = MaterialModel::MaterialUtilities::phase_average_value(
                                                                phase_function_values,
