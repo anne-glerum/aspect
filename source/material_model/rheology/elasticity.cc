@@ -244,15 +244,37 @@ namespace aspect
           return;
 
         if (in.requests_property(MaterialProperties::additional_outputs))
-          for (unsigned int i=0; i < in.n_evaluation_points(); ++i)
-            {
-              // Get old stresses from compositional fields
-              SymmetricTensor<2,dim> stress_old;
-              for (unsigned int j=0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
-                stress_old[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
+            for (unsigned int i=0; i < in.n_evaluation_points(); ++i)
+              {
+                // Get old stresses from compositional fields
+                // TODO: use $tau^{t+\Delta te}$ or evaluate the old solution for stress
+                // (and viscosity)
+                // Explanation: for the assembly of the Stokes equations (the force term goes
+                // into the rhs of the momentum equation), this function is evaluated.
+                // This is after the advection equations have been solved, and hence in.composition
+                // contains the rotated, averaged and advected stresses at $tau^{t+\Delta t}$.
+                //
+                // For an iterative Advection scheme, in.composition could even be different
+                // every time the Stokes system is assembled.
+                //
+                // Moresi et al. (2003) use the full stresses at $t$ (Eq.  30) in the force term.
+                // There is also an incorrect minus sign in the force term.
+                // The force term should be computed as:
+                // $\frac{-\eta_{effcreep}  tau_0}{\eta_{e}}$, where $\eta_{effcreep}$ is the
+                // harmonic average of the vp and e viscosity.
+                // How will we get to this viscosity? 
+                SymmetricTensor<2,dim> stress_old;
+                for (unsigned int j=0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
+                  stress_old[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
 
-              // Average viscoelastic viscosity
-              const double average_viscoelastic_viscosity = out.viscosities[i];
+                // Average viscoelastic viscosity
+                // TODO: use the viscosity corresponding to the stresses selected above.
+                // Explanation: out.viscosities is computed during the assembly of the Stokes equations
+                // based on the current_linearization_point. This means that it will be updated after every
+                // nonlinear Stokes iteration, and is ahead of the stresses that are used in the force term.
+                // Also, out.viscosities contains the vep viscosity, which is either the harmonic average
+                // of the viscous and elastic viscosity, or the plastic viscosity, not $\eta_{effcreep}$.
+                const double average_viscoelastic_viscosity = out.viscosities[i];
 
               // Fill elastic force outputs (See equation 30 in Moresi et al., 2003, J. Comp. Phys.)
               force_out->elastic_force[i] = -1. * ( average_viscoelastic_viscosity / calculate_elastic_viscosity(average_elastic_shear_moduli[i]) * stress_old );
@@ -298,6 +320,13 @@ namespace aspect
             for (unsigned int i=0; i < in.n_evaluation_points(); ++i)
               {
                 // Get old stresses from compositional fields
+                //
+                // TODO: Also use the stresses from the old_solution, not just the strain rates.
+                // Explanantion: When this function is called for the assembly of the advection
+                // equations for the stress components, in.composition contains the
+                // values of the current_linearization_point, which is extrapolated
+                // from the old_solution and the old_old_solution.
+                // The rotation is correctly computed based on the velocity gradients from the previous timestep. 
                 SymmetricTensor<2,dim> stress_old;
                 for (unsigned int j=0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
                   stress_old[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
@@ -306,8 +335,8 @@ namespace aspect
                 // Rotation (vorticity) tensor (equation 25 in Moresi et al., 2003, J. Comp. Phys.)
                 const Tensor<2,dim> rotation = 0.5 * (evaluator->get_gradient(i) - transpose(evaluator->get_gradient(i)));
 
-                // Average viscoelastic viscosity
-                const double average_viscoelastic_viscosity = out.viscosities[i];
+                // Average viscoelastoplastic viscosity
+                const double average_viscoelastoplastic_viscosity = out.viscosities[i];
 
                 // Calculate the current (new) stored elastic stress, which is a function of the material
                 // properties (viscoelastic viscosity, shear modulus), elastic time step size, strain rate,
@@ -323,16 +352,21 @@ namespace aspect
                 Assert(std::isfinite(in.strain_rate[i].norm()),
                        ExcMessage("Invalid strain_rate in the MaterialModelInputs. This is likely because it was "
                                   "not filled by the caller."));
-                const SymmetricTensor<2,dim> stress_creep = 2. * average_viscoelastic_viscosity * ( deviator(in.strain_rate[i]) + stress_0 / (2. * damped_elastic_viscosity ) );
+                const SymmetricTensor<2,dim> stress_creep = 2. * average_viscoelastoplastic_viscosity * ( deviator(in.strain_rate[i]) + stress_0 / (2. * damped_elastic_viscosity ) );
 
                 // stress_new is the (new) stored elastic stress
                 SymmetricTensor<2,dim> stress_new = stress_creep * (1. - (elastic_damper_viscosity / damped_elastic_viscosity)) + elastic_damper_viscosity * stress_0 / damped_elastic_viscosity;
 
-                // Stress averaging scheme to account for difference between the elastic time step
-                // and the numerical time step (see equation 32 in Moresi et al., 2003, J. Comp. Phys.)
-                // Note that if there is no difference between the elastic timestep and the numerical
-                // timestep, then no averaging occurs as dt/dte = 1.
-                stress_new = ( ( 1. - ( dt / dte ) ) * stress_old ) + ( ( dt / dte ) * stress_new ) ;
+                // Stress averaging scheme to account for difference between fixed elastic time step
+                // and numerical time step (see equation 32 in Moresi et al., 2003, J. Comp. Phys.).
+                //
+                // Note that Moresi et al. incorrectly use the symbol $\tau_t$ for the 'newly calculated
+                // stress tensor' in the sentence above Eq. 32.
+                // Also note that in the Supplement of Sandiford et al. 2021 in Eq. (9) the new and
+                // old stress have be incorrectly switched. In Eq. (8) of the same supplement,
+                // the advected stress history tensor is used, but this tensor is only advected during
+                // the advection solve for which we are computing the reaction terms here (in case of fields).
+                    stress_new = ( ( 1. - ( dt / dte ) ) * stress_old ) + ( ( dt / dte ) * stress_new ) ;
 
                 // Fill reaction terms
                 for (unsigned int j = 0; j < SymmetricTensor<2,dim>::n_independent_components ; ++j)

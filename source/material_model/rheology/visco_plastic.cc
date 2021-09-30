@@ -244,6 +244,13 @@ namespace aspect
                     Assert(std::isfinite(in.strain_rate[i].norm()),
                            ExcMessage("Invalid strain_rate in the MaterialModelInputs. This is likely because it was "
                                       "not filled by the caller."));
+
+                    // TODO: Use $\tau^{t+\Delta te}$ instead of $\tau^{t+\Delta t}$.
+                    // Explanation: When we compute the viscosity for the Stokes assembly
+                    // the ve stresses stored in in.composition are the rotated, averaged,
+                    // and advected stresses from the advection solve ($\tau^{t+\Delta t}$).
+                    // They should be the unaveraged, but advected stresses? How could we get
+                    // to those?
                     const double viscoelastic_strain_rate_invariant = elastic_rheology.calculate_viscoelastic_strain_rate(in.strain_rate[i],
                                                                       stress_old,
                                                                       elastic_shear_moduli[j]);
@@ -329,6 +336,14 @@ namespace aspect
                   break;
                 }
               }
+
+            // TODO: Implement fixed-point iterations. 
+            // Explanation: The variables in Eq. 36 of Moresi et al. (2003) for the effective viscosity
+            // (i.e. yield stress, viscous viscosity, shear modulus, elastic timestep and lambda) are not
+            // likely to be constant within a timestep, as through the nonlinear iterations the viscous
+            // viscosity (strain rate and pressure dependency) and the yield stress (pressure dependency)
+            // are likely to be updated. In this case, local iterations between the viscoelastic stress
+            // and the plastic stress need to be performed to find lambda.
 
             // Step 6: limit the viscosity with specified minimum and maximum bounds
             const double maximum_viscosity_for_composition = MaterialModel::MaterialUtilities::phase_average_value(
