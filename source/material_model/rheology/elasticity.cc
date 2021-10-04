@@ -123,6 +123,13 @@ namespace aspect
         // Stabilize elasticity through a viscous damper
         elastic_damper_viscosity = prm.get_double("Elastic damper viscosity");
 
+        // TODO: Assert that elastic_damper_viscosity == 0 when the visco_plastic
+        // material model is used.
+        // Explanation: If a damper is used, the current implementation in visco_plastic
+        // is not correct. The way the effective viscosity is computed is only valid
+        // in the absence of a damper and for a yield stress that can be expressed as
+        // some value of the second invariant of the deviatoric stress. 
+
         if (prm.get ("Use fixed elastic time step") == "true")
           use_fixed_elastic_time_step = true;
         else if (prm.get ("Use fixed elastic time step") == "false")
@@ -136,6 +143,12 @@ namespace aspect
         AssertThrow(fixed_elastic_time_step > 0,
                     ExcMessage("The fixed elastic time step must be greater than zero"));
 
+        // TODO: if using the visco_plastic material model
+        // make sure that use_fixed_elastic_timestep == false
+        // and stabilization_time_scale_factor == 1
+        // Explanation: The current implementation does not support
+        // an elastic timestep that is not equal to the computational
+        // timepstep.
         if (this->convert_output_to_years())
           fixed_elastic_time_step *= year_in_seconds;
 
@@ -247,22 +260,24 @@ namespace aspect
             for (unsigned int i=0; i < in.n_evaluation_points(); ++i)
               {
                 // Get old stresses from compositional fields
-                // TODO: use $tau^{t+\Delta te}$ or evaluate the old solution for stress
-                // (and viscosity)
-                // Explanation: for the assembly of the Stokes equations (the force term goes
-                // into the rhs of the momentum equation), this function is evaluated.
+                // TODO: use $tau^{t+\Delta te}$
+                // Explanation: this function is evaluated before the assembly of the Stokes equations
+                // (the force term goes into the rhs of the momentum equation).
                 // This is after the advection equations have been solved, and hence in.composition
                 // contains the rotated, averaged and advected stresses at $tau^{t+\Delta t}$.
+                // Only when $\Delta t$ == $\Delta te$, the stress stored in in.composition
+                // is $tau^{t+\Delta te}$.
                 //
                 // For an iterative Advection scheme, in.composition could even be different
                 // every time the Stokes system is assembled.
                 //
-                // Moresi et al. (2003) use the full stresses at $t$ (Eq.  30) in the force term.
-                // There is also an incorrect minus sign in the force term.
+                // Moresi et al. (2003) use the full stresses at $t$ in the force term (Eq.  30),
+                // which is incorrect, it should be $tau^{t+\Delta te}$.
                 // The force term should be computed as:
                 // $\frac{-\eta_{effcreep}  tau_0}{\eta_{e}}$, where $\eta_{effcreep}$ is the
-                // harmonic average of the vp and e viscosity.
-                // How will we get to this viscosity? 
+                // harmonic average of the viscous and elastic viscosity, or the yield stress
+                // divided by two times the second invariant of the deviatoric strain rate at
+                // ??.
                 SymmetricTensor<2,dim> stress_old;
                 for (unsigned int j=0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
                   stress_old[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
@@ -272,8 +287,6 @@ namespace aspect
                 // Explanation: out.viscosities is computed during the assembly of the Stokes equations
                 // based on the current_linearization_point. This means that it will be updated after every
                 // nonlinear Stokes iteration, and is ahead of the stresses that are used in the force term.
-                // Also, out.viscosities contains the vep viscosity, which is either the harmonic average
-                // of the viscous and elastic viscosity, or the plastic viscosity, not $\eta_{effcreep}$.
                 const double average_viscoelastic_viscosity = out.viscosities[i];
 
               // Fill elastic force outputs (See equation 30 in Moresi et al., 2003, J. Comp. Phys.)
@@ -322,11 +335,12 @@ namespace aspect
                 // Get old stresses from compositional fields
                 //
                 // TODO: Also use the stresses from the old_solution, not just the strain rates.
-                // Explanantion: When this function is called for the assembly of the advection
+                // Explanation: When this function is called for the assembly of the advection
                 // equations for the stress components, in.composition contains the
                 // values of the current_linearization_point, which is extrapolated
-                // from the old_solution and the old_old_solution.
-                // The rotation is correctly computed based on the velocity gradients from the previous timestep. 
+                // from the old_solution and the old_old_solution (the solutions for the 
+                // governing variables obtained in the last and second to last timestep).
+                // The rotation is correctly computed based on the velocity gradients from the previous timestep.
                 SymmetricTensor<2,dim> stress_old;
                 for (unsigned int j=0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
                   stress_old[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
@@ -363,7 +377,7 @@ namespace aspect
                 // Note that Moresi et al. incorrectly use the symbol $\tau_t$ for the 'newly calculated
                 // stress tensor' in the sentence above Eq. 32.
                 // Also note that in the Supplement of Sandiford et al. 2021 in Eq. (9) the new and
-                // old stress have be incorrectly switched. In Eq. (8) of the same supplement,
+                // old stress have been incorrectly switched. In Eq. (8) of the same supplement,
                 // the advected stress history tensor is used, but this tensor is only advected during
                 // the advection solve for which we are computing the reaction terms here (in case of fields).
                     stress_new = ( ( 1. - ( dt / dte ) ) * stress_old ) + ( ( dt / dte ) * stress_new ) ;

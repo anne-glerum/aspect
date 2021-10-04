@@ -113,6 +113,10 @@ namespace aspect
           {
             for (unsigned int j=0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
               stress_old[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
+            // TODO: average the compositional contributions to elastic_shear_moduli here and use
+            // a volume-averaged shear modulus in the loop over the compositions below.
+            // Explanation: Otherwise it's implied that each material is acting independently 
+            // (different rotations, different stress changes), but this is inconsistent with storing only one stress tensor.
           }
 
         // The first time this function is called (first iteration of first time step)
@@ -249,8 +253,6 @@ namespace aspect
                     // Explanation: When we compute the viscosity for the Stokes assembly
                     // the ve stresses stored in in.composition are the rotated, averaged,
                     // and advected stresses from the advection solve ($\tau^{t+\Delta t}$).
-                    // They should be the unaveraged, but advected stresses? How could we get
-                    // to those?
                     const double viscoelastic_strain_rate_invariant = elastic_rheology.calculate_viscoelastic_strain_rate(in.strain_rate[i],
                                                                       stress_old,
                                                                       elastic_shear_moduli[j]);
@@ -337,13 +339,13 @@ namespace aspect
                 }
               }
 
-            // TODO: Implement fixed-point iterations. 
+            // TODO: Implement brentq or fixed-point iterations until the difference
+            // between the log of the strain rate and the log of the strain rate based on the 
+            // proposed stress is zero (up to a certain tolerance).
             // Explanation: The variables in Eq. 36 of Moresi et al. (2003) for the effective viscosity
-            // (i.e. yield stress, viscous viscosity, shear modulus, elastic timestep and lambda) are not
-            // likely to be constant within a timestep, as through the nonlinear iterations the viscous
-            // viscosity (strain rate and pressure dependency) and the yield stress (pressure dependency)
-            // are likely to be updated. In this case, local iterations between the viscoelastic stress
-            // and the plastic stress need to be performed to find lambda.
+            // (i.e. yield stress, viscous viscosity, shear modulus, elastic timestep and lambda) can depend
+            // on the strain rate. In this case (i.e. for dislocation creep or strain-dependent weakening), 
+            // local iterations are needed to find to be performed to find lambda.
 
             // Step 6: limit the viscosity with specified minimum and maximum bounds
             const double maximum_viscosity_for_composition = MaterialModel::MaterialUtilities::phase_average_value(
@@ -361,7 +363,12 @@ namespace aspect
                                                                MaterialModel::MaterialUtilities::PhaseUtilities::logarithmic
                                                              );
             output_parameters.composition_viscosities[j] = std::min(std::max(viscosity_yield, minimum_viscosity_for_composition), maximum_viscosity_for_composition);
+
+            // TODO: Assert that:
+            // 1. The decomposed strain rates sum up to the total strain rate
+            // 2. $tau^{t+\Delta te} == \eta_{eff} D^{t+\Delta te}_{eff}$
           }
+
         return output_parameters;
       }
 
