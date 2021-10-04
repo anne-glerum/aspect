@@ -44,8 +44,8 @@ namespace aspect
       evaluate_vector_field(const DataPostprocessorInputs::Vector<dim> &input_data,
                             std::vector<Vector<double>> &computed_quantities) const
       {
-        AssertThrow(Plugins::plugin_type_matches<const MaterialModel::ViscoPlastic<dim>>(this->get_material_model()),
-                    ExcMessage("This postprocessor only works with the viscoplastic material model. "));
+  //      AssertThrow(Plugins::plugin_type_matches<const MaterialModel::ViscoPlastic<dim>>(this->get_material_model()),
+   //                 ExcMessage("This postprocessor only works with the viscoplastic material model. "));
         const unsigned int n_quadrature_points = input_data.solution_values.size();
         Assert(computed_quantities.size() == n_quadrature_points, ExcInternalError());
         Assert(computed_quantities[0].size() == 1, ExcInternalError());
