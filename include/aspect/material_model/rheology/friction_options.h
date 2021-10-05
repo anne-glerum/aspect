@@ -191,6 +191,13 @@ namespace aspect
           bool use_theta() const;
 
           /**
+          * A function that returns the volume fration of the user defined materials that
+          * should use rate-and-state friction properties.
+           */
+          double
+          get_fault_volume(const std::vector<double> &volume_fractions) const;
+
+          /**
            * Function to calculate depth-dependent a and b values for state-dependent friction
            * at a certain depth and for composition j.
            */
@@ -231,12 +238,6 @@ namespace aspect
           double effective_normal_stress_on_fault;
 
           /**
-           * The field index of the compositional field "fault", which is needed if the fault material
-           * is assumed to be always yielding as is the case for classical rate-and-state friciton.
-           */
-          unsigned int fault_composition_index;
-
-          /**
            * The field index of the compositional field "theta".
            */
           unsigned int theta_composition_index;
@@ -258,6 +259,13 @@ namespace aspect
            */
           Utilities::Coordinates::CoordinateSystem coordinate_system_RSF;
 
+          /**
+          * A list of user set compositional field names which
+          * shall be treated as rate-and-state materials. For these materials
+          * it is assumed that yielding always occurs as is the case for
+          * classical rate-and-state friction.
+          */
+          ComponentMask RSF_composition_masks;
         private:
           /**
            * Select the mechanism to be used for the friction dependence.

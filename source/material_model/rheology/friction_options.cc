@@ -249,13 +249,13 @@ namespace aspect
                     const double critical_slip_distance) const
       {
         double current_theta = 0.;
-        
+
         // Theta needs a cutoff towards zero and negative values, because these
         // values physically do not make sense but can occur as theta is advected
         // as a material field. A zero or negative value for theta also leads to nan
         // values for friction.
         theta_old = std::max(theta_old,1e-50);
-        
+
         // Equation (7) from Sobolev and Muldashev (2017):
         // theta_{n+1} = L/V_{n+1} + (theta_n - L/V_{n+1})*exp(-(V_{n+1}dt)/L)
         // This is obtained from Equation (5): dtheta/dt = 1 - (theta V)/L
@@ -270,7 +270,7 @@ namespace aspect
         // So here theta is set to its steady state value in this case:
         if ((current_theta <= 0) && (current_edot_ii < 0.1 * (RSF_ref_velocity / cellsize)))
           current_theta = critical_slip_distance / RSF_ref_velocity;
-          
+
         Assert((current_theta > 0) || (theta_old > 0),
                ExcMessage("Current or old theta within 'compute_theta' got smaller / equal zero. "
                           "This is unphysical. A possible solution, if you are not already doing "
@@ -305,7 +305,8 @@ namespace aspect
             && in.requests_property(MaterialProperties::reaction_terms)
             && in.current_cell.state() == IteratorState::valid)
           {
-            if ( volume_fractions[fault_composition_index + 1] > 0.5)
+            const double fault_volume = get_fault_volume(volume_fractions);
+            if (fault_volume > 0.5)
               {
                 // q is from a for-loop through n_evaluation_points
                 const double current_edot_ii =
@@ -317,11 +318,14 @@ namespace aspect
                 const double theta_old = in.composition[q][theta_composition_index];
                 double current_theta = 0.;
 
-                // Because this function is only entered if fault material has more than 50% of the volume,
-                // the critical slip distance is only taken from the fault material and not from the other materials.
-                // ToDo: not sure though if that would be correct or if all distributions should be taken into account
-                // ToDo: Maybe I only need one critical slip distance function then and not one for each composition?
-                double critical_slip_distance = get_critical_slip_distance(in.position[q], fault_composition_index + 1);
+                // ToDo: not sure I should use some other sort of averaging
+                // ToDo: Maybe I only need one critical slip distance function and not one for each composition?
+                // -> we decided to keep it for the moment as it is
+                double critical_slip_distance = 0;
+                for (unsigned int k = 0; k < RSF_composition_masks.size(); ++k)
+                  if (RSF_composition_masks[k])
+                    critical_slip_distance += get_critical_slip_distance(in.position[q], k+1)
+                                              * volume_fractions[k+1] / fault_volume;
 
                 if (friction_dependence_mechanism == steady_state_rate_and_state_dependent_friction)
                   current_theta += critical_slip_distance / steady_state_velocity;
@@ -368,8 +372,7 @@ namespace aspect
         const double critical_slip_distance =
           critical_slip_distance_function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),j);
 
-        const int fault_volume_index = fault_composition_index + 1;
-        if (use_theta() && (fault_volume_index == j))
+        if (use_theta() && (j > 0) && RSF_composition_masks[j])
           AssertThrow(critical_slip_distance > 0, ExcMessage("Critical slip distance in a rate-and-state material must be > 0."));
 
         return critical_slip_distance;
@@ -436,6 +439,20 @@ namespace aspect
 
 
       template <int dim>
+      double
+      FrictionOptions<dim>::
+      get_fault_volume(const std::vector<double> &volume_fractions) const
+      {
+        double fault_volume = 0.;
+        for (unsigned int k = 0; k < RSF_composition_masks.size(); ++k)
+          if (RSF_composition_masks[k])
+            fault_volume += volume_fractions[k+1];
+        return fault_volume;
+      }
+
+
+
+      template <int dim>
       void
       FrictionOptions<dim>::declare_parameters (ParameterHandler &prm)
       {
@@ -464,7 +481,9 @@ namespace aspect
                            "$\\mu_s$ and $\\mu_d$ can be specified by setting 'Angles of internal friction' and "
                            "'Dynamic angles of internal friction', respectively."
                            "\n\n"
-                           "\\item ``rate and state dependent friction'': A state variable theta "
+                           "\\item ``rate and state dependent friction'': Friction angles are made rate-and-state "
+                           "dependent for all compositions that are named in 'set List of compositional field "
+                           "names to use rate and state friction'.\n A state variable theta "
                            "- tracked as a compositional field with the Units: \\si{\\second} - is introduced "
                            "and the friction angle is calculated using classic aging rate-and-state friction by "
                            "Ruina (1983) as described by Equations (4--7) in \\cite{sobolev_modeling_2017}:\n"
@@ -541,6 +560,12 @@ namespace aspect
                            "Method taken from \\cite{sobolev_modeling_2017}. The friction coefficient is computed as "
                            "$\\mu = \\mu_{st} + a \\cdot ln\\big( \\frac{V}{V_{st}} \\big) + b \\cdot ln\\big( \\frac{\\theta V_{st}}{L} \\big) - \\Delta \\mu(D)$"
                            "where D is the slip at point in fault at the first timestep of earthquake. ");
+
+        prm.declare_entry ("List of compositional field names to use rate and state friction", "",
+                           Patterns::Anything (),
+                           "Indicate which compositional field should behave like rate-and-state "
+                           "materials. You will need to set properties like a,b, and characteristic "
+                           "slip distance appropriately.");
 
         // Dynamic friction paramters
         prm.declare_entry ("Dynamic characteristic strain rate", "1e-12",
@@ -881,17 +906,25 @@ namespace aspect
             // TODO: always yielding should be done where faut has > 70 or so volume percentage. Can be circumvented
             // right now by using max composition for viscosity averaging, because always yielding is applied  within
             // calculate_isostrain_viscosities in visco_plastic.cc
-            AssertThrow(this->introspection().compositional_name_exists("fault"),
-                        ExcMessage("Material model with rate-and-state friction only works "
-                                   "if there is a compositional field that is called fault. For this composition "
-                                   "yielding is always assumed due to the rate-and-state framework."));
-            fault_composition_index = this->introspection().compositional_index_for_name("fault");
 
             AssertThrow(this->introspection().compositional_name_exists("theta"),
                         ExcMessage("Material model with rate-and-state friction only works "
                                    "if there is a compositional field that is called theta. It is "
                                    "used to store the state variable."));
             theta_composition_index = this->introspection().compositional_index_for_name("theta");
+
+            // This is a boolean vector where the user defined compositional fields that should
+            // use RSF properties are set to true.
+            std::vector<std::string> RSF_composition_masks_string = Utilities::split_string_list(prm.get("List of compositional field names to use rate and state friction"));
+            RSF_composition_masks = ComponentMask(this->n_compositional_fields(),false);
+            for (auto &&mask : RSF_composition_masks_string)
+              RSF_composition_masks.set(this->introspection().compositional_index_for_name(mask), true);
+
+            unsigned int number_of_RSF_compositions = 0;
+            for (unsigned int k = 0; k < RSF_composition_masks.size(); ++k)
+              number_of_RSF_compositions += RSF_composition_masks[k];
+            AssertThrow(number_of_RSF_compositions > 0,
+                        ExcMessage("Using theta without indicating any RSF compositions does not make sense."))
           }
       }
 

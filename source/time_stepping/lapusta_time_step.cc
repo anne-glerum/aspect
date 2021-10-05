@@ -161,7 +161,7 @@ namespace aspect
       // Lapusta timestep is only relevant for the processes within the fault (RSF material), so dont compute it outside
       for (unsigned int q=0; q<n_q_points; ++q)
         {
-          if (in.composition[q][this->introspection().compositional_index_for_name("fault")] > 0.5)
+          if (viscoplastic.get_fault_volume(in.composition[q]) > 0.5)
             {
               // TODO in Lapusta, this should be plastic velocity. But just taking the full velocity
               // should be the most conservative approach, so it should be ok...
@@ -172,7 +172,8 @@ namespace aspect
                   std::pair<double,double> delta_theta_max_and_critical_slip_distance = viscoplastic.compute_delta_theta_max(
                                                                                           in.position[q],
                                                                                           delta_x,
-                                                                                          in.pressure[q]);
+                                                                                          in.pressure[q],
+                                                                                          in.composition[q]);
 
                   min_state_weakening_time_step = std::min (min_state_weakening_time_step,
                                                             delta_theta_max_and_critical_slip_distance.first

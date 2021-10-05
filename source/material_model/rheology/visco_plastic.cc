@@ -337,10 +337,12 @@ namespace aspect
             // or if dynamic friction is used
             // ToDo: like this, we do not take the effective friction factor into account for "independent"
             // friction option. Should we? Would that be useful?
-            // ToDo: should dynamic friction also only be computed for within the fault?
+            // ToDo: should dynamic friction also only be computed for within the fault indicated materials only?
+            const double fault_volume = friction_options.get_fault_volume(volume_fractions);
             if ((friction_options.use_theta()
-                 && (j== friction_options.fault_composition_index + 1)
-                 && (volume_fractions[j] > 0.5))
+                 && (j > 0)
+                 && friction_options.RSF_composition_masks[j - 1]
+                 && (fault_volume > 0.5))
                 || friction_options.get_friction_dependence_mechanism() == dynamic_friction)
               output_parameters.current_friction_angles[j] = friction_options.compute_dependent_friction_angle(current_edot_ii,
                                                              j, in.composition[i], current_cell,
@@ -384,8 +386,9 @@ namespace aspect
                   // assume that we are always yielding
                   if ((current_stress >= yield_stress)
                       || (friction_options.use_theta()
-                          && (j== friction_options.fault_composition_index + 1)
-                          && (volume_fractions[j] > 0.5)
+                          && (j > 0)
+                          && friction_options.RSF_composition_masks[j - 1]
+                          && (fault_volume > 0.5)
                           && friction_options.use_always_yielding))
                     {
                       viscosity_yield = drucker_prager_plasticity.compute_viscosity(current_cohesion,
@@ -418,8 +421,9 @@ namespace aspect
                                                 - 0.5e6 * current_edot_ii * current_cell->extent_in_direction(0);
                   if ((current_stress >= fault_strength)
                       || (friction_options.use_theta()
-                          && (j== friction_options.fault_composition_index + 1)
-                          && (volume_fractions[j] > 0.5)
+                          && (j > 0)
+                          && friction_options.RSF_composition_masks[j - 1]
+                          && (fault_volume > 0.5)
                           && friction_options.use_always_yielding))
                     {
                       // I had put this line here, but during revision Anne suggested to remove it:

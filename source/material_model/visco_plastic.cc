@@ -411,11 +411,22 @@ namespace aspect
 
 
     template <int dim>
+    double ViscoPlastic<dim>::
+    get_fault_volume(const std::vector<double> &composition) const
+    {
+      const std::vector<double> volume_fractions = MaterialUtilities::compute_composition_fractions(composition, rheology->get_volumetric_composition_mask());
+      return rheology->friction_options.get_fault_volume(volume_fractions);
+    }
+
+
+
+    template <int dim>
     std::pair<double,double>
     ViscoPlastic<dim>::
     compute_delta_theta_max (const Point<dim> &position,
                              const double delta_x,
-                             const double pressure) const
+                             const double pressure,
+                             const std::vector<double> &composition) const
     {
       AssertThrow(rheology->friction_options.use_theta() == true,
                   ExcMessage("The Lapusta-timestepping scheeme only works "
@@ -425,15 +436,23 @@ namespace aspect
       // TODO: get the actual Poissons ration if at some point compressibility is possible
       const std::vector<double> elastic_shear_moduli = rheology->elastic_rheology.get_elastic_shear_moduli();
 
-      // fault composition index + 1 gives the index for vectors over volume fractions, hence including background
-      // compute delta_theta_max for for the fault material only, as the others are not RSF materials
-      const int j = rheology->friction_options.fault_composition_index + 1;
+      const double fault_volume = get_fault_volume(composition);
+      const std::vector<double> volume_fractions = MaterialUtilities::compute_composition_fractions(composition, rheology->get_volumetric_composition_mask());
 
-      const double G_star = elastic_shear_moduli[j]/(1-nu);
+      double elastic_shear_modulus = 0;
+      double RSF_parameter_a = 0;
+      double RSF_parameter_b = 0;
+      double critical_slip_distance = 0;
+      for (unsigned int k = 0; k < rheology->friction_options.RSF_composition_masks.size(); ++k)
+        {
+          // ToDo: different averaging needed?
+          elastic_shear_modulus += elastic_shear_moduli[k+1] *volume_fractions[k+1] / fault_volume;
+          RSF_parameter_a += rheology->friction_options.calculate_depth_dependent_a_and_b(position,k+1).first * volume_fractions[k+1] / fault_volume;
+          RSF_parameter_b += rheology->friction_options.calculate_depth_dependent_a_and_b(position,k+1).second * volume_fractions[k+1] / fault_volume;
+          critical_slip_distance += rheology->friction_options.get_critical_slip_distance(position, k+1) * volume_fractions[k+1] / fault_volume;
+        }
+      const double G_star = elastic_shear_modulus/(1-nu);
       const double k_param = 2 / numbers::PI * G_star / delta_x;  // this is stiffness
-      const double RSF_parameter_a = rheology->friction_options.calculate_depth_dependent_a_and_b(position,j).first;
-      const double RSF_parameter_b = rheology->friction_options.calculate_depth_dependent_a_and_b(position,j).second;
-      const double critical_slip_distance = rheology->friction_options.get_critical_slip_distance(position, j);
       const double kLaP = (k_param * critical_slip_distance)
                           / (RSF_parameter_a * pressure * rheology->friction_options.get_effective_friction_factor(position));
       const double xi = 0.25 * std::pow((kLaP - (RSF_parameter_b - RSF_parameter_a) / RSF_parameter_a),2) - kLaP;
@@ -482,7 +501,7 @@ namespace aspect
                     " min_healing_time_step needed for the Lapusta time stepping becomes nan or inf. Please "
                     "check all your friction parameters. In case of "
                     "rate-and-state like friction, don't forget to check on a,b, and the critical slip distance, or theta."));
-      // ToDo: this time step somehow becomes negative, because theta still becomes negative or because of some other reason. 
+      // ToDo: this time step somehow becomes negative, because theta still becomes negative or because of some other reason.
       // (Note from september 29th: not sure if that still happens. Need to test it. )
       // So in this case either I make it
       // very large so it does no harm or dont do that, but have an asserthrow because this would remind us that its still a problem?

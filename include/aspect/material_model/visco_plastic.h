@@ -259,7 +259,8 @@ namespace aspect
         std::pair<double,double>
         compute_delta_theta_max (const Point<dim> &position,
                                  const double delta_x,
-                                 const double pressure) const;
+                                 const double pressure,
+                                 const std::vector<double> &composition) const;
 
         /**
          * A function to compute the minimum healing time step which is used to calculate the necessary
@@ -269,6 +270,13 @@ namespace aspect
                  */
         double
         compute_min_healing_time_step (const std::vector<double> &composition) const;
+
+        /**
+         * A function that returns the volume fration of the user defined materials that
+         * should use rate-and-state friction properties from the friction_options rheology.
+         */
+        double
+        get_fault_volume(const std::vector<double> &composition) const;
 
         /**
          * A function that returns the elastic shear modulus according to the volume fractions

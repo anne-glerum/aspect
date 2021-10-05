@@ -77,18 +77,24 @@ namespace aspect
                                               const std::vector<Tensor<1,dim> > &gradients,
                                               typename ParticleHandler<dim>::particle_iterator &particle) const
       {
+        const MaterialModel::ViscoPlastic<dim> &viscoplastic
+          = Plugins::get_plugin_as_type<const MaterialModel::ViscoPlastic<dim>>(this->get_material_model());
+        // ToDo change this assertThrow to make it compatible with several RSF materials
+        /*
         AssertThrow(this->introspection().compositional_name_exists("fault"),
                     ExcMessage("Particle property theta for RSF only works if"
                                "there is a compositional particle field called fault."));
-        const unsigned int initial_fault_idx = this->introspection().compositional_index_for_name("fault");
-        const double initial_fault_value = solution[this->introspection().component_indices.compositional_fields[initial_fault_idx]];
+                               */
 
         // only update theta if we are after time step 0, as currently we
         // do not have information about strain rate before updating the particle
         // ToDo: Also update theta at dt 0 if at some point we do have info on SR at this point
         // it also only makes sense to update theta within the rate-and-state material, which currently must be called fault.
+        for (unsigned int n = 0; n < this->n_compositional_fields(); ++n)
+          material_inputs.composition[0][n] = solution[this->introspection().component_indices.compositional_fields[n]];
+        const double fault_volume =  viscoplastic.get_fault_volume(material_inputs.composition[0]);
         if ((this->get_timestep_number() > 0)
-            && (initial_fault_value > 0.5))
+            && (fault_volume > 0.5))
           {
             material_inputs.position[0] = particle->get_location();
             material_inputs.current_cell  = typename DoFHandler<dim>::active_cell_iterator(*particle->get_surrounding_cell(this->get_triangulation()),
@@ -98,9 +104,6 @@ namespace aspect
 
             for (unsigned int d = 0; d < dim; ++d)
               material_inputs.velocity[0][d] = solution[this->introspection().component_indices.velocities[d]];
-
-            for (unsigned int n = 0; n < this->n_compositional_fields(); ++n)
-              material_inputs.composition[0][n] = solution[this->introspection().component_indices.compositional_fields[n]];
 
             Tensor<2,dim> grad_u;
             for (unsigned int d=0; d<dim; ++d)
