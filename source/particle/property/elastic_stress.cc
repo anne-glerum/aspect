@@ -111,7 +111,8 @@ namespace aspect
           material_inputs.velocity[0][d] = solution[this->introspection().component_indices.velocities[d]];
 
         for (unsigned int n = 0; n < this->n_compositional_fields(); ++n)
-          material_inputs.composition[0][n] = solution[this->introspection().component_indices.compositional_fields[n]];
+          //material_inputs.composition[0][n] = solution[this->introspection().component_indices.compositional_fields[n]];
+          material_inputs.composition[0][n] = particle->get_properties()[data_position + n];
 
         Tensor<2,dim> grad_u;
         for (unsigned int d=0; d<dim; ++d)
