@@ -260,7 +260,7 @@ namespace aspect
             for (unsigned int i=0; i < in.n_evaluation_points(); ++i)
               {
                 // Get old stresses from compositional fields
-                // TODO: use $tau^{t+\Delta te}$
+                // TODO: don't use $tau^{t+\Delta te}$ but $\tau_0$
                 // Explanation: this function is evaluated before the assembly of the Stokes equations
                 // (the force term goes into the rhs of the momentum equation).
                 // This is after the advection equations have been solved, and hence in.composition
