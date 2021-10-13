@@ -249,7 +249,7 @@ namespace aspect
                            ExcMessage("Invalid strain_rate in the MaterialModelInputs. This is likely because it was "
                                       "not filled by the caller."));
 
-                    // TODO: Use $\tau^{t+\Delta te}$ instead of $\tau^{t+\Delta t}$.
+                    // TODO: Use $\tau^{0}$ instead of $\tau^{t+\Delta t}$.
                     // Explanation: When we compute the viscosity for the Stokes assembly
                     // the ve stresses stored in in.composition are the rotated, averaged,
                     // and advected stresses from the advection solve ($\tau^{t+\Delta t}$).
@@ -267,6 +267,8 @@ namespace aspect
               }
 
             // Step 3b: calculate current (viscous or viscous + elastic) stress magnitude
+            // TODO: instead of this current_stress, use the second invariant of the 
+            // $\tau^{t+\Delta te}$ stored in in.composition. 
             double current_stress = 2. * viscosity_pre_yield * current_edot_ii;
 
             // Step 4a: calculate strain-weakened friction and cohesion
@@ -320,6 +322,8 @@ namespace aspect
                 {
                   // Step 5b-2: if the current stress is greater than the yield stress,
                   // rescale the viscosity back to yield surface
+                  // TODO: use different current_edot_ii. But we don't have access to 
+                  // $\tau^{0}$...
                   if (current_stress >= yield_stress)
                     {
                       viscosity_yield = drucker_prager_plasticity.compute_viscosity(current_cohesion,
@@ -343,8 +347,7 @@ namespace aspect
             // between the log of the strain rate and the log of the strain rate based on the 
             // proposed stress is zero (up to a certain tolerance).
             // Explanation: The variables in Eq. 36 of Moresi et al. (2003) for the effective viscosity
-            // (i.e. yield stress, viscous viscosity, shear modulus, elastic timestep and lambda) can depend
-            // on the strain rate. In this case (i.e. for dislocation creep or strain-dependent weakening), 
+            // can depend on the strain rate. In this case (i.e. for dislocation creep or strain-dependent weakening), 
             // local iterations are needed to find to be performed to find lambda.
 
             // Step 6: limit the viscosity with specified minimum and maximum bounds

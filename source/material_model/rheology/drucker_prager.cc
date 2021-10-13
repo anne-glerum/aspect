@@ -240,6 +240,9 @@ namespace aspect
         else
           damper_viscosity = 0.;
 
+        // TODO: Assert that damper_viscosity = 0 for elasticity in the
+        // visco_plastic material model. 
+
       }
 
     }

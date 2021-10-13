@@ -191,6 +191,7 @@ namespace aspect
         // scheme does a single Advection iteration and at minimum one Stokes iteration. More
         // than one nonlinear Advection iteration will produce an unrealistic build-up of
         // viscoelastic stress, which are tracked through compositional fields.
+        // TODO: remove this AssertThrow. We need to iterated over the Advection equations. 
         AssertThrow((this->get_parameters().nonlinear_solver ==
                      Parameters<dim>::NonlinearSolver::single_Advection_single_Stokes
                      ||
@@ -260,24 +261,27 @@ namespace aspect
             for (unsigned int i=0; i < in.n_evaluation_points(); ++i)
               {
                 // Get old stresses from compositional fields
-                // TODO: don't use $tau^{t+\Delta te}$ but $\tau_0$
+                // TODO: don't use $\tau^{t+\Delta te}$ but $\tau_0$, obtained from $\tau^{t+\Delta te}$ 
+                // in in.composition.
                 // Explanation: this function is evaluated before the assembly of the Stokes equations
                 // (the force term goes into the rhs of the momentum equation).
                 // This is after the advection equations have been solved, and hence in.composition
                 // contains the rotated, averaged and advected stresses at $tau^{t+\Delta t}$.
                 // Only when $\Delta t$ == $\Delta te$, the stress stored in in.composition
-                // is $tau^{t+\Delta te}$.
+                // is $\tau^{t+\Delta te}$.
                 //
                 // For an iterative Advection scheme, in.composition could even be different
                 // every time the Stokes system is assembled.
                 //
                 // Moresi et al. (2003) use the full stresses at $t$ in the force term (Eq.  30),
-                // which is incorrect, it should be $tau^{t+\Delta te}$.
+                // which is incorrect, it should be $tau^{0}$, which is the stress from time $t$
+                // rotated and advected to time $t+\Delta te$.
                 // The force term should be computed as:
-                // $\frac{-\eta_{effcreep}  tau_0}{\eta_{e}}$, where $\eta_{effcreep}$ is the
-                // harmonic average of the viscous and elastic viscosity, or the yield stress
-                // divided by two times the second invariant of the deviatoric strain rate at
-                // ??.
+                // $\frac{-\eta_{effcreep}  \tau_0}{\eta_{e}}$, where $\eta_{effcreep}$ is the
+                // current harmonic average of the viscous and elastic viscosity, or the yield stress
+                // divided by two times the second invariant of the deviatoric strain rate.
+                // $\tau_0$ can be obtained from $\tau^{t+\Delta te}$ as:
+                // $\tau_0 = 2 G \Delta te \left(\frac{\tau^{t+\Delta te}}{2 \eta_{effcreep}-\dot{\epsilon}}\right)
                 SymmetricTensor<2,dim> stress_old;
                 for (unsigned int j=0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
                   stress_old[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
@@ -306,6 +310,8 @@ namespace aspect
         if (in.current_cell.state() == IteratorState::valid && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms))
           {
             // Get old (previous time step) velocity gradients
+            // TODO: use current velocity gradients, which get
+            // updated in each nonlinear iteration.
             std::vector<Point<dim>> quadrature_positions(in.n_evaluation_points());
             for (unsigned int i=0; i < in.n_evaluation_points(); ++i)
               quadrature_positions[i] = this->get_mapping().transform_real_to_unit_cell(in.current_cell, in.position[i]);
@@ -334,13 +340,16 @@ namespace aspect
               {
                 // Get old stresses from compositional fields
                 //
-                // TODO: Also use the stresses from the old_solution, not just the strain rates.
-                // Explanation: When this function is called for the assembly of the advection
+                // TODO: Use the stresses from the old_solution, instead of whatever
+                // is in in.composition.
+                // Explanation: When this function is called for the first assembly of the advection
                 // equations for the stress components, in.composition contains the
                 // values of the current_linearization_point, which is extrapolated
                 // from the old_solution and the old_old_solution (the solutions for the 
                 // governing variables obtained in the last and second to last timestep).
-                // The rotation is correctly computed based on the velocity gradients from the previous timestep.
+                // In each nonlinear Advection iteration, the value in in.composition is
+                // updated. We need the same stresses of the previous timestep in each
+                // iteration. 
                 SymmetricTensor<2,dim> stress_old;
                 for (unsigned int j=0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
                   stress_old[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
