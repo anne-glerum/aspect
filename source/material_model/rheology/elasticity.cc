@@ -374,9 +374,15 @@ namespace aspect
         if (in.current_cell.state() == IteratorState::valid
             && in.requests_property(MaterialProperties::reaction_terms))
           {
+<<<<<<< HEAD
             // Get velocity gradients of the current timestep $t+dtc$
             // and the compositions from the previous timestep $t$,
             // both at the requested location in in.position.
+=======
+            // Get old (previous time step) velocity gradients
+            // TODO: use current velocity gradients, which get
+            // updated in each nonlinear iteration.
+>>>>>>> d0fdb6bf3... Update TODOs
             std::vector<Point<dim>> quadrature_positions(in.n_evaluation_points());
             for (unsigned int i = 0; i < in.n_evaluation_points(); ++i)
               quadrature_positions[i] = this->get_mapping().transform_real_to_unit_cell(in.current_cell, in.position[i]);
@@ -454,8 +460,28 @@ namespace aspect
 
             for (unsigned int i = 0; i < in.n_evaluation_points(); ++i)
               {
+<<<<<<< HEAD
                 Assert(out.reaction_terms[i].size() == this->n_compositional_fields(), ExcMessage("Out reaction terms i not equal to n fields."));
 
+=======
+                // Get old stresses from compositional fields
+                //
+                // TODO: Use the stresses from the old_solution, instead of whatever
+                // is in in.composition.
+                // Explanation: When this function is called for the first assembly of the advection
+                // equations for the stress components, in.composition contains the
+                // values of the current_linearization_point, which is extrapolated
+                // from the old_solution and the old_old_solution (the solutions for the 
+                // governing variables obtained in the last and second to last timestep).
+                // In each nonlinear Advection iteration, the value in in.composition is
+                // updated. We need the same stresses of the previous timestep in each
+                // iteration. 
+                SymmetricTensor<2,dim> stress_old;
+                for (unsigned int j=0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
+                  stress_old[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
+
+                // Calculate the rotated stresses
+>>>>>>> d0fdb6bf3... Update TODOs
                 // Rotation (vorticity) tensor (equation 25 in Moresi et al., 2003, J. Comp. Phys.)
                 const Tensor<2, dim> rotation = 0.5 * (evaluator->get_gradient(i) - transpose(evaluator->get_gradient(i)));
 

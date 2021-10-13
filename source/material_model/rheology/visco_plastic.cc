@@ -447,8 +447,7 @@ namespace aspect
             // between the log of the strain rate and the log of the strain rate based on the 
             // proposed stress is zero (up to a certain tolerance).
             // Explanation: The variables in Eq. 36 of Moresi et al. (2003) for the effective viscosity
-            // (i.e. yield stress, viscous viscosity, shear modulus, elastic timestep and lambda) can depend
-            // on the strain rate. In this case (i.e. for dislocation creep or strain-dependent weakening), 
+            // can depend on the strain rate. In this case (i.e. for dislocation creep or strain-dependent weakening), 
             // local iterations are needed to find to be performed to find lambda.
 
             // Step 6: limit the viscosity with specified minimum and maximum bounds
