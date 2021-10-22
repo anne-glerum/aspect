@@ -106,6 +106,18 @@ namespace aspect
                                  MaterialModel::MaterialModelOutputs<dim> &out) const;
 
           /**
+           * Given the stress of the previous time step in the material model inputs @p in,
+           * the elastic shear moduli @p average_elastic_shear_moduli a each point,
+           * and the (viscous) viscosities given in the material model outputs object @p out,
+           * compute the update to the elastic stresses of the previous timestep and use it 
+           * to fill the reaction rates material model output property.
+           */
+          void
+          fill_reaction_rates (const MaterialModel::MaterialModelInputs<dim> &in,
+                               const std::vector<double> &average_elastic_shear_moduli,
+                               MaterialModel::MaterialModelOutputs<dim> &out) const;
+
+          /**
            * Return the values of the elastic shear moduli for each composition used in the
            * rheology model.
            */
