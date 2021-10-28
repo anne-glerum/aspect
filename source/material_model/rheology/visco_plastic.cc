@@ -449,6 +449,7 @@ namespace aspect
             // Explanation: The variables in Eq. 36 of Moresi et al. (2003) for the effective viscosity
             // can depend on the strain rate. In this case (i.e. for dislocation creep or strain-dependent weakening), 
             // local iterations are needed to find to be performed to find lambda.
+            // We won't do this for now, we will first fix the strain-independent case.
 
             // Step 6: limit the viscosity with specified minimum and maximum bounds
             const double maximum_viscosity_for_composition = MaterialModel::MaterialUtilities::phase_average_value(
