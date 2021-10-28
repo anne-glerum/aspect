@@ -279,6 +279,7 @@ namespace aspect
         {
           rheology->elastic_rheology.fill_elastic_force_outputs(in, average_elastic_shear_moduli, out);
           rheology->elastic_rheology.fill_reaction_outputs(in, average_elastic_shear_moduli, out);
+          // TODO: also fill the reaction_rates
         }
     }
 

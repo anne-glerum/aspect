@@ -111,6 +111,9 @@ namespace aspect
         SymmetricTensor<2,dim> stress_old = numbers::signaling_nan<SymmetricTensor<2,dim>>();
         if (use_elasticity == true)
           {
+            // TODO: in.composition holds $\tau^{0adv}$ after the first advection nonlinear iteration,
+            // which is when the viscosity matters for the Stokes system. 
+            // Change: rename stress_old to stress_0.
             for (unsigned int j=0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
               stress_old[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
             // TODO: average the compositional contributions to elastic_shear_moduli here and use
@@ -251,8 +254,9 @@ namespace aspect
 
                     // TODO: Use $\tau^{0}$ instead of $\tau^{t+\Delta t}$.
                     // Explanation: When we compute the viscosity for the Stokes assembly
-                    // the ve stresses stored in in.composition are the rotated, averaged,
-                    // and advected stresses from the advection solve ($\tau^{t+\Delta t}$).
+                    // the ve stresses stored in in.composition are the rotated
+                    // and advected stresses from the advection solve ($\tau^{0}$).
+                    // Change: rename stress_old to stress_0, here and above. 
                     const double viscoelastic_strain_rate_invariant = elastic_rheology.calculate_viscoelastic_strain_rate(in.strain_rate[i],
                                                                       stress_old,
                                                                       elastic_shear_moduli[j]);
@@ -267,8 +271,7 @@ namespace aspect
               }
 
             // Step 3b: calculate current (viscous or viscous + elastic) stress magnitude
-            // TODO: instead of this current_stress, use the second invariant of the 
-            // $\tau^{t+\Delta te}$ stored in in.composition. 
+            // TODO: I don't think it matters whether we do 2 eta invariant(strain_rate) or invariant(2 eta strain_rate)?
             double current_stress = 2. * viscosity_pre_yield * current_edot_ii;
 
             // Step 4a: calculate strain-weakened friction and cohesion
@@ -322,8 +325,6 @@ namespace aspect
                 {
                   // Step 5b-2: if the current stress is greater than the yield stress,
                   // rescale the viscosity back to yield surface
-                  // TODO: use different current_edot_ii. But we don't have access to 
-                  // $\tau^{0}$...
                   if (current_stress >= yield_stress)
                     {
                       viscosity_yield = drucker_prager_plasticity.compute_viscosity(current_cohesion,
@@ -349,6 +350,7 @@ namespace aspect
             // Explanation: The variables in Eq. 36 of Moresi et al. (2003) for the effective viscosity
             // can depend on the strain rate. In this case (i.e. for dislocation creep or strain-dependent weakening), 
             // local iterations are needed to find to be performed to find lambda.
+            // We won't do this for now, we will first fix the strain-independent case.
 
             // Step 6: limit the viscosity with specified minimum and maximum bounds
             const double maximum_viscosity_for_composition = MaterialModel::MaterialUtilities::phase_average_value(
