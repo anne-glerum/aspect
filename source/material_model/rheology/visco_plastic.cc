@@ -108,19 +108,22 @@ namespace aspect
         output_parameters.current_friction_angles.resize(volume_fractions.size(), numbers::signaling_nan<double>());
 
         // Assemble stress tensor if elastic behavior is enabled
-        SymmetricTensor<2,dim> stress_old = numbers::signaling_nan<SymmetricTensor<2,dim>>();
+        SymmetricTensor<2, dim> stress_0_advected = numbers::signaling_nan<SymmetricTensor<2, dim>>();
+        double elastic_shear_modulus = numbers::signaling_nan<double>;
         if (use_elasticity == true)
-          {
-            // TODO: in.composition holds $\tau^{0adv}$ after the first advection nonlinear iteration,
-            // which is when the viscosity matters for the Stokes system. 
-            // Change: rename stress_old to stress_0.
-            for (unsigned int j=0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
-              stress_old[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
-            // TODO: average the compositional contributions to elastic_shear_moduli here and use
-            // a volume-averaged shear modulus in the loop over the compositions below.
-            // Explanation: Otherwise it's implied that each material is acting independently 
-            // (different rotations, different stress changes), but this is inconsistent with storing only one stress tensor.
-          }
+        {
+          // in.composition holds $\tau^{0adv}$ after the first advection nonlinear iteration,
+          // which is when the viscosity matters for the Stokes system.
+          for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
+            stress_0_advected[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
+          // Average the compositional contributions to elastic_shear_moduli here and use
+          // a volume-averaged shear modulus in the loop over the compositions below.
+          // Otherwise it is implied that each material is acting independently
+          // (different rotations, different stress changes), but this is inconsistent with storing only one stress tensor.
+          // TODO: arithmetic averaging or the same averaging as the viscosity?
+          const std::vector<double> &elastic_shear_moduli = elastic_rheology.get_elastic_shear_moduli();
+          elastic_shear_modulus = MaterialUtilities::average_value(volume_fractions, elastic_shear_moduli, MaterialUtilities::arithmetic);
+        }
 
         // The first time this function is called (first iteration of first time step)
         // a specified "reference" strain rate is used as the returned value would
@@ -242,8 +245,6 @@ namespace aspect
 
             if (use_elasticity)
               {
-                const std::vector<double> &elastic_shear_moduli = elastic_rheology.get_elastic_shear_moduli();
-
                 if (use_reference_strainrate == true)
                   current_edot_ii = ref_strain_rate;
                 else
@@ -252,14 +253,13 @@ namespace aspect
                            ExcMessage("Invalid strain_rate in the MaterialModelInputs. This is likely because it was "
                                       "not filled by the caller."));
 
-                    // TODO: Use $\tau^{0}$ instead of $\tau^{t+\Delta t}$.
-                    // Explanation: When we compute the viscosity for the Stokes assembly
+                    // When we compute the viscosity for the Stokes assembly
                     // the ve stresses stored in in.composition are the rotated
                     // and advected stresses from the advection solve ($\tau^{0}$).
-                    // Change: rename stress_old to stress_0, here and above. 
+                    // The square root of the second moment invariant is returned. 
                     const double viscoelastic_strain_rate_invariant = elastic_rheology.calculate_viscoelastic_strain_rate(in.strain_rate[i],
-                                                                      stress_old,
-                                                                      elastic_shear_moduli[j]);
+                                                                      stress_0_advected,
+                                                                      elastic_shear_modulus);
 
                     current_edot_ii = std::max(viscoelastic_strain_rate_invariant,
                                                min_strain_rate);
@@ -267,12 +267,12 @@ namespace aspect
 
                 // Step 3a: calculate viscoelastic (effective) viscosity
                 viscosity_pre_yield = elastic_rheology.calculate_viscoelastic_viscosity(viscosity_pre_yield,
-                                                                                        elastic_shear_moduli[j]);
+                                                                                        elastic_shear_modulus);
               }
 
-            // Step 3b: calculate current (viscous or viscous + elastic) stress magnitude
-            // TODO: I don't think it matters whether we do 2 eta invariant(strain_rate) or invariant(2 eta strain_rate)?
-            double current_stress = 2. * viscosity_pre_yield * current_edot_ii;
+              // Step 3b: calculate current (viscous or viscous + elastic) stress magnitude
+              // 2 eta sqrt(invariant(strain_rate))
+              const double current_stress = 2. * viscosity_pre_yield * current_edot_ii;
 
             // Step 4a: calculate strain-weakened friction and cohesion
             const DruckerPragerParameters drucker_prager_parameters = drucker_prager_plasticity.compute_drucker_prager_parameters(j,
@@ -292,25 +292,25 @@ namespace aspect
                                                                       in.position[i]);
             output_parameters.current_friction_angles[j] = current_friction;
 
-            // Step 5: plastic yielding
+              // Step 5: plastic yielding
 
-            // Determine if the pressure used in Drucker Prager plasticity will be capped at 0 (default).
-            // This may be necessary in models without gravity and when the dynamic stresses are much higher
-            // than the lithostatic pressure.
+              // Determine if the pressure used in Drucker Prager plasticity will be capped at 0 (default).
+              // This may be necessary in models without gravity and the dynamic stresses are much higher
+              // than the lithostatic pressure.
 
-            double pressure_for_plasticity = in.pressure[i];
-            if (allow_negative_pressures_in_plasticity == false)
-              pressure_for_plasticity = std::max(in.pressure[i],0.0);
+              double pressure_for_plasticity = in.pressure[i];
+              if (allow_negative_pressures_in_plasticity == false)
+                pressure_for_plasticity = std::max(in.pressure[i], 0.0);
 
-            // Step 5a: calculate Drucker-Prager yield stress
-            const double yield_stress = drucker_prager_plasticity.compute_yield_stress(current_cohesion,
-                                                                                       current_friction,
-                                                                                       pressure_for_plasticity,
-                                                                                       drucker_prager_parameters.max_yield_stress);
+              // Step 5a: calculate Drucker-Prager yield stress
+              const double yield_stress = drucker_prager_plasticity.compute_yield_stress(current_cohesion,
+                                                                                         current_friction,
+                                                                                         pressure_for_plasticity,
+                                                                                         drucker_prager_parameters.max_yield_stress);
 
-            // Step 5b: select if yield viscosity is based on Drucker Prager or stress limiter rheology
-            double viscosity_yield = viscosity_pre_yield;
-            switch (yield_mechanism)
+              // Step 5b: select if yield viscosity is based on Drucker Prager or stress limiter rheology
+              double viscosity_yield = viscosity_pre_yield;
+              switch (yield_mechanism)
               {
                 case stress_limiter:
                 {
@@ -327,6 +327,7 @@ namespace aspect
                   // rescale the viscosity back to yield surface
                   if (current_stress >= yield_stress)
                     {
+                      // TODO: Appendix E omits the sqrt of the viscoelastic_strain_rate_invariant.
                       viscosity_yield = drucker_prager_plasticity.compute_viscosity(current_cohesion,
                                                                                     current_friction,
                                                                                     pressure_for_plasticity,
