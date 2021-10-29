@@ -25,7 +25,10 @@
 #include <deal.II/base/parameter_handler.h>
 #include <aspect/utilities.h>
 #include <aspect/material_model/visco_plastic.h>
+<<<<<<< HEAD
 #include <aspect/material_model/viscoelastic.h>
+=======
+>>>>>>> 1a4bd604e... Update parse_parameters
 
 #include <deal.II/base/quadrature_lib.h>
 
@@ -129,13 +132,6 @@ namespace aspect
         // Stabilize elasticity through a viscous damper
         elastic_damper_viscosity = prm.get_double("Elastic damper viscosity");
 
-        // TODO: Assert that elastic_damper_viscosity == 0 when the visco_plastic
-        // material model is used.
-        // Explanation: If a damper is used, the current implementation in visco_plastic
-        // is not correct. The way the effective viscosity is computed is only valid
-        // in the absence of a damper and for a yield stress that can be expressed as
-        // some value of the second invariant of the deviatoric stress. 
-
         if (prm.get ("Use fixed elastic time step") == "true")
           use_fixed_elastic_time_step = true;
         else if (prm.get ("Use fixed elastic time step") == "false")
@@ -149,12 +145,6 @@ namespace aspect
         AssertThrow(fixed_elastic_time_step > 0,
                     ExcMessage("The fixed elastic time step must be greater than zero"));
 
-        // TODO: if using the visco_plastic material model,
-        // make sure that use_fixed_elastic_timestep == false
-        // and stabilization_time_scale_factor == 1
-        // Explanation: The current implementation does not support
-        // an elastic timestep that is not equal to the computational
-        // timepstep.
         if (this->convert_output_to_years())
           fixed_elastic_time_step *= year_in_seconds;
 
