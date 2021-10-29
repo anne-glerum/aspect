@@ -239,6 +239,16 @@ namespace aspect
             out.additional_outputs.push_back(
               std::make_unique<ElasticAdditionalOutputs<dim>> (n_points));
           }
+
+          // Create the ReactionRateOutputs that are necessary for the operator splitting
+          // step that applies the stress update to the rotated and advected stress of the
+          // previous timestep. 
+          if (this->get_parameters().use_operator_splitting && out.template get_additional_output<ReactionRateOutputs<dim>>() == nullptr)
+          {
+            const unsigned int n_points = out.n_evaluation_points();
+            out.additional_outputs.push_back(
+                std::make_unique<MaterialModel::ReactionRateOutputs<dim>>(n_points, this->n_compositional_fields()));
+          }
       }
 
 
@@ -430,9 +440,52 @@ namespace aspect
       Elasticity<dim>::fill_reaction_rates (const MaterialModel::MaterialModelInputs<dim> &in,
                                               const std::vector<double> &average_elastic_shear_moduli,
                                               MaterialModel::MaterialModelOutputs<dim> &out) const
-                                              {}
+      {
+        ReactionRateOutputs<dim> *reaction_rate_out = out.template get_additional_output<ReactionRateOutputs<dim>>();
+        // TODO only do this when reaction_rates are required (in.request_property)
 
+        // At the moment when the reaction rate are required (at the beginning of the timestep),
+        // 'solution' holds the solution of the previous timestep, and is the same as 'old_solution'.
+        // MaterialModelInputs are based on 'solution' when calling the MaterialModel for the reaction rates.
+        // This means that we can use 'in' to get to the $\tau^{0}$ and velocity/strain rate of the
+        // previous timestep.
+        if (in.current_cell.state() == IteratorState::valid && this->get_timestep_number() > 0)
+        {
+          for (unsigned int i = 0; i < in.n_evaluation_points(); ++i)
+          {
+            // Get $\tau^{0}$ of the previous timestep t from the compositional fields.
+            // This stress includes the rotation and advection. 
+            SymmetricTensor<2, dim> stress_0_t;
+            for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
+              stress_0_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
 
+            // $\eta^{t}_{effcreep}
+            const double effective_creep_viscosity = out.viscosities[i];
+
+            // $\eta_{el} = G \Delta t_{el}$
+            const double elastic_viscosity = calculate_elastic_viscosity(average_elastic_shear_moduli[i]);
+
+            // The total stress of timestep t.
+            const SymmetricTensor<2, dim> stress_t = 2. * effective_creep_viscosity * (deviator(in.strain_rate[i]) + stress_0_t / (2. * elastic_viscosity));
+
+            // Fill reaction rates.
+            // Assume dte is always equal to dt.
+            // During this timestep, the reaction rates will be multiplied
+            // with the current timestep size to turn the rate of change into a change. 
+            // However, this update belongs
+            // to the previous timestep. Therefore we divide by the
+            // current timestep and multiply with the previous one. 
+            // When multiplied with the current timestep, this will give
+            // rate * previous_dt = previous_change. 
+            const double previous_dt = this->get_old_timestep();
+            const double current_dt  = this->get_timestep();
+            const double timestep_compensation_factor = previous_dt / current_dt;
+
+            for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
+              reaction_rate_out->reaction_rates[i][j] = (-stress_0_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)] + stress_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)]) * timestep_compensation_factor;
+          }
+        }
+      }
 
       template <int dim>
       double
