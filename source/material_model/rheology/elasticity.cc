@@ -267,7 +267,7 @@ namespace aspect
         if (in.requests_property(MaterialProperties::additional_outputs))
             for (unsigned int i=0; i < in.n_evaluation_points(); ++i)
               {
-                // Getstress from timestep $t$ rotated and advected into the current
+                // Get stress from timestep $t$ rotated and advected into the current
                 // timestep $t+\Delta te$ from the compositional fields.
                 // This function is evaluated before the assembly of the Stokes equations
                 // (the force term goes into the rhs of the momentum equation).
@@ -309,7 +309,7 @@ namespace aspect
                                               const std::vector<double> &,
                                               MaterialModel::MaterialModelOutputs<dim> &out) const
       {
-        // TODO: also evaluate at t = 0
+        // TODO: also evaluate at t = 0?
         if (in.current_cell.state() == IteratorState::valid && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms))
           {
             // Get velocity gradients of the current timestep $t+dt=t+dte$
@@ -392,7 +392,7 @@ namespace aspect
           }
       }
 
-      // TODO: fill the function that computes the reaction rates for the iterator
+      // Fill the function that computes the reaction rates for the iterator
       // splitting step that at the beginning of the new timestep updates the
       // stored compositions $tau^{0\mathrm{adv}}$ at time $t$ to $tau^{t}$.
       // Make sure that the old_solution is used as input to the material model and that
@@ -471,9 +471,9 @@ namespace aspect
         //
         // We also use this parameter when we are still *before* the first time step,
         // i.e., if the time step number is numbers::invalid_unsigned_int.
-        // TODO: only allow for dte = dt.
-        // Change: disable stabilization_time_scale_factor.
-        // Change: disable use_fixed_elastic_time_step.
+        // 
+        // With the visco-plastic material model and elasticity, we only allow for dte = dt.
+        // This is enforced in parse_parameters.
         const double dte = ( ( this->get_timestep_number() > 0 &&
                                this->simulator_is_past_initialization() &&
                                use_fixed_elastic_time_step == false )
@@ -521,18 +521,19 @@ namespace aspect
       double
       Elasticity<dim>::
       calculate_viscoelastic_strain_rate(const SymmetricTensor<2,dim> &strain_rate,
-                                         const SymmetricTensor<2,dim> &stress,
+                                         const SymmetricTensor<2,dim> &stress_0_advected,
                                          const double shear_modulus) const
       {
         // The second term in the following expression corresponds to the
         // elastic part of the strain rate deviator. Note the parallels with the
         // viscous part of the strain rate deviator,
         // which is equal to 0.5 * stress / viscosity.
-        // TODO: in.composition will contain $\tau^{0}$, so that we can compute
+        // in.composition contains $\tau^{0}$, so that we can compute
         // $\dot\varepsilon_T + \frac{\tau^{0adv}}{2 \eta_{el}}$.
-        const SymmetricTensor<2,dim> edot_deviator = deviator(strain_rate) + 0.5*stress /
+        const SymmetricTensor<2,dim> edot_deviator = deviator(strain_rate) + 0.5*stress_0_advected /
                                                      calculate_elastic_viscosity(shear_modulus);
 
+        // TODO: should we return this or the full tensor?
         return std::sqrt(std::max(-second_invariant(edot_deviator), 0.));
       }
     }
