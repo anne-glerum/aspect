@@ -270,41 +270,38 @@ namespace aspect
         if (in.requests_property(MaterialProperties::additional_outputs))
             for (unsigned int i=0; i < in.n_evaluation_points(); ++i)
               {
-                // Get old stresses from compositional fields
-                // TODO: don't use $\tau^{t+\Delta te}$ but the current $\tau_0$ in in.composition.
-                // Explanation: this function is evaluated before the assembly of the Stokes equations
+                // Getstress from timestep $t$ rotated and advected into the current
+                // timestep $t+\Delta te$ from the compositional fields.
+                // This function is evaluated before the assembly of the Stokes equations
                 // (the force term goes into the rhs of the momentum equation).
                 // This is after the advection equations have been solved, and hence in.composition
-                // contains the rotated, averaged and advected stresses at $tau^{0adv}$.
+                // contains the rotated and advected stresses $tau^{0adv}$.
                 // Only at the beginning of the next timestep do we add the stress update of the 
                 // current timestep to the stress stored in the compositional fields, giving
                 // $\tau{t+\Delta te}$ (with $t+\Delta te}$ being the current timestep.
                 //
                 // Moresi et al. (2003) use the full stresses at $t$ in the force term (Eq.  30),
                 // which is incorrect, it should be $tau^{0adv}$, which is the stress from time $t$
-                // rotated and advected to time $t+\Delta te$.
+                // rotated and advected to time $t+\Delta te$. See also Farrington et al. (2014).
                 // The force term should be computed as:
-                // $\frac{-\eta_{effcreep}  \tau_0}{\eta_{e}}$, where $\eta_{effcreep}$ is the
+                // $\frac{-\eta_{effcreep} \tau_0}{\eta_{e}}$, where $\eta_{effcreep}$ is the
                 // current harmonic average of the viscous and elastic viscosity, or the yield stress
                 // divided by two times the second invariant of the deviatoric strain rate.
-                // 
-                // Change: rename stress_old to tau_zero_adv
-                SymmetricTensor<2,dim> stress_old;
+                SymmetricTensor<2,dim> stress_0_advected;
                 for (unsigned int j=0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
-                  stress_old[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
+                  stress_0_advected[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
 
-                // Average viscoelastic viscosity
-                // TODO: use the viscosity corresponding to the stresses selected above.
-                // Explanation: out.viscosities is computed during the assembly of the Stokes equations
+                // Average effective creep viscosity
+                // Use the viscosity corresponding to the stresses selected above.
+                // out.viscosities is computed during the assembly of the Stokes equations
                 // based on the current_linearization_point. This means that it will be updated after every
                 // nonlinear Stokes iteration, and is ahead of the stresses that are used in the force term.
-                // Change: nothing
-                const double average_viscoelastic_viscosity = out.viscosities[i];
+                const double effective_creep_viscosity = out.viscosities[i];
 
-              // Fill elastic force outputs (See equation 30 in Moresi et al., 2003, J. Comp. Phys.)
-              force_out->elastic_force[i] = -1. * ( average_viscoelastic_viscosity / calculate_elastic_viscosity(average_elastic_shear_moduli[i]) * stress_old );
-
-            }
+                // Fill elastic force outputs $\frac{-\eta_{effcreep} \tau_0}{\eta_{e}}$.
+                force_out->elastic_force[i] = -1. *effective_creep_viscosity / calculate_elastic_viscosity(average_elastic_shear_moduli[i])
+                                              * stress_0_advected;
+              }
       }
 
 
