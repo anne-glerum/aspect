@@ -24,6 +24,7 @@
 #include <deal.II/base/signaling_nan.h>
 #include <deal.II/base/parameter_handler.h>
 #include <aspect/utilities.h>
+#include <aspect/material_model/visco_plastic.h>
 
 #include <deal.II/base/quadrature_lib.h>
 
@@ -123,13 +124,6 @@ namespace aspect
         // Stabilize elasticity through a viscous damper
         elastic_damper_viscosity = prm.get_double("Elastic damper viscosity");
 
-        // TODO: Assert that elastic_damper_viscosity == 0 when the visco_plastic
-        // material model is used.
-        // Explanation: If a damper is used, the current implementation in visco_plastic
-        // is not correct. The way the effective viscosity is computed is only valid
-        // in the absence of a damper and for a yield stress that can be expressed as
-        // some value of the second invariant of the deviatoric stress. 
-
         if (prm.get ("Use fixed elastic time step") == "true")
           use_fixed_elastic_time_step = true;
         else if (prm.get ("Use fixed elastic time step") == "false")
@@ -143,17 +137,30 @@ namespace aspect
         AssertThrow(fixed_elastic_time_step > 0,
                     ExcMessage("The fixed elastic time step must be greater than zero"));
 
-        // TODO: if using the visco_plastic material model,
-        // make sure that use_fixed_elastic_timestep == false
-        // and stabilization_time_scale_factor == 1
-        // Explanation: The current implementation does not support
-        // an elastic timestep that is not equal to the computational
-        // timepstep.
         if (this->convert_output_to_years())
           fixed_elastic_time_step *= year_in_seconds;
 
-        AssertThrow(this->get_parameters().enable_elasticity == true,
-                    ExcMessage ("Material model Viscoelastic only works if 'Enable elasticity' is set to true"));
+        // When using the visco_plastic material model,
+        // make sure that use_fixed_elastic_timestep == false
+        // and stabilization_time_scale_factor == 1, because
+        // the current implementation does not support
+        // an elastic timestep that is not equal to the computational
+        // timepstep. For the same reasons, make sure that stress
+        // averaging is turned off and no damping is applied.
+        // If a damper is used, the current implementation in visco_plastic
+        // is not correct. The way the effective viscosity is computed is only valid
+        // in the absence of a damper and for a yield stress that can be expressed as
+        // some value of the second invariant of the deviatoric stress.
+        if (Plugins::plugin_type_matches<MaterialModel::ViscoPlastic<dim>>(this->get_material_model()))
+          AssertThrow(!use_fixed_elastic_time_step &&
+                      stabilization_time_scale_factor == 1. &&
+                      !use_stress_averaging &&
+                      elastic_damper_viscosity == 0.,
+                      ExcMessage("The visco-plastic material model with elasticity enabled requires "
+                                 "an elastic timestep equal to the computational timestep and no elastic damping."));
+
+              AssertThrow(this->get_parameters().enable_elasticity == true,
+                          ExcMessage("Material model Viscoelastic only works if 'Enable elasticity' is set to true"));
 
         // Check whether the compositional fields representing the viscoelastic
         // stress tensor are both named correctly and listed in the right order.
@@ -187,27 +194,17 @@ namespace aspect
         else
           AssertThrow(false, ExcNotImplemented());
 
-        // Currently, it only makes sense to use this material model when the nonlinear solver
-        // scheme does a single Advection iteration and at minimum one Stokes iteration. More
-        // than one nonlinear Advection iteration will produce an unrealistic build-up of
-        // viscoelastic stress, which are tracked through compositional fields.
-        // TODO: reverse this AssertThrow, we need to iterated over the Advection equations. 
+        // We need to iterate over the Advection and Stokes equations.
         AssertThrow((this->get_parameters().nonlinear_solver ==
-                     Parameters<dim>::NonlinearSolver::single_Advection_single_Stokes
-                     ||
+                         Parameters<dim>::NonlinearSolver::iterated_Advection_and_Stokes ||
                      this->get_parameters().nonlinear_solver ==
-                     Parameters<dim>::NonlinearSolver::single_Advection_iterated_Stokes
-                     ||
+                         Parameters<dim>::NonlinearSolver::iterated_Advection_and_Newton_Stokes ||
                      this->get_parameters().nonlinear_solver ==
-                     Parameters<dim>::NonlinearSolver::single_Advection_iterated_Newton_Stokes
-                     ||
-                     this->get_parameters().nonlinear_solver ==
-                     Parameters<dim>::NonlinearSolver::single_Advection_iterated_defect_correction_Stokes),
+                         Parameters<dim>::NonlinearSolver::iterated_Advection_and_defect_correction_Stokes),
                     ExcMessage("The material model will only work with the nonlinear "
-                               "solver schemes 'single Advection, single Stokes', "
-                               "'single Advection, iterated Stokes', "
-                               "'single Advection, iterated Newton Stokes', and "
-                               "'single Advection, iterated defect correction Stokes' "));
+                               "solver schemes 'iterated Advection and Stokes', "
+                               "'iterated Advection and defect correction Stokes', "
+                               "'iterated Advection and Newton Stokes'."));
 
         // Functionality to average the additional RHS terms over the cell is not implemented.
         // Consequently, it is only possible to use elasticity with the Material averaging schemes
@@ -380,7 +377,7 @@ namespace aspect
                 // the advected stress history tensor is used, but this tensor is only advected during
                 // the advection solve for which we are computing the reaction terms here (in case of fields).
                 // TODO: disable stress_average and require dte=dt.
-                // Change: delete these lines
+                // Change: delete these lines. Move to somewhere else? 
                 //if (use_stress_averaging == true)
                 //  {
                 //    stress_new = ( ( 1. - ( dt / dte ) ) * stress_old ) + ( ( dt / dte ) * stress_new ) ;
