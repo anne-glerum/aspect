@@ -325,9 +325,9 @@ namespace aspect
               std::cout << std::endl << coords[0] << "-" << coords[1] << "-" << coords[2] << "---" << "before plasticity  : edot_ii: "<<current_edot_ii<<" current_stress: "<<current_stress << std::endl;
             // Step 5: plastic yielding
 
-            // Determine if the pressure used in Drucker Prager plasticity will be capped at 0 (default).
-            // This may be necessary in models without gravity and when the dynamic stresses are much higher
-            // than the lithostatic pressure.
+              // Determine if the pressure used in Drucker Prager plasticity will be capped at 0 (default).
+              // This may be necessary in models without gravity and the dynamic stresses are much higher
+              // than the lithostatic pressure.
 
             double pressure_for_plasticity = in.pressure[i];
             if (allow_negative_pressures_in_plasticity == false)
@@ -391,6 +391,7 @@ namespace aspect
                           && (fault_volume > 0.5)
                           && friction_options.use_always_yielding))
                     {
+                      // TODO: Appendix E omits the sqrt of the viscoelastic_strain_rate_invariant.
                       viscosity_yield = drucker_prager_plasticity.compute_viscosity(current_cohesion,
                                                                                     output_parameters.current_friction_angles[j],
                                                                                     pressure_for_plasticity,
