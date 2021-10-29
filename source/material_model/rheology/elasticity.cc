@@ -312,18 +312,23 @@ namespace aspect
       template <int dim>
       void
       Elasticity<dim>::fill_reaction_outputs (const MaterialModel::MaterialModelInputs<dim> &in,
-                                              const std::vector<double> &average_elastic_shear_moduli,
+                                              const std::vector<double> &,
                                               MaterialModel::MaterialModelOutputs<dim> &out) const
       {
+        // TODO: also evaluate at t = 0
         if (in.current_cell.state() == IteratorState::valid && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms))
           {
-            // Get old (previous time step) velocity gradients
+            // Get velocity gradients of the current timestep $t+dt=t+dte$
+            // and the compositions from the previous timestep $t$.
+            // Assume velocity and composition use the same quadrature.
             std::vector<Point<dim>> quadrature_positions(in.n_evaluation_points());
             for (unsigned int i=0; i < in.n_evaluation_points(); ++i)
               quadrature_positions[i] = this->get_mapping().transform_real_to_unit_cell(in.current_cell, in.position[i]);
 
+            // Get the current velocity gradients, which get
+            // updated in each nonlinear iteration.
             std::vector<double> solution_values(this->get_fe().dofs_per_cell);
-            in.current_cell->get_dof_values(this->get_old_solution(),
+            in.current_cell->get_dof_values(this->get_solution(),
                                             solution_values.begin(),
                                             solution_values.end());
 
@@ -334,72 +339,39 @@ namespace aspect
                                                              update_gradients,
                                                              this->introspection().component_indices.velocities[0]));
 
-            // TODO: use current velocity gradients, which get
-            // updated in each nonlinear iteration.
-            // Change: replace this->get_old_solution() with this->get_solution()
-            // Change: rename old_velocity_gradients to velocity_gradients
-            // Initialize the evaluator for the old velocity gradients
+            // Initialize the evaluator for the velocity gradients
             evaluator->reinit(in.current_cell, quadrature_positions);
             evaluator->evaluate(solution_values,
                                 EvaluationFlags::gradients);
 
+            // Get the compositional fields from the previous timestep $t$,
+            // but only those that represent the stress tensor.
+            // The 'old_solution' has been updated to the full stress tensor
+            // of time $t$ by the iterator splitting step at the beginning
+            // of the current timestep.
+            const unsigned int n_stress_tensor_components = SymmetricTensor<2,dim>::n_independent_components;
+            std::vector<std::vector<double>> compositions_t(n_stress_tensor_components, std::vector<double>(in.n_evaluation_points()));
+            for (unsigned int c = 0; c < n_stress_tensor_components; ++c)
+              fe_values[this->introspection().extractors.compositional_fields[c]].get_function_values(this->get_old_solution(),
+                                                                                                      compositions_t[c]);
+
+            std::vector<SymmetricTensor<2, dim>> stress_t(n_stress_tensor_components, SymmetricTensor<2, dim>());
+            for (unsigned int i = 0; i < in.n_evaluation_points(); ++i)
+            {
+              for (unsigned int c = 0; c < n_stress_tensor_components; ++c)
+                stress_t[i][SymmetricTensor<2, dim>::unrolled_to_component_indices(c)] = compositions_t[c][i];
+            }
+
             const double dte = elastic_timestep();
-            const double dt = this->get_timestep();
 
             for (unsigned int i=0; i < in.n_evaluation_points(); ++i)
               {
-                // Get old stresses from compositional fields
-                //
-                // TODO: Use the stresses from the old_solution, instead of whatever
-                // is in in.composition.
-                // Explanation: When this function is called for the first assembly of the advection
-                // equations for the stress components, in.composition contains the
-                // values of the current_linearization_point, which is extrapolated
-                // from the old_solution and the old_old_solution (the solutions for the 
-                // governing variables obtained in the last and second to last timestep)
-                // and adapted by the iterator splitting step. 
-                // In each nonlinear Advection iteration, the value of $\tau^{0adv}$ in in.composition is
-                // updated. We need the same stresses $\tau^{t}$ of the previous timestep in each
-                // iteration. These are stored in old_solution, which is also updated by the 
-                // iterator splitting step. 
-                // Change: extract stress_old from old_solution, which is $\tau^{t}$ at the moment
-                // when the reaction_terms are computed for the advection solve. 
-                SymmetricTensor<2,dim> stress_old;
-                for (unsigned int j=0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
-                  stress_old[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
-
-                // Calculate the rotated stresses
                 // Rotation (vorticity) tensor (equation 25 in Moresi et al., 2003, J. Comp. Phys.)
                 const Tensor<2,dim> rotation = 0.5 * (evaluator->get_gradient(i) - transpose(evaluator->get_gradient(i)));
 
-                // Average viscoelastoplastic viscosity
-                const double average_viscoelastoplastic_viscosity = out.viscosities[i];
-
-                // Calculate the current (new) stored elastic stress, which is a function of the material
-                // properties (viscoelastic viscosity, shear modulus), elastic time step size, strain rate,
-                // vorticity, prior (inherited) viscoelastic stresses and viscosity of the elastic damper.
-                // In the absence of the elastic damper, the expression for "stress_new" is identical
-                // to the one found in Moresi et al. (2003, J. Comp. Phys., equation 29).
-                // TODO: the current scheme is only valid without a damper
-                // Change: rename damped_elastic_viscosity to elastic_viscosity
-                const double damped_elastic_viscosity = calculate_elastic_viscosity(average_elastic_shear_moduli[i]);
-
                 // stress_0 is the combination of the elastic stress tensor stored at the end of the last time step and the change in that stress generated by local rotation
-                const SymmetricTensor<2,dim> stress_0 = (stress_old + dte * ( symmetrize(rotation * Tensor<2,dim>(stress_old) ) - symmetrize(Tensor<2,dim>(stress_old) * rotation) ) );
-
-                // stress_creep is the stress experienced by the viscous and elastic components.
-
-                Assert(std::isfinite(in.strain_rate[i].norm()),
-                       ExcMessage("Invalid strain_rate in the MaterialModelInputs. This is likely because it was "
-                                  "not filled by the caller."));
-
-                // TODO: do not compute stress creep, but stop at stress_0
-                // Change: delete this line
-                const SymmetricTensor<2,dim> stress_creep = 2. * average_viscoelastoplastic_viscosity * ( deviator(in.strain_rate[i]) + stress_0 / (2. * damped_elastic_viscosity ) );
-
-                // stress_new is the (new) stored elastic stress
-                // Change: delete this line
-                SymmetricTensor<2,dim> stress_new = stress_creep * (1. - (elastic_damper_viscosity / damped_elastic_viscosity)) + elastic_damper_viscosity * stress_0 / damped_elastic_viscosity;
+                const SymmetricTensor<2,dim> stress_0 = (stress_t[i] + 
+                    dte * ( symmetrize(rotation * Tensor<2,dim>(stress_t[i]) ) - symmetrize(Tensor<2,dim>(stress_t[i]) * rotation) ) );
 
                 // Stress averaging scheme to account for difference between fixed elastic time step
                 // and numerical time step (see equation 32 in Moresi et al., 2003, J. Comp. Phys.).
@@ -412,13 +384,15 @@ namespace aspect
                 // the advection solve for which we are computing the reaction terms here (in case of fields).
                 // TODO: disable stress_average and require dte=dt.
                 // Change: delete these lines
-                    stress_new = ( ( 1. - ( dt / dte ) ) * stress_old ) + ( ( dt / dte ) * stress_new ) ;
+                //if (use_stress_averaging == true)
+                //  {
+                //    stress_new = ( ( 1. - ( dt / dte ) ) * stress_old ) + ( ( dt / dte ) * stress_new ) ;
+                //  }
 
                 // Fill reaction terms
-                // Change: replace stress_new with stress_0
                 for (unsigned int j = 0; j < SymmetricTensor<2,dim>::n_independent_components ; ++j)
-                  out.reaction_terms[i][j] = -stress_old[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)]
-                                             + stress_new[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)];
+                  out.reaction_terms[i][j] = -stress_t[i][SymmetricTensor<2,dim>::unrolled_to_component_indices(j)]
+                                             + stress_0[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)];
 
               }
           }
@@ -442,6 +416,10 @@ namespace aspect
                                               MaterialModel::MaterialModelOutputs<dim> &out) const
       {
         ReactionRateOutputs<dim> *reaction_rate_out = out.template get_additional_output<ReactionRateOutputs<dim>>();
+
+        if (reaction_rate_out == nullptr)
+          return;
+
         // TODO only do this when reaction_rates are required (in.request_property)
 
         // At the moment when the reaction rate are required (at the beginning of the timestep),
