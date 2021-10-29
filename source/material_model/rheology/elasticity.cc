@@ -555,7 +555,7 @@ namespace aspect
           }
       }
 
-      // TODO: fill the function that computes the reaction rates for the iterator
+      // Fill the function that computes the reaction rates for the iterator
       // splitting step that at the beginning of the new timestep updates the
       // stored compositions $tau^{0\mathrm{adv}}$ at time $t$ to $tau^{t}$.
       // Make sure that the old_solution is used as input to the material model and that
