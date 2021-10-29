@@ -21,6 +21,7 @@
 
 #include <aspect/material_model/rheology/drucker_prager.h>
 #include <aspect/material_model/utilities.h>
+#include <aspect/material_model/visco_plastic.h>
 #include <aspect/utilities.h>
 
 #include <deal.II/base/signaling_nan.h>
@@ -241,7 +242,7 @@ namespace aspect
           damper_viscosity = 0.;
  
         if (Plugins::plugin_type_matches<MaterialModel::ViscoPlastic<dim>>(this->get_material_model())
-                && this->enable_elasticity())
+                && this->get_parameters().enable_elasticity)
           AssertThrow(damper_viscosity == 0. || !use_plastic_damper,
           ExcMessage("The viscoplastic material with elasticity enabled cannot include a plastic damper."));
 

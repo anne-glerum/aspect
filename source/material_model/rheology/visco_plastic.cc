@@ -109,7 +109,7 @@ namespace aspect
 
         // Assemble stress tensor if elastic behavior is enabled
         SymmetricTensor<2, dim> stress_0_advected = numbers::signaling_nan<SymmetricTensor<2, dim>>();
-        double elastic_shear_modulus = numbers::signaling_nan<double>;
+        double elastic_shear_modulus = numbers::signaling_nan<double>();
         if (use_elasticity == true)
         {
           // in.composition holds $\tau^{0adv}$ after the first advection nonlinear iteration,
