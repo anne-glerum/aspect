@@ -360,9 +360,11 @@ namespace aspect
             const double dte = elastic_timestep();
 
             Assert(out.reaction_terms.size() == in.n_evaluation_points(), ExcMessage("Out reaction terms not equal to n eval points."));
+
             for (unsigned int i = 0; i < in.n_evaluation_points(); ++i)
               {
                 Assert(out.reaction_terms[i].size() == this->n_compositional_fields(), ExcMessage("Out reaction terms i not equal to n fields."));
+
                 // Rotation (vorticity) tensor (equation 25 in Moresi et al., 2003, J. Comp. Phys.)
                 const Tensor<2,dim> rotation = 0.5 * (evaluator->get_gradient(i) - transpose(evaluator->get_gradient(i)));
 
@@ -379,8 +381,7 @@ namespace aspect
                 // old stress have been incorrectly switched. In Eq. (8) of the same supplement,
                 // the advected stress history tensor is used, but this tensor is only advected during
                 // the advection solve for which we are computing the reaction terms here (in case of fields).
-                // TODO: disable stress_average and require dte=dt.
-                // Change: delete these lines. Move to somewhere else?
+                // TODO Change: delete these lines. Move to somewhere else?
                 //if (use_stress_averaging == true)
                 //  {
                 //    stress_new = ( ( 1. - ( dt / dte ) ) * stress_old ) + ( ( dt / dte ) * stress_new ) ;
