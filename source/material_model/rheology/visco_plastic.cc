@@ -116,13 +116,14 @@ namespace aspect
             // which is when the viscosity matters for the Stokes system.
             for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
               stress_0_advected[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
+
             // Average the compositional contributions to elastic_shear_moduli here and use
             // a volume-averaged shear modulus in the loop over the compositions below.
             // Otherwise it is implied that each material is acting independently
             // (different rotations, different stress changes), but this is inconsistent with storing only one stress tensor.
-            // TODO: arithmetic averaging or the same averaging as the viscosity?
+            // Same averaging as the viscosity.
             const std::vector<double> &elastic_shear_moduli = elastic_rheology.get_elastic_shear_moduli();
-            elastic_shear_modulus = MaterialUtilities::average_value(volume_fractions, elastic_shear_moduli, MaterialUtilities::arithmetic);
+            elastic_shear_modulus = MaterialUtilities::average_value(volume_fractions, elastic_shear_moduli, viscosity_averaging);
           }
 
         // The first time this function is called (first iteration of first time step)
