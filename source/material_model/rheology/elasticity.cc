@@ -159,8 +159,8 @@ namespace aspect
                       ExcMessage("The visco-plastic material model with elasticity enabled requires "
                                  "an elastic timestep equal to the computational timestep and no elastic damping."));
 
-              AssertThrow(this->get_parameters().enable_elasticity == true,
-                          ExcMessage("Material model Viscoelastic only works if 'Enable elasticity' is set to true"));
+        AssertThrow(this->get_parameters().enable_elasticity == true,
+                    ExcMessage("Material model Viscoelastic only works if 'Enable elasticity' is set to true"));
 
         // Check whether the compositional fields representing the viscoelastic
         // stress tensor are both named correctly and listed in the right order.
@@ -196,11 +196,11 @@ namespace aspect
 
         // We need to iterate over the Advection and Stokes equations.
         AssertThrow((this->get_parameters().nonlinear_solver ==
-                         Parameters<dim>::NonlinearSolver::iterated_Advection_and_Stokes ||
+                     Parameters<dim>::NonlinearSolver::iterated_Advection_and_Stokes ||
                      this->get_parameters().nonlinear_solver ==
-                         Parameters<dim>::NonlinearSolver::iterated_Advection_and_Newton_Stokes ||
+                     Parameters<dim>::NonlinearSolver::iterated_Advection_and_Newton_Stokes ||
                      this->get_parameters().nonlinear_solver ==
-                         Parameters<dim>::NonlinearSolver::iterated_Advection_and_defect_correction_Stokes),
+                     Parameters<dim>::NonlinearSolver::iterated_Advection_and_defect_correction_Stokes),
                     ExcMessage("The material model will only work with the nonlinear "
                                "solver schemes 'iterated Advection and Stokes', "
                                "'iterated Advection and defect correction Stokes', "
@@ -237,14 +237,14 @@ namespace aspect
               std::make_unique<ElasticAdditionalOutputs<dim>> (n_points));
           }
 
-          // Create the ReactionRateOutputs that are necessary for the operator splitting
-          // step that applies the stress update to the rotated and advected stress of the
-          // previous timestep. 
-          if (this->get_parameters().use_operator_splitting && out.template get_additional_output<ReactionRateOutputs<dim>>() == nullptr)
+        // Create the ReactionRateOutputs that are necessary for the operator splitting
+        // step that applies the stress update to the rotated and advected stress of the
+        // previous timestep.
+        if (this->get_parameters().use_operator_splitting && out.template get_additional_output<ReactionRateOutputs<dim>>() == nullptr)
           {
             const unsigned int n_points = out.n_evaluation_points();
             out.additional_outputs.push_back(
-                std::make_unique<MaterialModel::ReactionRateOutputs<dim>>(n_points, this->n_compositional_fields()));
+              std::make_unique<MaterialModel::ReactionRateOutputs<dim>>(n_points, this->n_compositional_fields()));
           }
       }
 
@@ -273,7 +273,7 @@ namespace aspect
                 // (the force term goes into the rhs of the momentum equation).
                 // This is after the advection equations have been solved, and hence in.composition
                 // contains the rotated and advected stresses $tau^{0adv}$.
-                // Only at the beginning of the next timestep do we add the stress update of the 
+                // Only at the beginning of the next timestep do we add the stress update of the
                 // current timestep to the stress stored in the compositional fields, giving
                 // $\tau{t+\Delta te}$ (with $t+\Delta te}$ being the current timestep.
                 //
@@ -310,13 +310,14 @@ namespace aspect
                                               MaterialModel::MaterialModelOutputs<dim> &out) const
       {
         // TODO: also evaluate at t = 0?
-        if (in.current_cell.state() == IteratorState::valid && this->get_timestep_number() > 0 && in.requests_property(MaterialProperties::reaction_terms))
+        if (in.current_cell.state() == IteratorState::valid && this->get_timestep_number() > 0
+            && in.requests_property(MaterialProperties::reaction_terms))
           {
             // Get velocity gradients of the current timestep $t+dt=t+dte$
             // and the compositions from the previous timestep $t$.
             // Assume velocity and composition use the same quadrature.
             std::vector<Point<dim>> quadrature_positions(in.n_evaluation_points());
-            for (unsigned int i=0; i < in.n_evaluation_points(); ++i)
+            for (unsigned int i = 0; i < in.n_evaluation_points(); ++i)
               quadrature_positions[i] = this->get_mapping().transform_real_to_unit_cell(in.current_cell, in.position[i]);
 
             // Get the current velocity gradients, which get
@@ -343,29 +344,31 @@ namespace aspect
             // The 'old_solution' has been updated to the full stress tensor
             // of time $t$ by the iterator splitting step at the beginning
             // of the current timestep.
-            const unsigned int n_stress_tensor_components = SymmetricTensor<2,dim>::n_independent_components;
+            const unsigned int n_stress_tensor_components = SymmetricTensor<2, dim>::n_independent_components;
             std::vector<std::vector<double>> compositions_t(n_stress_tensor_components, std::vector<double>(in.n_evaluation_points()));
             for (unsigned int c = 0; c < n_stress_tensor_components; ++c)
               fe_values[this->introspection().extractors.compositional_fields[c]].get_function_values(this->get_old_solution(),
-                                                                                                      compositions_t[c]);
+                  compositions_t[c]);
 
-            std::vector<SymmetricTensor<2, dim>> stress_t(n_stress_tensor_components, SymmetricTensor<2, dim>());
+            std::vector<SymmetricTensor<2, dim>> stress_t(in.n_evaluation_points(), SymmetricTensor<2, dim>());
             for (unsigned int i = 0; i < in.n_evaluation_points(); ++i)
-            {
-              for (unsigned int c = 0; c < n_stress_tensor_components; ++c)
-                stress_t[i][SymmetricTensor<2, dim>::unrolled_to_component_indices(c)] = compositions_t[c][i];
-            }
+              {
+                for (unsigned int c = 0; c < n_stress_tensor_components; ++c)
+                  stress_t[i][SymmetricTensor<2, dim>::unrolled_to_component_indices(c)] = compositions_t[c][i];
+              }
 
             const double dte = elastic_timestep();
 
-            for (unsigned int i=0; i < in.n_evaluation_points(); ++i)
+            Assert(out.reaction_terms.size() == in.n_evaluation_points(), ExcMessage("Out reaction terms not equal to n eval points."));
+            for (unsigned int i = 0; i < in.n_evaluation_points(); ++i)
               {
+                Assert(out.reaction_terms[i].size() == this->n_compositional_fields(), ExcMessage("Out reaction terms i not equal to n fields."));
                 // Rotation (vorticity) tensor (equation 25 in Moresi et al., 2003, J. Comp. Phys.)
                 const Tensor<2,dim> rotation = 0.5 * (evaluator->get_gradient(i) - transpose(evaluator->get_gradient(i)));
 
                 // stress_0 is the combination of the elastic stress tensor stored at the end of the last time step and the change in that stress generated by local rotation
-                const SymmetricTensor<2,dim> stress_0 = (stress_t[i] + 
-                    dte * ( symmetrize(rotation * Tensor<2,dim>(stress_t[i]) ) - symmetrize(Tensor<2,dim>(stress_t[i]) * rotation) ) );
+                const SymmetricTensor<2,dim> stress_0 = (stress_t[i] +
+                                                         dte * ( symmetrize(rotation * Tensor<2,dim>(stress_t[i]) ) - symmetrize(Tensor<2,dim>(stress_t[i]) * rotation) ) );
 
                 // Stress averaging scheme to account for difference between fixed elastic time step
                 // and numerical time step (see equation 32 in Moresi et al., 2003, J. Comp. Phys.).
@@ -377,7 +380,7 @@ namespace aspect
                 // the advected stress history tensor is used, but this tensor is only advected during
                 // the advection solve for which we are computing the reaction terms here (in case of fields).
                 // TODO: disable stress_average and require dte=dt.
-                // Change: delete these lines. Move to somewhere else? 
+                // Change: delete these lines. Move to somewhere else?
                 //if (use_stress_averaging == true)
                 //  {
                 //    stress_new = ( ( 1. - ( dt / dte ) ) * stress_old ) + ( ( dt / dte ) * stress_new ) ;
@@ -387,7 +390,6 @@ namespace aspect
                 for (unsigned int j = 0; j < SymmetricTensor<2,dim>::n_independent_components ; ++j)
                   out.reaction_terms[i][j] = -stress_t[i][SymmetricTensor<2,dim>::unrolled_to_component_indices(j)]
                                              + stress_0[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)];
-
               }
           }
       }
@@ -406,12 +408,12 @@ namespace aspect
       template <int dim>
       void
       Elasticity<dim>::fill_reaction_rates (const MaterialModel::MaterialModelInputs<dim> &in,
-                                              const std::vector<double> &average_elastic_shear_moduli,
-                                              MaterialModel::MaterialModelOutputs<dim> &out) const
+                                            const std::vector<double> &average_elastic_shear_moduli,
+                                            MaterialModel::MaterialModelOutputs<dim> &out) const
       {
         ReactionRateOutputs<dim> *reaction_rate_out = out.template get_additional_output<ReactionRateOutputs<dim>>();
 
-        if (reaction_rate_out == nullptr)
+        if (reaction_rate_out == nullptr || !this->get_parameters().use_operator_splitting)
           return;
 
         // TODO only do this when reaction_rates are required (in.request_property)
@@ -422,41 +424,45 @@ namespace aspect
         // This means that we can use 'in' to get to the $\tau^{0}$ and velocity/strain rate of the
         // previous timestep.
         if (in.current_cell.state() == IteratorState::valid && this->get_timestep_number() > 0)
-        {
-          for (unsigned int i = 0; i < in.n_evaluation_points(); ++i)
           {
-            // Get $\tau^{0}$ of the previous timestep t from the compositional fields.
-            // This stress includes the rotation and advection. 
-            SymmetricTensor<2, dim> stress_0_t;
-            for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
-              stress_0_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
+            for (unsigned int i = 0; i < in.n_evaluation_points(); ++i)
+              {
+                // Set all reaction rates to zero
+                for (unsigned int c = 0; c < in.composition[i].size(); ++c)
+                  reaction_rate_out->reaction_rates[i][c] = 0.0;
 
-            // $\eta^{t}_{effcreep}
-            const double effective_creep_viscosity = out.viscosities[i];
+                // Get $\tau^{0}$ of the previous timestep t from the compositional fields.
+                // This stress includes the rotation and advection.
+                SymmetricTensor<2, dim> stress_0_t;
+                for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
+                  stress_0_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
 
-            // $\eta_{el} = G \Delta t_{el}$
-            const double elastic_viscosity = calculate_elastic_viscosity(average_elastic_shear_moduli[i]);
+                // $\eta^{t}_{effcreep}
+                const double effective_creep_viscosity = out.viscosities[i];
 
-            // The total stress of timestep t.
-            const SymmetricTensor<2, dim> stress_t = 2. * effective_creep_viscosity * (deviator(in.strain_rate[i]) + stress_0_t / (2. * elastic_viscosity));
+                // $\eta_{el} = G \Delta t_{el}$
+                const double elastic_viscosity = calculate_elastic_viscosity(average_elastic_shear_moduli[i]);
 
-            // Fill reaction rates.
-            // Assume dte is always equal to dt.
-            // During this timestep, the reaction rates will be multiplied
-            // with the current timestep size to turn the rate of change into a change. 
-            // However, this update belongs
-            // to the previous timestep. Therefore we divide by the
-            // current timestep and multiply with the previous one. 
-            // When multiplied with the current timestep, this will give
-            // rate * previous_dt = previous_change. 
-            const double previous_dt = this->get_old_timestep();
-            const double current_dt  = this->get_timestep();
-            const double timestep_compensation_factor = previous_dt / current_dt;
+                // The total stress of timestep t.
+                const SymmetricTensor<2, dim> stress_t = 2. * effective_creep_viscosity * (deviator(in.strain_rate[i]) + stress_0_t / (2. * elastic_viscosity));
 
-            for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
-              reaction_rate_out->reaction_rates[i][j] = (-stress_0_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)] + stress_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)]) * timestep_compensation_factor;
+                // Fill reaction rates.
+                // Assume dte is always equal to dt.
+                // During this timestep, the reaction rates will be multiplied
+                // with the current timestep size to turn the rate of change into a change.
+                // However, this update belongs
+                // to the previous timestep. Therefore we divide by the
+                // current timestep and multiply with the previous one.
+                // When multiplied with the current timestep, this will give
+                // rate * previous_dt = previous_change.
+                const double previous_dt = this->get_old_timestep();
+                const double current_dt  = this->get_timestep();
+                const double timestep_compensation_factor = previous_dt / current_dt;
+
+                for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
+                  reaction_rate_out->reaction_rates[i][j] = (-stress_0_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)] + stress_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)]) * timestep_compensation_factor;
+              }
           }
-        }
       }
 
       template <int dim>
@@ -471,7 +477,7 @@ namespace aspect
         //
         // We also use this parameter when we are still *before* the first time step,
         // i.e., if the time step number is numbers::invalid_unsigned_int.
-        // 
+        //
         // With the visco-plastic material model and elasticity, we only allow for dte = dt.
         // This is enforced in parse_parameters.
         const double dte = ( ( this->get_timestep_number() > 0 &&

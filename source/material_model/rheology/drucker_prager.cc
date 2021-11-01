@@ -240,11 +240,11 @@ namespace aspect
           damper_viscosity = prm.get_double("Plastic damper viscosity");
         else
           damper_viscosity = 0.;
- 
+
         if (Plugins::plugin_type_matches<MaterialModel::ViscoPlastic<dim>>(this->get_material_model())
-                && this->get_parameters().enable_elasticity)
+            && this->get_parameters().enable_elasticity)
           AssertThrow(damper_viscosity == 0. || !use_plastic_damper,
-          ExcMessage("The viscoplastic material with elasticity enabled cannot include a plastic damper."));
+                      ExcMessage("The viscoplastic material with elasticity enabled cannot include a plastic damper."));
 
       }
 
