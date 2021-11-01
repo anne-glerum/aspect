@@ -455,13 +455,20 @@ namespace aspect
                 // to the previous timestep. Therefore we divide by the
                 // current timestep and multiply with the previous one.
                 // When multiplied with the current timestep, this will give
-                // rate * previous_dt = previous_change.
-                const double previous_dt = this->get_old_timestep();
+                // (rate * compensation_factor) * current_dt = (rate * previous_dt / current_dt) * current_dt = previous_change.
+                // However, we need to compute a rate, and therefore divide
+                // the change in stress by the previous timestep:
+                // rate = \Delta_stress / previous_dt.
+                // Therefore, the only thing we need to do is to divide by the
+                // current timestep.
+                //const double previous_dt = this->get_old_timestep();
                 const double current_dt  = this->get_timestep();
-                const double timestep_compensation_factor = previous_dt / current_dt;
+                //const double timestep_compensation_factor = previous_dt / current_dt;
 
                 for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
-                  reaction_rate_out->reaction_rates[i][j] = (-stress_0_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)] + stress_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)]) * timestep_compensation_factor;
+                  reaction_rate_out->reaction_rates[i][j] = (-stress_0_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)]
+                                                             + stress_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)])
+                                                            / current_dt;
               }
           }
       }
