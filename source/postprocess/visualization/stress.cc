@@ -21,6 +21,7 @@
 
 #include <aspect/postprocess/visualization/stress.h>
 #include <aspect/material_model/rheology/elasticity.h>
+#include <aspect/material_model/visco_plastic.h>
 
 
 
@@ -102,8 +103,13 @@ namespace aspect
 
                 const double shear_modulus = elastic_out->elastic_shear_moduli[q];
 
-                // $\eta_{el} = G \Delta t_{el}$
-                const double elastic_viscosity = this->get_timestep() * shear_modulus;
+                    // $\eta_{el} = G \Delta t_{el}$
+                    double elastic_viscosity = this->get_timestep() * shear_modulus;
+                if (Plugins::plugin_type_matches<MaterialModel::ViscoPlastic<dim>>(this->get_material_model()))
+                {
+                  const MaterialModel::ViscoPlastic<dim> &vp = Plugins::get_plugin_as_type<const MaterialModel::ViscoPlastic<dim>>(this->get_material_model());
+                  elastic_viscosity = vp.get_elastic_viscosity(shear_modulus);
+                }
 
                 // The total stress of timestep t.
                 stress = 2. * eta * (deviatoric_strain_rate + stress_0 / (2. * elastic_viscosity));

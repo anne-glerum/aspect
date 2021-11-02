@@ -197,6 +197,8 @@ namespace aspect
          */
         bool is_compressible () const override;
 
+        double get_elastic_viscosity (const double shear_modulus) const;
+
         static
         void
         declare_parameters (ParameterHandler &prm);

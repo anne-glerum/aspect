@@ -290,6 +290,23 @@ namespace aspect
 
 
     template <int dim>
+    double
+    ViscoPlastic<dim>::
+    get_elastic_viscosity(const double shear_modulus) const
+    {
+      if (rheology->use_elasticity)
+      {
+        return rheology->elastic_rheology.calculate_elastic_viscosity(shear_modulus);
+      }
+      else
+      {
+        AssertThrow(false, ExcMessage("The material model is asked for the elastic viscosity, but elasticity is not enabled."));
+      }
+    }
+
+
+
+    template <int dim>
     bool
     ViscoPlastic<dim>::
     is_compressible () const
