@@ -277,6 +277,7 @@ namespace aspect
 
       if (rheology->use_elasticity)
         {
+          // TODO: somehow take the minimum strain rate into account
           rheology->elastic_rheology.fill_elastic_force_outputs(in, average_elastic_shear_moduli, out);
           rheology->elastic_rheology.fill_reaction_outputs(in, average_elastic_shear_moduli, out);
           // Fill the reaction_rates that during operator splitting apply the stress update of the previous
@@ -295,13 +296,13 @@ namespace aspect
     get_elastic_viscosity(const double shear_modulus) const
     {
       if (rheology->use_elasticity)
-      {
-        return rheology->elastic_rheology.calculate_elastic_viscosity(shear_modulus);
-      }
+        {
+          return rheology->elastic_rheology.calculate_elastic_viscosity(shear_modulus);
+        }
       else
-      {
-        AssertThrow(false, ExcMessage("The material model is asked for the elastic viscosity, but elasticity is not enabled."));
-      }
+        {
+          AssertThrow(false, ExcMessage("The material model is asked for the elastic viscosity, but elasticity is not enabled."));
+        }
     }
 
 

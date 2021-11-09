@@ -151,16 +151,24 @@ namespace aspect
         // is not correct. The way the effective viscosity is computed is only valid
         // in the absence of a damper and for a yield stress that can be expressed as
         // some value of the second invariant of the deviatoric stress.
+        // The visco_plastic material model also requires an operator splitting
+        // step to update the stresses stored.
+        // TODO: also update the viscoelastic material model and adapt
+        // conditions here accordingly.
         if (Plugins::plugin_type_matches<MaterialModel::ViscoPlastic<dim>>(this->get_material_model()))
           AssertThrow(!use_fixed_elastic_time_step &&
                       stabilization_time_scale_factor == 1. &&
                       !use_stress_averaging &&
-                      elastic_damper_viscosity == 0.,
+                      elastic_damper_viscosity == 0. &&
+                      this->get_parameters().use_operator_splitting,
                       ExcMessage("The visco-plastic material model with elasticity enabled requires "
-                                 "an elastic timestep equal to the computational timestep and no elastic damping."));
+                                 "an elastic timestep equal to the computational timestep, operator splitting "
+                                 "no timestep stabilization and no elastic damping."));
 
         AssertThrow(this->get_parameters().enable_elasticity == true,
                     ExcMessage("Material model Viscoelastic only works if 'Enable elasticity' is set to true"));
+
+
 
         // Check whether the compositional fields representing the viscoelastic
         // stress tensor are both named correctly and listed in the right order.
@@ -275,7 +283,7 @@ namespace aspect
                 // contains the rotated and advected stresses $tau^{0adv}$.
                 // Only at the beginning of the next timestep do we add the stress update of the
                 // current timestep to the stress stored in the compositional fields, giving
-                // $\tau{t+\Delta te}$ (with $t+\Delta te}$ being the current timestep.
+                // $\tau{t+\Delta te}$ with $t+\Delta te}$ being the current timestep.
                 //
                 // Moresi et al. (2003) use the full stresses at $t$ in the force term (Eq.  30),
                 // which is incorrect, it should be $tau^{0adv}$, which is the stress from time $t$
@@ -309,8 +317,7 @@ namespace aspect
                                               const std::vector<double> &,
                                               MaterialModel::MaterialModelOutputs<dim> &out) const
       {
-        // TODO: also evaluate at t = 0?
-        if (in.current_cell.state() == IteratorState::valid && this->get_timestep_number() > 0
+        if (in.current_cell.state() == IteratorState::valid
             && in.requests_property(MaterialProperties::reaction_terms))
           {
             // Get velocity gradients of the current timestep $t+dt=t+dte$
@@ -389,8 +396,11 @@ namespace aspect
 
                 // Fill reaction terms
                 for (unsigned int j = 0; j < SymmetricTensor<2,dim>::n_independent_components ; ++j)
-                  out.reaction_terms[i][j] = -stress_t[i][SymmetricTensor<2,dim>::unrolled_to_component_indices(j)]
-                                             + stress_0[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)];
+                  {
+                    out.reaction_terms[i][j] = -stress_t[i][SymmetricTensor<2,dim>::unrolled_to_component_indices(j)]
+                                               + stress_0[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)];
+                    std::cout << "reaction term " << i << "," << j << ": " << out.reaction_terms[i][j] << std::endl;
+                  }
               }
           }
       }
@@ -399,12 +409,12 @@ namespace aspect
       // splitting step that at the beginning of the new timestep updates the
       // stored compositions $tau^{0\mathrm{adv}}$ at time $t$ to $tau^{t}$.
       // Make sure that the old_solution is used as input to the material model and that
-      // the reaction_rates are take into account the correct timestep that they will be
+      // the reaction_rates take into account the correct timestep that they will be
       // multiplied with.
       // Retrieve $\tau^{t}_{0adv}$ from solution, which is contained in in.composition.
       // $\tau^{t}_T = 2 \eta^{t}_effcreep (\dot{\varepsilon}^{t}_T + \frac{\tau^{t}_{0adv}}{2 G \Delta te}$.
       // Compute difference $\tau^{t}_T - \tau^{t}_{0adv}$.
-      // Multiply with previous timestep, divide by current timestep.
+      // Compute rate and divide by current timestep.
       // Can we Assert here that $tau^{t+\Delta te} == \eta_{eff} D^{t+\Delta te}_{eff}$?
       template <int dim>
       void
@@ -419,7 +429,7 @@ namespace aspect
 
         // TODO only do this when reaction_rates are required (in.request_property)
 
-        // At the moment when the reaction rate are required (at the beginning of the timestep),
+        // At the moment when the reaction rates are required (at the beginning of the timestep),
         // 'solution' holds the solution of the previous timestep, and is the same as 'old_solution'.
         // MaterialModelInputs are based on 'solution' when calling the MaterialModel for the reaction rates.
         // This means that we can use 'in' to get to the $\tau^{0}$ and velocity/strain rate of the
