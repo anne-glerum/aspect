@@ -256,7 +256,7 @@ namespace aspect
 
                     // When we compute the viscosity for the Stokes assembly
                     // the ve stresses stored in in.composition are the rotated
-                    // and advected stresses from the advection solve ($\tau^{0}$).
+                    // and advected stresses from the advection solve ($\tau^{0adv}$).
                     // The square root of the second moment invariant is returned.
                     const double viscoelastic_strain_rate_invariant = elastic_rheology.calculate_viscoelastic_strain_rate(in.strain_rate[i],
                                                                       stress_0_advected,

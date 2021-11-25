@@ -300,11 +300,11 @@ namespace aspect
                 // Use the viscosity corresponding to the stresses selected above.
                 // out.viscosities is computed during the assembly of the Stokes equations
                 // based on the current_linearization_point. This means that it will be updated after every
-                // nonlinear Stokes iteration, and is ahead of the stresses that are used in the force term.
+                // nonlinear Stokes iteration.
                 const double effective_creep_viscosity = out.viscosities[i];
 
                 // Fill elastic force outputs $\frac{-\eta_{effcreep} \tau_0}{\eta_{e}}$.
-                force_out->elastic_force[i] = -1. *effective_creep_viscosity / calculate_elastic_viscosity(average_elastic_shear_moduli[i])
+                force_out->elastic_force[i] = -1. * effective_creep_viscosity / calculate_elastic_viscosity(average_elastic_shear_moduli[i])
                                               * stress_0_advected;
               }
       }
@@ -394,12 +394,13 @@ namespace aspect
                 //    stress_new = ( ( 1. - ( dt / dte ) ) * stress_old ) + ( ( dt / dte ) * stress_new ) ;
                 //  }
 
-                // Fill reaction terms
-                for (unsigned int j = 0; j < SymmetricTensor<2,dim>::n_independent_components ; ++j)
+                // Fill reaction terms.
+                // Subtract the current composition in in.composition, instead of the composition from the
+                // previous timestep that is used as stress_t
+                for (unsigned int j = 0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
                   {
-                    out.reaction_terms[i][j] = -stress_t[i][SymmetricTensor<2,dim>::unrolled_to_component_indices(j)]
-                                               + stress_0[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)];
-                    std::cout << "reaction term " << i << "," << j << ": " << out.reaction_terms[i][j] << std::endl;
+                    out.reaction_terms[i][j] = -in.composition[i][j]
+                                               + stress_0[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)];
                   }
               }
           }
@@ -455,7 +456,10 @@ namespace aspect
                 const double elastic_viscosity = calculate_elastic_viscosity(average_elastic_shear_moduli[i]);
 
                 // The total stress of timestep t.
-                const SymmetricTensor<2, dim> stress_t = 2. * effective_creep_viscosity * (deviator(in.strain_rate[i]) + stress_0_t / (2. * elastic_viscosity));
+                // TODO: Do we somehow need to take into account the user-set minimum value for the
+                // sqrt of the second invariant of the strain rate?
+                const SymmetricTensor<2, dim>
+                    stress_t = 2. * effective_creep_viscosity * (deviator(in.strain_rate[i]) + stress_0_t / (2. * elastic_viscosity));
 
                 // Fill reaction rates.
                 // Assume dte is always equal to dt.
