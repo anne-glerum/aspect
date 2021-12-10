@@ -189,13 +189,14 @@ namespace aspect
           double stabilization_time_scale_factor;
 
           /**
-           * We cache the evaluator that is necessary to evaluate the old velocity
-           * gradients. They are required to compute the elastic stresses, but
+           * We cache the evaluator that is necessary to evaluate the velocity
+           * gradients and the old compositions. They are required to compute the elastic stresses, but
            * are not provided by the material model.
-           * By caching the evaluator, we can avoid recreating it every time we
+           * By caching the evaluators, we can avoid recreating it every time we
            * need it.
            */
           mutable std::unique_ptr<FEPointEvaluation<dim, dim>> evaluator;
+          //mutable std::unique_ptr<FEPointEvaluation<n_compositional_fields, dim>> evaluator_composition;
       };
     }
   }

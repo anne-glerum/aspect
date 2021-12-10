@@ -352,6 +352,36 @@ namespace aspect
             // of time $t$ by the iterator splitting step at the beginning
             // of the current timestep.
             const unsigned int n_stress_tensor_components = SymmetricTensor<2, dim>::n_independent_components;
+            // std::vector<std::vector<double>> old_composition_solution_values(n_stress_tensor_components,std::vector<double>(in.n_evaluation_points()));
+            // for (unsigned int c = 0; c < n_stress_tensor_components; ++c)
+            // {
+            //   in.current_cell->get_dof_values(this->get_old_solution(),
+            //                                   old_composition_solution_values[c].begin(),
+            //                                   old_composition_solution_values[c].end());
+
+            // // Only create the evaluator the first time we get here
+            // if (!evaluator_composition)
+            //     evaluator_composition.reset(new FEPointEvaluation<dim, dim>(this->get_mapping(),
+            //                                                                this->get_fe(),
+            //                                                                update_values,
+            //                                                                this->introspection().component_indices.compositional_fields[c]));
+
+            // // Initialize the evaluator for the composition values
+            // evaluator_composition->reinit(in.current_cell, quadrature_positions);
+            // evaluator_composition->evaluate(old_composition_solution_values[c],
+            //                                EvaluationFlags::values);
+            // }
+
+            // TODO: use evaluator for this as well
+            // FEValues requires a quadrature and we provide the default quadrature
+            // as we only need to evaluate the solution and gradients.
+            FEValues<dim> fe_values(this->get_mapping(),
+                                    this->get_fe(),
+                                    Quadrature<dim>(quadrature_positions),
+                                    update_values);
+
+            fe_values.reinit(in.current_cell);
+
             std::vector<std::vector<double>> compositions_t(n_stress_tensor_components, std::vector<double>(in.n_evaluation_points()));
             for (unsigned int c = 0; c < n_stress_tensor_components; ++c)
               fe_values[this->introspection().extractors.compositional_fields[c]].get_function_values(this->get_old_solution(),
@@ -459,7 +489,7 @@ namespace aspect
                 // TODO: Do we somehow need to take into account the user-set minimum value for the
                 // sqrt of the second invariant of the strain rate?
                 const SymmetricTensor<2, dim>
-                    stress_t = 2. * effective_creep_viscosity * (deviator(in.strain_rate[i]) + stress_0_t / (2. * elastic_viscosity));
+                stress_t = 2. * effective_creep_viscosity * (deviator(in.strain_rate[i]) + stress_0_t / (2. * elastic_viscosity));
 
                 // Fill reaction rates.
                 // Assume dte is always equal to dt.
