@@ -731,21 +731,28 @@ namespace aspect
               pressure_for_plasticity = std::max(in.pressure[i],0.0);
 
             // set to weakened values, or unweakened values when strain weakening is not used
-            for (unsigned int j=0; j < volume_fractions.size(); ++j)
+            std::vector<double> composition_cohesions(volume_fractions.size());
+            std::vector<double> composition_friction_angles(volume_fractions.size());
+            std::vector<double> composition_yield_stresses(volume_fractions.size());
+            for (unsigned int j = 0; j < volume_fractions.size(); ++j)
               {
                 // Calculate the strain weakening factors and weakened values
                 const std::array<double, 3> weakening_factors = strain_rheology.compute_strain_weakening_factors(j, in.composition[i]);
                 const DruckerPragerParameters drucker_prager_parameters = drucker_prager_plasticity.compute_drucker_prager_parameters(j,
                                                                           phase_function_values,
                                                                           n_phases_per_composition);
-                plastic_out->cohesions[i]   += volume_fractions[j] * (drucker_prager_parameters.cohesion * weakening_factors[0]);
-                // Also convert radians to degrees
-                plastic_out->friction_angles[i] += 180.0/numbers::PI * volume_fractions[j] * (drucker_prager_parameters.angle_internal_friction * weakening_factors[1]);
-                plastic_out->yield_stresses[i] += volume_fractions[j] * drucker_prager_plasticity.compute_yield_stress(drucker_prager_parameters.cohesion * weakening_factors[0],
-                                                  drucker_prager_parameters.angle_internal_friction * weakening_factors[1],
-                                                  pressure_for_plasticity,
-                                                  drucker_prager_parameters.max_yield_stress);
+                composition_cohesions[j] = drucker_prager_parameters.cohesion * weakening_factors[0];
+                composition_friction_angles[j] = drucker_prager_parameters.angle_internal_friction * weakening_factors[1];
+                composition_yield_stresses[j] = drucker_prager_plasticity.compute_yield_stress(composition_cohesions[j],
+                                                                                               composition_friction_angles[j],
+                                                                                               pressure_for_plasticity,
+                                                                                               drucker_prager_parameters.max_yield_stress);
               }
+
+            plastic_out->cohesions[i] = MaterialUtilities::average_value(volume_fractions, composition_cohesions, viscosity_averaging);
+// Also convert radians to degrees
+            plastic_out->friction_angles[i] = 180.0 / numbers::PI * MaterialUtilities::average_value(volume_fractions, composition_friction_angles, viscosity_averaging);
+            plastic_out->yield_stresses[i] = MaterialUtilities::average_value(volume_fractions, composition_yield_stresses, viscosity_averaging);
           }
       }
 
