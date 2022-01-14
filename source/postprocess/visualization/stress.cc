@@ -80,12 +80,12 @@ namespace aspect
                     stress[1][2] += in.composition[q][this->introspection().compositional_index_for_name("ve_stress_yz")];
                   }
               }
-              else
+            else
               {
                 const SymmetricTensor<2, dim> strain_rate = in.strain_rate[q];
                 const SymmetricTensor<2, dim> deviatoric_strain_rate = (this->get_material_model().is_compressible()
-                                                                            ? strain_rate - 1. / 3 * trace(strain_rate) * unit_symmetric_tensor<dim>()
-                                                                            : strain_rate);
+                                                                        ? strain_rate - 1. / 3 * trace(strain_rate) * unit_symmetric_tensor<dim>()
+                                                                        : strain_rate);
 
                 const double eta = out.viscosities[q];
 

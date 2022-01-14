@@ -44,8 +44,8 @@ namespace aspect
       evaluate_vector_field(const DataPostprocessorInputs::Vector<dim> &input_data,
                             std::vector<Vector<double>> &computed_quantities) const
       {
-  //      AssertThrow(Plugins::plugin_type_matches<const MaterialModel::ViscoPlastic<dim>>(this->get_material_model()),
-   //                 ExcMessage("This postprocessor only works with the viscoplastic material model. "));
+        //      AssertThrow(Plugins::plugin_type_matches<const MaterialModel::ViscoPlastic<dim>>(this->get_material_model()),
+        //                 ExcMessage("This postprocessor only works with the viscoplastic material model. "));
         const unsigned int n_quadrature_points = input_data.solution_values.size();
         Assert(computed_quantities.size() == n_quadrature_points, ExcInternalError());
         Assert(computed_quantities[0].size() == 1, ExcInternalError());
@@ -68,10 +68,10 @@ namespace aspect
 
         for (unsigned int q = 0; q < n_quadrature_points; ++q)
           {
-                // Compressive stress is positive in geoscience applications
-                // TODO what sign to use here? In the material model we don't add
-                // the minus sign for the comparison with the yield stress.
-                SymmetricTensor<2, dim> stress = in.pressure[q] * unit_symmetric_tensor<dim>();
+            // Compressive stress is positive in geoscience applications
+            // TODO what sign to use here? In the material model we don't add
+            // the minus sign for the comparison with the yield stress.
+            SymmetricTensor<2, dim> stress = in.pressure[q] * unit_symmetric_tensor<dim>();
 
             // Add elastic stresses if existent
             if (this->get_parameters().enable_elasticity == true)
@@ -87,12 +87,12 @@ namespace aspect
                     stress[1][2] += in.composition[q][this->introspection().compositional_index_for_name("ve_stress_yz")];
                   }
               }
-              else
+            else
               {
                 const SymmetricTensor<2, dim> strain_rate = in.strain_rate[q];
                 const SymmetricTensor<2, dim> deviatoric_strain_rate = (this->get_material_model().is_compressible()
-                                                                            ? strain_rate - 1. / 3 * trace(strain_rate) * unit_symmetric_tensor<dim>()
-                                                                            : strain_rate);
+                                                                        ? strain_rate - 1. / 3 * trace(strain_rate) * unit_symmetric_tensor<dim>()
+                                                                        : strain_rate);
 
                 const double eta = out.viscosities[q];
 
