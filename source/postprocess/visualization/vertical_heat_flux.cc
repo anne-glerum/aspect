@@ -33,7 +33,7 @@ namespace aspect
       VerticalHeatFlux<dim>::
       VerticalHeatFlux ()
         :
-        DataPostprocessorScalar<dim> ("vertical_heat_flux",
+        DataPostprocessorVector<dim> ("vertical_heat_flux",
                                       update_values | update_quadrature_points | update_gradients)
       {}
 
@@ -47,7 +47,8 @@ namespace aspect
       {
         const unsigned int n_quadrature_points = input_data.solution_values.size();
         Assert (computed_quantities.size() == n_quadrature_points,    ExcInternalError());
-        Assert (computed_quantities[0].size() == 1,                   ExcInternalError());
+        // conductive value and advective value
+        Assert (computed_quantities[0].size() == 2,                   ExcInternalError());
         Assert (input_data.solution_values[0].size() == this->introspection().n_components,           ExcInternalError());
 
         //Create vector for the temperature gradients.  All the other things
@@ -74,7 +75,8 @@ namespace aspect
                                           out.densities[q]*out.specific_heat[q];
             const double conductive_flux = -(temperature_gradient[q]*vertical) *
                                            out.thermal_conductivities[q];
-            computed_quantities[q](0) = advective_flux + conductive_flux;
+            computed_quantities[q](0) = conductive_flux;
+            computed_quantities[q](1) = advective_flux;
           }
       }
     }

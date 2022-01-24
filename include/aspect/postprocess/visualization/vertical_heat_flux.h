@@ -43,7 +43,7 @@ namespace aspect
        */
       template <int dim>
       class VerticalHeatFlux
-        : public DataPostprocessorScalar<dim>,
+        : public DataPostprocessorVector<dim>,
           public SimulatorAccess<dim>,
           public Interface<dim>
       {
