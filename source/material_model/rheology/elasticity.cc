@@ -351,47 +351,34 @@ namespace aspect
             // The 'old_solution' has been updated to the full stress tensor
             // of time $t$ by the iterator splitting step at the beginning
             // of the current timestep.
+            // TODO don't evaluate all fields, only the stress tensor components
             const unsigned int n_stress_tensor_components = SymmetricTensor<2, dim>::n_independent_components;
-            // std::vector<std::vector<double>> old_composition_solution_values(n_stress_tensor_components,std::vector<double>(in.n_evaluation_points()));
-            // for (unsigned int c = 0; c < n_stress_tensor_components; ++c)
-            // {
-            //   in.current_cell->get_dof_values(this->get_old_solution(),
-            //                                   old_composition_solution_values[c].begin(),
-            //                                   old_composition_solution_values[c].end());
+            std::vector<double> old_solution_values(this->get_fe().dofs_per_cell);
+            in.current_cell->get_dof_values(this->get_old_solution(),
+                                            old_solution_values.begin(),
+                                            old_solution_values.end());
 
-            // // Only create the evaluator the first time we get here
-            // if (!evaluator_composition)
-            //     evaluator_composition.reset(new FEPointEvaluation<dim, dim>(this->get_mapping(),
-            //                                                                this->get_fe(),
-            //                                                                update_values,
-            //                                                                this->introspection().component_indices.compositional_fields[c]));
+            // Only create the evaluator the first time we get here
+            if (!evaluator_composition)
+              evaluator_composition.reset(new FEPointEvaluation<7, dim>(this->get_mapping(),
+                                                                        this->get_fe(),
+                                                                        update_values,
+                                                                        this->introspection().component_indices.compositional_fields[0]));
 
-            // // Initialize the evaluator for the composition values
-            // evaluator_composition->reinit(in.current_cell, quadrature_positions);
-            // evaluator_composition->evaluate(old_composition_solution_values[c],
-            //                                EvaluationFlags::values);
-            // }
+            // Initialize the evaluator for the composition values
+            evaluator_composition->reinit(in.current_cell, quadrature_positions);
+            evaluator_composition->evaluate(old_solution_values,
+                                            EvaluationFlags::values);
 
-            // TODO: use evaluator for this as well
-            // FEValues requires a quadrature and we provide the default quadrature
-            // as we only need to evaluate the solution and gradients.
-            FEValues<dim> fe_values(this->get_mapping(),
-                                    this->get_fe(),
-                                    Quadrature<dim>(quadrature_positions),
-                                    update_values);
-
-            fe_values.reinit(in.current_cell);
-
-            std::vector<std::vector<double>> compositions_t(n_stress_tensor_components, std::vector<double>(in.n_evaluation_points()));
-            for (unsigned int c = 0; c < n_stress_tensor_components; ++c)
-              fe_values[this->introspection().extractors.compositional_fields[c]].get_function_values(this->get_old_solution(),
-                  compositions_t[c]);
-
+            // Get the composition values from the evaluator
             std::vector<SymmetricTensor<2, dim>> stress_t(in.n_evaluation_points(), SymmetricTensor<2, dim>());
+            const unsigned int n_fields = this->n_compositional_fields();
             for (unsigned int i = 0; i < in.n_evaluation_points(); ++i)
               {
+                const typename FEPointEvaluation<7, dim>::value_type composition_values = evaluator_composition->get_value(i);
                 for (unsigned int c = 0; c < n_stress_tensor_components; ++c)
-                  stress_t[i][SymmetricTensor<2, dim>::unrolled_to_component_indices(c)] = compositions_t[c][i];
+                  stress_t[i][SymmetricTensor<2, dim>::unrolled_to_component_indices(c)] =
+                    dealii::internal::FEPointEvaluation::EvaluatorTypeTraits<dim, 7, double>::access(composition_values, c);
               }
 
             const double dte = elastic_timestep();
@@ -403,11 +390,11 @@ namespace aspect
                 Assert(out.reaction_terms[i].size() == this->n_compositional_fields(), ExcMessage("Out reaction terms i not equal to n fields."));
 
                 // Rotation (vorticity) tensor (equation 25 in Moresi et al., 2003, J. Comp. Phys.)
-                const Tensor<2,dim> rotation = 0.5 * (evaluator->get_gradient(i) - transpose(evaluator->get_gradient(i)));
+                const Tensor<2, dim> rotation = 0.5 * (evaluator->get_gradient(i) - transpose(evaluator->get_gradient(i)));
 
                 // stress_0 is the combination of the elastic stress tensor stored at the end of the last time step and the change in that stress generated by local rotation
-                const SymmetricTensor<2,dim> stress_0 = (stress_t[i] +
-                                                         dte * ( symmetrize(rotation * Tensor<2,dim>(stress_t[i]) ) - symmetrize(Tensor<2,dim>(stress_t[i]) * rotation) ) );
+                const SymmetricTensor<2, dim> stress_0 = (stress_t[i] +
+                                                          dte * (symmetrize(rotation * Tensor<2, dim>(stress_t[i])) - symmetrize(Tensor<2, dim>(stress_t[i]) * rotation)));
 
                 // Stress averaging scheme to account for difference between fixed elastic time step
                 // and numerical time step (see equation 32 in Moresi et al., 2003, J. Comp. Phys.).
@@ -427,10 +414,9 @@ namespace aspect
                 // Fill reaction terms.
                 // Subtract the current composition in in.composition, instead of the composition from the
                 // previous timestep that is used as stress_t
-                for (unsigned int j = 0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
+                for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
                   {
-                    out.reaction_terms[i][j] = -in.composition[i][j]
-                                               + stress_0[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)];
+                    out.reaction_terms[i][j] = -in.composition[i][j] + stress_0[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)];
                   }
               }
           }
