@@ -351,19 +351,19 @@ namespace aspect
             // The 'old_solution' has been updated to the full stress tensor
             // of time $t$ by the iterator splitting step at the beginning
             // of the current timestep.
-            // TODO don't evaluate all fields, only the stress tensor components
-            const unsigned int n_stress_tensor_components = SymmetricTensor<2, dim>::n_independent_components;
             std::vector<double> old_solution_values(this->get_fe().dofs_per_cell);
             in.current_cell->get_dof_values(this->get_old_solution(),
                                             old_solution_values.begin(),
                                             old_solution_values.end());
 
             // Only create the evaluator the first time we get here
+            // We assume (and assert in parse_parameters) that the n_independent_components
+            // tensor components are the first fields in the correct order.
             if (!evaluator_composition)
-              evaluator_composition.reset(new FEPointEvaluation<7, dim>(this->get_mapping(),
-                                                                        this->get_fe(),
-                                                                        update_values,
-                                                                        this->introspection().component_indices.compositional_fields[0]));
+              evaluator_composition.reset(new FEPointEvaluation<n_independent_components, dim>(this->get_mapping(),
+                                          this->get_fe(),
+                                          update_values,
+                                          this->introspection().component_indices.compositional_fields[0]));
 
             // Initialize the evaluator for the composition values
             evaluator_composition->reinit(in.current_cell, quadrature_positions);
@@ -372,13 +372,12 @@ namespace aspect
 
             // Get the composition values from the evaluator
             std::vector<SymmetricTensor<2, dim>> stress_t(in.n_evaluation_points(), SymmetricTensor<2, dim>());
-            const unsigned int n_fields = this->n_compositional_fields();
             for (unsigned int i = 0; i < in.n_evaluation_points(); ++i)
               {
-                const typename FEPointEvaluation<7, dim>::value_type composition_values = evaluator_composition->get_value(i);
-                for (unsigned int c = 0; c < n_stress_tensor_components; ++c)
+                const typename FEPointEvaluation<n_independent_components, dim>::value_type composition_values = evaluator_composition->get_value(i);
+                for (unsigned int c = 0; c < n_independent_components; ++c)
                   stress_t[i][SymmetricTensor<2, dim>::unrolled_to_component_indices(c)] =
-                    dealii::internal::FEPointEvaluation::EvaluatorTypeTraits<dim, 7, double>::access(composition_values, c);
+                    dealii::internal::FEPointEvaluation::EvaluatorTypeTraits<dim, n_independent_components, double>::access(composition_values, c);
               }
 
             const double dte = elastic_timestep();

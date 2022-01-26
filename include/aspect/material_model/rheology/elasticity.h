@@ -196,7 +196,8 @@ namespace aspect
            * need it.
            */
           mutable std::unique_ptr<FEPointEvaluation<dim, dim>> evaluator;
-          mutable std::unique_ptr<FEPointEvaluation<7, dim>> evaluator_composition;
+          static constexpr unsigned int n_independent_components = dim == 2 ? 3 : 6;
+          mutable std::unique_ptr<FEPointEvaluation<n_independent_components, dim>> evaluator_composition;
       };
     }
   }
