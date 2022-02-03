@@ -121,7 +121,7 @@ namespace aspect
         this->get_material_model().evaluate (material_inputs,material_outputs);
 
         for (unsigned int i = 0; i < SymmetricTensor<2,dim>::n_independent_components ; ++i)
-          particle->get_properties()[data_position + i] += material_outputs.reaction_terms[0][i];
+          particle->get_properties()[data_position + i] = material_inputs.composition[0][i] + material_outputs.reaction_terms[0][i];
       }
 
 
