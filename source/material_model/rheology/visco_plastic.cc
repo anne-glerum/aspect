@@ -824,7 +824,7 @@ namespace aspect
 
             plastic_out->cohesions[i] = MaterialUtilities::average_value(volume_fractions, composition_cohesions, viscosity_averaging);
             // Also convert radians to degrees
-            plastic_out->friction_angles[i] = 180.0 / numbers::PI * MaterialUtilities::average_value(volume_fractions, composition_friction_angles, viscosity_averaging);
+            plastic_out->friction_angles[i] = 180.0 / numbers::PI * MaterialUtilities::average_value(volume_fractions, composition_friction_angles, MaterialUtilities::maximum_composition);
             plastic_out->yield_stresses[i] = MaterialUtilities::average_value(volume_fractions, composition_yield_stresses, viscosity_averaging);
           }
       }
