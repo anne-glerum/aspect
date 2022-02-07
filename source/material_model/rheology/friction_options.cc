@@ -372,7 +372,7 @@ namespace aspect
         const double critical_slip_distance =
           critical_slip_distance_function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),j);
 
-        if (use_theta() && (j > 0) && RSF_composition_masks[j])
+        if (use_theta() && (j > 0) && RSF_composition_masks[j-1])
           AssertThrow(critical_slip_distance > 0, ExcMessage("Critical slip distance in a rate-and-state material must be > 0."));
 
         return critical_slip_distance;
@@ -922,7 +922,7 @@ namespace aspect
 
             unsigned int number_of_RSF_compositions = 0;
             for (unsigned int k = 0; k < RSF_composition_masks.size(); ++k)
-              number_of_RSF_compositions += RSF_composition_masks[k];
+                number_of_RSF_compositions += RSF_composition_masks[k];
             AssertThrow(number_of_RSF_compositions > 0,
                         ExcMessage("Using theta without indicating any RSF compositions does not make sense."))
           }
