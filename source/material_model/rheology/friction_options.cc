@@ -118,7 +118,7 @@ namespace aspect
                                                  dynamic_friction_smoothness_exponent));
               current_friction = std::atan (mu);
               Assert((mu < 1) && (0 < current_friction <=1.6), ExcMessage(
-                       "Something is wrong with the tan/atan conversion of friction coefficient to friction angle in RAD."));
+                       "Something is wrong with the tan/atan conversion of friction coefficient to friction angle in RAD. mu equals "+ Utilities::to_string(mu)));
               break;
             }
             case steady_state_rate_and_state_dependent_friction:
@@ -155,6 +155,12 @@ namespace aspect
 
                   // the state variable theta is taken from the current compositional field theta
                   double theta = composition[theta_composition_index];
+                  Assert((theta > 0),
+                         ExcMessage("Current theta within 'compute_dependent_friction_angle' got smaller / equal zero. "
+                                    "This is unphysical. A possible solution, if you are not already doing "
+                                    "that anyway, is to track theta on particles. "
+                                    "The value of theta is: "
+                                    +  Utilities::to_string(theta)));
 
                   // ToDo: Option: slip rate dependent regularized RSF
                   if (friction_dependence_mechanism == slip_rate_dependent_rate_and_state_dependent_friction)
@@ -213,7 +219,13 @@ namespace aspect
                   current_friction = std::atan (mu);
                   const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
                   Assert((mu < 1) && (0 < current_friction <=1.6), ExcMessage(
-                           "Something is wrong with the tan/atan conversion of friction coefficient to friction angle in RAD"));
+                           "Something is wrong with the tan/atan conversion of friction coefficient to friction angle in RAD. mu is: "+ Utilities::to_string(mu) +
+                           "\n a is: "+  Utilities::to_string(rate_and_state_parameter_a) + ", b is: "
+                           + Utilities::to_string(rate_and_state_parameter_b)+ ", L is: " +  Utilities::to_string(critical_slip_distance) +
+                           ",\n friction angle [RAD] is: "+ Utilities::to_string(current_friction)+", friction coeff is: "+Utilities::to_string(mu)+
+                           ",\n theta is: "+ Utilities::to_string(theta)+", current edot_ii is: "
+                           + Utilities::to_string(current_edot_ii)+ ".\n The position is:\n dir 0 = "+ Utilities::to_string(coords[0])+
+                           "\n dir 1 = "+ Utilities::to_string(coords[1])+ "\n dir 2 = "+ Utilities::to_string(coords[2])));
                   AssertThrow((std::isinf(mu) || numbers::is_nan(mu)) == false, ExcMessage(
                                 "Your friction coefficient becomes nan or inf. Please check all your friction parameters. In case of "
                                 "rate-and-state like friction, don't forget to check on a,b, and the critical slip distance, or theta."
@@ -922,7 +934,7 @@ namespace aspect
 
             unsigned int number_of_RSF_compositions = 0;
             for (unsigned int k = 0; k < RSF_composition_masks.size(); ++k)
-                number_of_RSF_compositions += RSF_composition_masks[k];
+              number_of_RSF_compositions += RSF_composition_masks[k];
             AssertThrow(number_of_RSF_compositions > 0,
                         ExcMessage("Using theta without indicating any RSF compositions does not make sense."))
           }
