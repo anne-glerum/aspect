@@ -242,6 +242,7 @@ namespace aspect
                                               "Ch. 4.6, or Chapman (1986). As boundary conditions, we take the surface temperature and "
                                               "the temperature of the Lithosphere-Asthenosphere Boundary (LAB). "
                                               "\n"
+                                              "Type some additional comments as a demonstration. "
                                               "The geotherm is computed for a homogeneous lithosphere "
                                               "composed of an upper crust, lower crust and mantle layer. "
                                               "The crustal layers are assumed to have a constant radioactive heating, "
