@@ -1363,14 +1363,14 @@ namespace aspect
         {
           const unsigned int n_points = out.viscosities.size();
           out.additional_outputs.push_back(
-            std_cxx14::make_unique<MaterialModel::ReactionRateOutputs<dim> > (n_points, this->n_compositional_fields()));
+            std::make_unique<MaterialModel::ReactionRateOutputs<dim> > (n_points, this->n_compositional_fields()));
         }
 
       if (out.template get_additional_output<PhippsMorganOutputs<dim> >() == nullptr)
         {
           const unsigned int n_points = out.viscosities.size();
           out.additional_outputs.push_back(
-            std_cxx14::make_unique<MaterialModel::PhippsMorganOutputs<dim>> (n_points));
+            std::make_unique<MaterialModel::PhippsMorganOutputs<dim>> (n_points));
         }
     }
   }
