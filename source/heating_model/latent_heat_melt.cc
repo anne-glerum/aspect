@@ -164,7 +164,7 @@ namespace aspect
         {
           const unsigned int n_points = outputs.densities.size();
           outputs.additional_outputs.push_back(
-            std_cxx14::make_unique<MaterialModel::EnthalpyOutputs<dim> > (n_points));
+            std::make_unique<MaterialModel::EnthalpyOutputs<dim> > (n_points));
         }
     }
   }
