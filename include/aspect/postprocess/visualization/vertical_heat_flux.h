@@ -43,7 +43,7 @@ namespace aspect
        */
       template <int dim>
       class VerticalHeatFlux
-        : public DataPostprocessorVector<dim>,
+        : public DataPostprocessor<dim>,
           public SimulatorAccess<dim>,
           public Interface<dim>
       {
@@ -52,6 +52,15 @@ namespace aspect
            * Constructor
            */
           VerticalHeatFlux ();
+
+          std::vector<std::string>
+          get_names () const override;
+
+          std::vector<DataComponentInterpretation::DataComponentInterpretation>
+          get_data_component_interpretation () const override;
+
+          UpdateFlags
+          get_needed_update_flags () const override;
 
           /**
            * Evaluate the vertical heat flux for the current cell.

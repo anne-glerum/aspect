@@ -33,9 +33,41 @@ namespace aspect
       VerticalHeatFlux<dim>::
       VerticalHeatFlux ()
         :
-        DataPostprocessorVector<dim> ("vertical_heat_flux",
-                                      update_values | update_quadrature_points | update_gradients)
+        DataPostprocessor<dim> ()
       {}
+
+
+
+      template <int dim>
+      std::vector<std::string>
+      VerticalHeatFlux<dim>::
+          get_names() const
+      {
+        std::vector<std::string> property_names(2, "vertical_conductive_heat_flux");
+        property_names[1] = "vertical_advective_heat_flux";
+        return property_names;
+      }
+
+
+
+      template <int dim>
+      std::vector<DataComponentInterpretation::DataComponentInterpretation>
+      VerticalHeatFlux<dim>::
+      get_data_component_interpretation () const
+      {
+        return std::vector<DataComponentInterpretation::DataComponentInterpretation> (get_names().size(),
+                                                                                      DataComponentInterpretation::component_is_scalar);
+      }
+
+
+
+      template <int dim>
+      UpdateFlags
+      VerticalHeatFlux<dim>::
+      get_needed_update_flags () const
+      {
+        return update_gradients | update_values  | update_quadrature_points;
+      }
 
 
 
@@ -94,8 +126,9 @@ namespace aspect
       ASPECT_REGISTER_VISUALIZATION_POSTPROCESSOR(VerticalHeatFlux,
                                                   "vertical heat flux",
                                                   "A visualization output object that generates output "
-                                                  "for the heat flux in the vertical direction, which is "
-                                                  "the sum of the advective and the conductive heat flux, "
+                                                  "for the heat flux in the vertical direction. The first "
+                                                  "value represents the vertical conductive heat flux, "
+                                                  "the second the vertical advective heat flux, "
                                                   "with the sign convention of positive flux upwards.")
     }
   }
