@@ -184,7 +184,7 @@ namespace aspect
       std::vector<double> phase_function_values(phase_function.n_phase_transitions(), 0.0);
 
       // Get the fluid pressures to modify the yield strength
-      std::vector<double> fluid_pressures(in.position.size());
+      std::vector<double> fluid_pressures(in.position.size(),0.);
       if (this->include_melt_transport() &&
           in.requests_property(MaterialProperties::viscosity) &&
           this->get_melt_handler().is_melt_cell(in.current_cell) &&
@@ -294,7 +294,7 @@ namespace aspect
               // creep (where n_diff=1) viscosities are stress and strain-rate independent, so the calculation
               // of compositional field viscosities is consistent with any averaging scheme.
               // Multiply the melt weakening factor given by the MeltPhippsMorgan model with the vp viscosity
-              out.viscosities[i] *= MaterialUtilities::average_value(volume_fractions, isostrain_viscosities.composition_viscosities, rheology->viscosity_averaging);
+              out.viscosities[i] = MaterialUtilities::average_value(volume_fractions, isostrain_viscosities.composition_viscosities, rheology->viscosity_averaging);
               out.viscosities[i] = std::min(max_visc,std::max(min_visc, out.viscosities[i]));
 
               // Decide based on the maximum composition if material is yielding.

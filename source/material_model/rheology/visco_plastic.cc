@@ -22,6 +22,7 @@
 #include <aspect/material_model/utilities.h>
 #include <aspect/utilities.h>
 #include <aspect/newton.h>
+#include <aspect/melt.h>
 #include <aspect/adiabatic_conditions/interface.h>
 #include <aspect/gravity_model/interface.h>
 #include <deal.II/base/signaling_nan.h>
@@ -255,7 +256,14 @@ namespace aspect
               }
 
             // Step 3b: calculate current (viscous or viscous + elastic) stress magnitude
+            // Include melt weakening through porosity.
+            const unsigned int porosity_idx = this->introspection().compositional_index_for_name("porosity");
+            const double porosity = std::min(0.3, std::max(in.composition[i][porosity_idx],0.0));
             double current_stress = 2. * viscosity_pre_yield * current_edot_ii;
+            if (this->include_melt_transport() &&
+                in.current_cell.state() == IteratorState::valid &&
+                this->get_melt_handler().is_melt_cell(in.current_cell))
+              current_stress *= exp(- alpha_phi * porosity);
 
             // Step 4: calculate strain-weakened friction, cohesion
             const DruckerPragerParameters drucker_prager_parameters = drucker_prager_plasticity.compute_drucker_prager_parameters(j,
@@ -317,6 +325,9 @@ namespace aspect
                   break;
                 }
               }
+
+            // Compute the bulk viscosity from the solid viscosity
+            viscosity_yield *= (1-porosity);
 
             // Step 6: limit the viscosity with specified minimum and maximum bounds
             const double maximum_viscosity_for_composition = MaterialModel::MaterialUtilities::phase_average_value(
@@ -725,6 +736,13 @@ namespace aspect
                                   "to the temperature for computing the viscosity, because the ambient"
                                   "temperature profile already includes the adiabatic gradient."));
 
+        prm.leave_subsection();
+        prm.enter_subsection("Melt phipps morgan");
+        {
+          alpha_phi                         = prm.get_double ("Exponential melt weakening factor");
+        }
+        prm.leave_subsection();
+        prm.enter_subsection("Visco Plastic");
       }
 
 

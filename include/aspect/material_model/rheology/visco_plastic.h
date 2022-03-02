@@ -309,6 +309,11 @@ namespace aspect
            */
           Rheology::DruckerPragerParameters drucker_prager_parameters;
 
+          /*
+           * Alpha for exponential weakening factor of viscosity based on porosity.
+           */
+          double alpha_phi;
+
       };
     }
   }
