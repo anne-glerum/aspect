@@ -1,0 +1,166 @@
+/*
+  Copyright (C) 2011 - 2020 by the authors of the ASPECT code.
+
+  This file is part of ASPECT.
+
+  ASPECT is free software; you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation; either version 2, or (at your option)
+  any later version.
+
+  ASPECT is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with ASPECT; see the file LICENSE.  If not see
+  <http://www.gnu.org/licenses/>.
+*/
+
+
+#include <aspect/boundary_composition/fastscape.h>
+#include <aspect/initial_composition/interface.h>
+#include <aspect/mesh_deformation/interface.h>
+#include <aspect/mesh_deformation/fastscape.h>
+
+namespace aspect
+{
+  namespace BoundaryComposition
+  {
+// ------------------------------ FastScape -------------------
+    template <int dim>
+    FastScape<dim>::FastScape()
+    {}
+
+    template <int dim>
+    void
+    FastScape<dim>::initialize()
+    {
+      const std::set<types::boundary_id> boundary_ids
+        = this->get_mesh_deformation_handler().get_active_mesh_deformation_boundary_indicators();
+      std::map<types::boundary_id, std::vector<std::string>> mesh_deformation_boundary_indicators_map 
+        = this->get_mesh_deformation_handler().get_active_mesh_deformation_names();
+      
+      bool using_fastscape = false;
+      // Loop over each mesh deformation boundary, and check FastScape is used.
+      for (std::set<types::boundary_id>::const_iterator p = boundary_ids.begin();
+           p != boundary_ids.end(); ++p)
+      {
+        const std::vector<std::string> names = mesh_deformation_boundary_indicators_map[*p];
+        for (unsigned int i = 0; i < names.size(); ++i)
+        {
+          if (names[i] == "fastscape")
+            using_fastscape = true;
+        }
+      }
+
+      AssertThrow(using_fastscape, ExcMessage("The boundary composition plugin FastScape requires the mesh deformation plugin FastScape. "));
+      AssertThrow(this->introspection().compositional_name_exists("ratio_marine_continental_sediment"), 
+        ExcMessage("The boundary composition plugin FastScape requires a compositional field called ratio_marine_continental_sediment."));
+    }
+
+    template <int dim>
+    double
+    FastScape<dim>::
+    boundary_composition(const types::boundary_id boundary_indicator,
+                         const Point<dim> &/*position*/,
+                         const unsigned int compositional_field) const
+    {
+      const types::boundary_id top_boundary = this->get_geometry_model().translate_symbolic_boundary_name_to_id ("top");
+      const unsigned int sediment_field = this->introspection().compositional_index_for_name("ratio_marine_continental_sediment");
+
+      // Only set composition on the top boundary,
+      // and only for the field 'ratio_marine_continental_sediment'
+      if (boundary_indicator != top_boundary || compositional_field != sediment_field) 
+        return 0.;
+
+      double ratio = 0.;
+
+      const std::map<types::boundary_id,std::vector<std::unique_ptr<aspect::MeshDeformation::Interface<dim>>>> & mesh_deformation_objects 
+        = this->get_mesh_deformation_handler().get_active_mesh_deformation_models();
+
+      // Instead of looping over all boundaries, directly select top boundary
+      for (const auto &boundary_and_deformation_objects : mesh_deformation_objects)
+        {
+          if (boundary_and_deformation_objects.first == top_boundary)
+          for (const auto &model : boundary_and_deformation_objects.second)
+            if (Plugins::plugin_type_matches<const MeshDeformation::FastScape<dim>>(*model))
+            //ratio = model.get_marine_to_continental_sediment_ratio();
+            ratio  = 1.;
+        }
+
+      return ratio;
+    }
+
+    template <int dim>
+    double
+    FastScape<dim>::
+    minimal_composition (const std::set<types::boundary_id> &) const
+    {
+      return min_composition;
+    }
+
+
+
+    template <int dim>
+    double
+    FastScape<dim>::
+    maximal_composition (const std::set<types::boundary_id> &) const
+    {
+      return max_composition;
+    }
+
+
+
+    template <int dim>
+    void
+    FastScape<dim>::declare_parameters (ParameterHandler &prm)
+    {
+      prm.enter_subsection("Boundary composition model");
+      {
+        prm.enter_subsection("FastScape");
+        {
+          prm.declare_entry ("Minimal composition", "0.",
+                             Patterns::Double (),
+                             "Minimal composition. Units: none.");
+          prm.declare_entry ("Maximal composition", "1.",
+                             Patterns::Double (),
+                             "Maximal composition. Units: none.");
+        }
+        prm.leave_subsection ();
+      }
+      prm.leave_subsection ();
+    }
+
+
+    template <int dim>
+    void
+    FastScape<dim>::parse_parameters (ParameterHandler &prm)
+    {
+      prm.enter_subsection("Boundary composition model");
+      {
+        prm.enter_subsection("FastScape");
+        {
+          min_composition = prm.get_double ("Minimal composition");
+          max_composition = prm.get_double ("Maximal composition");
+        }
+        prm.leave_subsection ();
+      }
+      prm.leave_subsection ();
+    }
+  }
+}
+
+// explicit instantiations
+namespace aspect
+{
+  namespace BoundaryComposition
+  {
+    ASPECT_REGISTER_BOUNDARY_COMPOSITION_MODEL(FastScape,
+                                               "fastscape",
+                                               "A model in which the composition at the boundary "
+                                               "for a specific field called 'marine_continental_ratio' "
+                                               "is set by the FastScape mesh deformation plugin. ")
+  }
+}
