@@ -128,7 +128,7 @@ namespace aspect
        * Return the ratio between marine sediments from background marine sedimentation
        * and continental sediments for a certain point.
        */
-      double get_marine_to_continental_sediment_ratio(Point<dim> point);
+      double get_marine_to_continental_sediment_ratio(Point<dim> point) const;
 
       private :
       // Number of FastScape steps per ASPECT timestep.

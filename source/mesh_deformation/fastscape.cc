@@ -1154,7 +1154,7 @@ namespace aspect
     }
 
     template <int dim>
-    double FastScape<dim>::get_marine_to_continental_sediment_ratio(Point<dim> point)
+    double FastScape<dim>::get_marine_to_continental_sediment_ratio(Point<dim> point) const
     {
       return ratio_marine_continental_function->value(point);
     }

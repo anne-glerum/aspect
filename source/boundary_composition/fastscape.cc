@@ -64,7 +64,7 @@ namespace aspect
     double
     FastScape<dim>::
     boundary_composition(const types::boundary_id boundary_indicator,
-                         const Point<dim> &/*position*/,
+                         const Point<dim> &position,
                          const unsigned int compositional_field) const
     {
       const types::boundary_id top_boundary = this->get_geometry_model().translate_symbolic_boundary_name_to_id ("top");
@@ -86,8 +86,7 @@ namespace aspect
           if (boundary_and_deformation_objects.first == top_boundary)
           for (const auto &model : boundary_and_deformation_objects.second)
             if (Plugins::plugin_type_matches<const MeshDeformation::FastScape<dim>>(*model))
-            //ratio = model.get_marine_to_continental_sediment_ratio();
-            ratio  = 1.;
+            ratio = Plugins::get_plugin_as_type<const MeshDeformation::FastScape<dim>>(*model).get_marine_to_continental_sediment_ratio(position);
         }
 
       return ratio;
