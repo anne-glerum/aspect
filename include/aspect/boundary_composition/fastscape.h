@@ -42,17 +42,22 @@ namespace aspect
     class FastScape : public Interface<dim>, public SimulatorAccess<dim>
     {
       public:
-        /** 
+        /**
          * Empty Constructor.
          */
         FastScape ();
 
-        /** 
-         * Initialization function. This function is called once at the
-         * beginning of the program. Checks preconditions.
+        /**
+         * The update function is called every timestep. Here it is used
+         * to perform several checks, amongst which a check to make certain
+         * that the FastScape mesh deformation plugin is used. Ideally, this
+         * would be done in the initialize function, but as the boundary composition
+         * plugins are initialized before the mesh deformation plugins, this is not
+         * possible (asking for the mesh deformation handler will fail). The checks
+         * are only performed once; in all other timesteps the update function does nothing.
          */
-        void initialize () override;
-        
+        void update () override;
+
         /**
          * This function returns the boundary compositions that are defined
          * by the initial conditions.

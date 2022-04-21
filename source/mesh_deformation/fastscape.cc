@@ -149,7 +149,7 @@ namespace aspect
     void
     FastScape<dim>::compute_velocity_constraints_on_boundary(const DoFHandler<dim> &mesh_deformation_dof_handler,
                                                              AffineConstraints<double> &mesh_velocity_constraints,
-                                                             const std::set<types::boundary_id> &boundary_ids)
+                                                             const std::set<types::boundary_id> &boundary_ids) const
     {
       TimerOutput::Scope timer_section(this->get_computing_timer(), "Fastscape plugin");
       const types::boundary_id relevant_boundary = this->get_geometry_model().translate_symbolic_boundary_name_to_id ("top");
@@ -782,28 +782,28 @@ namespace aspect
               std::vector<double> V2(nx);
               std::vector<double> ratio_marine_continental2(nx);
 
-                  for (int i = 1; i < (nx - 1); i++)
-              {
-                // If using the center slice, find velocities from the row closest to the center.
-                if (slice)
+              for (int i = 1; i < (nx - 1); i++)
                 {
-                  const int index = i + nx * (round((ny - 1) / 2));
-                  V2[i - 1] = V[index];
-                  ratio_marine_continental2[i - 1] = ratio_marine_continental[index];
-                }
-                // Here we use average velocities across the y nodes, excluding the ghost nodes (top and bottom row).
-                // Note: If ghost nodes are turned off, boundary effects may influence this.
-                else
-                {
-                  for (int ys = 1; ys < (ny - 1); ys++)
-                  {
-                    const int index = i + nx * ys;
-                    V2[i - 1] += V[index];
-                    ratio_marine_continental2[i - 1] += ratio_marine_continental[index];
-                  }
-                  V2[i - 1] = V2[i - 1] / (ny - 2);
-                  ratio_marine_continental2[i - 1] = ratio_marine_continental2[i - 1] / (ny - 2);
-                }
+                  // If using the center slice, find velocities from the row closest to the center.
+                  if (slice)
+                    {
+                      const int index = i + nx * (round((ny - 1) / 2));
+                      V2[i - 1] = V[index];
+                      ratio_marine_continental2[i - 1] = ratio_marine_continental[index];
+                    }
+                  // Here we use average velocities across the y nodes, excluding the ghost nodes (top and bottom row).
+                  // Note: If ghost nodes are turned off, boundary effects may influence this.
+                  else
+                    {
+                      for (int ys = 1; ys < (ny - 1); ys++)
+                        {
+                          const int index = i + nx * ys;
+                          V2[i - 1] += V[index];
+                          ratio_marine_continental2[i - 1] += ratio_marine_continental[index];
+                        }
+                      V2[i - 1] = V2[i - 1] / (ny - 2);
+                      ratio_marine_continental2[i - 1] = ratio_marine_continental2[i - 1] / (ny - 2);
+                    }
                 }
 
               for (unsigned int i=0; i<data_table.size()[1]; ++i)
@@ -825,7 +825,7 @@ namespace aspect
                             {
                               data_table(idx) = V2[j];
                             }
-                            ratio_marine_continental_table(idx) = ratio_marine_continental2[j];
+                          ratio_marine_continental_table(idx) = ratio_marine_continental2[j];
                         }
                       else
                         {
@@ -863,7 +863,7 @@ namespace aspect
                                 {
                                   data_table(idx) = V[(nx+1)*use_ghost+nx*i+j];
                                 }
-                                ratio_marine_continental_table(idx) = ratio_marine_continental[(nx + 1) * use_ghost + nx * i + j];
+                              ratio_marine_continental_table(idx) = ratio_marine_continental[(nx + 1) * use_ghost + nx * i + j];
                             }
                           else
                             {
@@ -897,8 +897,8 @@ namespace aspect
 
           // Store the marine to continental sediment ratio
           ratio_marine_continental_function = new Functions::InterpolatedUniformGridData<dim>(grid_extent,
-                                                                                              table_intervals,
-                                                                                              ratio_marine_continental_table);
+              table_intervals,
+              ratio_marine_continental_table);
         }
     }
 
@@ -1163,7 +1163,9 @@ namespace aspect
     template <int dim>
     double FastScape<dim>::get_marine_to_continental_sediment_ratio(Point<dim> point) const
     {
-      return ratio_marine_continental_function->value(point);
+      const double ratio = ratio_marine_continental_function->value(point);
+      Assert (ratio >= 0. && ratio <= 1., ExcMessage("The ratio of marine to continental sediments exceeds the 0--1 range."));
+      return ratio;
     }
 
     // TODO: Give better explanations of variables and cite the fastscape documentation.

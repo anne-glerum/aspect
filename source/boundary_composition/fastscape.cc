@@ -35,29 +35,33 @@ namespace aspect
 
     template <int dim>
     void
-    FastScape<dim>::initialize()
+    FastScape<dim>::update()
     {
-      const std::set<types::boundary_id> boundary_ids
-        = this->get_mesh_deformation_handler().get_active_mesh_deformation_boundary_indicators();
-      std::map<types::boundary_id, std::vector<std::string>> mesh_deformation_boundary_indicators_map 
-        = this->get_mesh_deformation_handler().get_active_mesh_deformation_names();
-      
-      bool using_fastscape = false;
-      // Loop over each mesh deformation boundary, and check FastScape is used.
-      for (std::set<types::boundary_id>::const_iterator p = boundary_ids.begin();
-           p != boundary_ids.end(); ++p)
-      {
-        const std::vector<std::string> names = mesh_deformation_boundary_indicators_map[*p];
-        for (unsigned int i = 0; i < names.size(); ++i)
-        {
-          if (names[i] == "fastscape")
-            using_fastscape = true;
-        }
-      }
 
-      AssertThrow(using_fastscape, ExcMessage("The boundary composition plugin FastScape requires the mesh deformation plugin FastScape. "));
-      AssertThrow(this->introspection().compositional_name_exists("ratio_marine_continental_sediment"), 
-        ExcMessage("The boundary composition plugin FastScape requires a compositional field called ratio_marine_continental_sediment."));
+      if (this->simulator_is_past_initialization() && this->get_timestep_number() == 0)
+        {
+          const std::set<types::boundary_id> boundary_ids
+            = this->get_mesh_deformation_handler().get_active_mesh_deformation_boundary_indicators();
+          std::map<types::boundary_id, std::vector<std::string>> mesh_deformation_boundary_indicators_map
+                                                              = this->get_mesh_deformation_handler().get_active_mesh_deformation_names();
+
+          bool using_fastscape = false;
+          // Loop over each mesh deformation boundary, and check FastScape is used.
+          for (std::set<types::boundary_id>::const_iterator p = boundary_ids.begin();
+               p != boundary_ids.end(); ++p)
+            {
+              const std::vector<std::string> names = mesh_deformation_boundary_indicators_map[*p];
+              for (unsigned int i = 0; i < names.size(); ++i)
+                {
+                  if (names[i] == "fastscape")
+                    using_fastscape = true;
+                }
+            }
+
+          AssertThrow(using_fastscape, ExcMessage("The boundary composition plugin FastScape requires the mesh deformation plugin FastScape. "));
+          AssertThrow(this->introspection().compositional_name_exists("ratio_marine_continental_sediment"),
+                      ExcMessage("The boundary composition plugin FastScape requires a compositional field called ratio_marine_continental_sediment."));
+        }
     }
 
     template <int dim>
@@ -67,26 +71,37 @@ namespace aspect
                          const Point<dim> &position,
                          const unsigned int compositional_field) const
     {
+      // FastScape is only run in timestep 1.
+      // The boundary_composition function is evaluated before mesh deformation,
+      // and thus we can only question the FastScape mesh deformation plugin for
+      // the sediment ratio in timestep 2.
+      if (!this->simulator_is_past_initialization() || this->get_timestep_number() < 2)
+        return 0.;
+
       const types::boundary_id top_boundary = this->get_geometry_model().translate_symbolic_boundary_name_to_id ("top");
       const unsigned int sediment_field = this->introspection().compositional_index_for_name("ratio_marine_continental_sediment");
 
       // Only set composition on the top boundary,
       // and only for the field 'ratio_marine_continental_sediment'
-      if (boundary_indicator != top_boundary || compositional_field != sediment_field) 
+      if (boundary_indicator != top_boundary || compositional_field != sediment_field)
         return 0.;
 
       double ratio = 0.;
 
-      const std::map<types::boundary_id,std::vector<std::unique_ptr<aspect::MeshDeformation::Interface<dim>>>> & mesh_deformation_objects 
+      const std::map<types::boundary_id,std::vector<std::unique_ptr<aspect::MeshDeformation::Interface<dim>>>> &mesh_deformation_objects
         = this->get_mesh_deformation_handler().get_active_mesh_deformation_models();
 
       // Instead of looping over all boundaries, directly select top boundary
       for (const auto &boundary_and_deformation_objects : mesh_deformation_objects)
         {
           if (boundary_and_deformation_objects.first == top_boundary)
-          for (const auto &model : boundary_and_deformation_objects.second)
-            if (Plugins::plugin_type_matches<const MeshDeformation::FastScape<dim>>(*model))
-            ratio = Plugins::get_plugin_as_type<const MeshDeformation::FastScape<dim>>(*model).get_marine_to_continental_sediment_ratio(position);
+            {
+              for (const auto &model : boundary_and_deformation_objects.second)
+                if (Plugins::plugin_type_matches<const MeshDeformation::FastScape<dim>>(*model))
+                  {
+                    ratio = Plugins::get_plugin_as_type<const MeshDeformation::FastScape<dim>>(*model).get_marine_to_continental_sediment_ratio(position);
+                  }
+            }
         }
 
       return ratio;

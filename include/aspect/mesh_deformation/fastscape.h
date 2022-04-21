@@ -98,13 +98,13 @@ namespace aspect
       /**
        * Function to initialize variables for FastScape.
        */
-      virtual void initialize ();
+      virtual void initialize () override;
 
       virtual
       void
       compute_velocity_constraints_on_boundary(const DoFHandler<dim> &mesh_deformation_dof_handler,
                                                AffineConstraints<double> &mesh_velocity_constraints,
-                                               const std::set<types::boundary_id> &boundary_id);
+                                               const std::set<types::boundary_id> &boundary_id) const override;
 
       /**
        * Declare parameters for the free surface handling.
@@ -115,7 +115,7 @@ namespace aspect
       /**
        * Parse parameters for the free surface handling.
        */
-      void parse_parameters (ParameterHandler &prm);
+      void parse_parameters (ParameterHandler &prm) override;
 
       /**
        * A function that fills the viscosity derivatives in the
@@ -130,7 +130,7 @@ namespace aspect
        */
       double get_marine_to_continental_sediment_ratio(Point<dim> point) const;
 
-      private :
+    private :
       // Number of FastScape steps per ASPECT timestep.
       int nstep;
       // Maximum timestep for FastScape, if time_step/nsteps exceeds this, nsteps is doubled.
@@ -289,7 +289,7 @@ namespace aspect
       mutable double last_output_time;
 
       // Function to hold and query the ratio of marine to continental sediments
-      Functions::InterpolatedUniformGridData<dim> *ratio_marine_continental_function;
+      mutable Functions::InterpolatedUniformGridData<dim> *ratio_marine_continental_function;
   };
 }
 }
