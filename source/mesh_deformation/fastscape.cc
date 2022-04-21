@@ -129,10 +129,6 @@ namespace aspect
 
       // Determine array size to send to fastscape
       array_size = nx*ny;
-      topography.resize(array_size);
-      topography_marine.resize(array_size);
-      topography_old.resize(array_size);
-      ratio_marine_continental.resize(array_size);
 
       // Create a folder for the FastScape visualization files.
       Utilities::create_directory(this->get_output_directory() + "VTK/",
@@ -266,6 +262,9 @@ namespace aspect
                       }
                   }
 
+          // The ration between marine and continental sediments
+          std::vector<double> ratio_marine_continental(array_size);
+
           // Run fastscape on single processor.
           if (Utilities::MPI::this_mpi_process(this->get_mpi_communicator()) == 0)
             {
@@ -282,6 +281,13 @@ namespace aspect
               std::unique_ptr<double[]> kd (new double[array_size]());
               std::unique_ptr<double[]> b (new double[array_size]());
               std::vector<double> h_old(array_size);
+
+              // The new topography returned by FastScape
+              std::vector<double> topography(array_size);
+              // The old topography before calling FastScape + the marine sedimentation
+              std::vector<double> topography_marine(array_size);
+              // The old topography before calling FastScape
+              std::vector<double> topography_old(array_size);
 
               // Create variables for output directory and restart file
               std::string dirname = this->get_output_directory();
@@ -766,7 +772,8 @@ namespace aspect
           Table<dim,double> data_table;
           data_table.TableBase<dim,double>::reinit(size_idx);
           TableIndices<dim> idx;
-          // Also fill the table that holds the marine to continental sediments ratios.
+          // Table to hold the ratio of marine to continental sediments
+          Table<dim, double> ratio_marine_continental_table;
           ratio_marine_continental_table.TableBase<dim,double>::reinit(size_idx);
 
           // Loop through the data table and fill out the surface (i or k = 1) to the velocities from FastScape.
@@ -1157,12 +1164,6 @@ namespace aspect
     double FastScape<dim>::get_marine_to_continental_sediment_ratio(Point<dim> point) const
     {
       return ratio_marine_continental_function->value(point);
-    }
-
-    template <int dim>
-    void
-    FastScape<dim>::update_marine_to_continental_sediment_ratio()
-    {
     }
 
     // TODO: Give better explanations of variables and cite the fastscape documentation.

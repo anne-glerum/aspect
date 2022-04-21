@@ -288,13 +288,7 @@ namespace aspect
        */
       mutable double last_output_time;
 
-      void
-      update_marine_to_continental_sediment_ratio();
-
-      std::vector<double> topography, topography_marine, topography_old, ratio_marine_continental;
-
-      // Table to hold the ratio of marine to continental sediments
-      Table<dim, double> ratio_marine_continental_table;
+      // Function to hold and query the ratio of marine to continental sediments
       Functions::InterpolatedUniformGridData<dim> *ratio_marine_continental_function;
   };
 }
