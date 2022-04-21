@@ -104,7 +104,7 @@ namespace aspect
       void
       compute_velocity_constraints_on_boundary(const DoFHandler<dim> &mesh_deformation_dof_handler,
                                                AffineConstraints<double> &mesh_velocity_constraints,
-                                               const std::set<types::boundary_id> &boundary_id) const;
+                                               const std::set<types::boundary_id> &boundary_id);
 
       /**
        * Declare parameters for the free surface handling.
@@ -124,7 +124,13 @@ namespace aspect
        */
       void set_ghost_nodes(double *h, double *vx, double *vy, double *vz, int nx, int ny) const;
 
-    private:
+      /**
+       * Return the ratio between marine sediments from background marine sedimentation
+       * and continental sediments for a certain point.
+       */
+      double get_marine_to_continental_sediment_ratio(Point<dim> point);
+
+      private :
       // Number of FastScape steps per ASPECT timestep.
       int nstep;
       // Maximum timestep for FastScape, if time_step/nsteps exceeds this, nsteps is doubled.
@@ -281,6 +287,15 @@ namespace aspect
        * to be produced. Used to check for the next necessary output time.
        */
       mutable double last_output_time;
+
+      void
+      update_marine_to_continental_sediment_ratio();
+
+      std::vector<double> topography, topography_marine, topography_old, ratio_marine_continental;
+
+      // Table to hold the ratio of marine to continental sediments
+      Table<dim, double> ratio_marine_continental_table;
+      Functions::InterpolatedUniformGridData<dim> *ratio_marine_continental_function;
   };
 }
 }

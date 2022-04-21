@@ -129,11 +129,15 @@ namespace aspect
 
       // Determine array size to send to fastscape
       array_size = nx*ny;
+      topography.resize(array_size);
+      topography_marine.resize(array_size);
+      topography_old.resize(array_size);
+      ratio_marine_continental.resize(array_size);
 
       // Create a folder for the FastScape visualization files.
-      Utilities::create_directory (this->get_output_directory() + "VTK/",
-                                   this->get_mpi_communicator(),
-                                   false);
+      Utilities::create_directory(this->get_output_directory() + "VTK/",
+                                  this->get_mpi_communicator(),
+                                  false);
 
       // if stratigraphy is used, create a visualization folder for stratigraphy too
       if (use_strat)
@@ -149,7 +153,7 @@ namespace aspect
     void
     FastScape<dim>::compute_velocity_constraints_on_boundary(const DoFHandler<dim> &mesh_deformation_dof_handler,
                                                              AffineConstraints<double> &mesh_velocity_constraints,
-                                                             const std::set<types::boundary_id> &boundary_ids) const
+                                                             const std::set<types::boundary_id> &boundary_ids)
     {
       TimerOutput::Scope timer_section(this->get_computing_timer(), "Fastscape plugin");
       const types::boundary_id relevant_boundary = this->get_geometry_model().translate_symbolic_boundary_name_to_id ("top");
@@ -488,8 +492,10 @@ namespace aspect
                             h[i] = h[i] + sediment_rain*a_dt;
                         }
                     }
+                  topography_marine[i] = h[i];
                 }
 
+              topography_old = h_old;
 
               /*
                * The ghost nodes are added as a single layer of nodes surrounding the entire model,
@@ -719,12 +725,26 @@ namespace aspect
 
               // Find out our velocities from the change in height.
               // Where V is a vector of array size that exists on all processors.
+              // Also store the new topography.
               for (int i=0; i<array_size; i++)
                 {
                   V[i] = (h[i] - h_old[i])/a_dt;
+                  topography[i] = h[i];
+                  // Compute the ratio between marine sediments and continental sediments.
+                  // The height of marine sediments is easy to calculate from the stored topography_old at the beginning
+                  // of the timestep and topography_marine, which is computed based on the background marine sedimentation rate
+                  // and the topography_old with respect to the sea level. The new topography also includes an uplift
+                  // from ASPECT's vertical velocity and the deposition of sediments. If we're above sea level, or the topography
+                  // has only decreased, the ratio is set to 0.
+                  if (topography_marine[i] - topography_old[i] > 0. &&
+                      topography[i]-(vz[i]*a_dt) - topography_marine[i] >= 0.)
+                    ratio_marine_continental[i] = (topography_marine[i] - topography_old[i]) / (topography[i]-topography_old[i]-(vz[i]*a_dt));
+                  else
+                    ratio_marine_continental[i] = 0.;
                 }
 
               MPI_Bcast(&V[0], array_size, MPI_DOUBLE, 0, this->get_mpi_communicator());
+              MPI_Bcast(&ratio_marine_continental[0], array_size, MPI_DOUBLE, 0, this->get_mpi_communicator());
             }
           else
             {
@@ -732,6 +752,7 @@ namespace aspect
                 MPI_Ssend(&temporary_variables[i][0], temporary_variables[1].size(), MPI_DOUBLE, 0, 42, this->get_mpi_communicator());
 
               MPI_Bcast(&V[0], array_size, MPI_DOUBLE, 0, this->get_mpi_communicator());
+              MPI_Bcast(&ratio_marine_continental[0], array_size, MPI_DOUBLE, 0, this->get_mpi_communicator());
             }
 
           // Get the sizes needed for the data table.
@@ -745,31 +766,37 @@ namespace aspect
           Table<dim,double> data_table;
           data_table.TableBase<dim,double>::reinit(size_idx);
           TableIndices<dim> idx;
+          // Also fill the table that holds the marine to continental sediments ratios.
+          ratio_marine_continental_table.TableBase<dim,double>::reinit(size_idx);
 
           // Loop through the data table and fill out the surface (i or k = 1) to the velocities from FastScape.
           if (dim == 2)
             {
               std::vector<double> V2(nx);
+              std::vector<double> ratio_marine_continental2(nx);
 
-              for (int i=1; i<(nx-1); i++)
+                  for (int i = 1; i < (nx - 1); i++)
+              {
+                // If using the center slice, find velocities from the row closest to the center.
+                if (slice)
                 {
-                  // If using the center slice, find velocities from the row closest to the center.
-                  if (slice)
-                    {
-                      const int index = i+nx*(round((ny-1)/2));
-                      V2[i-1] = V[index];
-                    }
-                  // Here we use average velocities across the y nodes, excluding the ghost nodes (top and bottom row).
-                  // Note: If ghost nodes are turned off, boundary effects may influence this.
-                  else
-                    {
-                      for (int ys=1; ys<(ny-1); ys++)
-                        {
-                          const int index = i+nx*ys;
-                          V2[i-1] += V[index];
-                        }
-                      V2[i-1] = V2[i-1]/(ny-2);
-                    }
+                  const int index = i + nx * (round((ny - 1) / 2));
+                  V2[i - 1] = V[index];
+                  ratio_marine_continental2[i - 1] = ratio_marine_continental[index];
+                }
+                // Here we use average velocities across the y nodes, excluding the ghost nodes (top and bottom row).
+                // Note: If ghost nodes are turned off, boundary effects may influence this.
+                else
+                {
+                  for (int ys = 1; ys < (ny - 1); ys++)
+                  {
+                    const int index = i + nx * ys;
+                    V2[i - 1] += V[index];
+                    ratio_marine_continental2[i - 1] += ratio_marine_continental[index];
+                  }
+                  V2[i - 1] = V2[i - 1] / (ny - 2);
+                  ratio_marine_continental2[i - 1] = ratio_marine_continental2[i - 1] / (ny - 2);
+                }
                 }
 
               for (unsigned int i=0; i<data_table.size()[1]; ++i)
@@ -784,12 +811,21 @@ namespace aspect
                       if (i == 1)
                         {
                           if (this->convert_output_to_years())
-                            data_table(idx) = V2[j]/year_in_seconds;
+                            {
+                              data_table(idx) = V2[j]/year_in_seconds;
+                            }
                           else
-                            data_table(idx) = V2[j];
+                            {
+                              data_table(idx) = V2[j];
+                            }
+                            ratio_marine_continental_table(idx) = ratio_marine_continental2[j];
                         }
                       else
-                        data_table(idx)= 0;
+                        {
+                          data_table(idx)= 0;
+                          ratio_marine_continental_table(idx)=0.;
+                        }
+
                     }
                 }
             }
@@ -813,12 +849,20 @@ namespace aspect
                             {
                               // Fill table, where nx+1 allows skipping of the first ghost node.
                               if (this->convert_output_to_years())
-                                data_table(idx) = V[(nx+1)*use_ghost+nx*i+j]/year_in_seconds;
+                                {
+                                  data_table(idx) = V[(nx+1)*use_ghost+nx*i+j]/year_in_seconds;
+                                }
                               else
-                                data_table(idx) = V[(nx+1)*use_ghost+nx*i+j];
+                                {
+                                  data_table(idx) = V[(nx+1)*use_ghost+nx*i+j];
+                                }
+                                ratio_marine_continental_table(idx) = ratio_marine_continental[(nx + 1) * use_ghost + nx * i + j];
                             }
                           else
-                            data_table(idx)= 0;
+                            {
+                              data_table(idx)= 0;
+                              ratio_marine_continental_table(idx) = 0.;
+                            }
                         }
                     }
                 }
@@ -843,6 +887,11 @@ namespace aspect
                                                     *boundary_ids.begin(),
                                                     vector_function_object,
                                                     mesh_velocity_constraints);
+
+          // Store the marine to continental sediment ratio
+          ratio_marine_continental_function = new Functions::InterpolatedUniformGridData<dim>(grid_extent,
+                                                                                              table_intervals,
+                                                                                              ratio_marine_continental_table);
         }
     }
 
@@ -1104,7 +1153,17 @@ namespace aspect
         }
     }
 
+    template <int dim>
+    double FastScape<dim>::get_marine_to_continental_sediment_ratio(Point<dim> point)
+    {
+      return ratio_marine_continental_function->value(point);
+    }
 
+    template <int dim>
+    void
+    FastScape<dim>::update_marine_to_continental_sediment_ratio()
+    {
+    }
 
     // TODO: Give better explanations of variables and cite the fastscape documentation.
     template <int dim>
