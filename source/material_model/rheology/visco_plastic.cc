@@ -480,6 +480,12 @@ namespace aspect
             const int depo_depth_position_tmp = this->introspection().compositional_index_for_name("deposition_depth");
             composition_mask.set(depo_depth_position_tmp,false);
           }
+        if (this->introspection().compositional_name_exists("ratio_marine_continental_sediment"))
+          {
+            const int ratio_tmp = this->introspection().compositional_index_for_name("ratio_marine_continental_sediment");
+            composition_mask.set(ratio_tmp,false);
+          }
+
 
         return composition_mask;
       }
