@@ -65,7 +65,7 @@ namespace aspect
     void fastscape_get_step_(int *sstep);
     void fastscape_execute_step_();
     // Set the output file directory and visualization step
-    void folder_output_(int *length, int *asetp, const char *c);
+    void folder_output_(int *length, int *asetp, const char *c, int *produce_output);
     // Create a visualization file into the ASPECT/VTK folder
     void fastscape_named_vtk_(double *fp, const double *vexp, int *astep, const char *c, int *length);
     // Copy the height array from FastScape back into ASPECT.
