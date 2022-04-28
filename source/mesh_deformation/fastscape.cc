@@ -290,6 +290,9 @@ namespace aspect
               // Determine whether to create a VTK file this timestep.
               bool make_vtk = 0;
               int make_vtk_strati = 0;
+              // The visualization is 1 step behind the current timestep.
+              int visualization_step = 0;
+              // At the last timestep (requested endtime), we also create VTK output. 
               if (this->get_time() >= last_output_time + output_interval || this->get_time()+a_dt >= end_time)
                 {
                   // Don't create a visualization file on a restart.
@@ -300,7 +303,7 @@ namespace aspect
                         {
                           make_vtk_strati = 1;
                           // Folder_output (k, istep, foldername, do/do not produce vtk output)
-                          //folder_output_(&length, &visualization_step, c, &make_vtk_strati);
+                          folder_output_(&length, &visualization_step, c, &make_vtk_strati);
                         }
                     }
 
@@ -663,8 +666,6 @@ namespace aspect
               fastscape_set_h_(h.get());
               fastscape_set_erosional_parameters_(kf.get(), &kfsed, &m, &n, kd.get(), &kdsed, &g, &g, &p);
 
-              // The visualization is 1 step behind the current timestep.
-              int visualization_step = 0;
               steps = istep+steps;
 
               this->get_pcout() << "   Calling FastScape... " << (steps-istep) << " timesteps of " << f_dt << " years." << std::endl;
@@ -695,8 +696,6 @@ namespace aspect
                     this->get_pcout() << "      Writing initial VTK..." << std::endl;
                     // Note: Here, the HHHHH field in visualization is set to show the diffusivity. However, you can change this so any parameter
                     // is visualized.
-                    // TODO why is this output step skipped when use_strat = true,
-                    // but not in subsequent timepsteps (line 707).
                     // Fastscape_Named_VTK (f, vex, istep, foldername, k)
                     fastscape_named_vtk_(kd.get(), &vexp, &visualization_step, c, &length);
                   }
