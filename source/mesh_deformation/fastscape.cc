@@ -299,11 +299,20 @@ namespace aspect
 
               // Determine whether to create a VTK file this timestep.
               bool make_vtk = 0;
+              int make_vtk_strati = 0;
               if (this->get_time() >= last_output_time + output_interval || this->get_time()+a_dt >= end_time)
                 {
                   // Don't create a visualization file on a restart.
                   if (!restart)
-                    make_vtk = 1;
+                    {
+                      make_vtk = 1;
+                      if (use_strat)
+                        {
+                          make_vtk_strati = 1;
+                          // Folder_output (k, istep, foldername, do/do not produce vtk output)
+                          //folder_output_(&length, &visualization_step, c, &make_vtk_strati);
+                        }
+                    }
 
                   if (output_interval > 0)
                     {
@@ -681,11 +690,19 @@ namespace aspect
                  */
                 if (use_strat && current_timestep == 1)
                   {
-                    // Folder_output (k, istep, foldername)
-                    folder_output_(&length, &visualization_step, c);
+                    // Folder_output (k, istep, foldername, do/do not produce vtk output) where 1 = true and 0 = false
+                    folder_output_(&length, &visualization_step, c, &make_vtk_strati);
                     fastscape_strati_(&nstepp, &nreflectorp, &steps, &vexp);
                   }
-                else if (!use_strat && current_timestep == 1)
+                else if (use_strat)
+                  {
+                    // Stratigraphy output is created during the FastScape steps, not after,
+                    // so we need to send the required information over before running FastScape.
+                    visualization_step = current_timestep;
+                    // Folder_output (k, istep, foldername, do/do not produce vtk output) where 1 = true and 0 = false
+                    folder_output_(&length, &visualization_step, c, &make_vtk_strati);
+                  }
+                if (current_timestep == 1)
                   {
                     this->get_pcout() << "      Writing initial VTK..." << std::endl;
                     // Note: Here, the HHHHH field in visualization is set to show the diffusivity. However, you can change this so any parameter
