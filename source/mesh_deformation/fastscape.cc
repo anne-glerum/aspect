@@ -302,7 +302,7 @@ namespace aspect
               int make_vtk_strati = 0;
               // The visualization is 1 step behind the current timestep.
               int visualization_step = 0;
-              // At the last timestep (requested endtime), we also create VTK output. 
+              // At the last timestep (requested endtime), we also create VTK output.
               if (this->get_time() >= last_output_time + output_interval || this->get_time()+a_dt >= end_time)
                 {
                   // Don't create a visualization file on a restart.
@@ -311,9 +311,10 @@ namespace aspect
                       make_vtk = 1;
                       if (use_strat)
                         {
+                          int visualization_step_strati = 1;
                           make_vtk_strati = 1;
                           // Folder_output (k, istep, foldername, do/do not produce vtk output)
-                          folder_output_(&length, &visualization_step, c, &make_vtk_strati);
+                          folder_output_(&length, &visualization_step_strati, c, &make_vtk_strati);
                         }
                     }
 
@@ -496,6 +497,9 @@ namespace aspect
                       h[i] = h[i] + h_seed;
                     }
 
+                  // Store the topography at the beginning of the timestep including the random noise.
+                  topography_old[i] = h[i];
+
                   // Here we add the sediment rain (m/yr) as a flat increase in height.
                   // This is done because adding it as an uplift rate would affect the basement.
                   if (sediment_rain > 0 && use_marine)
@@ -510,10 +514,10 @@ namespace aspect
                             h[i] = h[i] + sediment_rain*a_dt;
                         }
                     }
+                  // Store the topography at the beginning of the timestep after sediment rain (and initial random noise).
                   topography_marine[i] = h[i];
                 }
 
-              topography_old = h_old;
 
               /*
                * The ghost nodes are added as a single layer of nodes surrounding the entire model,
@@ -684,25 +688,6 @@ namespace aspect
               {
                 auto t_start = std::chrono::high_resolution_clock::now();
 
-                /*
-                 * If we use stratigraphy it'll handle visualization and not the normal function.
-                 * TODO: The frequency in this needs to be the same as the total timesteps fastscape will
-                 * run for, need to figure out how to work this in better.
-                 */
-                if (use_strat && current_timestep == 1)
-                  {
-                    // Folder_output (k, istep, foldername, do/do not produce vtk output) where 1 = true and 0 = false
-                    folder_output_(&length, &visualization_step, c, &make_vtk_strati);
-                    fastscape_strati_(&nstepp, &nreflectorp, &steps, &vexp);
-                  }
-                else if (use_strat)
-                  {
-                    // Stratigraphy output is created during the FastScape steps, not after,
-                    // so we need to send the required information over before running FastScape.
-                    visualization_step = current_timestep;
-                    // Folder_output (k, istep, foldername, do/do not produce vtk output) where 1 = true and 0 = false
-                    folder_output_(&length, &visualization_step, c, &make_vtk_strati);
-                  }
                 if (current_timestep == 1)
                   {
                     this->get_pcout() << "      Writing initial VTK..." << std::endl;
@@ -710,6 +695,19 @@ namespace aspect
                     // is visualized.
                     // Fastscape_Named_VTK (f, vex, istep, foldername, k)
                     fastscape_named_vtk_(kd.get(), &vexp, &visualization_step, c, &length);
+                  }
+                /*
+                 * If we use stratigraphy it'll handle visualization and not the normal function.
+                 * TODO: The frequency in this needs to be the same as the total timesteps fastscape will
+                 * run for, need to figure out how to work this in better.
+                 */
+                visualization_step = current_timestep;
+                if (use_strat)
+                  {
+                    // Folder_output (k, istep, foldername, do/do not produce vtk output) where 1 = true and 0 = false
+                    folder_output_(&length, &visualization_step, c, &make_vtk_strati);
+                    if (current_timestep == 1)
+                      fastscape_strati_(&nstepp, &nreflectorp, &steps, &vexp);
                   }
 
                 do
@@ -731,7 +729,7 @@ namespace aspect
                 this->get_pcout() << "      FastScape runtime... " << round(r_time*1000)/1000 << "s" << std::endl;
               }
 
-              visualization_step = current_timestep;
+
               if (make_vtk)
                 {
                   this->get_pcout() << "      Writing VTK..." << std::endl;
@@ -759,10 +757,14 @@ namespace aspect
                   // from ASPECT's vertical velocity and the deposition of sediments. If we're above sea level, or the topography
                   // has only decreased, the ratio is set to 0.
                   if (topography_marine[i] - topography_old[i] > 0. &&
-                      topography[i]-(vz[i]*a_dt) - topography_marine[i] >= 0.)
-                    ratio_marine_continental[i] = (topography_marine[i] - topography_old[i]) / (topography[i]-topography_old[i]-(vz[i]*a_dt));
+                      topography[i]-(vz[i]*a_dt) - topography_old[i] >= 0.)
+                    {
+                      ratio_marine_continental[i] = (topography_marine[i] - topography_old[i]) / (topography[i]-topography_old[i]-(vz[i]*a_dt));
+                    }
                   else
-                    ratio_marine_continental[i] = 0.;
+                    {
+                      ratio_marine_continental[i] = 0.;
+                    }
                 }
 
               MPI_Bcast(&V[0], array_size, MPI_DOUBLE, 0, this->get_mpi_communicator());
@@ -841,14 +843,16 @@ namespace aspect
                             {
                               data_table(idx) = V2[j];
                             }
-                          ratio_marine_continental_table(idx) = ratio_marine_continental2[j];
                         }
                       else
                         {
                           data_table(idx)= 0;
-                          ratio_marine_continental_table(idx)=0.;
                         }
-
+                      // We fill the bottom (k=0) and the top (k=1) with the same value so that if the surface point is
+                      // located beneath the original surface (extent in dim-1 direction), the linear interpolation is constant.
+                      // Outside the extents of the table (and thus the original undeformed model domain), extrapolation of the
+                      // ratio is constant.
+                      ratio_marine_continental_table(idx) = ratio_marine_continental2[j];
                     }
                 }
             }
@@ -879,13 +883,16 @@ namespace aspect
                                 {
                                   data_table(idx) = V[(nx+1)*use_ghost+nx*i+j];
                                 }
-                              ratio_marine_continental_table(idx) = ratio_marine_continental[(nx + 1) * use_ghost + nx * i + j];
                             }
                           else
                             {
                               data_table(idx)= 0;
-                              ratio_marine_continental_table(idx) = 0.;
                             }
+                          // We fill the bottom (k=0) and the top (k=1) with the same value so that if the surface point is
+                          // located beneath the original surface (extent in dim-1 direction), the linear interpolation is constant.
+                          // Outside the extents of the table (and thus the original undeformed model domain), extrapolation of the
+                          // ratio is constant.
+                          ratio_marine_continental_table(idx) = ratio_marine_continental[(nx + 1) * use_ghost + nx * i + j];
                         }
                     }
                 }
@@ -1179,7 +1186,12 @@ namespace aspect
     template <int dim>
     double FastScape<dim>::get_marine_to_continental_sediment_ratio(Point<dim> point) const
     {
-      const double ratio = ratio_marine_continental_function->value(point);
+      // We cut off the ratio at 1. If it is larger than 1, it means that after the marine deposition
+      // some erosion occurred that left the new surface lower than the marine sediment surface, but higher
+      // than the starting surface of this timestep. Therefore all sediment is marine, and the ratio is 1.
+      // If the ratio is below 1, some other sediments were deposited, these could be eroded marine sediments,
+      // or (eroded) continental sediments.
+      const double ratio = std::min(1.,ratio_marine_continental_function->value(point));
       Assert (ratio >= 0. && ratio <= 1., ExcMessage("The ratio of marine to continental sediments exceeds the 0--1 range."));
       return ratio;
     }
