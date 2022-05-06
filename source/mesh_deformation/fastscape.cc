@@ -1196,6 +1196,38 @@ namespace aspect
       return ratio;
     }
 
+    template <int dim>
+    template <class Archive>
+    void FastScape<dim>::serialize(Archive &ar, const unsigned int)
+    {
+      ar &last_output_time;
+      //   &ratio_marine_continental_function;
+    }
+
+    template <int dim>
+    void
+    FastScape<dim>::save(std::map<std::string, std::string> &status_strings) const
+    {
+      std::ostringstream os;
+      aspect::oarchive oa(os);
+      oa << (*this);
+
+      status_strings["MarineContinentalSedimentRatio"] = os.str();
+    }
+
+    template <int dim>
+    void
+    FastScape<dim>::load(const std::map<std::string, std::string> &status_strings)
+    {
+      // see if something was saved
+      if (status_strings.find("MarineContinentalSedimentRatio") != status_strings.end())
+      {
+        std::istringstream is(status_strings.find("MarineContinentalSedimentRatio")->second);
+        aspect::iarchive ia(is);
+        ia >> (*this);
+      }
+    }
+
     // TODO: Give better explanations of variables and cite the fastscape documentation.
     template <int dim>
     void FastScape<dim>::declare_parameters(ParameterHandler &prm)

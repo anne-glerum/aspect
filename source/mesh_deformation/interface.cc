@@ -213,6 +213,19 @@ namespace aspect
 
 
     template <int dim>
+    void
+    Interface<dim>::save (std::map<std::string,std::string> &) const
+    {}
+
+
+
+    template <int dim>
+    void
+    Interface<dim>::load (const std::map<std::string,std::string> &)
+    {}
+
+
+    template <int dim>
     MeshDeformationHandler<dim>::MeshDeformationHandler (Simulator<dim> &simulator)
       : sim(simulator),  // reference to the simulator that owns the MeshDeformationHandler
         mesh_deformation_fe (FE_Q<dim>(1),dim), // Q1 elements which describe the mesh geometry
