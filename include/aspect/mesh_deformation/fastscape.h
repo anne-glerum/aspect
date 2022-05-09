@@ -305,6 +305,14 @@ namespace aspect
        */
       mutable double last_output_time;
 
+      /**
+       * The ratio between marine and continental sediments.
+       * We have to temporarily store it in this vector to be
+       * able to restart the ratio table from a file.
+       * TODO Make boost serialization available for Functions::InterpolatedUniformGridData.
+       */
+      mutable std::vector<double> ratio_marine_continental;
+
       // Function to hold and query the ratio of marine to continental sediments
       mutable Functions::InterpolatedUniformGridData<dim> *ratio_marine_continental_function;
   };

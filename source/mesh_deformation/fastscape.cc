@@ -62,14 +62,53 @@ namespace aspect
             }
         }
 
-      // Initialize parameters for restarting fastscape
-      restart = this->get_parameters().resume_computation;
-      restart_step = 0;
+        // second is for maximum coordinates, first for minimum.
+        for (unsigned int i = 0; i < dim; ++i)
+        {
+          grid_extent[i].first = geometry->get_origin()[i];
+          grid_extent[i].second = geometry->get_extents()[i];
+        }
 
-      // Since we don't open these until we're on one processor, we need to check if the
-      // restart files exist before hand.
-      // TODO: This was quickly done and can likely be shortened/improved.
-      if (restart)
+        // TODO: There has to be a better type to use to get this.
+        // const unsigned int repetitions[dim] = {geometry->get_repetitions()};
+        const unsigned int x_repetitions = geometry->get_repetitions(0);
+        const unsigned int y_repetitions = geometry->get_repetitions(1);
+
+        // Set nx and dx, as these will be the same regardless of dimension.
+        nx = 1 + (2 * use_ghost) + std::pow(2, surface_resolution + additional_refinement) * x_repetitions;
+        dx = (grid_extent[0].second - grid_extent[0].first) / (nx - 1 - (2 * use_ghost));
+        x_extent = (grid_extent[0].second - grid_extent[0].first) + 2 * dx * use_ghost;
+
+        // Sub intervals are 3 less than points, if including the ghost nodes. Otherwise 1 less.
+        table_intervals[0] = nx - 1 - (2 * use_ghost);
+        // TODO: it'd be best to not have to use dim-1 intervals at all.
+        table_intervals[dim - 1] = 1;
+
+        if (dim == 2)
+        {
+          dy = dx;
+          y_extent = round(y_extent_2d / dy) * dy + 2 * dy * use_ghost;
+          ny = 1 + y_extent / dy;
+        }
+        else
+        {
+          ny = 1 + (2 * use_ghost) + std::pow(2, surface_resolution + additional_refinement) * y_repetitions;
+          dy = (grid_extent[1].second - grid_extent[1].first) / (ny - 1 - (2 * use_ghost));
+          table_intervals[1] = ny - 1 - (2 * use_ghost);
+          y_extent = (grid_extent[1].second - grid_extent[1].first) + 2 * dy * use_ghost;
+        }
+
+        // Determine array size to send to fastscape
+        array_size = nx * ny;
+
+        // Initialize parameters for restarting fastscape
+        restart = this->get_parameters().resume_computation;
+        restart_step = 0;
+
+        // Since we don't open these until we're on one processor, we need to check if the
+        // restart files exist before hand.
+        // TODO: This was quickly done and can likely be shortened/improved.
+        if (restart)
         {
           // Create variables for output directory and restart file
           std::string dirname = this->get_output_directory();
@@ -85,50 +124,118 @@ namespace aspect
             AssertThrow(false,ExcMessage("Cannot open basement file to restart FastScape."));
           in.close();
 
+          in.open(dirname + "fastscape_ratio_restart.txt");
+          if (in.fail())
+            AssertThrow(false, ExcMessage("Cannot open ratio file to restart FastScape."));
+          in.close();
+          const std::string restart_filename_ratio = dirname + "fastscape_ratio_restart.txt";
+
           in.open(dirname + "fastscape_steps_restart.txt");
           if (in.fail())
             AssertThrow(false,ExcMessage("Cannot open steps file to restart FastScape."));
           in.close();
+
+          // Load in ratio values.
+          ratio_marine_continental.resize(array_size);
+          std::ifstream in_ratio;
+          in_ratio.open(restart_filename_ratio.c_str());
+          if (in_ratio)
+          {
+            int line = 0;
+
+            while (line < array_size)
+            {
+              in_ratio >> ratio_marine_continental[line];
+              line++;
+            }
+
+            in_ratio.close();
+          }
+          // Get the sizes needed for the data table.
+          TableIndices<dim> size_idx;
+          for (unsigned int d = 0; d < dim; ++d)
+          {
+            size_idx[d] = table_intervals[d] + 1;
+          }
+
+          // Table to hold the ratio of marine to continental sediments
+          TableIndices<dim> idx;
+          Table<dim, double> ratio_marine_continental_table;
+          ratio_marine_continental_table.TableBase<dim, double>::reinit(size_idx);
+          if (dim == 2)
+          {
+            std::vector<double> ratio_marine_continental2(nx);
+
+            for (int i = 1; i < (nx - 1); i++)
+            {
+              // If using the center slice, find velocities from the row closest to the center.
+              if (slice)
+              {
+                const int index = i + nx * (round((ny - 1) / 2));
+                ratio_marine_continental2[i - 1] = ratio_marine_continental[index];
+              }
+              // Here we use average velocities across the y nodes, excluding the ghost nodes (top and bottom row).
+              // Note: If ghost nodes are turned off, boundary effects may influence this.
+              else
+              {
+                for (int ys = 1; ys < (ny - 1); ys++)
+                {
+                  const int index = i + nx * ys;
+                  ratio_marine_continental2[i - 1] += ratio_marine_continental[index];
+                }
+                ratio_marine_continental2[i - 1] = ratio_marine_continental2[i - 1] / (ny - 2);
+              }
+            }
+
+            for (unsigned int i = 0; i < ratio_marine_continental_table.size()[1]; ++i)
+            {
+              idx[1] = i;
+
+              for (unsigned int j = 0; j < (ratio_marine_continental_table.size()[0]); ++j)
+              {
+                idx[0] = j;
+
+                // We fill the bottom (k=0) and the top (k=1) with the same value so that if the surface point is
+                // located beneath the original surface (extent in dim-1 direction), the linear interpolation is constant.
+                // Outside the extents of the table (and thus the original undeformed model domain), extrapolation of the
+                // ratio is constant.
+                ratio_marine_continental_table(idx) = ratio_marine_continental2[j];
+              }
+            }
+          }
+          else
+          {
+            // Indexes through z, y, and then x.
+            for (unsigned int k = 0; k < ratio_marine_continental_table.size()[2]; ++k)
+            {
+              idx[2] = k;
+
+              for (unsigned int i = 0; i < ratio_marine_continental_table.size()[1]; ++i)
+              {
+                idx[1] = i;
+
+                for (unsigned int j = 0; j < ratio_marine_continental_table.size()[0]; ++j)
+                {
+                  idx[0] = j;
+
+                  // We fill the bottom (k=0) and the top (k=1) with the same value so that if the surface point is
+                  // located beneath the original surface (extent in dim-1 direction), the linear interpolation is constant.
+                  // Outside the extents of the table (and thus the original undeformed model domain), extrapolation of the
+                  // ratio is constant.
+                  ratio_marine_continental_table(idx) = ratio_marine_continental[(nx + 1) * use_ghost + nx * i + j];
+                }
+              }
+            }
+          // Store the marine to continental sediment ratio
+            ratio_marine_continental_function = new Functions::InterpolatedUniformGridData<dim>(grid_extent,
+                                                                                                table_intervals,
+                                                                                                ratio_marine_continental_table);
+          }
+
+
         }
 
-      // second is for maximum coordinates, first for minimum.
-      for (unsigned int i=0; i<dim; ++i)
-        {
-          grid_extent[i].first = geometry->get_origin()[i];
-          grid_extent[i].second = geometry->get_extents()[i];
-        }
 
-      // TODO: There has to be a better type to use to get this.
-      // const unsigned int repetitions[dim] = {geometry->get_repetitions()};
-      const unsigned int x_repetitions = geometry->get_repetitions(0);
-      const unsigned int y_repetitions = geometry->get_repetitions(1);
-
-      // Set nx and dx, as these will be the same regardless of dimension.
-      nx = 1+(2*use_ghost)+std::pow(2,surface_resolution+additional_refinement)*x_repetitions;
-      dx = (grid_extent[0].second - grid_extent[0].first)/(nx-1-(2*use_ghost));
-      x_extent = (grid_extent[0].second - grid_extent[0].first)+2*dx*use_ghost;
-
-      // Sub intervals are 3 less than points, if including the ghost nodes. Otherwise 1 less.
-      table_intervals[0] = nx-1-(2*use_ghost);
-      // TODO: it'd be best to not have to use dim-1 intervals at all.
-      table_intervals[dim-1] = 1;
-
-      if (dim == 2)
-        {
-          dy = dx;
-          y_extent = round(y_extent_2d/dy)*dy+2*dy*use_ghost;
-          ny = 1+y_extent/dy;
-        }
-      else
-        {
-          ny = 1+(2*use_ghost)+std::pow(2,surface_resolution+additional_refinement)*y_repetitions;
-          dy = (grid_extent[1].second - grid_extent[1].first)/(ny-1-(2*use_ghost));
-          table_intervals[1] = ny-1-(2*use_ghost);
-          y_extent = (grid_extent[1].second - grid_extent[1].first)+2*dy*use_ghost;
-        }
-
-      // Determine array size to send to fastscape
-      array_size = nx*ny;
 
       // Create a folder for the FastScape visualization files.
       Utilities::create_directory(this->get_output_directory() + "VTK/",
@@ -262,8 +369,8 @@ namespace aspect
                       }
                   }
 
-          // The ration between marine and continental sediments
-          std::vector<double> ratio_marine_continental(array_size);
+          // The ratio between marine and continental sediments
+          ratio_marine_continental.resize(array_size);
 
           // Run fastscape on single processor.
           if (Utilities::MPI::this_mpi_process(this->get_mpi_communicator()) == 0)
@@ -296,6 +403,8 @@ namespace aspect
               const std::string restart_filename = dirname + "fastscape_h_restart.txt";
               const std::string restart_step_filename = dirname + "fastscape_steps_restart.txt";
               const std::string restart_filename_basement = dirname + "fastscape_b_restart.txt";
+              const std::string restart_filename_ratio = dirname + "fastscape_ratio_restart.txt";
+
 
               // Determine whether to create a VTK file this timestep.
               bool make_vtk = 0;
@@ -632,7 +741,7 @@ namespace aspect
               int istep = 0;
               fastscape_get_step_(&istep);
 
-              // Write a file to store h & step in case of restart.
+              // Write a file to store h, b, step and ratio in case of restart.
               // TODO: there's probably a faster way to write these.
               if ((this->get_parameters().checkpoint_time_secs == 0) &&
                   (this->get_parameters().checkpoint_steps > 0) &&
@@ -642,8 +751,10 @@ namespace aspect
                   std::ofstream out_h (restart_filename.c_str());
                   std::ofstream out_step (restart_step_filename.c_str());
                   std::ofstream out_b (restart_filename_basement.c_str());
+                  std::ofstream out_ratio(restart_filename_ratio.c_str());
                   std::stringstream bufferb;
                   std::stringstream bufferh;
+                  std::stringstream bufferratio;
 
                   fastscape_copy_basement_(b.get());
 
@@ -653,10 +764,12 @@ namespace aspect
                     {
                       bufferh << h[i] << "\n";
                       bufferb << b[i] << "\n";
+                      bufferratio << ratio_marine_continental[i] << "\n";
                     }
 
                   out_h << bufferh.str();
                   out_b << bufferb.str();
+                  out_ratio << bufferratio.str();
                 }
 
               // Find a fastscape timestep that is below our maximum timestep.
@@ -1191,8 +1304,8 @@ namespace aspect
       // than the starting surface of this timestep. Therefore all sediment is marine, and the ratio is 1.
       // If the ratio is below 1, some other sediments were deposited, these could be eroded marine sediments,
       // or (eroded) continental sediments.
-      const double ratio = std::min(1.,ratio_marine_continental_function->value(point));
-      Assert (ratio >= 0. && ratio <= 1., ExcMessage("The ratio of marine to continental sediments exceeds the 0--1 range."));
+      const double ratio = std::min(1.,std::max(0.,ratio_marine_continental_function->value(point)));
+      //Assert (ratio >= 0. && ratio <= 1., ExcMessage("The ratio of marine to continental sediments exceeds the 0--1 range."));
       return ratio;
     }
 
