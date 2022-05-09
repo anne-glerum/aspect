@@ -115,6 +115,12 @@ namespace aspect
     template <int dim> class Manager;
   }
 
+  namespace TimeStepping
+  {
+    template <int dim>
+    class Manager;
+  }
+
   namespace AdiabaticConditions
   {
     template <int dim> class Interface;
@@ -723,6 +729,14 @@ namespace aspect
        */
       const MeshRefinement::Manager<dim> &
       get_mesh_refinement_manager () const;
+
+      /**
+       * Return a reference to the manager of the time stepping strategies.
+       * This can then, for example, be check whether a checkpoint needs to
+       * be made upon termination.
+       */
+      const TimeStepping::Manager<dim> &
+      get_time_stepping_manager () const;
 
       /**
        * Return a reference to the melt handler.

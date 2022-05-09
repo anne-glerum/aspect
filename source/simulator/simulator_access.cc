@@ -637,6 +637,13 @@ namespace aspect
   }
 
   template <int dim>
+  const TimeStepping::Manager<dim> &
+  SimulatorAccess<dim>::get_time_stepping_manager() const
+  {
+    return simulator->time_stepping_manager;
+  }
+
+  template <int dim>
   const MeltHandler<dim> &
   SimulatorAccess<dim>::get_melt_handler () const
   {

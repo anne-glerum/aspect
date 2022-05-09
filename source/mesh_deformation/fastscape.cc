@@ -743,11 +743,14 @@ namespace aspect
 
               // Write a file to store h, b, step and ratio in case of restart.
               // TODO: there's probably a faster way to write these.
-              if ((this->get_parameters().checkpoint_time_secs == 0) &&
-                  (this->get_parameters().checkpoint_steps > 0) &&
-                  (current_timestep % this->get_parameters().checkpoint_steps == 0))
+              // Also write a checkpoint on end time,
+              // if Checkpoint on termination is set to true.
+              if (((this->get_parameters().checkpoint_time_secs == 0) &&
+                   (this->get_parameters().checkpoint_steps > 0) &&
+                   (current_timestep % this->get_parameters().checkpoint_steps == 0)) || 
+                  (this->get_time()+a_dt >= end_time && this->get_time_stepping_manager().need_checkpoint_on_terminate()))
                 {
-
+                  this->get_pcout() << "      Writing FastScape snapshot..." << std::endl;
                   std::ofstream out_h (restart_filename.c_str());
                   std::ofstream out_step (restart_step_filename.c_str());
                   std::ofstream out_b (restart_filename_basement.c_str());
