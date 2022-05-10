@@ -226,13 +226,12 @@ namespace aspect
                         }
                     }
                 }
-              // Store the marine to continental sediment ratio
-              ratio_marine_continental_function = new Functions::InterpolatedUniformGridData<dim>(grid_extent,
-                  table_intervals,
-                  ratio_marine_continental_table);
+
             }
-
-
+            // Store the marine to continental sediment ratio
+            ratio_marine_continental_function = new Functions::InterpolatedUniformGridData<dim>(grid_extent,
+                                                                                                table_intervals,
+                                                                                                ratio_marine_continental_table);
         }
 
 
