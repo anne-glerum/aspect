@@ -27,7 +27,7 @@
 #include <aspect/material_model/utilities.h>
 #include <aspect/simulator_access.h>
 
-#include <aspect/material_model/rheology/friction_options.h>
+#include <aspect/material_model/rheology/friction_models.h>
 
 namespace aspect
 {

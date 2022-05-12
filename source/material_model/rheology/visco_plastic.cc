@@ -313,16 +313,41 @@ namespace aspect
                                                                       phase_function_values,
                                                                       n_phase_transitions_per_composition);
             const double current_cohesion = drucker_prager_parameters.cohesion * weakening_factors[0];
+<<<<<<< HEAD
             output_parameters.current_friction_angles[j] = drucker_prager_parameters.angle_internal_friction * weakening_factors[1];
             viscosity_pre_yield *= weakening_factors[2];
             current_stress *= weakening_factors[2];
             output_parameters.current_edot_ii[j] = current_edot_ii;
 
             const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(in.position[i], friction_options.coordinate_system_RSF).get_coordinates();
+=======
+            double current_friction = drucker_prager_parameters.angle_internal_friction * weakening_factors[1];
+
+            // Steb 4b: calculate friction angle dependent on strain rate if specified
+            // apply the strain rate dependence to the friction angle (including strain weakening  if present)
+            // Note: Maybe this should also be turned around to first apply strain rate dependence and then
+            // the strain weakening to the dynamic friction angle. Didn't come up with a clear argument for
+            // one order or the other.
+            current_friction = friction_models.compute_friction_angle(current_edot_ii,
+                                                                      j,
+                                                                      in.composition[i],
+                                                                      current_cell,
+                                                                      current_friction,
+                                                                      in.position[i]);
+            output_parameters.current_friction_angles[j] = current_friction;
+            output_parameters.current_edot_ii[j] = current_edot_ii;
+
+            /**const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(in.position[i], friction_models.coordinate_system_RSF).get_coordinates();
+>>>>>>> fd6510daa... rename variables after rebase etc
             if ((coords[0] < 188) && (coords[0] > 186)
                 && (coords[1] < 708) && (coords[1] > 706)
                 && (coords[2] < 12333) && (coords[2] > 12331))
               std::cout << std::endl << coords[0] << "-" << coords[1] << "-" << coords[2] << "---" << "before plasticity  : edot_ii: "<<current_edot_ii<<" current_stress: "<<current_stress << std::endl;
+<<<<<<< HEAD
+=======
+            */
+
+>>>>>>> fd6510daa... rename variables after rebase etc
             // Step 5: plastic yielding
 
               // Determine if the pressure used in Drucker Prager plasticity will be capped at 0 (default).
@@ -338,18 +363,18 @@ namespace aspect
             // ToDo: like this, we do not take the effective friction factor into account for "independent"
             // friction option. Should we? Would that be useful?
             // ToDo: should dynamic friction also only be computed for within the fault indicated materials only?
-            const double fault_volume = friction_options.get_fault_volume(volume_fractions);
-            if ((friction_options.use_theta()
+            const double fault_volume = friction_models.get_fault_volume(volume_fractions);
+            if ((friction_models.use_theta()
                  && (j > 0)
-                 && friction_options.RSF_composition_masks[j - 1]
+                 && friction_models.RSF_composition_masks[j - 1]
                  && (fault_volume > 0.5))
-                || friction_options.get_friction_dependence_mechanism() == dynamic_friction)
-              output_parameters.current_friction_angles[j] = friction_options.compute_dependent_friction_angle(current_edot_ii,
+                || friction_models.get_friction_mechanism() == dynamic_friction)
+              output_parameters.current_friction_angles[j] = friction_models.compute_friction_angle(current_edot_ii,
                                                              j, in.composition[i], current_cell,
                                                              output_parameters.current_friction_angles[j],
                                                              in.position[i]);
-            if (friction_options.use_theta())
-              pressure_for_plasticity = friction_options.get_effective_friction_factor(in.position[i])*pressure_for_plasticity;
+            if (friction_models.use_theta())
+              pressure_for_plasticity = friction_models.get_effective_friction_factor(in.position[i])*pressure_for_plasticity;
             // Step 5a: calculate Drucker-Prager yield stress
 
             const double yield_stress = drucker_prager_plasticity.compute_yield_stress(current_cohesion,
@@ -358,8 +383,8 @@ namespace aspect
                                                                                        drucker_prager_parameters.max_yield_stress,
                                                                                        current_edot_ii,
                                                                                        current_cell->extent_in_direction(0),
-                                                                                       friction_options.use_radiation_damping,
-                                                                                       friction_options.use_theta());
+                                                                                       friction_models.use_radiation_damping,
+                                                                                       friction_models.use_theta());
 
             // Step 5b: select if the yield viscosity is based on Drucker Prager or a stress limiter rheology
             double effective_viscosity = non_yielding_viscosity;
@@ -385,11 +410,11 @@ namespace aspect
                   // If this is the fault material and rate-and-state friction is used,
                   // assume that we are always yielding
                   if ((current_stress >= yield_stress)
-                      || (friction_options.use_theta()
+                      || (friction_models.use_theta()
                           && (j > 0)
-                          && friction_options.RSF_composition_masks[j - 1]
+                          && friction_models.RSF_composition_masks[j - 1]
                           && (fault_volume > 0.5)
-                          && friction_options.use_always_yielding))
+                          && friction_models.use_always_yielding))
                     {
                       // TODO: Appendix E omits the sqrt of the viscoelastic_strain_rate_invariant.
                       viscosity_yield = drucker_prager_plasticity.compute_viscosity(current_cohesion,
@@ -399,8 +424,8 @@ namespace aspect
                                                                                     drucker_prager_parameters.max_yield_stress,
                                                                                     viscosity_pre_yield,
                                                                                     current_cell->extent_in_direction(0),
-                                                                                    friction_options.use_radiation_damping,
-                                                                                    friction_options.use_theta());
+                                                                                    friction_models.use_radiation_damping,
+                                                                                    friction_models.use_theta());
                       output_parameters.composition_yielding[j] = true;
                     }
                   break;
@@ -416,16 +441,16 @@ namespace aspect
                   // In \\cite{pipping_variational_2015} it is stated that this is the
                   // equation for Tresca friction
                   // here radiation damping is always taken in to account, see drucker_prager.cc for more details.
-                  const double fault_strength = friction_options.effective_normal_stress_on_fault
+                  const double fault_strength = friction_models.effective_normal_stress_on_fault
                                                 * std::tan(output_parameters.current_friction_angles[j]) * current_edot_ii
                                                 * current_cell->extent_in_direction(0)
                                                 - 0.5e6 * current_edot_ii * current_cell->extent_in_direction(0);
                   if ((current_stress >= fault_strength)
-                      || (friction_options.use_theta()
+                      || (friction_models.use_theta()
                           && (j > 0)
-                          && friction_options.RSF_composition_masks[j - 1]
+                          && friction_models.RSF_composition_masks[j - 1]
                           && (fault_volume > 0.5)
-                          && friction_options.use_always_yielding))
+                          && friction_models.use_always_yielding))
                     {
                       // I had put this line here, but during revision Anne suggested to remove it:
                       // current_edot_ii = fault_strength / (2.0 * viscosity_pre_yield);
@@ -613,8 +638,8 @@ namespace aspect
 
         // If friction is defined state dependent, the material field for the state variable theta
         // must be excluded during volume fraction computation.
-        if (friction_options.use_theta())
-          composition_mask.set(friction_options.theta_composition_index,false);
+        if (friction_models.use_theta())
+          composition_mask.set(friction_models.theta_composition_index,false);
 
         return composition_mask;
       }
@@ -751,7 +776,7 @@ namespace aspect
 
         use_elasticity = prm.get_bool ("Include viscoelasticity");
 
-        AssertThrow((use_elasticity && friction_options.use_radiation_damping) || (use_elasticity && friction_options.use_radiation_damping==false) || (use_elasticity==false && friction_options.use_radiation_damping==false),
+        AssertThrow((use_elasticity && friction_models.use_radiation_damping) || (use_elasticity && friction_models.use_radiation_damping==false) || (use_elasticity==false && friction_models.use_radiation_damping==false),
                     ExcMessage("Usage of radiation damping only makes sense when elasticity is enabled."));
 
 
@@ -910,6 +935,7 @@ namespace aspect
             if (allow_negative_pressures_in_plasticity == false)
               pressure_for_plasticity = std::max(in.pressure[i],0.0);
 
+<<<<<<< HEAD
             // The max yield stress is the same for each composition, so we give the 0th field value.
             const double max_yield_stress = drucker_prager_plasticity.compute_drucker_prager_parameters(0).max_yield_stress;
 
@@ -922,6 +948,30 @@ namespace aspect
                                                   friction_angles_RAD[j],
                                                   pressure_for_plasticity,
                                                   max_yield_stress);
+=======
+            // set to weakened values, or unweakened values when strain weakening is not used
+            std::vector<double> composition_cohesions(volume_fractions.size());
+            std::vector<double> composition_friction_angles(volume_fractions.size());
+            std::vector<double> composition_yield_stresses(volume_fractions.size());
+
+            for (unsigned int j = 0; j < volume_fractions.size(); ++j)
+              {
+                // set to weakened values, or unweakened values when strain weakening is not used
+                // Calculate the strain weakening factors and weakened values
+                const std::array<double, 3> weakening_factors = strain_rheology.compute_strain_weakening_factors(j, in.composition[i]);
+                const DruckerPragerParameters drucker_prager_parameters = drucker_prager_plasticity.compute_drucker_prager_parameters(j,
+                                                                          phase_function_values,
+                                                                          n_phases_per_composition);
+                composition_cohesions[j] = drucker_prager_parameters.cohesion * weakening_factors[0];
+                composition_friction_angles[j] = calculate_isostrain_viscosities(in, i, volume_fractions,
+                                                                                 in.current_cell,
+                                                                                 phase_function_values,
+                                                                                 n_phases_per_composition).current_friction_angles[j] * weakening_factors[1];
+                composition_yield_stresses[j] = drucker_prager_plasticity.compute_yield_stress(composition_cohesions[j],
+                                                                                               composition_friction_angles[j],
+                                                                                               pressure_for_plasticity,
+                                                                                               drucker_prager_parameters.max_yield_stress);
+>>>>>>> fd6510daa... rename variables after rebase etc
               }
           }
       }

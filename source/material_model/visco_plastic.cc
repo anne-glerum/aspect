@@ -311,19 +311,19 @@ namespace aspect
                 }
 
               // Update the state variable theta if used
-              if (rheology->friction_options.use_theta())
+              if (rheology->friction_models.use_theta())
                 {
                   const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
                                                         (in.strain_rate[i].norm() <= std::numeric_limits<double>::min());
                   const double dte = rheology->elastic_rheology.elastic_timestep();
-                  rheology->friction_options.compute_theta_reaction_terms(i, volume_fractions, in, get_min_strain_rate(), rheology->ref_strain_rate, rheology->use_elasticity,
-                                                                          use_reference_strainrate, average_elastic_shear_moduli[i], dte, out);
+                  rheology->friction_models.compute_theta_reaction_terms(i, volume_fractions, in, get_min_strain_rate(), rheology->ref_strain_rate, rheology->use_elasticity,
+                                                                         use_reference_strainrate, average_elastic_shear_moduli[i], dte, out);
                 }
             }
 
           // if rate and state friction is used, fill the additional output fields
-          if (rheology->friction_options.use_theta())
-            rheology->friction_options.fill_friction_outputs(i,volume_fractions,in,out,current_edot_ii_for_friction_output);
+          if (rheology->friction_models.use_theta())
+            rheology->friction_models.fill_friction_outputs(i,volume_fractions,in,out,current_edot_ii_for_friction_output);
         }
 
       // If we use the full strain tensor, compute the change in the individual tensor components.
@@ -396,7 +396,7 @@ namespace aspect
     ViscoPlastic<dim>::
     use_theta () const
     {
-      return  rheology->friction_options.use_theta();
+      return  rheology->friction_models.use_theta();
     }
 
 
@@ -415,7 +415,7 @@ namespace aspect
     get_fault_volume(const std::vector<double> &composition) const
     {
       const std::vector<double> volume_fractions = MaterialUtilities::compute_composition_fractions(composition, rheology->get_volumetric_composition_mask());
-      return rheology->friction_options.get_fault_volume(volume_fractions);
+      return rheology->friction_models.get_fault_volume(volume_fractions);
     }
 
 
@@ -428,7 +428,7 @@ namespace aspect
                              const double pressure,
                              const std::vector<double> &composition) const
     {
-      AssertThrow(rheology->friction_options.use_theta() == true,
+      AssertThrow(rheology->friction_models.use_theta() == true,
                   ExcMessage("The Lapusta-timestepping scheeme only works "
                              "when a state variable 'theta' is used in the friction formulation."));
       const double nu = 0.5;
@@ -443,29 +443,29 @@ namespace aspect
       double RSF_parameter_a = 0;
       double RSF_parameter_b = 0;
       double critical_slip_distance = 0;
-      for (unsigned int k = 0; k < rheology->friction_options.RSF_composition_masks.size(); ++k)
+      for (unsigned int k = 0; k < rheology->friction_models.RSF_composition_masks.size(); ++k)
         {
           // ToDo: different averaging needed?
           elastic_shear_modulus += elastic_shear_moduli[k+1] *volume_fractions[k+1] / fault_volume;
-          RSF_parameter_a += rheology->friction_options.calculate_depth_dependent_a_and_b(position,k+1).first * volume_fractions[k+1] / fault_volume;
-          RSF_parameter_b += rheology->friction_options.calculate_depth_dependent_a_and_b(position,k+1).second * volume_fractions[k+1] / fault_volume;
-          critical_slip_distance += rheology->friction_options.get_critical_slip_distance(position, k+1) * volume_fractions[k+1] / fault_volume;
+          RSF_parameter_a += rheology->friction_models.calculate_depth_dependent_a_and_b(position,k+1).first * volume_fractions[k+1] / fault_volume;
+          RSF_parameter_b += rheology->friction_models.calculate_depth_dependent_a_and_b(position,k+1).second * volume_fractions[k+1] / fault_volume;
+          critical_slip_distance += rheology->friction_models.get_critical_slip_distance(position, k+1) * volume_fractions[k+1] / fault_volume;
         }
       const double G_star = elastic_shear_modulus/(1-nu);
       const double k_param = 2 / numbers::PI * G_star / delta_x;  // this is stiffness
       const double kLaP = (k_param * critical_slip_distance)
-                          / (RSF_parameter_a * pressure * rheology->friction_options.get_effective_friction_factor(position));
+                          / (RSF_parameter_a * pressure * rheology->friction_models.get_effective_friction_factor(position));
       const double xi = 0.25 * std::pow((kLaP - (RSF_parameter_b - RSF_parameter_a) / RSF_parameter_a),2) - kLaP;
       double delta_theta_max = 0;
       if (xi > 0)
         delta_theta_max += std::min(((RSF_parameter_a
-                                      * pressure * rheology->friction_options.get_effective_friction_factor(position))
+                                      * pressure * rheology->friction_models.get_effective_friction_factor(position))
                                      / (k_param * critical_slip_distance
                                         - (RSF_parameter_b - RSF_parameter_a)
-                                        * pressure * rheology->friction_options.get_effective_friction_factor(position))), 0.2);
+                                        * pressure * rheology->friction_models.get_effective_friction_factor(position))), 0.2);
       else
         delta_theta_max += std::min((1 - ((RSF_parameter_b - RSF_parameter_a)
-                                          * pressure * rheology->friction_options.get_effective_friction_factor(position))
+                                          * pressure * rheology->friction_models.get_effective_friction_factor(position))
                                      / (k_param * critical_slip_distance)), 0.2);
 
       // 0 is the initializing value for delta_theta_max, but will lead to problems later on when
@@ -495,7 +495,7 @@ namespace aspect
     ViscoPlastic<dim>::
     compute_min_healing_time_step (const std::vector<double> &composition) const
     {
-      double min_healing_time_step = 0.2 * composition[rheology->friction_options.theta_composition_index];
+      double min_healing_time_step = 0.2 * composition[rheology->friction_models.theta_composition_index];
 
       AssertThrow((std::isinf( min_healing_time_step) || numbers::is_nan( min_healing_time_step)) == false, ExcMessage(
                     " min_healing_time_step needed for the Lapusta time stepping becomes nan or inf. Please "
@@ -506,9 +506,9 @@ namespace aspect
       // So in this case either I make it
       // very large so it does no harm or dont do that, but have an asserthrow because this would remind us that its still a problem?
       // ToDo: circumvent this problem by querying theta on the particle, if particles are used. There, theta will not become negative!
-      AssertThrow(composition[rheology->friction_options.theta_composition_index]>0, ExcMessage(
+      AssertThrow(composition[rheology->friction_models.theta_composition_index]>0, ExcMessage(
                     " min_healing_time_step needed for the Lapusta time stepping becomes negative, because theta is negative. "
-                    "Theta is: " + Utilities::to_string(composition[rheology->friction_options.theta_composition_index])));
+                    "Theta is: " + Utilities::to_string(composition[rheology->friction_models.theta_composition_index])));
       if (min_healing_time_step <= 0)
         min_healing_time_step =  std::numeric_limits<double>::max();
       return min_healing_time_step;
@@ -540,8 +540,8 @@ namespace aspect
       if (rheology->use_elasticity)
         rheology->elastic_rheology.create_elastic_outputs(out);
 
-      if (rheology->friction_options.use_theta())
-        rheology->friction_options.create_friction_outputs(out);
+      if (rheology->friction_models.use_theta())
+        rheology->friction_models.create_friction_outputs(out);
     }
 
 

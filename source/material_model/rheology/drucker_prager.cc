@@ -237,7 +237,7 @@ namespace aspect
                            "Viscosity of the damper that acts in parallel with the plastic viscosity "
                            "to produce mesh-independent behavior at sufficient resolutions. Units: \\si{\\pascal\\second}");
 
-        Rheology::FrictionOptions<dim>::declare_parameters (prm);
+        Rheology::FrictionModels<dim>::declare_parameters (prm);
       }
 
 
