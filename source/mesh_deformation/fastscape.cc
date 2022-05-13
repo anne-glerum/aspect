@@ -137,7 +137,9 @@ namespace aspect
 
           // Load in ratio values.
           ratio_marine_continental.resize(array_size);
-          std::ifstream in_ratio;
+          if (use_marine)
+          {
+            std::ifstream in_ratio;
           in_ratio.open(restart_filename_ratio.c_str());
           if (in_ratio)
             {
@@ -151,6 +153,8 @@ namespace aspect
 
               in_ratio.close();
             }
+          }
+
           // Get the sizes needed for the data table.
           TableIndices<dim> size_idx;
           for (unsigned int d = 0; d < dim; ++d)
@@ -386,6 +390,7 @@ namespace aspect
               std::unique_ptr<double[]> kf (new double[array_size]());
               std::unique_ptr<double[]> kd (new double[array_size]());
               std::unique_ptr<double[]> b (new double[array_size]());
+              std::unique_ptr<double[]> f (new double[array_size]());
               std::vector<double> h_old(array_size);
 
               // The new topography returned by FastScape
@@ -402,6 +407,7 @@ namespace aspect
               const std::string restart_filename = dirname + "fastscape_h_restart.txt";
               const std::string restart_step_filename = dirname + "fastscape_steps_restart.txt";
               const std::string restart_filename_basement = dirname + "fastscape_b_restart.txt";
+              const std::string restart_filename_fraction = dirname + "fastscape_f_restart.txt";
               const std::string restart_filename_ratio = dirname + "fastscape_ratio_restart.txt";
 
 
@@ -537,6 +543,25 @@ namespace aspect
                           in_b.close();
                         }
 
+                        // Load in f values.
+                        std::ifstream in_f;
+                        if (use_marine)
+                        {
+                        in_f.open(restart_filename_fraction.c_str());
+                        if (in_f)
+                        {
+                          int line = 0;
+
+                          while (line < array_size)
+                          {
+                            in_f >> f[line];
+                            line++;
+                          }
+
+                          in_f.close();
+                        }
+                        }
+
                       /*
                        * Now load the fastscape istep at time of restart.
                        * Reinitializing fastscape always resets this to 0, so here
@@ -549,7 +574,6 @@ namespace aspect
                           in_step >> restart_step;
                           in_step.close();
                         }
-
                     }
 
                   // Initialize fastscape with grid and extent.
@@ -568,7 +592,11 @@ namespace aspect
                   fastscape_set_erosional_parameters_(kf.get(), &kfsed, &m, &n, kd.get(), &kdsed, &g, &gsed, &p);
 
                   if (use_marine)
+{
                     fastscape_set_marine_parameters_(&sl, &p1, &p2, &z1, &z2, &r, &l, &kds1, &kds2);
+                    if (restart)
+                      fastscape_init_f_(f.get());
+}
 
                   // Only set the basement if it's a restart
                   if (restart)
@@ -847,7 +875,7 @@ namespace aspect
                 }
               }
 
-              // Write a file to store h, b, step and ratio in case of restart.
+              // Write a file to store h, b, f, step and ratio in case of restart.
               // TODO: there's probably a faster way to write these.
               // Also write a checkpoint on end time,
               // if Checkpoint on termination is set to true.
@@ -864,12 +892,16 @@ namespace aspect
                 std::ofstream out_h(restart_filename.c_str());
                 std::ofstream out_step(restart_step_filename.c_str());
                 std::ofstream out_b(restart_filename_basement.c_str());
+                std::ofstream out_f(restart_filename_fraction.c_str());
                 std::ofstream out_ratio(restart_filename_ratio.c_str());
                 std::stringstream bufferb;
                 std::stringstream bufferh;
+                std::stringstream bufferf;
                 std::stringstream bufferratio;
 
                 fastscape_copy_basement_(b.get());
+                if (use_marine)
+                fastscape_copy_f_(f.get());
 
                 out_step << (istep + restart_step) << "\n";
 
@@ -877,12 +909,20 @@ namespace aspect
                 {
                   bufferh << h[i] << "\n";
                   bufferb << b[i] << "\n";
-                  bufferratio << ratio_marine_continental[i] << "\n";
+                  if (use_marine)
+                  {
+                    bufferf << f[i] << "\n";
+                    bufferratio << ratio_marine_continental[i] << "\n";
+                  }
                 }
 
                 out_h << bufferh.str();
                 out_b << bufferb.str();
+                if (use_marine)
+                  {
+                  out_f << bufferf.str();
                 out_ratio << bufferratio.str();
+                  }
               }
 
               if (make_vtk)

@@ -48,6 +48,8 @@ namespace aspect
     void fastscape_set_dt_(double *dtt);
     // Initialize heights
     void fastscape_init_h_(double *hp);
+    // Initialize silt fraction
+    void fastscape_init_f_(double *f);
     // Parameters for hillslope diffusion, SPL, and enriched SPL (deposition).
     void fastscape_set_erosional_parameters_(double *kkf,const double *kkfsed,const double *mm,const double *nnn,
                                              double *kkd,const double *kkdsed,const double *gg1,const double *gg2,const double *pp);
@@ -72,6 +74,8 @@ namespace aspect
     void fastscape_copy_h_(double *hp);
     // Copy the basement array from FastScape back into ASPECT.
     void fastscape_copy_basement_(double *b);
+    // Copy the silt fraction array from FastScape back into ASPECT.
+    void fastscape_copy_f_(double *f);
     // Initialize stratigrapy, called once and handles visualization from there on.
     void fastscape_strati_(const int *nstepp, const int *nreflectorp, int *nfreqp, const double *vexp);
     //void folder_output_(int *length, int *astep, const char *c);
