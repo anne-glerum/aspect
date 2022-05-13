@@ -571,7 +571,7 @@ namespace aspect
                     fastscape_set_marine_parameters_(&sl, &p1, &p2, &z1, &z2, &r, &l, &kds1, &kds2);
 
                   // Only set the basement if it's a restart
-                  if (current_timestep != 1)
+                  if (restart)
                     fastscape_set_basement_(b.get());
                 }
               else
@@ -743,40 +743,7 @@ namespace aspect
               int istep = 0;
               fastscape_get_step_(&istep);
 
-              // Write a file to store h, b, step and ratio in case of restart.
-              // TODO: there's probably a faster way to write these.
-              // Also write a checkpoint on end time,
-              // if Checkpoint on termination is set to true.
-              // TODO why get_time()+a_dt? If it's the end time, we should snapshot now?
-              if (((this->get_parameters().checkpoint_time_secs == 0) &&
-                   (this->get_parameters().checkpoint_steps > 0) &&
-                   (current_timestep % this->get_parameters().checkpoint_steps == 0)) ||
-                  (this->get_time()+a_dt >= end_time && this->get_time_stepping_manager().need_checkpoint_on_terminate()))
-                {
-                  this->get_pcout() << "      Writing FastScape snapshot..." << std::endl;
-                  std::ofstream out_h (restart_filename.c_str());
-                  std::ofstream out_step (restart_step_filename.c_str());
-                  std::ofstream out_b (restart_filename_basement.c_str());
-                  std::ofstream out_ratio(restart_filename_ratio.c_str());
-                  std::stringstream bufferb;
-                  std::stringstream bufferh;
-                  std::stringstream bufferratio;
-
-                  fastscape_copy_basement_(b.get());
-
-                  out_step << (istep+restart_step) << "\n";
-
-                  for (int i=0; i<array_size; i++)
-                    {
-                      bufferh << h[i] << "\n";
-                      bufferb << b[i] << "\n";
-                      bufferratio << ratio_marine_continental[i] << "\n";
-                    }
-
-                  out_h << bufferh.str();
-                  out_b << bufferb.str();
-                  out_ratio << bufferratio.str();
-                }
+              
 
               // Find a fastscape timestep that is below our maximum timestep.
               int steps = nstep;
@@ -855,6 +822,68 @@ namespace aspect
                 this->get_pcout() << "      FastScape runtime... " << round(r_time*1000)/1000 << "s" << std::endl;
               }
 
+              // Find out our velocities from the change in height.
+              // Where V is a vector of array size that exists on all processors.
+              // Also store the new topography and compute the ratio of marine to continental sediments
+              // before we save this ratio for restarts.
+              for (int i = 0; i < array_size; i++)
+              {
+                V[i] = (h[i] - h_old[i]) / a_dt;
+                topography[i] = h[i];
+                // Compute the ratio between marine sediments and continental sediments.
+                // The height of marine sediments is easy to calculate from the stored topography_old at the beginning
+                // of the timestep and topography_marine, which is computed based on the background marine sedimentation rate
+                // and the topography_old with respect to the sea level. The new topography also includes an uplift
+                // from ASPECT's vertical velocity and the deposition of sediments. If we're above sea level, or the topography
+                // has only decreased, the ratio is set to 0.
+                if (topography_marine[i] - topography_old[i] > 0. &&
+                    topography[i] - (vz[i] * a_dt) - topography_old[i] >= 0.)
+                {
+                  ratio_marine_continental[i] = (topography_marine[i] - topography_old[i]) / (topography[i] - topography_old[i] - (vz[i] * a_dt));
+                }
+                else
+                {
+                  ratio_marine_continental[i] = 0.;
+                }
+              }
+
+              // Write a file to store h, b, step and ratio in case of restart.
+              // TODO: there's probably a faster way to write these.
+              // Also write a checkpoint on end time,
+              // if Checkpoint on termination is set to true.
+              // TODO why get_time()+a_dt? If it's the end time, we should snapshot now?
+              // current_timestep+1 because when the rest of ASPECT checks whether
+              // it should create a snapshot (at the end of a timestep), 
+              // the timestep_number has already been advanced.
+              if (((this->get_parameters().checkpoint_time_secs == 0) &&
+                   (this->get_parameters().checkpoint_steps > 0) &&
+                   ((current_timestep+1) % this->get_parameters().checkpoint_steps == 0)) ||
+                  (this->get_time() + a_dt >= end_time && this->get_time_stepping_manager().need_checkpoint_on_terminate()))
+              {
+                this->get_pcout() << "      Writing FastScape snapshot..." << std::endl;
+                std::ofstream out_h(restart_filename.c_str());
+                std::ofstream out_step(restart_step_filename.c_str());
+                std::ofstream out_b(restart_filename_basement.c_str());
+                std::ofstream out_ratio(restart_filename_ratio.c_str());
+                std::stringstream bufferb;
+                std::stringstream bufferh;
+                std::stringstream bufferratio;
+
+                fastscape_copy_basement_(b.get());
+
+                out_step << (istep + restart_step) << "\n";
+
+                for (int i = 0; i < array_size; i++)
+                {
+                  bufferh << h[i] << "\n";
+                  bufferb << b[i] << "\n";
+                  bufferratio << ratio_marine_continental[i] << "\n";
+                }
+
+                out_h << bufferh.str();
+                out_b << bufferb.str();
+                out_ratio << bufferratio.str();
+              }
 
               if (make_vtk)
                 {
@@ -869,29 +898,7 @@ namespace aspect
                   fastscape_destroy_();
                 }
 
-              // Find out our velocities from the change in height.
-              // Where V is a vector of array size that exists on all processors.
-              // Also store the new topography.
-              for (int i=0; i<array_size; i++)
-                {
-                  V[i] = (h[i] - h_old[i])/a_dt;
-                  topography[i] = h[i];
-                  // Compute the ratio between marine sediments and continental sediments.
-                  // The height of marine sediments is easy to calculate from the stored topography_old at the beginning
-                  // of the timestep and topography_marine, which is computed based on the background marine sedimentation rate
-                  // and the topography_old with respect to the sea level. The new topography also includes an uplift
-                  // from ASPECT's vertical velocity and the deposition of sediments. If we're above sea level, or the topography
-                  // has only decreased, the ratio is set to 0.
-                  if (topography_marine[i] - topography_old[i] > 0. &&
-                      topography[i]-(vz[i]*a_dt) - topography_old[i] >= 0.)
-                    {
-                      ratio_marine_continental[i] = (topography_marine[i] - topography_old[i]) / (topography[i]-topography_old[i]-(vz[i]*a_dt));
-                    }
-                  else
-                    {
-                      ratio_marine_continental[i] = 0.;
-                    }
-                }
+
 
               MPI_Bcast(&V[0], array_size, MPI_DOUBLE, 0, this->get_mpi_communicator());
               MPI_Bcast(&ratio_marine_continental[0], array_size, MPI_DOUBLE, 0, this->get_mpi_communicator());
