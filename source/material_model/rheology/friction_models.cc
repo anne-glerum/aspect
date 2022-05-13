@@ -368,7 +368,48 @@ namespace aspect
                                                               average_elastic_shear_moduli, use_elasticity,
                                                               use_reference_strainrate, dte);
 
-                const double theta_old = in.composition[q][theta_composition_index];
+                // the procedure to get the value of theta_old, so theta at the previous
+                // timestep is copied and adapted from elasticity.cc
+                // ToDo: This function comopute_theta_reaction_terms is called from within a for 
+                // loop over n_evaluation_points, while the lines from elasticity.cc again have
+                // a for-loop over n_evaluation points.
+                // Am I doing the right thing here?
+                // Where are duplicates of codes and loops that could be removed? 
+
+                // Get velocity gradients of the current timestep $t+dt=t+dte$
+                // and the compositions from the previous timestep $t$.
+                // Assume velocity and composition use the same quadrature.
+                std::vector<Point<dim>> quadrature_positions(in.n_evaluation_points());
+                for (unsigned int i = 0; i < in.n_evaluation_points(); ++i)
+                  quadrature_positions[i] = this->get_mapping().transform_real_to_unit_cell(in.current_cell, in.position[i]);
+
+                // Get the compositional fields from the previous timestep $t$,
+                // but only those that represent the stress tensor.
+                // The 'old_solution' has been updated to the full stress tensor
+                // of time $t$ by the iterator splitting step at the beginning
+                // of the current timestep.
+                std::vector<double> old_solution_values(this->get_fe().dofs_per_cell);
+                in.current_cell->get_dof_values(this->get_old_solution(),
+                                                old_solution_values.begin(),
+                                                old_solution_values.end());
+
+                // Only create the evaluator the first time we get here
+                // We assume (and assert in parse_parameters) that the n_independent_components
+                // tensor components are the first fields in the correct order.
+                if (!evaluator_composition)
+                  evaluator_composition.reset(new FEPointEvaluation<n_independent_components, dim>(this->get_mapping(),
+                                              this->get_fe(),
+                                              update_values,
+                                              this->introspection().component_indices.compositional_fields[0]));
+
+                // Initialize the evaluator for the composition values
+                evaluator_composition->reinit(in.current_cell, quadrature_positions);
+                evaluator_composition->evaluate(old_solution_values,
+                                                EvaluationFlags::values);
+
+                // Get the composition value from the evaluator
+                const double theta_old = dealii::internal::FEPointEvaluation::EvaluatorTypeTraits<dim, n_independent_components, double>::access(evaluator_composition->get_value(q), theta_composition_index);
+
                 double current_theta = 0.;
 
                 // ToDo: not sure I should use some other sort of averaging

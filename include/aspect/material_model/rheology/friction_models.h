@@ -30,6 +30,8 @@
 #include <aspect/material_model/rheology/drucker_prager.h>
 #include <deal.II/fe/component_mask.h>
 
+#include <deal.II/matrix_free/fe_point_evaluation.h>
+
 namespace aspect
 {
   namespace MaterialModel
@@ -377,6 +379,18 @@ namespace aspect
            * Slope for the log linear slip-rate dependence of the critical slip distance.
            */
           double slope_s_for_L;
+
+          // The following lines are copied from elasticity.h
+          /**
+           * We cache the evaluator that is necessary to evaluate the velocity
+           * gradients and the old compositions. They are required to compute the value of theta_old, but
+           * are not provided by the material model.
+           * By caching the evaluators, we can avoid recreating it every time we
+           * need it.
+           */
+          mutable std::unique_ptr<FEPointEvaluation<dim, dim>> evaluator;
+          static constexpr unsigned int n_independent_components = dim == 2 ? 3 : 6;
+          mutable std::unique_ptr<FEPointEvaluation<n_independent_components, dim>> evaluator_composition;
       };
     }
   }
