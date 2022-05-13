@@ -411,22 +411,26 @@ namespace aspect
               // The visualization is 1 step behind the current timestep.
               int visualization_step = 0;
               // At the last timestep (requested endtime), we also create VTK output.
+              //      if ((this->get_time() < last_output_time + output_interval)
+              // && (this->get_timestep_number() < last_output_timestep + maximum_timesteps_between_outputs)
+              // && (this->get_timestep_number() != 0))
               if (this->get_time() >= last_output_time + output_interval || this->get_time()+a_dt >= end_time)
                 {
-                  // Don't create a visualization file on a restart.
-                  if (!restart)
-                    {
+                  // Don't create a visualization file on a restart
+                  //if (!restart)
+                  //  {
                       make_vtk = 1;
                       if (use_strat)
                         {
-                          int visualization_step_strati = 1;
                           make_vtk_strati = 1;
-                          // Folder_output (k, istep, foldername, do/do not produce vtk output)
-                          folder_output_(&length, &visualization_step_strati, c, &make_vtk_strati);
                         }
-                    }
+                  //  }
+                    // If it is a restart, we'll have to set the folder as well
+                    int visualization_step_strati = 1;
+                    // Folder_output (k, istep, foldername, do/do not produce vtk output)
+                    folder_output_(&length, &visualization_step_strati, c, &make_vtk_strati);
 
-                  if (output_interval > 0)
+                    if (output_interval > 0)
                     {
                       // We need to find the last time output was supposed to be written.
                       // this is the last_output_time plus the largest positive multiple
@@ -546,7 +550,6 @@ namespace aspect
                           in_step.close();
                         }
 
-                      restart = false;
                     }
 
                   // Initialize fastscape with grid and extent.
@@ -744,6 +747,7 @@ namespace aspect
               // TODO: there's probably a faster way to write these.
               // Also write a checkpoint on end time,
               // if Checkpoint on termination is set to true.
+              // TODO why get_time()+a_dt? If it's the end time, we should snapshot now?
               if (((this->get_parameters().checkpoint_time_secs == 0) &&
                    (this->get_parameters().checkpoint_steps > 0) &&
                    (current_timestep % this->get_parameters().checkpoint_steps == 0)) ||
@@ -821,11 +825,18 @@ namespace aspect
                   {
                     // Folder_output (k, istep, foldername, do/do not produce vtk output) where 1 = true and 0 = false
                     folder_output_(&length, &visualization_step, c, &make_vtk_strati);
-                    if (current_timestep == 1)
+                    // When we restart we should call this function again
+                    if (current_timestep == 1 || restart)
+                   { 
+                      this->get_pcout() << "   Initializing FastScape Stratigraphy... " << std::endl;
                       fastscape_strati_(&nstepp, &nreflectorp, &steps, &vexp);
+                   }
                   }
+                  // We have done everything necessary after a restart, so now reset
+                  // to false. 
+                  restart = false;
 
-                do
+                  do
                   {
                     // Execute step, this increases timestep counter
                     fastscape_execute_step_();
@@ -1316,6 +1327,7 @@ namespace aspect
     void FastScape<dim>::serialize(Archive &ar, const unsigned int)
     {
       ar &last_output_time;
+      &last_output_timestep;
       //   &ratio_marine_continental_function;
     }
 
@@ -1667,6 +1679,7 @@ namespace aspect
           output_interval = prm.get_double ("Time between graphical output");
           if (this->convert_output_to_years())
             output_interval *= year_in_seconds;
+          output_interval_steps = prm.get_integer("Time steps between graphical output");
         }
         prm.leave_subsection();
       }

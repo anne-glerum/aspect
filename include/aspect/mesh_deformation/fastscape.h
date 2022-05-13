@@ -291,6 +291,13 @@ namespace aspect
       // Precision value for node movement.
       double precision;
 
+      /**
+       * Maximum number of steps between the generation of graphical output.
+       * This parameter
+       * is read from the input file and consequently is not part of the
+       * state that needs to be saved and restored.
+       */
+      unsigned int output_interval_steps;
 
       /**
        * Interval between the generation of graphical output. This parameter
@@ -304,6 +311,7 @@ namespace aspect
        * to be produced. Used to check for the next necessary output time.
        */
       mutable double last_output_time;
+      mutable double last_output_timestep;
 
       /**
        * The ratio between marine and continental sediments.
