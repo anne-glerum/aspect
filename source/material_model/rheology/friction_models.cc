@@ -361,7 +361,7 @@ namespace aspect
             const double fault_volume = get_fault_volume(volume_fractions);
             if (fault_volume > 0.5)
               {
-                // q is from a for-loop through n_evaluation_points
+                // q is from a for-loop over n_evaluation_points
                 const double current_edot_ii =
                   MaterialUtilities::compute_current_edot_ii (in.composition[q], ref_strain_rate,
                                                               min_strain_rate, in.strain_rate[q],
@@ -370,7 +370,7 @@ namespace aspect
 
                 // the procedure to get the value of theta_old, so theta at the previous
                 // timestep is copied and adapted from elasticity.cc
-                // ToDo: This function comopute_theta_reaction_terms is called from within a for 
+                // ToDo: This function compute_theta_reaction_terms is called from within a for 
                 // loop over n_evaluation_points, while the lines from elasticity.cc again have
                 // a for-loop over n_evaluation points.
                 // Am I doing the right thing here?
@@ -384,9 +384,8 @@ namespace aspect
                   quadrature_positions[i] = this->get_mapping().transform_real_to_unit_cell(in.current_cell, in.position[i]);
 
                 // Get the compositional fields from the previous timestep $t$,
-                // but only those that represent the stress tensor.
-                // The 'old_solution' has been updated to the full stress tensor
-                // of time $t$ by the iterator splitting step at the beginning
+                // but we only need that one representing the state variable theta.
+                // The 'old_solution' has been updated at the beginning
                 // of the current timestep.
                 std::vector<double> old_solution_values(this->get_fe().dofs_per_cell);
                 in.current_cell->get_dof_values(this->get_old_solution(),
@@ -394,10 +393,8 @@ namespace aspect
                                                 old_solution_values.end());
 
                 // Only create the evaluator the first time we get here
-                // We assume (and assert in parse_parameters) that the n_independent_components
-                // tensor components are the first fields in the correct order.
                 if (!evaluator_composition)
-                  evaluator_composition.reset(new FEPointEvaluation<n_independent_components, dim>(this->get_mapping(),
+                  evaluator_composition.reset(new FEPointEvaluation<this->n_compositional_fields(), dim>(this->get_mapping(),
                                               this->get_fe(),
                                               update_values,
                                               this->introspection().component_indices.compositional_fields[0]));
@@ -408,7 +405,7 @@ namespace aspect
                                                 EvaluationFlags::values);
 
                 // Get the composition value from the evaluator
-                const double theta_old = dealii::internal::FEPointEvaluation::EvaluatorTypeTraits<dim, n_independent_components, double>::access(evaluator_composition->get_value(q), theta_composition_index);
+                const double theta_old = dealii::internal::FEPointEvaluation::EvaluatorTypeTraits<dim, this->n_compositional_fields(), double>::access(evaluator_composition->get_value(q), theta_composition_index);
 
                 double current_theta = 0.;
 
