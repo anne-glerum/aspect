@@ -370,11 +370,11 @@ namespace aspect
 
                 // the procedure to get the value of theta_old, so theta at the previous
                 // timestep is copied and adapted from elasticity.cc
-                // ToDo: This function compute_theta_reaction_terms is called from within a for 
+                // ToDo: This function compute_theta_reaction_terms is called from within a for
                 // loop over n_evaluation_points, while the lines from elasticity.cc again have
                 // a for-loop over n_evaluation points.
                 // Am I doing the right thing here?
-                // Where are duplicates of codes and loops that could be removed? 
+                // Where are duplicates of codes and loops that could be removed?
 
                 // Get velocity gradients of the current timestep $t+dt=t+dte$
                 // and the compositions from the previous timestep $t$.
@@ -394,10 +394,10 @@ namespace aspect
 
                 // Only create the evaluator the first time we get here
                 if (!evaluator_composition)
-                  evaluator_composition.reset(new FEPointEvaluation<this->n_compositional_fields(), dim>(this->get_mapping(),
-                                              this->get_fe(),
-                                              update_values,
-                                              this->introspection().component_indices.compositional_fields[0]));
+                  evaluator_composition.reset(new FEPointEvaluation<1, dim>(this->get_mapping(),
+                                                                            this->get_fe(),
+                                                                            update_values,
+                                                                            this->introspection().component_indices.compositional_fields[theta_composition_index]));
 
                 // Initialize the evaluator for the composition values
                 evaluator_composition->reinit(in.current_cell, quadrature_positions);
@@ -405,7 +405,7 @@ namespace aspect
                                                 EvaluationFlags::values);
 
                 // Get the composition value from the evaluator
-                const double theta_old = dealii::internal::FEPointEvaluation::EvaluatorTypeTraits<dim, this->n_compositional_fields(), double>::access(evaluator_composition->get_value(q), theta_composition_index);
+                const double theta_old = dealii::internal::FEPointEvaluation::EvaluatorTypeTraits<dim, 1, double>::access(evaluator_composition->get_value(q), theta_composition_index);
 
                 double current_theta = 0.;
 
