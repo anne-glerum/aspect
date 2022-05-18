@@ -406,7 +406,6 @@ namespace aspect
 
                 // Get the composition value from the evaluator
                 const double theta_old = dealii::internal::FEPointEvaluation::EvaluatorTypeTraits<dim, 1, double>::access(evaluator_composition->get_value(q), theta_composition_index);
-
                 double current_theta = 0.;
 
                 // ToDo: not sure I should use some other sort of averaging
@@ -423,6 +422,7 @@ namespace aspect
                 else
                   current_theta += compute_theta(theta_old, current_edot_ii,
                                                  in.current_cell->extent_in_direction(0), critical_slip_distance);
+
                 out.reaction_terms[q][theta_composition_index] = current_theta - theta_old;
               }
             else
@@ -549,7 +549,9 @@ namespace aspect
       FrictionModels<dim>::declare_parameters (ParameterHandler &prm)
       {
         prm.declare_entry ("Friction mechanism", "none",
-                           Patterns::Selection("none|dynamic friction|function"),
+                           Patterns::Selection("none|dynamic friction|function|rate and state dependent friction|"
+                                               "regularized rate and state dependent friction|steady state rate and state dependent friction|"
+                                               "slip rate dependent rate and state dependent friction|rate and state dependent friction plus linear slip weakening"),
                            "Whether to make the friction angle dependent on strain rate or not. This rheology "
                            "is intended to be used together with the visco-plastic rheology model."
                            "\n\n"
@@ -858,15 +860,15 @@ namespace aspect
           friction_mechanism = dynamic_friction;
         else if (prm.get ("Friction mechanism") == "function")
           friction_mechanism = function;
-        else if (prm.get ("Friction dependence mechanism") == "rate and state dependent friction")
+        else if (prm.get ("Friction mechanism") == "rate and state dependent friction")
           friction_mechanism = rate_and_state_dependent_friction;
-        else if (prm.get ("Friction dependence mechanism") == "rate and state dependent friction plus linear slip weakening")
+        else if (prm.get ("Friction mechanism") == "rate and state dependent friction plus linear slip weakening")
           friction_mechanism = rate_and_state_dependent_friction_plus_linear_slip_weakening;
-        else if (prm.get ("Friction dependence mechanism") == "slip rate dependent rate and state dependent friction")
+        else if (prm.get ("Friction mechanism") == "slip rate dependent rate and state dependent friction")
           friction_mechanism = slip_rate_dependent_rate_and_state_dependent_friction;
-        else if (prm.get ("Friction dependence mechanism") == "regularized rate and state dependent friction")
+        else if (prm.get ("Friction mechanism") == "regularized rate and state dependent friction")
           friction_mechanism = regularized_rate_and_state_dependent_friction;
-        else if (prm.get ("Friction dependence mechanism") == "steady state rate and state dependent friction")
+        else if (prm.get ("Friction mechanism") == "steady state rate and state dependent friction")
           friction_mechanism = steady_state_rate_and_state_dependent_friction;
         else
           AssertThrow(false, ExcMessage("Not a valid friction mechanism option!"));
@@ -973,8 +975,9 @@ namespace aspect
         prm.leave_subsection();
 
 
-        if ((prm.get ("Friction dependence mechanism") != "none")
-            && (prm.get ("Friction dependence mechanism") != "dynamic friction"))
+        if ((prm.get ("Friction mechanism") != "none")
+            && (prm.get ("Friction mechanism") != "dynamic friction")
+            && (prm.get ("Friction mechanism") != "function"))
           {
             prm.enter_subsection("Critical slip distance function");
             try
