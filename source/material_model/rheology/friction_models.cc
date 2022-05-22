@@ -178,7 +178,9 @@ namespace aspect
               // x-direction is representative of the cell size.
               // TODO: In case of mesh deformation this length might not be representative
               double cellsize = 1.;
-              if (current_cell.state() == IteratorState::valid)
+              // Only compute RSF for materials that are indicated as using RSF in the input file,
+              // else just return the friction angle as it is
+              if (current_cell.state() == IteratorState::valid && RSF_composition_masks[volume_fraction_index-1])
                 {
                   cellsize = current_cell->extent_in_direction(0);
 
@@ -265,6 +267,7 @@ namespace aspect
                                 "rate-and-state like friction, don't forget to check on a,b, and the critical slip distance, or theta."
                                 "\n a is: "+  Utilities::to_string(rate_and_state_parameter_a) + ", b is: "
                                 + Utilities::to_string(rate_and_state_parameter_b)+ ", L is: " +  Utilities::to_string(critical_slip_distance) +
+                                ",\n the volume_fraction_index is: " + Utilities::to_string(volume_fraction_index) +
                                 ",\n friction angle [RAD] is: "+ Utilities::to_string(current_friction)+", friction coeff is: "+Utilities::to_string(mu)+
                                 ",\n theta is: "+ Utilities::to_string(theta)+", current edot_ii is: "
                                 + Utilities::to_string(current_edot_ii)+ ".\n The position is:\n dir 0 = "+ Utilities::to_string(coords[0])+
@@ -280,6 +283,8 @@ namespace aspect
                     current_friction = std::max(current_friction, 1e-30);
                   return current_friction;
                 }
+              else
+                return static_friction_angle;
               break;
             }
           }
@@ -359,6 +364,7 @@ namespace aspect
             && in.current_cell.state() == IteratorState::valid)
           {
             const double fault_volume = get_fault_volume(volume_fractions);
+            // ToDo: make an input parameter, how much fault there needs to be?
             if (fault_volume > 0.5)
               {
                 // q is from a for-loop over n_evaluation_points

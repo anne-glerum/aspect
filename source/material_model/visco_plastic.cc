@@ -318,12 +318,11 @@ namespace aspect
                   const double dte = rheology->elastic_rheology.elastic_timestep();
                   rheology->friction_models.compute_theta_reaction_terms(i, volume_fractions, in, get_min_strain_rate(), rheology->ref_strain_rate, rheology->use_elasticity,
                                                                          use_reference_strainrate, average_elastic_shear_moduli[i], dte, out);
+
+                  // if rate and state friction is used, fill the additional output fields
+                  rheology->friction_models.fill_friction_outputs(i,volume_fractions,in,out,current_edot_ii_for_friction_output);
                 }
             }
-
-          // if rate and state friction is used, fill the additional output fields
-          if (rheology->friction_models.use_theta())
-            rheology->friction_models.fill_friction_outputs(i,volume_fractions,in,out,current_edot_ii_for_friction_output);
         }
 
       // If we use the full strain tensor, compute the change in the individual tensor components.
