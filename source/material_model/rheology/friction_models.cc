@@ -190,17 +190,17 @@ namespace aspect
                   double critical_slip_distance = get_critical_slip_distance(position,volume_fraction_index);
 
                   // the state variable theta is taken from the current compositional field theta
-                  double theta =  composition[theta_composition_index];
+                  // double theta =  composition[theta_composition_index];
                   // theta is cut to be positive to account for diffusion
                   // ToDo: Do we want to cut theta or do we want the assert? For now I guess the assert
                   // to be sure, we are doing the right thing?
-                  // double theta = std::max(composition[theta_composition_index],1e-50);
-                  AssertThrow((theta > 0),
+                  double theta = std::max(composition[theta_composition_index],1e-50);
+                  /*AssertThrow((theta > 0),
                          ExcMessage("Current theta within 'compute_friction_angle' got smaller / equal zero. "
                                     "This is unphysical. A possible solution, if you are not already doing "
                                     "that anyway, is to track theta on particles. "
                                     "The value of theta is: "
-                                    +  Utilities::to_string(theta)));
+                                    +  Utilities::to_string(theta))); */
 
                   // ToDo: Option: slip rate dependent regularized RSF
                   if (friction_mechanism == slip_rate_dependent_rate_and_state_dependent_friction)
