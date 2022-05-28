@@ -190,8 +190,12 @@ namespace aspect
                   double critical_slip_distance = get_critical_slip_distance(position,volume_fraction_index);
 
                   // the state variable theta is taken from the current compositional field theta
-                  double theta = composition[theta_composition_index];
-                  Assert((theta > 0),
+                  double theta =  composition[theta_composition_index];
+                  // theta is cut to be positive to account for diffusion
+                  // ToDo: Do we want to cut theta or do we want the assert? For now I guess the assert
+                  // to be sure, we are doing the right thing?
+                  // double theta = std::max(composition[theta_composition_index],1e-50);
+                  AssertThrow((theta > 0),
                          ExcMessage("Current theta within 'compute_friction_angle' got smaller / equal zero. "
                                     "This is unphysical. A possible solution, if you are not already doing "
                                     "that anyway, is to track theta on particles. "
@@ -430,11 +434,6 @@ namespace aspect
                                                  in.current_cell->extent_in_direction(0), critical_slip_distance);
 
                 out.reaction_terms[q][theta_composition_index] = current_theta - theta_old;
-              }
-            else
-              {
-                // ToDo: Do I need to set this? Or is it zero by default?
-                out.reaction_terms[q][theta_composition_index] = 0.;
               }
           }
       }
