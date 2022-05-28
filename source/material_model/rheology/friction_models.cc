@@ -180,7 +180,9 @@ namespace aspect
               double cellsize = 1.;
               // Only compute RSF for materials that are indicated as using RSF in the input file,
               // else just return the friction angle as it is
-              if (current_cell.state() == IteratorState::valid && RSF_composition_masks[volume_fraction_index-1])
+              if (current_cell.state() == IteratorState::valid
+                  && volume_fraction_index > 0
+                  && RSF_composition_masks[volume_fraction_index-1])
                 {
                   cellsize = current_cell->extent_in_direction(0);
 
