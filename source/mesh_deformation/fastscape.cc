@@ -413,7 +413,8 @@ namespace aspect
 
               // Determine whether to create a VTK file this timestep.
               bool make_vtk = 0;
-              int make_vtk_strati = 0;
+              // TODO Can perhaps be removed
+              int make_vtk_strati = 1;
               // The visualization is 1 step behind the current timestep.
               int visualization_step = 0;
               // At the last timestep (requested endtime), we also create VTK output.
@@ -824,7 +825,25 @@ namespace aspect
                     if (current_timestep == 1 || restart)
                    { 
                       this->get_pcout() << "   Initializing FastScape Stratigraphy... " << std::endl;
-                      fastscape_strati_(&nstepp, &nreflectorp, &steps, &vexp);
+                      // Arguments: the total nr of FastScape timesteps,
+                      // the total nr of reflectors,
+                      // the frequency at which reflector output should be created,
+                      // the vertical exaggeration (-1=1=do nothing).
+                      // Approximate the output frequency by taking the total
+                      // model time divided by the output interval times the nr of
+                      // FastScape timesteps per ASPECT timestep. This assumes that the number
+                      // of FastScape timesteps per ASPECT timestep is constant and equal
+                      // to the user-supplied nstep (it could be bigger when the ASPECT timestep grows
+                      // and the maximum FastScape timestep is reached).
+                      // In case the ASPECT nr of output steps gives a larger frequency, i.e.
+                      // a smaller nr of steps between each output, then use that nr.
+                      // NB: strati_output_frequency is a bit of a misnomer here, because it's 
+                      // not a frequency but an interval, but the name agrees
+                      // with the FastScape parameter name.
+                      int strati_output_frequency = nstepp / int(end_time / output_interval);
+                      if (output_interval_steps * nstep < strati_output_frequency)
+                        strati_output_frequency = output_interval_steps * nstep;
+                      fastscape_strati_(&nstepp, &nreflectorp, &strati_output_frequency, &vexp);
                    }
                   }
                   // We have done everything necessary after a restart, so now reset
