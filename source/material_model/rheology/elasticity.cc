@@ -25,10 +25,7 @@
 #include <deal.II/base/parameter_handler.h>
 #include <aspect/utilities.h>
 #include <aspect/material_model/visco_plastic.h>
-<<<<<<< HEAD
 #include <aspect/material_model/viscoelastic.h>
-=======
->>>>>>> 1a4bd604e... Update parse_parameters
 
 #include <deal.II/base/quadrature_lib.h>
 
