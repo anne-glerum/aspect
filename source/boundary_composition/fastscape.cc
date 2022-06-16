@@ -61,6 +61,8 @@ namespace aspect
           AssertThrow(using_fastscape, ExcMessage("The boundary composition plugin FastScape requires the mesh deformation plugin FastScape. "));
           AssertThrow(this->introspection().compositional_name_exists("ratio_marine_continental_sediment"),
                       ExcMessage("The boundary composition plugin FastScape requires a compositional field called ratio_marine_continental_sediment."));
+          AssertThrow(this->introspection().compositional_name_exists("silt_fraction"),
+                      ExcMessage("The boundary composition plugin FastScape requires a compositional field called silt_fraction."));
         }
     }
 
@@ -79,14 +81,15 @@ namespace aspect
         return 0.;
 
       const types::boundary_id top_boundary = this->get_geometry_model().translate_symbolic_boundary_name_to_id ("top");
-      const unsigned int sediment_field = this->introspection().compositional_index_for_name("ratio_marine_continental_sediment");
+      const unsigned int marine_ratio_field = this->introspection().compositional_index_for_name("ratio_marine_continental_sediment");
+      const unsigned int silt_fraction_field = this->introspection().compositional_index_for_name("silt_fraction");
 
       // Only set composition on the top boundary,
       // and only for the field 'ratio_marine_continental_sediment'
-      if (boundary_indicator != top_boundary || compositional_field != sediment_field)
+      if (boundary_indicator != top_boundary || (compositional_field != marine_ratio_field && compositional_field != silt_fraction_field))
         return 0.;
 
-      double ratio = 0.;
+      double result = 0.;
 
       const std::map<types::boundary_id,std::vector<std::unique_ptr<aspect::MeshDeformation::Interface<dim>>>> &mesh_deformation_objects
         = this->get_mesh_deformation_handler().get_active_mesh_deformation_models();
@@ -99,12 +102,15 @@ namespace aspect
               for (const auto &model : boundary_and_deformation_objects.second)
                 if (Plugins::plugin_type_matches<const MeshDeformation::FastScape<dim>>(*model))
                   {
-                    ratio = Plugins::get_plugin_as_type<const MeshDeformation::FastScape<dim>>(*model).get_marine_to_continental_sediment_ratio(position);
+                    if (compositional_field == marine_ratio_field)
+                      result = Plugins::get_plugin_as_type<const MeshDeformation::FastScape<dim>>(*model).get_marine_to_continental_sediment_ratio(position);
+                    else if (compositional_field == silt_fraction_field)
+                      result = Plugins::get_plugin_as_type<const MeshDeformation::FastScape<dim>>(*model).get_silt_fraction(position);
                   }
             }
         }
 
-      return ratio;
+      return result;
     }
 
     template <int dim>
@@ -174,7 +180,7 @@ namespace aspect
     ASPECT_REGISTER_BOUNDARY_COMPOSITION_MODEL(FastScape,
                                                "fastscape",
                                                "A model in which the composition at the boundary "
-                                               "for a specific field called 'marine_continental_ratio' "
-                                               "is set by the FastScape mesh deformation plugin. ")
+                                               "for two specific field called 'marine_continental_ratio' "
+                                               "and 'silt_fraction' are set by the FastScape mesh deformation plugin. ")
   }
 }
