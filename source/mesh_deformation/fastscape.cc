@@ -144,37 +144,37 @@ namespace aspect
           // Load in ratio values.
           ratio_marine_continental.resize(array_size);
           if (use_marine)
-          {
-            std::ifstream in_ratio;
-            in_ratio.open(restart_filename_ratio.c_str());
-          if (in_ratio)
             {
-              int line = 0;
-
-              while (line < array_size)
+              std::ifstream in_ratio;
+              in_ratio.open(restart_filename_ratio.c_str());
+              if (in_ratio)
                 {
-                  in_ratio >> ratio_marine_continental[line];
-                  line++;
+                  int line = 0;
+
+                  while (line < array_size)
+                    {
+                      in_ratio >> ratio_marine_continental[line];
+                      line++;
+                    }
+
+                  in_ratio.close();
                 }
 
-              in_ratio.close();
-            }
-
-            std::ifstream in_f;
-            in_f.open(restart_filename_f.c_str());
-          if (in_f)
-            {
-              int line = 0;
-
-              while (line < array_size)
+              std::ifstream in_f;
+              in_f.open(restart_filename_f.c_str());
+              if (in_f)
                 {
-                  in_f >> silt_fraction[line];
-                  line++;
-                }
+                  int line = 0;
 
-              in_f.close();
+                  while (line < array_size)
+                    {
+                      in_f >> silt_fraction[line];
+                      line++;
+                    }
+
+                  in_f.close();
+                }
             }
-          }
 
           // Get the sizes needed for the data table.
           TableIndices<dim> size_idx;
@@ -261,15 +261,15 @@ namespace aspect
                 }
 
             }
-            // Store the marine to continental sediment ratio
-            ratio_marine_continental_function = new Functions::InterpolatedUniformGridData<dim>(grid_extent,
-                                                                                                table_intervals,
-                                                                                                ratio_marine_continental_table);
+          // Store the marine to continental sediment ratio
+          ratio_marine_continental_function = new Functions::InterpolatedUniformGridData<dim>(grid_extent,
+              table_intervals,
+              ratio_marine_continental_table);
 
-            // Store the marine to continental sediment ratio
-            silt_fraction_function = new Functions::InterpolatedUniformGridData<dim>(grid_extent,
-                                                                                                table_intervals,
-                                                                                                silt_fraction_table);
+          // Store the marine to continental sediment ratio
+          silt_fraction_function = new Functions::InterpolatedUniformGridData<dim>(grid_extent,
+                                                                                   table_intervals,
+                                                                                   silt_fraction_table);
         }
 
 
@@ -408,6 +408,7 @@ namespace aspect
 
           // The ratio between marine and continental sediments
           ratio_marine_continental.resize(array_size);
+          silt_fraction.resize(array_size);
 
           // Run fastscape on single processor.
           if (Utilities::MPI::this_mpi_process(this->get_mpi_communicator()) == 0)
@@ -460,18 +461,18 @@ namespace aspect
                   // Don't create a visualization file on a restart
                   //if (!restart)
                   //  {
-                      make_vtk = 1;
-                      if (use_strat)
-                        {
-                          make_vtk_strati = 1;
-                        }
+                  make_vtk = 1;
+                  if (use_strat)
+                    {
+                      make_vtk_strati = 1;
+                    }
                   //  }
-                    // If it is a restart, we'll have to set the folder as well
-                    int visualization_step_strati = 1;
-                    // Folder_output (k, istep, foldername, do/do not produce vtk output)
-                    folder_output_(&length, &visualization_step_strati, c, &make_vtk_strati);
+                  // If it is a restart, we'll have to set the folder as well
+                  int visualization_step_strati = 1;
+                  // Folder_output (k, istep, foldername, do/do not produce vtk output)
+                  folder_output_(&length, &visualization_step_strati, c, &make_vtk_strati);
 
-                    if (output_interval > 0)
+                  if (output_interval > 0)
                     {
                       // We need to find the last time output was supposed to be written.
                       // this is the last_output_time plus the largest positive multiple
@@ -578,23 +579,23 @@ namespace aspect
                           in_b.close();
                         }
 
-                        // Load in f values.
-                        std::ifstream in_f;
-                        if (use_marine)
+                      // Load in f values.
+                      std::ifstream in_f;
+                      if (use_marine)
                         {
-                        in_f.open(restart_filename_fraction.c_str());
-                        if (in_f)
-                        {
-                          int line = 0;
+                          in_f.open(restart_filename_fraction.c_str());
+                          if (in_f)
+                            {
+                              int line = 0;
 
-                          while (line < array_size)
-                          {
-                            in_f >> f[line];
-                            line++;
-                          }
+                              while (line < array_size)
+                                {
+                                  in_f >> f[line];
+                                  line++;
+                                }
 
-                          in_f.close();
-                        }
+                              in_f.close();
+                            }
                         }
 
                       /*
@@ -627,11 +628,11 @@ namespace aspect
                   fastscape_set_erosional_parameters_(kf.get(), &kfsed, &m, &n, kd.get(), &kdsed, &g, &gsed, &p);
 
                   if (use_marine)
-{
-                    fastscape_set_marine_parameters_(&sl, &p1, &p2, &z1, &z2, &r, &l, &kds1, &kds2);
-                    if (restart)
-                      fastscape_init_f_(f.get());
-}
+                    {
+                      fastscape_set_marine_parameters_(&sl, &p1, &p2, &z1, &z2, &r, &l, &kds1, &kds2);
+                      if (restart)
+                        fastscape_init_f_(f.get());
+                    }
 
                   // Only set the basement if it's a restart
                   if (restart)
@@ -806,7 +807,7 @@ namespace aspect
               int istep = 0;
               fastscape_get_step_(&istep);
 
-              
+
 
               // Find a fastscape timestep that is below our maximum timestep.
               int steps = nstep;
@@ -857,34 +858,34 @@ namespace aspect
                     folder_output_(&length, &visualization_step, c, &make_vtk_strati);
                     // When we restart we should call this function again
                     if (current_timestep == 1 || restart)
-                   { 
-                      this->get_pcout() << "   Initializing FastScape Stratigraphy... " << std::endl;
-                      // Arguments: the total nr of FastScape timesteps,
-                      // the total nr of reflectors,
-                      // the frequency at which reflector output should be created,
-                      // the vertical exaggeration (-1=1=do nothing).
-                      // Approximate the output frequency by taking the total
-                      // model time divided by the output interval times the nr of
-                      // FastScape timesteps per ASPECT timestep. This assumes that the number
-                      // of FastScape timesteps per ASPECT timestep is constant and equal
-                      // to the user-supplied nstep (it could be bigger when the ASPECT timestep grows
-                      // and the maximum FastScape timestep is reached).
-                      // In case the ASPECT nr of output steps gives a larger frequency, i.e.
-                      // a smaller nr of steps between each output, then use that nr.
-                      // NB: strati_output_frequency is a bit of a misnomer here, because it's 
-                      // not a frequency but an interval, but the name agrees
-                      // with the FastScape parameter name.
-                      int strati_output_frequency = nstepp / int(end_time / output_interval);
-                      if (output_interval_steps * nstep < strati_output_frequency)
-                        strati_output_frequency = output_interval_steps * nstep;
-                      fastscape_strati_(&nstepp, &nreflectorp, &strati_output_frequency, &vexp);
-                   }
+                      {
+                        this->get_pcout() << "   Initializing FastScape Stratigraphy... " << std::endl;
+                        // Arguments: the total nr of FastScape timesteps,
+                        // the total nr of reflectors,
+                        // the frequency at which reflector output should be created,
+                        // the vertical exaggeration (-1=1=do nothing).
+                        // Approximate the output frequency by taking the total
+                        // model time divided by the output interval times the nr of
+                        // FastScape timesteps per ASPECT timestep. This assumes that the number
+                        // of FastScape timesteps per ASPECT timestep is constant and equal
+                        // to the user-supplied nstep (it could be bigger when the ASPECT timestep grows
+                        // and the maximum FastScape timestep is reached).
+                        // In case the ASPECT nr of output steps gives a larger frequency, i.e.
+                        // a smaller nr of steps between each output, then use that nr.
+                        // NB: strati_output_frequency is a bit of a misnomer here, because it's
+                        // not a frequency but an interval, but the name agrees
+                        // with the FastScape parameter name.
+                        int strati_output_frequency = nstepp / int(end_time / output_interval);
+                        if (output_interval_steps * nstep < strati_output_frequency)
+                          strati_output_frequency = output_interval_steps * nstep;
+                        fastscape_strati_(&nstepp, &nreflectorp, &strati_output_frequency, &vexp);
+                      }
                   }
-                  // We have done everything necessary after a restart, so now reset
-                  // to false. 
-                  restart = false;
+                // We have done everything necessary after a restart, so now reset
+                // to false.
+                restart = false;
 
-                  do
+                do
                   {
                     // Execute step, this increases timestep counter
                     fastscape_execute_step_();
@@ -907,26 +908,30 @@ namespace aspect
               // Where V is a vector of array size that exists on all processors.
               // Also store the new topography and compute the ratio of marine to continental sediments
               // before we save this ratio for restarts.
+              if (use_marine)
+                fastscape_copy_f_(f.get());
+
               for (int i = 0; i < array_size; i++)
-              {
-                V[i] = (h[i] - h_old[i]) / a_dt;
-                topography[i] = h[i];
-                // Compute the ratio between marine sediments and continental sediments.
-                // The height of marine sediments is easy to calculate from the stored topography_old at the beginning
-                // of the timestep and topography_marine, which is computed based on the background marine sedimentation rate
-                // and the topography_old with respect to the sea level. The new topography also includes an uplift
-                // from ASPECT's vertical velocity and the deposition of sediments. If we're above sea level, or the topography
-                // has only decreased, the ratio is set to 0.
-                if (topography_marine[i] - topography_old[i] > 0. &&
-                    topography[i] - (vz[i] * a_dt) - topography_old[i] >= 0.)
                 {
-                  ratio_marine_continental[i] = (topography_marine[i] - topography_old[i]) / (topography[i] - topography_old[i] - (vz[i] * a_dt));
+                  V[i] = (h[i] - h_old[i]) / a_dt;
+                  topography[i] = h[i];
+                  silt_fraction[i] = f[i];
+                  // Compute the ratio between marine sediments and continental sediments.
+                  // The height of marine sediments is easy to calculate from the stored topography_old at the beginning
+                  // of the timestep and topography_marine, which is computed based on the background marine sedimentation rate
+                  // and the topography_old with respect to the sea level. The new topography also includes an uplift
+                  // from ASPECT's vertical velocity and the deposition of sediments. If we're above sea level, or the topography
+                  // has only decreased, the ratio is set to 0.
+                  if (topography_marine[i] - topography_old[i] > 0. &&
+                      topography[i] - (vz[i] * a_dt) - topography_old[i] >= 0.)
+                    {
+                      ratio_marine_continental[i] = (topography_marine[i] - topography_old[i]) / (topography[i] - topography_old[i] - (vz[i] * a_dt));
+                    }
+                  else
+                    {
+                      ratio_marine_continental[i] = 0.;
+                    }
                 }
-                else
-                {
-                  ratio_marine_continental[i] = 0.;
-                }
-              }
 
               // Write a file to store h, b, f, step and ratio in case of restart.
               // TODO: there's probably a faster way to write these.
@@ -934,49 +939,47 @@ namespace aspect
               // if Checkpoint on termination is set to true.
               // TODO why get_time()+a_dt? If it's the end time, we should snapshot now?
               // current_timestep+1 because when the rest of ASPECT checks whether
-              // it should create a snapshot (at the end of a timestep), 
+              // it should create a snapshot (at the end of a timestep),
               // the timestep_number has already been advanced.
               if (((this->get_parameters().checkpoint_time_secs == 0) &&
                    (this->get_parameters().checkpoint_steps > 0) &&
                    ((current_timestep+1) % this->get_parameters().checkpoint_steps == 0)) ||
                   (this->get_time() + a_dt >= end_time && this->get_time_stepping_manager().need_checkpoint_on_terminate()))
-              {
-                this->get_pcout() << "      Writing FastScape snapshot..." << std::endl;
-                std::ofstream out_h(restart_filename.c_str());
-                std::ofstream out_step(restart_step_filename.c_str());
-                std::ofstream out_b(restart_filename_basement.c_str());
-                std::ofstream out_f(restart_filename_fraction.c_str());
-                std::ofstream out_ratio(restart_filename_ratio.c_str());
-                std::stringstream bufferb;
-                std::stringstream bufferh;
-                std::stringstream bufferf;
-                std::stringstream bufferratio;
-
-                fastscape_copy_basement_(b.get());
-                if (use_marine)
-                fastscape_copy_f_(f.get());
-
-                out_step << (istep + restart_step) << "\n";
-
-                for (int i = 0; i < array_size; i++)
                 {
-                  bufferh << h[i] << "\n";
-                  bufferb << b[i] << "\n";
-                  if (use_marine)
-                  {
-                    bufferf << f[i] << "\n";
-                    bufferratio << ratio_marine_continental[i] << "\n";
-                  }
-                }
+                  this->get_pcout() << "      Writing FastScape snapshot..." << std::endl;
+                  std::ofstream out_h(restart_filename.c_str());
+                  std::ofstream out_step(restart_step_filename.c_str());
+                  std::ofstream out_b(restart_filename_basement.c_str());
+                  std::ofstream out_f(restart_filename_fraction.c_str());
+                  std::ofstream out_ratio(restart_filename_ratio.c_str());
+                  std::stringstream bufferb;
+                  std::stringstream bufferh;
+                  std::stringstream bufferf;
+                  std::stringstream bufferratio;
 
-                out_h << bufferh.str();
-                out_b << bufferb.str();
-                if (use_marine)
-                  {
-                  out_f << bufferf.str();
-                out_ratio << bufferratio.str();
-                  }
-              }
+                  fastscape_copy_basement_(b.get());
+
+                  out_step << (istep + restart_step) << "\n";
+
+                  for (int i = 0; i < array_size; i++)
+                    {
+                      bufferh << h[i] << "\n";
+                      bufferb << b[i] << "\n";
+                      if (use_marine)
+                        {
+                          bufferf << f[i] << "\n";
+                          bufferratio << ratio_marine_continental[i] << "\n";
+                        }
+                    }
+
+                  out_h << bufferh.str();
+                  out_b << bufferb.str();
+                  if (use_marine)
+                    {
+                      out_f << bufferf.str();
+                      out_ratio << bufferratio.str();
+                    }
+                }
 
               if (make_vtk)
                 {
@@ -991,10 +994,9 @@ namespace aspect
                   fastscape_destroy_();
                 }
 
-
-
               MPI_Bcast(&V[0], array_size, MPI_DOUBLE, 0, this->get_mpi_communicator());
               MPI_Bcast(&ratio_marine_continental[0], array_size, MPI_DOUBLE, 0, this->get_mpi_communicator());
+              MPI_Bcast(&silt_fraction[0], array_size, MPI_DOUBLE, 0, this->get_mpi_communicator());
             }
           else
             {
@@ -1003,6 +1005,7 @@ namespace aspect
 
               MPI_Bcast(&V[0], array_size, MPI_DOUBLE, 0, this->get_mpi_communicator());
               MPI_Bcast(&ratio_marine_continental[0], array_size, MPI_DOUBLE, 0, this->get_mpi_communicator());
+              MPI_Bcast(&silt_fraction[0], array_size, MPI_DOUBLE, 0, this->get_mpi_communicator());
             }
 
           // Get the sizes needed for the data table.
@@ -1019,12 +1022,16 @@ namespace aspect
           // Table to hold the ratio of marine to continental sediments
           Table<dim, double> ratio_marine_continental_table;
           ratio_marine_continental_table.TableBase<dim,double>::reinit(size_idx);
+          // Table to hold the fraction of silt out of the total silt and sand sediments
+          Table<dim, double> silt_fraction_table;
+          silt_fraction_table.TableBase<dim, double>::reinit(size_idx);
 
           // Loop through the data table and fill out the surface (i or k = 1) to the velocities from FastScape.
           if (dim == 2)
             {
               std::vector<double> V2(nx);
               std::vector<double> ratio_marine_continental2(nx);
+              std::vector<double> silt_fraction2(nx);
 
               for (int i = 1; i < (nx - 1); i++)
                 {
@@ -1034,6 +1041,7 @@ namespace aspect
                       const int index = i + nx * (round((ny - 1) / 2));
                       V2[i - 1] = V[index];
                       ratio_marine_continental2[i - 1] = ratio_marine_continental[index];
+                      silt_fraction2[i - 1] = silt_fraction[index];
                     }
                   // Here we use average velocities across the y nodes, excluding the ghost nodes (top and bottom row).
                   // Note: If ghost nodes are turned off, boundary effects may influence this.
@@ -1044,9 +1052,11 @@ namespace aspect
                           const int index = i + nx * ys;
                           V2[i - 1] += V[index];
                           ratio_marine_continental2[i - 1] += ratio_marine_continental[index];
+                          silt_fraction2[i - 1] += silt_fraction[index];
                         }
                       V2[i - 1] = V2[i - 1] / (ny - 2);
                       ratio_marine_continental2[i - 1] = ratio_marine_continental2[i - 1] / (ny - 2);
+                      silt_fraction2[i - 1] = silt_fraction2[i - 1] / (ny - 2);
                     }
                 }
 
@@ -1079,6 +1089,7 @@ namespace aspect
                       // Outside the extents of the table (and thus the original undeformed model domain), extrapolation of the
                       // ratio is constant.
                       ratio_marine_continental_table(idx) = ratio_marine_continental2[j];
+                      silt_fraction_table(idx) = silt_fraction2[j];
                     }
                 }
             }
@@ -1119,6 +1130,7 @@ namespace aspect
                           // Outside the extents of the table (and thus the original undeformed model domain), extrapolation of the
                           // ratio is constant.
                           ratio_marine_continental_table(idx) = ratio_marine_continental[(nx + 1) * use_ghost + nx * i + j];
+                          silt_fraction_table(idx) = silt_fraction[(nx + 1) * use_ghost + nx * i + j];
                         }
                     }
                 }
@@ -1148,6 +1160,11 @@ namespace aspect
           ratio_marine_continental_function = new Functions::InterpolatedUniformGridData<dim>(grid_extent,
               table_intervals,
               ratio_marine_continental_table);
+
+          // Store the marine to continental sediment ratio
+          silt_fraction_function = new Functions::InterpolatedUniformGridData<dim>(grid_extent,
+                                                                                   table_intervals,
+                                                                                   silt_fraction_table);
         }
     }
 
@@ -1425,7 +1442,7 @@ namespace aspect
     template <int dim>
     double FastScape<dim>::get_silt_fraction(Point<dim> point) const
     {
-      // We cut off the fraction at 0 and 1. 
+      // We cut off the fraction at 0 and 1.
       const double fraction = std::min(1.,std::max(0.,silt_fraction_function->value(point)));
       Assert(silt_fraction_function->value(point) >= 0. && silt_fraction_function->value(point) <= 1., ExcMessage("The silt fraction exceeds the 0--1 range."));
 

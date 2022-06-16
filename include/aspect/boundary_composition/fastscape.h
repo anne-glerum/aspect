@@ -102,6 +102,16 @@ namespace aspect
          */
         double min_composition;
         double max_composition;
+
+        /**
+         *
+         */
+        double continental_silt_fraction;
+
+        /**
+         *
+         */
+        double sea_level;
     };
   }
 }

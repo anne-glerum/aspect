@@ -23,6 +23,7 @@
 #include <aspect/initial_composition/interface.h>
 #include <aspect/mesh_deformation/interface.h>
 #include <aspect/mesh_deformation/fastscape.h>
+#include <aspect/geometry_model/box.h>
 
 namespace aspect
 {
@@ -58,6 +59,8 @@ namespace aspect
                 }
             }
 
+          // Only two compositional fields are set in this plugin,
+          // check that they exist.
           AssertThrow(using_fastscape, ExcMessage("The boundary composition plugin FastScape requires the mesh deformation plugin FastScape. "));
           AssertThrow(this->introspection().compositional_name_exists("ratio_marine_continental_sediment"),
                       ExcMessage("The boundary composition plugin FastScape requires a compositional field called ratio_marine_continental_sediment."));
@@ -73,16 +76,33 @@ namespace aspect
                          const Point<dim> &position,
                          const unsigned int compositional_field) const
     {
+      // Retrieve the field number of the relevant fields.
+      const unsigned int marine_ratio_field = this->introspection().compositional_index_for_name("ratio_marine_continental_sediment");
+      const unsigned int silt_fraction_field = this->introspection().compositional_index_for_name("silt_fraction");
+
       // FastScape is only run in timestep 1.
       // The boundary_composition function is evaluated before mesh deformation,
       // and thus we can only question the FastScape mesh deformation plugin for
       // the sediment ratio in timestep 2.
+      // The silt fraction on land is always 0, but in the marine domain it will
+      // initially be the silt fraction that is set by the user for sediments
+      // coming from the continent.
       if (!this->simulator_is_past_initialization() || this->get_timestep_number() < 2)
-        return 0.;
+        {
+          // The FastScape plugin already asserts that only Box geometries are used.
+          // Therefore we can assume the dim-1 entry of position represents the height
+          // of the point under consideration.
+          const GeometryModel::Box<dim> *geometry
+            = dynamic_cast<const GeometryModel::Box<dim>*> (&this->get_geometry_model());
+          if (compositional_field == silt_fraction_field)
+            return (position[dim - 1] > geometry->get_origin()[dim - 1] + geometry->get_extents()[dim - 1] + sea_level) ?
+                   0. : continental_silt_fraction;
+          else
+            return 0.;
+        }
 
       const types::boundary_id top_boundary = this->get_geometry_model().translate_symbolic_boundary_name_to_id ("top");
-      const unsigned int marine_ratio_field = this->introspection().compositional_index_for_name("ratio_marine_continental_sediment");
-      const unsigned int silt_fraction_field = this->introspection().compositional_index_for_name("silt_fraction");
+
 
       // Only set composition on the top boundary,
       // and only for the field 'ratio_marine_continental_sediment'
@@ -147,27 +167,41 @@ namespace aspect
           prm.declare_entry ("Maximal composition", "1.",
                              Patterns::Double (),
                              "Maximal composition. Units: none.");
+
         }
         prm.leave_subsection ();
       }
       prm.leave_subsection ();
     }
 
-
     template <int dim>
     void
-    FastScape<dim>::parse_parameters (ParameterHandler &prm)
+    FastScape<dim>::parse_parameters(ParameterHandler &prm)
     {
       prm.enter_subsection("Boundary composition model");
       {
         prm.enter_subsection("FastScape");
         {
-          min_composition = prm.get_double ("Minimal composition");
-          max_composition = prm.get_double ("Maximal composition");
+          min_composition = prm.get_double("Minimal composition");
+          max_composition = prm.get_double("Maximal composition");
         }
-        prm.leave_subsection ();
+        prm.leave_subsection();
       }
-      prm.leave_subsection ();
+      prm.leave_subsection();
+      prm.enter_subsection("Mesh deformation");
+      {
+        prm.enter_subsection("Fastscape");
+        {
+          prm.enter_subsection("Marine parameters");
+          {
+            sea_level = prm.get_double("Sea level");
+            continental_silt_fraction = prm.get_double("Sand-shale ratio");
+          }
+          prm.leave_subsection();
+        }
+        prm.leave_subsection();
+      }
+      prm.leave_subsection();
     }
   }
 }
