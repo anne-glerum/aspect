@@ -124,6 +124,12 @@ namespace aspect
             AssertThrow(false,ExcMessage("Cannot open basement file to restart FastScape."));
           in.close();
 
+          in.open(dirname + "fastscape_f_restart.txt");
+          if (in.fail())
+            AssertThrow(false, ExcMessage("Cannot open silt fraction file to restart FastScape."));
+          in.close();
+          const std::string restart_filename_f = dirname + "fastscape_f_restart.txt";
+
           in.open(dirname + "fastscape_ratio_restart.txt");
           if (in.fail())
             AssertThrow(false, ExcMessage("Cannot open ratio file to restart FastScape."));
@@ -140,7 +146,7 @@ namespace aspect
           if (use_marine)
           {
             std::ifstream in_ratio;
-          in_ratio.open(restart_filename_ratio.c_str());
+            in_ratio.open(restart_filename_ratio.c_str());
           if (in_ratio)
             {
               int line = 0;
@@ -153,6 +159,21 @@ namespace aspect
 
               in_ratio.close();
             }
+
+            std::ifstream in_f;
+            in_f.open(restart_filename_f.c_str());
+          if (in_f)
+            {
+              int line = 0;
+
+              while (line < array_size)
+                {
+                  in_f >> silt_fraction[line];
+                  line++;
+                }
+
+              in_f.close();
+            }
           }
 
           // Get the sizes needed for the data table.
@@ -164,11 +185,14 @@ namespace aspect
 
           // Table to hold the ratio of marine to continental sediments
           TableIndices<dim> idx;
-          Table<dim, double> ratio_marine_continental_table;
+          Table<dim, double> ratio_marine_continental_table, silt_fraction_table;
           ratio_marine_continental_table.TableBase<dim, double>::reinit(size_idx);
+          silt_fraction_table.TableBase<dim, double>::reinit(size_idx);
+
           if (dim == 2)
             {
               std::vector<double> ratio_marine_continental2(nx);
+              std::vector<double> silt_fraction2(nx);
 
               for (int i = 1; i < (nx - 1); i++)
                 {
@@ -177,6 +201,7 @@ namespace aspect
                     {
                       const int index = i + nx * (round((ny - 1) / 2));
                       ratio_marine_continental2[i - 1] = ratio_marine_continental[index];
+                      silt_fraction2[i - 1] = silt_fraction[index];
                     }
                   // Here we use average velocities across the y nodes, excluding the ghost nodes (top and bottom row).
                   // Note: If ghost nodes are turned off, boundary effects may influence this.
@@ -186,8 +211,10 @@ namespace aspect
                         {
                           const int index = i + nx * ys;
                           ratio_marine_continental2[i - 1] += ratio_marine_continental[index];
+                          silt_fraction2[i - 1] += silt_fraction[index];
                         }
                       ratio_marine_continental2[i - 1] = ratio_marine_continental2[i - 1] / (ny - 2);
+                      silt_fraction2[i - 1] = silt_fraction2[i - 1] / (ny - 2);
                     }
                 }
 
@@ -204,6 +231,7 @@ namespace aspect
                       // Outside the extents of the table (and thus the original undeformed model domain), extrapolation of the
                       // ratio is constant.
                       ratio_marine_continental_table(idx) = ratio_marine_continental2[j];
+                      silt_fraction_table(idx) = silt_fraction2[j];
                     }
                 }
             }
@@ -227,6 +255,7 @@ namespace aspect
                           // Outside the extents of the table (and thus the original undeformed model domain), extrapolation of the
                           // ratio is constant.
                           ratio_marine_continental_table(idx) = ratio_marine_continental[(nx + 1) * use_ghost + nx * i + j];
+                          silt_fraction_table(idx) = silt_fraction[(nx + 1) * use_ghost + nx * i + j];
                         }
                     }
                 }
@@ -236,6 +265,11 @@ namespace aspect
             ratio_marine_continental_function = new Functions::InterpolatedUniformGridData<dim>(grid_extent,
                                                                                                 table_intervals,
                                                                                                 ratio_marine_continental_table);
+
+            // Store the marine to continental sediment ratio
+            silt_fraction_function = new Functions::InterpolatedUniformGridData<dim>(grid_extent,
+                                                                                                table_intervals,
+                                                                                                silt_fraction_table);
         }
 
 
@@ -1386,6 +1420,16 @@ namespace aspect
       const double ratio = std::min(1.,std::max(0.,ratio_marine_continental_function->value(point)));
       //Assert (ratio >= 0. && ratio <= 1., ExcMessage("The ratio of marine to continental sediments exceeds the 0--1 range."));
       return ratio;
+    }
+
+    template <int dim>
+    double FastScape<dim>::get_silt_fraction(Point<dim> point) const
+    {
+      // We cut off the fraction at 0 and 1. 
+      const double fraction = std::min(1.,std::max(0.,silt_fraction_function->value(point)));
+      Assert(silt_fraction_function->value(point) >= 0. && silt_fraction_function->value(point) <= 1., ExcMessage("The silt fraction exceeds the 0--1 range."));
+
+      return fraction;
     }
 
     template <int dim>

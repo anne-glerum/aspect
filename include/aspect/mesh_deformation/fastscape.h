@@ -135,6 +135,12 @@ namespace aspect
       double get_marine_to_continental_sediment_ratio(Point<dim> point) const;
 
       /**
+       * Return the fraction of silt out of the total sand plus silt continental sediments
+       * in the marine domain for a certain point.
+       */
+      double get_silt_fraction(Point<dim> point) const;
+
+      /**
          * Save the state of this object.
          */
       void save(std::map<std::string, std::string> &status_strings) const override;
@@ -327,6 +333,17 @@ namespace aspect
 
       // Function to hold and query the ratio of marine to continental sediments
       mutable Functions::InterpolatedUniformGridData<dim> *ratio_marine_continental_function;
+
+      /**
+       * The fraction of silt out of total sediments.
+       * We have to temporarily store it in this vector to be
+       * able to restart the ratio table from a file.
+       * TODO Make boost serialization available for Functions::InterpolatedUniformGridData.
+       */
+      mutable std::vector<double> silt_fraction;
+
+      // Function to hold and query the fraction of silt.
+      mutable Functions::InterpolatedUniformGridData<dim> *silt_fraction_function;
   };
 }
 }
