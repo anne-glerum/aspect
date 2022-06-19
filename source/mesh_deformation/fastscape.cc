@@ -143,6 +143,7 @@ namespace aspect
 
           // Load in ratio values.
           ratio_marine_continental.resize(array_size);
+          silt_fraction.resize(array_size);
           if (use_marine)
             {
               std::ifstream in_ratio;
