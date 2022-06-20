@@ -485,6 +485,11 @@ namespace aspect
             const int ratio_tmp = this->introspection().compositional_index_for_name("ratio_marine_continental_sediment");
             composition_mask.set(ratio_tmp,false);
           }
+        if (this->introspection().compositional_name_exists("silt_fraction"))
+          {
+            const int fraction_tmp = this->introspection().compositional_index_for_name("silt_fraction");
+            composition_mask.set(fraction_tmp,false);
+          }
 
 
         return composition_mask;
