@@ -80,6 +80,13 @@ namespace aspect
       const unsigned int marine_ratio_field = this->introspection().compositional_index_for_name("ratio_marine_continental_sediment");
       const unsigned int silt_fraction_field = this->introspection().compositional_index_for_name("silt_fraction");
 
+      const types::boundary_id top_boundary = this->get_geometry_model().translate_symbolic_boundary_name_to_id ("top");
+
+      // Only set composition on the top boundary,
+      // and only for the fields 'ratio_marine_continental_sediment' and 'silt_fraction'
+      if (boundary_indicator != top_boundary || (compositional_field != marine_ratio_field && compositional_field != silt_fraction_field))
+        return 0.;
+
       // FastScape is only run in timestep 1.
       // The boundary_composition function is evaluated before mesh deformation,
       // and thus we can only question the FastScape mesh deformation plugin for
@@ -100,14 +107,6 @@ namespace aspect
           else
             return 0.;
         }
-
-      const types::boundary_id top_boundary = this->get_geometry_model().translate_symbolic_boundary_name_to_id ("top");
-
-
-      // Only set composition on the top boundary,
-      // and only for the field 'ratio_marine_continental_sediment'
-      if (boundary_indicator != top_boundary || (compositional_field != marine_ratio_field && compositional_field != silt_fraction_field))
-        return 0.;
 
       double result = 0.;
 
