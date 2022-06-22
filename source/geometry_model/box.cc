@@ -229,10 +229,16 @@ namespace aspect
     }
 
     template <int dim>
-    unsigned int
-    Box<dim>::get_repetitions(unsigned int dimension) const
+    std::array<unsigned int,dim>
+    Box<dim>::get_repetitions () const
     {
-      return repetitions[dimension];
+      std::array<unsigned int,dim> rep;
+      for (unsigned int i=0; i<dim; ++i)
+        {
+          rep[i] = repetitions[i];
+        }
+
+      return rep;
     }
 
     template <int dim>
