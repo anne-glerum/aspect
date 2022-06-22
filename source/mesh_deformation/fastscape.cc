@@ -13,6 +13,9 @@
   along with ASPECT; see the file LICENSE.  If not see
   <http://www.gnu.org/licenses/>.
  */
+#include <aspect/global.h>
+
+#ifdef ASPECT_WITH_FASTSCAPE
 
 #include <aspect/mesh_deformation/fastscape.h>
 #include <aspect/geometry_model/box.h>
@@ -1421,3 +1424,4 @@ namespace aspect
                                            "velocity at the surface boundary.")
   }
 }
+#endif

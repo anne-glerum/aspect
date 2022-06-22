@@ -17,6 +17,10 @@
 #ifndef _aspect_mesh_deformation_fastscape_h
 #define _aspect_mesh_deformation_fastscape_h
 
+#include <aspect/global.h>
+
+#ifdef ASPECT_WITH_FASTSCAPE
+
 #include <aspect/mesh_deformation/interface.h>
 
 namespace aspect
@@ -606,5 +610,5 @@ namespace aspect
 }
 }
 
-
+#endif
 #endif

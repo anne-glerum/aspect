@@ -479,28 +479,10 @@ IF(NOT ASPECT_ADDITIONAL_CXX_FLAGS STREQUAL "")
   MESSAGE(STATUS "  DEAL_II_CXX_FLAGS_RELEASE: ${DEAL_II_CXX_FLAGS_RELEASE}")
 ENDIF()
 
-# Check if a fastscape library is available, if so link it with aspect.
-# If the library is not found, then remove fastscape .cc and .h from list
-# so aspect can still compile.
-# TODO: likely need to switch ENV and normal positions so it checks ENV second.
-FIND_LIBRARY(FASTSCAPE NAMES fastscapelib_fortran PATHS $ENV{FASTSCAPE_DIR} ${FASTSCAPE_DIR} PATH_SUFFIXES lib NO_DEFAULT_PATH)
-IF(FASTSCAPE)
-  MESSAGE(STATUS "FastScape found at ${FASTSCAPE}")
-ELSE()
-  FIND_FILE(FASTSCAPE_SRC fastscape.cc HINTS "${CMAKE_SOURCE_DIR}/source/mesh_deformation")
-  LIST(REMOVE_ITEM TARGET_SRC ${FASTSCAPE_SRC})
-  MESSAGE(STATUS "FastScape library not found")
-ENDIF()
 
 ADD_EXECUTABLE(${TARGET} ${TARGET_SRC})
 DEAL_II_SETUP_TARGET(${TARGET})
 
-# Library needs to be linked after executable is added, but if fastscape isn't found
-# then the .cc files need to be removed before.
-# TODO: find a way to do this where they don't have to be separated.
-IF(FASTSCAPE)
-  TARGET_LINK_LIBRARIES(${TARGET} ${FASTSCAPE})
-ENDIF()
 
 # deal.II does not define NDEBUG, but the world builder relies on it to disable
 # its asserts in release mode. Set it manually for anything but debug mode.
@@ -544,6 +526,22 @@ IF(ASPECT_WITH_LIBDAP)
     MESSAGE(FATAL_ERROR "LIBDAP not found. Disable ASPECT_WITH_LIBDAP or specify a hint to your installation directory with LIBDAP_DIR.")
   ENDIF()
 ENDIF()
+
+
+# Check for FastScape library and link it to ASPECT if requested
+SET(ASPECT_WITH_FASTSCAPE OFF CACHE BOOL "Check if the user wants to compile ASPECT with the landscape evolution code FastScape.")
+MESSAGE(STATUS "Using ASPECT_WITH_FASTSCAPE = '${ASPECT_WITH_FASTSCAPE}'")
+IF(ASPECT_WITH_FASTSCAPE)
+  IF (EXISTS ${FASTSCAPE_DIR}/libfastscapelib_fortran.so)
+     MESSAGE(STATUS "FastScape library found at ${FASTSCAPE_DIR}/libfastscapelib_fortran.so")
+     FIND_LIBRARY(FASTSCAPE NAMES fastscapelib_fortran PATHS $ENV{FASTSCAPE_DIR} ${FASTSCAPE_DIR} PATH_SUFFIXES lib NO_DEFAULT_PATH)
+     TARGET_LINK_LIBRARIES(${TARGET} ${FASTSCAPE})
+  ENDIF()
+  IF (NOT EXISTS ${FASTSCAPE_DIR}/libfastscapelib_fortran.so)
+     MESSAGE(STATUS "Trying to link with FastScape but no suitable library found in ${FASTSCAPE_DIR}")
+  ENDIF()
+ENDIF()
+
 
 #
 # NETCDF (c including parallel)
