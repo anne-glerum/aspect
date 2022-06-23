@@ -44,15 +44,8 @@ namespace aspect
         = this->get_mesh_deformation_handler().get_active_mesh_deformation_boundary_indicators();
 
       // Get the deformation type names called for each boundary.
-      /*
-       * TODO: Why does this only work if I declare it in the header file?
-       * If I declare it here, then I get a no match operand[] error when trying to get the
-       * names variable.
-       */
-      //mesh_deformation_boundary_indicators_map
-      //  = this->get_mesh_deformation_handler().get_active_mesh_deformation_names();
-
-      std::map<types::boundary_id, std::vector<std::string>> mesh_deformation_boundary_indicators_map = this->get_mesh_deformation_handler().get_active_mesh_deformation_names();
+      std::map<types::boundary_id, std::vector<std::string>> mesh_deformation_boundary_indicators_map
+        = this->get_mesh_deformation_handler().get_active_mesh_deformation_names();
 
       // Loop over each mesh deformation boundary, and make sure FastScape is only called on the surface.
       for (std::set<types::boundary_id>::const_iterator p = mesh_deformation_boundary_ids.begin();
@@ -116,11 +109,11 @@ namespace aspect
       nx = 1+(2*use_ghost_nodes)+std::pow(2,maximum_surface_refinement_level+additional_refinement)*repetitions[0];
 
       // Size of FastScape cell.
-      dx = (grid_extent[0].second - grid_extent[0].first)/(nx-1-(2*use_ghost_nodes));
+      dx = (grid_extent[0].second)/(nx-1-(2*use_ghost_nodes));
 
       // FastScape X extent, which is generally ASPECT's extent unless the ghost nodes are used,
       // in which case 2 cells are added on either side.
-      x_extent = (grid_extent[0].second - grid_extent[0].first)+2*dx*use_ghost_nodes;
+      x_extent = (grid_extent[0].second)+2*dx*use_ghost_nodes;
 
       // Sub intervals are 3 less than points, if including the ghost nodes. Otherwise 1 less.
       table_intervals[0] = nx-1-(2*use_ghost_nodes);
@@ -135,9 +128,9 @@ namespace aspect
       else
         {
           ny = 1+(2*use_ghost_nodes)+std::pow(2,maximum_surface_refinement_level+additional_refinement)*repetitions[1];
-          dy = (grid_extent[1].second - grid_extent[1].first)/(ny-1-(2*use_ghost_nodes));
+          dy = (grid_extent[1].second)/(ny-1-(2*use_ghost_nodes));
           table_intervals[1] = ny-1-(2*use_ghost_nodes);
-          y_extent = (grid_extent[1].second - grid_extent[1].first)+2*dy*use_ghost_nodes;
+          y_extent = (grid_extent[1].second)+2*dy*use_ghost_nodes;
         }
 
       // Determine array size to send to FastScape
@@ -212,7 +205,7 @@ namespace aspect
                         const Point<dim> vertex = fe_face_values.quadrature_point(corner);
 
                         // Find what x point we're at. Add 1 or 2 depending on if ghost nodes are used.
-                        const double indx = 1+use_ghost_nodes+vertex(0)/dx;
+                        const double indx = 1+use_ghost_nodes+(vertex(0) - grid_extent[0].first)/dx;
 
                         // If our x or y index isn't close to a whole number, then it's likely an artifact
                         // from using an over-resolved quadrature rule, in that case ignore it.
@@ -251,7 +244,7 @@ namespace aspect
                         else
                           {
                             // Because indy only gives us the row we're in, we don't need to add 2 for the ghost node.
-                            const double indy = 1+use_ghost_nodes+vertex(1)/dy;
+                            const double indy = 1+use_ghost_nodes+(vertex(1) - grid_extent[1].first)/dy;
 
                             if (abs(indy - round(indy)) >= precision)
                               continue;
@@ -840,10 +833,19 @@ namespace aspect
                 }
             }
 
+        // As our grid_extent variable end points do not account for the change related to an origin
+        // not at 0, we adjust this here into an interpolation extent.
+        std::array<std::pair<double,double>,dim> interpolation_extent;
+        for (unsigned int i=0; i<dim; ++i)
+          {
+            interpolation_extent[i].first = grid_extent[i].first;
+            interpolation_extent[i].second = (grid_extent[i].second + grid_extent[i].first);
+          }
+
           Functions::InterpolatedUniformGridData<dim> *velocities;
-          velocities = new Functions::InterpolatedUniformGridData<dim> (grid_extent,
-                                                                        table_intervals,
-                                                                        data_table);
+          velocities = new Functions::InterpolatedUniformGridData<dim> (interpolation_extent,
+                                                                                    table_intervals,
+                                                                                    data_table);
 
           auto lambda = [&](const Point<dim> &p) -> double
           {
