@@ -847,15 +847,23 @@ namespace aspect
                                                                                     table_intervals,
                                                                                     data_table);
 
-          auto lambda = [&](const Point<dim> &p) -> double
-          {
-            return velocities->value(p);
-          };
+          //auto lambda = [&](const Point<dim> &p) -> double
+          //{
+          //  return velocities->value(p);
+          //};
+
+          //VectorFunctionFromScalarFunctionObject<dim> vector_function_object(
+          //  lambda,
+          //  dim-1,
+          //  dim);
 
           VectorFunctionFromScalarFunctionObject<dim> vector_function_object(
-            lambda,
-            dim-1,
-            dim);
+            [&](const Point<dim> &p) -> double
+          {
+            return velocities->value(p);
+          },
+          dim-1,
+          dim);
 
           VectorTools::interpolate_boundary_values (mesh_deformation_dof_handler,
                                                     *boundary_ids.begin(),
