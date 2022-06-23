@@ -77,25 +77,10 @@ namespace aspect
 
         /**
          * Compute the integral of the net flux due to the prescribed velocity
-         * on the vertical domain boundaries.
+         * on the lateral domain boundaries.
          */
         double
         compute_net_outflow () const;
-
-        double
-        compute_vertical_compensation_area () const;
-
-        double
-        compute_antiparallel_compensation (const Point<dim> &position) const;
-
-        /**
-         * Computes the velocity on the vertical domain boundaries
-         * in case we only want to prescribe the euler pole velocity
-         * and not correct for anything, while balancing the flow through the bottom.
-         */
-        Tensor<1,dim>
-        compute_vertical_boundary_velocity (const types::boundary_id boundary_indicator,
-                                            const Point<dim> &position) const;
 
         /**
          * Declare the parameters this class takes through input files.
@@ -112,61 +97,27 @@ namespace aspect
 
       private:
         /**
-         * Scale the velocity boundary condition by a scalar factor.
-         */
-        double scale_factor;
-        double area_scale_factor;
-        double transition_area_scale_factor;
-
-        /**
          * The outer and inner radius of the model domain.
          */
         double outer_radius;
         double inner_radius;
 
-        /**
-         * The depth of the transition from outflow to inflow. This transition
-         * occurs linearly around the transition depth, where the gradient is determined
-         * by the transition width. This transition ensures that the integrated
-         * prescribed flow through the boundaries is zero.
-         */
-        double transition_depth;
-
-        /**
-         * The half width of the linear transition zone.
-         */
-        double transition_width;
-
-        /**
-         * Parameters describing the transition in terms of radius.
-         */
-        double transition_radius;
-        double transition_radius_max;
-        double transition_radius_min;
-
         double bottom_boundary_area = 0;
-        bool bottom_boundary_compensation = false;
-        bool vertical_residual_compensation = false;
-        bool zero_horizontal_velocities_at_inner_radius = true;
-        bool zero_radial_velocities_at_lateral_boundaries = true;
-        double vertical_compensation_area = 0;
 
         double net_outflow = 0;
 
         /**
-         * A map of spherical rotation vectors for each boundary indicator.
+         * The ids of the lateral boundaries for which the net in/outflow is computed
+         * and compensated through the bottom boundary flow.
          */
-        std::map<types::boundary_id, std::vector<Point<dim> > > boundary_velocities;
-        std::map<types::boundary_id, std::vector<double> > boundary_transitions;
         std::set<types::boundary_id> vertical_boundary_indicators;
-        std::set<types::boundary_id> vertical_boundary_compensation_indicators;
         types::boundary_id bottom_boundary_indicator = numbers::invalid_boundary_id;
 
         /**
          * The boundary velocity objects on the lateral boundaries that need to be compensated.
          */
         std::map<types::boundary_id, std::vector<std::unique_ptr<BoundaryVelocity::Interface<dim>>>>
-          lateral_boundary_velocity_objects;
+        lateral_boundary_velocity_objects;
     };
   }
 }
