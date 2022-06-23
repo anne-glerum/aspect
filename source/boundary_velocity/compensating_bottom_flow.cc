@@ -61,14 +61,16 @@ namespace aspect
           inner_radius = gm->inner_radius();
           outer_radius = gm->outer_radius();
           dlon = gm->opening_angle();
-          // in 3D, geometry is either a spherical shell or a quarter shell
-          if (dlon == 360.)
+          // In 3D, geometry is either a spherical shell or a quarter shell.
+          // In 2D, the opening angle can also be 180 degrees, but the latitude is zero.
+          if (dim == 3 && dlon == 360.)
             {
               AssertThrow (false, ExcMessage("The Compensating Bottom Flow velocity boundary conditions plugin requires lateral boundaries."));
               max_lat = numbers::PI;
             }
-          else
+          else if (dim == 3 && dlon == 90.)
             max_lat = 0.5 * numbers::PI;
+
           dlon *= numbers::PI / 180.;
         }
       else if (const GeometryModel::Chunk<dim> *gm = dynamic_cast<const GeometryModel::Chunk<dim>*> (&this->get_geometry_model()))
@@ -77,8 +79,11 @@ namespace aspect
           outer_radius = gm->outer_radius();
           dlon = gm->longitude_range();
           // colat
+          if (dim == 3)
+          {
           min_lat = 0.5 * numbers::PI - gm->north_latitude();
           max_lat = 0.5 * numbers::PI - gm->south_latitude();
+          }
         }
       else if (const GeometryModel::EllipsoidalChunk<dim> *gm = dynamic_cast<const GeometryModel::EllipsoidalChunk<dim>*> (&this->get_geometry_model()))
         {
@@ -90,6 +95,7 @@ namespace aspect
           AssertThrow(corners[0][0]==corners[3][0] && corners[0][1]==corners[1][1],
                       ExcMessage("This boundary velocity plugin cannot be used when the domain boundaries are not parallel to the lat/lon grid."));
 
+          // An ellipsoidal chunk is always 3D.
           // colat
           min_lat = (90. - corners[0][1]) * numbers::PI / 180.;
           max_lat = (90. - corners[2][1]) * numbers::PI / 180.;
@@ -115,11 +121,7 @@ namespace aspect
       else
         AssertThrow(false, ExcMessage("The Compensating Bottom Flow boundary velocity plugin does not work for this geometry model."));
 
-
-
       // Compute the area of the bottom boundary
-      // as the integral over longitude interval dlon and latitude interval dlat of R0*R0*sin(lat)
-      // TODO use compute_vertical_compensation_area to calculate the bottom boundary area once
       if (const GeometryModel::Box<dim> *gm = dynamic_cast<const GeometryModel::Box<dim> *>(&this->get_geometry_model()))
         {
           bottom_boundary_area = dlon;
@@ -133,9 +135,21 @@ namespace aspect
         }
       else
         {
+          // Compute the area of the bottom boundary
+          if (dim == 2)
+          {
+            bottom_boundary_area = 2. * numbers::PI * inner_radius * dlon / (2. * numbers::PI);
+            this->get_pcout() << "   Bottom boundary area " << bottom_boundary_area << 
+              "for an inner radius of " << inner_radius << " and an opening angle of " << dlon / numbers::PI * 180. << std::endl;
+          }
+          else
+          {
+          // the integral over longitude interval dlon and latitude interval dlat of R0*R0*sin(lat)
           bottom_boundary_area = inner_radius * inner_radius * dlon * (std::cos(min_lat) - std::cos(max_lat));
           // TODO adapt for 2D as well
-          this->get_pcout() << "   Bottom boundary area " << bottom_boundary_area << " for R,dlon,mincolat,maxcolat " << inner_radius << ", " << dlon / numbers::PI * 180. << ", " << min_lat / numbers::PI * 180. << ", " << max_lat / numbers::PI * 180. << std::endl;
+          this->get_pcout() << "   Bottom boundary area " << bottom_boundary_area << " for R, dlon, mincolat, maxcolat " << 
+            inner_radius << ", " << dlon / numbers::PI * 180. << ", " << min_lat / numbers::PI * 180. << ", " << max_lat / numbers::PI * 180. << std::endl;
+          }
         }
 
       // Get the boundary velocity objects on the vertical boundaries
@@ -153,6 +167,8 @@ namespace aspect
 
       AssertThrow(tmp_boundary_ids.size() != 0,
                   ExcMessage("The Compensating Bottom Flow velocity boundary conditions plugin requires prescribed velocity boundary conditions on at least one lateral boundary."));
+      AssertThrow(tmp_boundary_ids.size() == vertical_boundary_indicators.size(),
+                  ExcMessage("The Compensating Bottom Flow velocity boundary conditions plugin requires prescribed velocity boundary conditions for each user-defined compensation boundary."));
     }
 
     template <int dim>
@@ -161,7 +177,8 @@ namespace aspect
     {
       // Compute the net flow through the lateral boundaries
       net_outflow = compute_net_outflow();
-      this->get_pcout() << "    Current net outflow is " << net_outflow << std::endl;
+      std::string unit = dim == 2 ? " m2/s" : " m3/s";
+      this->get_pcout() << "    Current net outflow is " << net_outflow << unit << std::endl;
     }
 
 
@@ -175,8 +192,10 @@ namespace aspect
       if (boundary_indicator != bottom_boundary_indicator)
         return Tensor<1, dim>();
 
+      // Compute the upward unit normal to the bottom boundary
       const Tensor<1, dim>
       upward_normal = -this->get_gravity_model().gravity_vector(position) / this->get_gravity_model().gravity_vector(position).norm();
+
       return (net_outflow / bottom_boundary_area) * upward_normal;
     }
 
@@ -186,8 +205,6 @@ namespace aspect
     CompensatingBottomFlow<dim>::
     compute_net_outflow () const
     {
-      // Upon initialization, the coarse_mesh is available
-      // create a quadrature formula based on the temperature element alone.
       const QGauss<dim-1> quadrature_formula (this->introspection().polynomial_degree.velocities + 1);
 
       FEFaceValues<dim> fe_face_values (this->get_mapping(),
@@ -202,8 +219,8 @@ namespace aspect
       cell = this->get_dof_handler().begin_active(),
       endc = this->get_dof_handler().end();
 
-      // for every surface face on which it makes sense to compute a
-      // mass flux and that is owned by this processor,
+      // for every surface face on the user-defined lateral boundaries
+      // and that is owned by this processor,
       // integrate the normal flux given by the formula
       //   j =  v * n
       for (; cell!=endc; ++cell)
@@ -218,6 +235,9 @@ namespace aspect
 
                 typename std::map<types::boundary_id, std::vector<std::unique_ptr<BoundaryVelocity::Interface<dim>>>>::const_iterator boundary_plugins =
                   lateral_boundary_velocity_objects.find(id);
+
+                AssertThrow(boundary_plugins != lateral_boundary_velocity_objects.end(),
+                  ExcMessage("There is no active boundary velocity object for the user-defined lateral boundary."));
 
                 double local_normal_flux = 0;
                 for (unsigned int q=0; q<fe_face_values.n_quadrature_points; ++q)
