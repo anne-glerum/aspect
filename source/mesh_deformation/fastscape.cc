@@ -151,15 +151,15 @@ namespace aspect
                                                              AffineConstraints<double> &mesh_velocity_constraints,
                                                              const std::set<types::boundary_id> &boundary_ids) const
     {
+
+      if (this->get_timestep_number() == 0)
+        return;
+
       TimerOutput::Scope timer_section(this->get_computing_timer(), "FastScape plugin");
       const types::boundary_id relevant_boundary = this->get_geometry_model().translate_symbolic_boundary_name_to_id ("top");
       const int current_timestep = this->get_timestep_number ();
 
       const double a_dt = this->get_timestep()/year_in_seconds;
-
-      // We only want to run FastScape if there was a change in time.
-      if (a_dt > 0)
-        {
 
           // FastScape requires multiple specially defined and ordered variables sent to its functions. To make
           // the transfer of these down to one process easier, we first fill out a vector of temporary variables,
@@ -845,7 +845,6 @@ namespace aspect
                                                     *boundary_ids.begin(),
                                                     vector_function_object,
                                                     mesh_velocity_constraints);
-        }
     }
 
     template <int dim>
