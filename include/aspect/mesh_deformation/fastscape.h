@@ -206,9 +206,9 @@ namespace aspect
       void set_ghost_nodes(double *h, double *vx, double *vy, double *vz) const;
 
       /**
-       * Function to intialize or restart FastScape
+       * Function to intialize or restart FastScape   double *kd, double *kf, double *vx, double *vy, double *vz,
        */
-      //void fill_fastscape_arrays(double *h, double *kd, double *kf, double *vx, double *vy, double *vz, std::vector<std::vector<double>> *temporary_variables) const;
+      void fill_fastscape_arrays(double *h, double *kd, double *kf, double *vx, double *vy, double *vz, std::vector<std::vector<double>> temporary_variables) const;
 
       /**
        * Function to intialize or restart FastScape

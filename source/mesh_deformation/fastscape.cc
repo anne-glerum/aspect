@@ -191,56 +191,7 @@ namespace aspect
               const std::string restart_step_filename = dirname + "fastscape_steps_restart.txt";
               const std::string restart_filename_basement = dirname + "fastscape_b_restart.txt";
 
-              // Initialize kf and kd.
-              for (int i=0; i<array_size; i++)
-                {
-                  kf[i] = kff;
-                  kd[i] = kdd;
-                }
-
-              for (unsigned int i=0; i<temporary_variables[1].size(); i++)
-                {
-                  h[temporary_variables[1][i]] = temporary_variables[0][i];
-                  vx[temporary_variables[1][i]] = temporary_variables[2][i];
-                  vz[temporary_variables[1][i]] = temporary_variables[dim+1][i];
-
-                  if (dim == 2 )
-                    vy[temporary_variables[1][i]] = 0;
-                  else
-                    vy[temporary_variables[1][i]] = temporary_variables[3][i];
-                }
-
-              for (unsigned int p=1; p<Utilities::MPI::n_mpi_processes(this->get_mpi_communicator()); ++p)
-                {
-                  // First, find out the size of the array a process wants to send.
-                  MPI_Status status;
-                  MPI_Probe(p, 42, this->get_mpi_communicator(), &status);
-                  int incoming_size = 0;
-                  MPI_Get_count(&status, MPI_DOUBLE, &incoming_size);
-
-                  // Resize the array so it fits whatever the process sends.
-                  for (unsigned int i=0; i<temporary_variables.size(); ++i)
-                    {
-                      temporary_variables[i].resize(incoming_size);
-                    }
-
-                  for (unsigned int i=0; i<temporary_variables.size(); i++)
-                    MPI_Recv(&temporary_variables[i][0], incoming_size, MPI_DOUBLE, p, 42, this->get_mpi_communicator(), &status);
-
-                  // Now, place the numbers into the correct place based off the index.
-                  for (unsigned int i=0; i<temporary_variables[1].size(); i++)
-                    {
-                      h[temporary_variables[1][i]] = temporary_variables[0][i];
-                      vx[temporary_variables[1][i]] = temporary_variables[2][i];
-                      vz[temporary_variables[1][i]] = temporary_variables[dim+1][i];
-
-                      // In 2D there are no y velocities, so we set them to zero.
-                      if (dim == 2 )
-                        vy[temporary_variables[1][i]] = 0;
-                      else
-                        vy[temporary_variables[1][i]] = temporary_variables[3][i];
-                    }
-                }
+              fill_fastscape_arrays(h.get(), kd.get(), kf.get(), vx.get(), vy.get(), vz.get(), temporary_variables);
 
               if (current_timestep == 1 || restart)
                 {
@@ -661,11 +612,63 @@ namespace aspect
         return temporary_variables;
     }
 
-   // template <int dim>
-   // void FastScape<dim>::fill_fastscape_arrays(double *h, double *kd, double *kf, double *vx, double *vy, double *vz, std::vector<std::vector<double>> *temporary_variables) const
-   // {
-   //   int i = 0;
-   // }
+    template <int dim>
+    void FastScape<dim>::fill_fastscape_arrays(double *h, double *kd, double *kf, double *vx, double *vy, double *vz, std::vector<std::vector<double>> temporary_variables) const
+    {
+              // Initialize kf and kd.
+              for (int i=0; i<array_size; i++)
+                {
+                  kf[i] = kff;
+                  kd[i] = kdd;
+                }
+
+              for (unsigned int i=0; i<temporary_variables[1].size(); i++)
+                {
+
+                  int index = temporary_variables[1][i];
+                  h[index] = temporary_variables[0][i];
+                  vx[index] = temporary_variables[2][i];
+                  vz[index] = temporary_variables[dim+1][i];
+
+                  if (dim == 2 )
+                    vy[index] = 0;
+                  else
+                    vy[index] = temporary_variables[3][i];
+                }
+
+              for (unsigned int p=1; p<Utilities::MPI::n_mpi_processes(this->get_mpi_communicator()); ++p)
+                {
+                  // First, find out the size of the array a process wants to send.
+                  MPI_Status status;
+                  MPI_Probe(p, 42, this->get_mpi_communicator(), &status);
+                  int incoming_size = 0;
+                  MPI_Get_count(&status, MPI_DOUBLE, &incoming_size);
+
+                  // Resize the array so it fits whatever the process sends.
+                  for (unsigned int i=0; i<temporary_variables.size(); ++i)
+                    {
+                      temporary_variables[i].resize(incoming_size);
+                    }
+
+                  for (unsigned int i=0; i<temporary_variables.size(); i++)
+                    MPI_Recv(&temporary_variables[i][0], incoming_size, MPI_DOUBLE, p, 42, this->get_mpi_communicator(), &status);
+
+                  // Now, place the numbers into the correct place based off the index.
+                  for (unsigned int i=0; i<temporary_variables[1].size(); i++)
+                    {
+                      int index = temporary_variables[1][i];
+                      h[index] = temporary_variables[0][i];
+                      vx[index] = temporary_variables[2][i];
+                      vz[index] = temporary_variables[dim+1][i];
+
+                      // In 2D there are no y velocities, so we set them to zero.
+                      if (dim == 2 )
+                        vy[index] = 0;
+                      else
+                        vy[index] = temporary_variables[3][i];
+                    }
+                }
+    }
     template <int dim>
     void FastScape<dim>::initialize_fastscape(double* h, double *b, double *kd, double *kf) const
     {
