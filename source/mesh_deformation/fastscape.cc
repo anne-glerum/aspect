@@ -158,7 +158,6 @@ namespace aspect
       TimerOutput::Scope timer_section(this->get_computing_timer(), "FastScape plugin");
       const types::boundary_id relevant_boundary = this->get_geometry_model().translate_symbolic_boundary_name_to_id ("top");
       const int current_timestep = this->get_timestep_number ();
-
       const double a_dt = this->get_timestep()/year_in_seconds;
 
           // FastScape requires multiple specially defined and ordered variables sent to its functions. To make
@@ -275,32 +274,9 @@ namespace aspect
 
               // Create variables for output directory and restart file
               std::string dirname = this->get_output_directory();
-              const char *c=dirname.c_str();
-              int length = dirname.length();
               const std::string restart_filename = dirname + "fastscape_h_restart.txt";
               const std::string restart_step_filename = dirname + "fastscape_steps_restart.txt";
               const std::string restart_filename_basement = dirname + "fastscape_b_restart.txt";
-
-	      // Determine whether to create a VTK file this timestep.
-              bool make_vtk = 0;
-              if (this->get_time() >= last_output_time + output_interval || this->get_time()+this->get_timestep() >= end_time)
-              {
-                // Don't create a visualization file on a restart.
-                if(!restart)
-		          make_vtk = 1;
-
-                if (output_interval > 0)
-               {
-                // We need to find the last time output was supposed to be written.
-                // this is the last_output_time plus the largest positive multiple
-                // of output_intervals that passed since then. We need to handle the
-                // edge case where last_output_time+output_interval==current_time,
-                // we did an output and std::floor sadly rounds to zero. This is done
-                // by forcing std::floor to round 1.0-eps to 1.0.
-                const double magic = 1.0+2.0*std::numeric_limits<double>::epsilon();
-                last_output_time = last_output_time + std::floor((this->get_time()-last_output_time)/output_interval*magic) * output_interval/magic;
-                }
-              }
 
               // Initialize kf and kd.
               for (int i=0; i<array_size; i++)
@@ -542,18 +518,6 @@ namespace aspect
                   out_b << bufferb.str();
                 }
 
-              // Find a FastScape timestep that is below our maximum timestep.
-              int steps = nstep;
-              double f_dt = a_dt/steps;
-              while (f_dt>maximum_fastscape_timestep)
-                {
-                  steps=steps*2;
-                  f_dt = a_dt/steps;
-                }
-
-              // Set time step
-              fastscape_set_dt_(&f_dt);
-
               // Set velocity components.
               if (use_velocities)
               {
@@ -565,62 +529,8 @@ namespace aspect
               fastscape_set_h_(h.get());
               fastscape_set_erosional_parameters_(kf.get(), &kfsed, &m, &n, kd.get(), &kdsed, &g, &g, &p);
 
-              // Because on the first timestep we will create an initial VTK file before running FastScape
-              // and a second after, we first set the visualization step to zero.
-              int visualization_step = 0;
-              steps = istep+steps;
-
-              this->get_pcout() << "   Calling FastScape... " << (steps-istep) << " timesteps of " << f_dt << " years." << std::endl;
-              {
-                auto t_start = std::chrono::high_resolution_clock::now();
-
-                /*
-                 * If we use stratigraphy it'll handle visualization and not the normal function.
-                 * TODO: The frequency in this needs to be the same as the total timesteps FastScape will
-                 * run for, need to figure out how to work this in better.
-                 */
-                if (use_stratigraphy && current_timestep == 1)
-                  fastscape_strati_(&nstepp, &nreflectorp, &steps, &vexp);
-                else if (!use_stratigraphy && current_timestep == 1)
-                  {
-                    this->get_pcout() << "      Writing initial VTK..." << std::endl;
-                    // Note: Here, the HHHHH field in visualization is set to show the diffusivity. However, you can change this so any parameter
-                    // is visualized.
-                    fastscape_named_vtk_(kd.get(), &vexp, &visualization_step, c, &length);
-                  }
-
-                do
-                  {
-                    // Execute step, this increases timestep counter
-                    fastscape_execute_step_();
-
-                    // Get value of time step counter
-                    fastscape_get_step_(&istep);
-
-                    // Outputs new h values
-                    fastscape_copy_h_(h.get());
-                  }
-                while (istep<steps);
-
-                // Output how long FastScape took to run.
-                auto t_end = std::chrono::high_resolution_clock::now();
-                double r_time = std::chrono::duration<double>(t_end-t_start).count();
-                this->get_pcout() << "      FastScape runtime... " << round(r_time*1000)/1000 << "s" << std::endl;
-              }
-
-              visualization_step = current_timestep;
-              if (make_vtk)
-              {
-                 this->get_pcout() << "      Writing VTK..." << std::endl;
-                 fastscape_named_vtk_(kd.get(), &vexp, &visualization_step, c, &length);
-              }
-
-              // If we've reached the end time, destroy FastScape.
-              if (this->get_time()+this->get_timestep() > end_time)
-                {
-                  this->get_pcout() << "      Destroying FastScape..." << std::endl;
-                  fastscape_destroy_();
-                }
+              // Find  timestep size, run fastscape, and make visualizations.
+              execute_fastscape(h.get(), kd.get(), istep);
 
               // Find out our velocities from the change in height.
               // Where V is a vector of array size that exists on all processes.
@@ -767,6 +677,106 @@ namespace aspect
       // Only set the basement if it's a restart
       if (current_timestep != 1)
           fastscape_set_basement_(b);
+    }
+
+    template <int dim>
+    void FastScape<dim>::execute_fastscape(double* h, double *kd, int istep) const
+    {
+              const double a_dt = this->get_timestep()/year_in_seconds;
+              // Because on the first timestep we will create an initial VTK file before running FastScape
+              // and a second after, we first set the visualization step to zero.
+              int visualization_step = 0;
+              const int current_timestep = this->get_timestep_number ();
+              std::string dirname = this->get_output_directory();
+              const char *c=dirname.c_str();
+              int length = dirname.length();
+
+              // Find a FastScape timestep that is below our maximum timestep.
+              int fastscape_iterations = nstep;
+              double f_dt = a_dt/fastscape_iterations;
+              while (f_dt>maximum_fastscape_timestep)
+                {
+                  fastscape_iterations=fastscape_iterations*2;
+                  f_dt = a_dt/fastscape_iterations;
+                }
+
+              // Set time step
+              fastscape_set_dt_(&f_dt);
+              fastscape_iterations = fastscape_iterations + istep;
+              std::cout<<fastscape_iterations<<"  "<<istep<<std::endl;
+              this->get_pcout() << "   Calling FastScape... " << (fastscape_iterations-istep) << " timesteps of " << f_dt << " years." << std::endl;
+              {
+                auto t_start = std::chrono::high_resolution_clock::now();
+
+                /*
+                 * If we use stratigraphy it'll handle visualization and not the normal function.
+                 * TODO: The frequency in this needs to be the same as the total timesteps FastScape will
+                 * run for, need to figure out how to work this in better.
+                 */
+                if (use_stratigraphy && current_timestep == 1)
+                  fastscape_strati_(&nstepp, &nreflectorp, &fastscape_iterations, &vexp);
+                else if (!use_stratigraphy && current_timestep == 1)
+                  {
+                    this->get_pcout() << "      Writing initial VTK..." << std::endl;
+                    // Note: Here, the HHHHH field in visualization is set to show the diffusivity. However, you can change this so any parameter
+                    // is visualized.
+                    fastscape_named_vtk_(kd, &vexp, &visualization_step, c, &length);
+                  }
+
+                do
+                  {
+                    // Execute step, this increases timestep counter
+                    fastscape_execute_step_();
+
+                    // Get value of time step counter
+                    fastscape_get_step_(&istep);
+
+                    // Outputs new h values
+                    fastscape_copy_h_(h);
+                  }
+                while (istep<fastscape_iterations);
+
+                // Output how long FastScape took to run.
+                auto t_end = std::chrono::high_resolution_clock::now();
+                double r_time = std::chrono::duration<double>(t_end-t_start).count();
+                this->get_pcout() << "      FastScape runtime... " << round(r_time*1000)/1000 << "s" << std::endl;
+              }
+
+              visualization_step = current_timestep;
+
+              // Determine whether to create a VTK file this timestep.
+              bool make_vtk = 0;
+              if (this->get_time() >= last_output_time + output_interval || this->get_time()+this->get_timestep() >= end_time)
+              {
+                // Don't create a visualization file on a restart.
+                if(!restart)
+		          make_vtk = 1;
+
+                if (output_interval > 0)
+               {
+                // We need to find the last time output was supposed to be written.
+                // this is the last_output_time plus the largest positive multiple
+                // of output_intervals that passed since then. We need to handle the
+                // edge case where last_output_time+output_interval==current_time,
+                // we did an output and std::floor sadly rounds to zero. This is done
+                // by forcing std::floor to round 1.0-eps to 1.0.
+                const double magic = 1.0+2.0*std::numeric_limits<double>::epsilon();
+                last_output_time = last_output_time + std::floor((this->get_time()-last_output_time)/output_interval*magic) * output_interval/magic;
+                }
+              }
+
+              if (make_vtk)
+              {
+                 this->get_pcout() << "      Writing VTK..." << std::endl;
+                 fastscape_named_vtk_(kd, &vexp, &visualization_step, c, &length);
+              }
+
+              // If we've reached the end time, destroy FastScape.
+              if (this->get_time()+this->get_timestep() > end_time)
+                {
+                  this->get_pcout() << "      Destroying FastScape..." << std::endl;
+                  fastscape_destroy_();
+                }
     }
 
     template <int dim>

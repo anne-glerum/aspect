@@ -211,6 +211,11 @@ namespace aspect
       void initialize_fastscape(double *h, double *b, double *kd, double *kf) const;
 
       /**
+       * Execute FastScape
+       */
+      void execute_fastscape(double *h, double *kd, int istep) const;
+
+      /**
        * Function to intialize or restart FastScape
        */
       void apply_orographic_controls(double *h, double *kf, double *kd) const;
