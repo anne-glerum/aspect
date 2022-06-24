@@ -411,27 +411,7 @@ namespace aspect
                       restart = false;
                     }
 
-                  // Initialize FastScape with grid and extent.
-                  fastscape_init_();
-                  fastscape_set_nx_ny_(&nx,&ny);
-                  fastscape_setup_();
-                  fastscape_set_xl_yl_(&x_extent,&y_extent);
-
-                  // Set boundary conditions
-                  fastscape_set_bc_(&bc);
-
-                  // Initialize topography
-                  fastscape_init_h_(h.get());
-
-                  // Set erosional parameters. May have to move this if sed values are updated over time.
-                  fastscape_set_erosional_parameters_(kf.get(), &kfsed, &m, &n, kd.get(), &kdsed, &g, &gsed, &p);
-
-                  if (use_marine)
-                    fastscape_set_marine_parameters_(&sl, &p1, &p2, &z1, &z2, &r, &l, &kds1, &kds2);
-
-                  // Only set the basement if it's a restart
-                  if (current_timestep != 1)
-                    fastscape_set_basement_(b.get());
+                  initialize_fastscape(h.get(), b.get(), kd.get(), kf.get());
                 }
               else
                 {
@@ -492,7 +472,7 @@ namespace aspect
                */
               // I redid the indexing here, at some point I should double check that these still work without issue.
               if (use_ghost_nodes)
-                 set_ghost_nodes(h.get(), vx.get(), vy.get(), vz.get(), nx, ny);
+                 set_ghost_nodes(h.get(), vx.get(), vy.get(), vz.get());
 
               //////// Section to apply orographic controls /////////
 	          // First for the wind barrier, we find the maximum height and index
@@ -530,92 +510,6 @@ namespace aspect
                         }
                      }
                    }
-
-              // Now we loop through all the points again and apply the factors.
-              // TODO: I made quite a few changes here, should double check it still works.
-              std::vector<double> control_applied(array_size, 0);
-              for (int i=0; i<ny; i++)
-                {
-                // Factor from wind barrier. Apply a switch based off wind direction.
-                // Where 0 is wind going to the west, 1 the east, 2 the south, and 3 the north.
-                for (int j=0; j<nx; j++)
-                  {
-                switch(wind_direction)
-                  {
-                  case 0 :
-                    {
-                      // If we are above the set elevation, and on the correct side based on the wind direction apply
-                      // the factor. Apply this regardless of whether or not we stack controls.
-                      if ( (hmaxx[0][i] > wind_barrier_elevation) && (j < hmaxx[1][i]) )
-                        {
-                          kf[nx*i+j] = kf[nx*i+j]*wind_barrier_erosional_factor;
-                          kd[nx*i+j] = kd[nx*i+j]*wind_barrier_erosional_factor;
-                          control_applied[nx*i+j] = 1;
-                        }
-                        break;
-                    }
-                  case 1 :
-                    {
-                      if ( (hmaxx[0][i] > wind_barrier_elevation) && (j > hmaxx[1][i]) )
-                        {
-                          kf[nx*i+j] = kf[nx*i+j]*wind_barrier_erosional_factor;
-                          kd[nx*i+j] = kd[nx*i+j]*wind_barrier_erosional_factor;
-                          control_applied[nx*i+j] = 1;
-                        }
-                        break;
-                    }
-                  case 2 :
-                    {
-                      if ( (hmaxy[0][j] > wind_barrier_elevation) && (i > hmaxy[1][j]) )
-                        {
-                          kf[nx*i+j] = kf[nx*i+j]*wind_barrier_erosional_factor;
-                          kd[nx*i+j] = kd[nx*i+j]*wind_barrier_erosional_factor;
-                          control_applied[nx*i+j] = 1;
-                        }
-                        break;
-                    }
-                  case 3 :
-                    {
-                      if ( (hmaxy[0][j] > wind_barrier_elevation) && (i < hmaxy[1][j]) )
-                        {
-                          kf[nx*i+j] = kf[nx*i+j]*wind_barrier_erosional_factor;
-                          kd[nx*i+j] = kd[nx*i+j]*wind_barrier_erosional_factor;
-                          control_applied[nx*i+j] = 1;
-                        }
-                        break;
-                    }
-                  default :
-                    AssertThrow(false, ExcMessage("This does not correspond with a wind direction."));
-                    break;
-                  }
-
-                  // If we are above the flat elevation and stack controls, apply the flat elevation factor. If we are not
-                  // stacking controls, apply the factor if the wind barrier was not applied to this point.
-                  if( ((h[nx*i+j] > flat_elevation) && stack_controls==true) || ((h[nx*i+j] > flat_elevation) && !stack_controls && (control_applied[nx*i+j]==0)) )
-                    {
-                      kf[nx*i+j] = kf[nx*i+j]*flat_erosional_factor;
-                      kd[nx*i+j] = kd[nx*i+j]*flat_erosional_factor;
-                    }
-                  // If we are not stacking controls and the wind barrier was applied to this point, only
-                  // switch to this control if the factor is greater.
-                  else if( (h[nx*i+j] > flat_elevation) && stack_controls==false && (control_applied[nx*i+j]==1) && (flat_erosional_factor > wind_barrier_erosional_factor) )
-                  {
-                    if( wind_barrier_erosional_factor != 0)
-                    {
-                      kf[nx*i+j] = (kf[nx*i+j]/wind_barrier_erosional_factor)*flat_erosional_factor;
-                      kd[nx*i+j] = (kd[nx*i+j]/wind_barrier_erosional_factor)*flat_erosional_factor;
-                    }
-                    // If a wind barrier factor of zero was applied for some reason, we set it back to the default
-                    // and apply the flat_erosional_factor.
-                    else
-                    {
-                      kf[nx*i+j] = kff*flat_erosional_factor;
-                      kd[nx*i+j] = kdd*flat_erosional_factor;
-                    }
-                  }
-                 }
-                }
-              //////// End orographic section. Update to erosional parameters applied later. /////////
 
               // Get current FastScape timestep.
               int istep = 0;
@@ -848,7 +742,160 @@ namespace aspect
     }
 
     template <int dim>
-    void FastScape<dim>::set_ghost_nodes(double *h, double *vx, double *vy, double *vz, int nx, int ny) const
+    void FastScape<dim>::initialize_fastscape(double* h, double *b, double *kd, double *kf) const
+    {
+      const int current_timestep = this->get_timestep_number ();
+
+      // Initialize FastScape with grid and extent.
+      fastscape_init_();
+      fastscape_set_nx_ny_(&nx,&ny);
+      fastscape_setup_();
+      fastscape_set_xl_yl_(&x_extent,&y_extent);
+
+      // Set boundary conditions
+      fastscape_set_bc_(&bc);
+
+      // Initialize topography
+      fastscape_init_h_(h);
+
+      // Set erosional parameters. May have to move this if sed values are updated over time.
+      fastscape_set_erosional_parameters_(kf, &kfsed, &m, &n, kd, &kdsed, &g, &gsed, &p);
+
+      if (use_marine)
+          fastscape_set_marine_parameters_(&sl, &p1, &p2, &z1, &z2, &r, &l, &kds1, &kds2);
+
+      // Only set the basement if it's a restart
+      if (current_timestep != 1)
+          fastscape_set_basement_(b);
+    }
+
+    template <int dim>
+    void FastScape<dim>::apply_orographic_controls(double *h, double *kd, double *kf) const
+    {
+      	          // First for the wind barrier, we find the maximum height and index
+              // along each line in the x and y direction.
+              // If wind is east or west, we find maximum point for each ny row along x.
+              std::vector<std::vector<double>> hmaxx(2, std::vector<double>(ny, 0.0));
+	          if(wind_direction == 0 || wind_direction == 1)
+              {
+              for (int i=0; i<ny; i++)
+               	    {
+                      for (int j=0; j<nx; j++)
+                        {
+                          if( h[nx*i+j] > hmaxx[0][i])
+                            {
+	                          hmaxx[0][i] = h[nx*i+j];
+                              hmaxx[1][i] = j;
+                            }
+                        }
+                    }
+                }
+
+                // If wind is north or south, we find maximum point for each nx row along y.
+                std::vector<std::vector<double>> hmaxy(2, std::vector<double>(nx, 0.0));
+	            if(wind_direction == 2 || wind_direction == 3)
+		        {
+                  for (int i=0; i<nx; i++)
+                    {
+                      for (int j=0; j<ny; j++)
+                        {
+                          if( h[nx*j+i] > hmaxy[0][i])
+		                    {
+	                          hmaxy[0][i] = h[nx*j+i];
+                              hmaxy[1][i] = j;
+                            }
+                        }
+                     }
+                   }
+
+              // Now we loop through all the points again and apply the factors.
+              // TODO: I made quite a few changes here, should double check it still works.
+              std::vector<double> control_applied(array_size, 0);
+              for (int i=0; i<ny; i++)
+                {
+                // Factor from wind barrier. Apply a switch based off wind direction.
+                // Where 0 is wind going to the west, 1 the east, 2 the south, and 3 the north.
+                for (int j=0; j<nx; j++)
+                  {
+                switch(wind_direction)
+                  {
+                  case 0 :
+                    {
+                      // If we are above the set elevation, and on the correct side based on the wind direction apply
+                      // the factor. Apply this regardless of whether or not we stack controls.
+                      if ( (hmaxx[0][i] > wind_barrier_elevation) && (j < hmaxx[1][i]) )
+                        {
+                          kf[nx*i+j] = kf[nx*i+j]*wind_barrier_erosional_factor;
+                          kd[nx*i+j] = kd[nx*i+j]*wind_barrier_erosional_factor;
+                          control_applied[nx*i+j] = 1;
+                        }
+                        break;
+                    }
+                  case 1 :
+                    {
+                      if ( (hmaxx[0][i] > wind_barrier_elevation) && (j > hmaxx[1][i]) )
+                        {
+                          kf[nx*i+j] = kf[nx*i+j]*wind_barrier_erosional_factor;
+                          kd[nx*i+j] = kd[nx*i+j]*wind_barrier_erosional_factor;
+                          control_applied[nx*i+j] = 1;
+                        }
+                        break;
+                    }
+                  case 2 :
+                    {
+                      if ( (hmaxy[0][j] > wind_barrier_elevation) && (i > hmaxy[1][j]) )
+                        {
+                          kf[nx*i+j] = kf[nx*i+j]*wind_barrier_erosional_factor;
+                          kd[nx*i+j] = kd[nx*i+j]*wind_barrier_erosional_factor;
+                          control_applied[nx*i+j] = 1;
+                        }
+                        break;
+                    }
+                  case 3 :
+                    {
+                      if ( (hmaxy[0][j] > wind_barrier_elevation) && (i < hmaxy[1][j]) )
+                        {
+                          kf[nx*i+j] = kf[nx*i+j]*wind_barrier_erosional_factor;
+                          kd[nx*i+j] = kd[nx*i+j]*wind_barrier_erosional_factor;
+                          control_applied[nx*i+j] = 1;
+                        }
+                        break;
+                    }
+                  default :
+                    AssertThrow(false, ExcMessage("This does not correspond with a wind direction."));
+                    break;
+                  }
+
+                  // If we are above the flat elevation and stack controls, apply the flat elevation factor. If we are not
+                  // stacking controls, apply the factor if the wind barrier was not applied to this point.
+                  if( ((h[nx*i+j] > flat_elevation) && stack_controls==true) || ((h[nx*i+j] > flat_elevation) && !stack_controls && (control_applied[nx*i+j]==0)) )
+                    {
+                      kf[nx*i+j] = kf[nx*i+j]*flat_erosional_factor;
+                      kd[nx*i+j] = kd[nx*i+j]*flat_erosional_factor;
+                    }
+                  // If we are not stacking controls and the wind barrier was applied to this point, only
+                  // switch to this control if the factor is greater.
+                  else if( (h[nx*i+j] > flat_elevation) && stack_controls==false && (control_applied[nx*i+j]==1) && (flat_erosional_factor > wind_barrier_erosional_factor) )
+                  {
+                    if( wind_barrier_erosional_factor != 0)
+                    {
+                      kf[nx*i+j] = (kf[nx*i+j]/wind_barrier_erosional_factor)*flat_erosional_factor;
+                      kd[nx*i+j] = (kd[nx*i+j]/wind_barrier_erosional_factor)*flat_erosional_factor;
+                    }
+                    // If a wind barrier factor of zero was applied for some reason, we set it back to the default
+                    // and apply the flat_erosional_factor.
+                    else
+                    {
+                      kf[nx*i+j] = kff*flat_erosional_factor;
+                      kd[nx*i+j] = kdd*flat_erosional_factor;
+                    }
+                  }
+                 }
+                }
+    }
+
+    template <int dim>
+    void FastScape<dim>::set_ghost_nodes(double *h, double *vx, double *vy, double *vz) const
     {
                  const int current_timestep = this->get_timestep_number ();
                  std::unique_ptr<double[]> slopep (new double[array_size]());

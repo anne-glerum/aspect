@@ -203,7 +203,17 @@ namespace aspect
        * before running FastScape.
        * TODO: Should this be in private?
        */
-      void set_ghost_nodes(double *h, double *vx, double *vy, double *vz, int nx, int ny) const;
+      void set_ghost_nodes(double *h, double *vx, double *vy, double *vz) const;
+
+      /**
+       * Function to intialize or restart FastScape
+       */
+      void initialize_fastscape(double *h, double *b, double *kd, double *kf) const;
+
+      /**
+       * Function to intialize or restart FastScape
+       */
+      void apply_orographic_controls(double *h, double *kf, double *kd) const;
 
     private:
       /**
