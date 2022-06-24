@@ -155,11 +155,7 @@ namespace aspect
       const types::boundary_id relevant_boundary = this->get_geometry_model().translate_symbolic_boundary_name_to_id ("top");
       const int current_timestep = this->get_timestep_number ();
 
-      double a_dt = this->get_timestep();
-      if (this->convert_output_to_years())
-        {
-          a_dt = this->get_timestep()/year_in_seconds;
-        }
+      const double a_dt = this->get_timestep()/year_in_seconds;
 
       // We only want to run FastScape if there was a change in time.
       if (a_dt > 0)
@@ -233,10 +229,8 @@ namespace aspect
 
                                 for (unsigned int i=0; i<dim; ++i)
                                   {
-                                    if (this->convert_output_to_years())
-                                      temporary_variables[i+2].push_back(vel[corner][i]*year_in_seconds);
-                                    else
-                                      temporary_variables[i+2].push_back(vel[corner][i]);
+                                    // Always convert to m/yr for FastScape
+                                    temporary_variables[i+2].push_back(vel[corner][i]*year_in_seconds);
                                   }
                               }
                           }
@@ -256,10 +250,7 @@ namespace aspect
 
                             for (unsigned int i=0; i<dim; ++i)
                               {
-                                if (this->convert_output_to_years())
-                                  temporary_variables[i+2].push_back(vel[corner][i]*year_in_seconds);
-                                else
-                                  temporary_variables[i+2].push_back(vel[corner][i]);
+                                temporary_variables[i+2].push_back(vel[corner][i]*year_in_seconds);
                               }
                           }
                       }
@@ -292,11 +283,11 @@ namespace aspect
 
 	      // Determine whether to create a VTK file this timestep.
               bool make_vtk = 0;
-              if (this->get_time() >= last_output_time + output_interval || this->get_time()+a_dt >= end_time)
+              if (this->get_time() >= last_output_time + output_interval || this->get_time()+this->get_timestep() >= end_time)
               {
                 // Don't create a visualization file on a restart.
                 if(!restart)
-		  make_vtk = 1;
+		          make_vtk = 1;
 
                 if (output_interval > 0)
                {
@@ -731,7 +722,7 @@ namespace aspect
               }
 
               // If we've reached the end time, destroy FastScape.
-              if (this->get_time()+a_dt >= end_time)
+              if (this->get_time()+this->get_timestep() > end_time)
                 {
                   this->get_pcout() << "      Destroying FastScape..." << std::endl;
                   fastscape_destroy_();
@@ -800,11 +791,8 @@ namespace aspect
                     {
                       idx[0] = j;
 
-                      // Convert from m/yr to m/s if needed. i == 1 is the surface and i = 0 the bottom.
-                      if (this->convert_output_to_years())
-                          data_table(idx) = V2[j]/year_in_seconds;
-                      else
-                          data_table(idx) = V2[j];
+                      // Convert back to m/s.
+                      data_table(idx) = V2[j]/year_in_seconds;
                     }
                 }
             }
@@ -823,11 +811,9 @@ namespace aspect
                         {
                           idx[0] = j;
 
-                          // Fill table, where nx+1 allows skipping of the first ghost node.
-                          if (this->convert_output_to_years())
-                            data_table(idx) = V[(nx+1)*use_ghost_nodes+nx*i+j]/year_in_seconds;
-                          else
-                            data_table(idx) = V[(nx+1)*use_ghost_nodes+nx*i+j];
+                          // Convert back to m/s.
+                          data_table(idx) = V[(nx+1)*use_ghost_nodes+nx*i+j]/year_in_seconds;
+
                         }
                     }
                 }
@@ -1320,6 +1306,13 @@ namespace aspect
           sediment_rain_times = Utilities::string_to_double
                              (Utilities::split_string_list(prm.get ("Sediment rain time intervals")));
 
+            if (!this->convert_output_to_years())
+            {
+              maximum_fastscape_timestep /= year_in_seconds;
+              for (unsigned int j=0; j<sediment_rain_rates.size(); j++)
+                       sediment_rain_rates[j] *= year_in_seconds;
+            }
+
           if (sediment_rain_rates.size() != sediment_rain_times.size()+1)
               AssertThrow(false, ExcMessage("Error: There must be one more sediment rain value than interval."));
 
@@ -1333,6 +1326,14 @@ namespace aspect
             right_flux = prm.get_double("Right mass flux");
             top_flux = prm.get_double("Top mass flux");
             bottom_flux = prm.get_double("Bottom mass flux");
+
+            if (!this->convert_output_to_years())
+            {
+              left_flux *= year_in_seconds;
+              right_flux *= year_in_seconds;
+              top_flux *= year_in_seconds;
+              bottom_flux *= year_in_seconds;
+            }
 
             // Put the boundary condition values into a four digit value to send to FastScape.
             bc = bottom*1000+right*100+top*10+left;
@@ -1360,6 +1361,14 @@ namespace aspect
             wind_barrier_erosional_factor = prm.get_double("Wind barrier factor");
             stack_controls = prm.get_bool("Stack orographic controls");
 
+           if (!this->convert_output_to_years())
+            {
+              kff *= year_in_seconds;
+              kdd *= year_in_seconds;
+              kfsed *= year_in_seconds;
+              kdsed *= year_in_seconds;
+            }
+
           // Wind direction
           if (prm.get ("Wind direction") == "west")
             wind_direction = 0;
@@ -1385,6 +1394,12 @@ namespace aspect
             l = prm.get_double("Depth averaging thickness");
             kds1 = prm.get_double("Sand transport coefficient");
             kds2 = prm.get_double("Shale transport coefficient");
+
+            if (!this->convert_output_to_years())
+            {
+              kds1 *= year_in_seconds;
+              kds2 *= year_in_seconds;
+            }
           }
           prm.leave_subsection();
         }
