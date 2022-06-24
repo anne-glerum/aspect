@@ -208,6 +208,16 @@ namespace aspect
       /**
        * Function to intialize or restart FastScape
        */
+      //void fill_fastscape_arrays(double *h, double *kd, double *kf, double *vx, double *vy, double *vz, std::vector<std::vector<double>> *temporary_variables) const;
+
+      /**
+       * Function to intialize or restart FastScape
+       */
+      std::vector<std::vector<double>> get_aspect_values() const;
+
+      /**
+       * Function to intialize or restart FastScape
+       */
       void initialize_fastscape(double *h, double *b, double *kd, double *kf) const;
 
       /**

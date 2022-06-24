@@ -156,104 +156,17 @@ namespace aspect
         return;
 
       TimerOutput::Scope timer_section(this->get_computing_timer(), "FastScape plugin");
-      const types::boundary_id relevant_boundary = this->get_geometry_model().translate_symbolic_boundary_name_to_id ("top");
       const int current_timestep = this->get_timestep_number ();
       const double a_dt = this->get_timestep()/year_in_seconds;
 
-          // FastScape requires multiple specially defined and ordered variables sent to its functions. To make
-          // the transfer of these down to one process easier, we first fill out a vector of temporary variables,
-          // then when we get down to one process we use these temporary variables to fill the double arrays
-          // in the order needed for FastScape.
-          std::vector<std::vector<double>> temporary_variables(dim+2, std::vector<double>());
+      //Vector to hold the velocities that represent the change to the surface.
+      std::vector<double> V(array_size);
 
-          //Vector to hold the velocities that represent the change to the surface.
-          std::vector<double> V(array_size);
-
-          // Get a quadrature rule that exists only on the corners, and increase the refinement if specified.
-          const QIterated<dim-1> face_corners (QTrapez<1>(),
-                                               pow(2,additional_refinement+surface_refinement_difference));
-
-          FEFaceValues<dim> fe_face_values (this->get_mapping(),
-                                            this->get_fe(),
-                                            face_corners,
-                                            update_values |
-                                            update_quadrature_points);
-
-          typename DoFHandler<dim>::active_cell_iterator
-          cell = this->get_dof_handler().begin_active(),
-          endc = this->get_dof_handler().end();
-
-          for (; cell != endc; ++cell)
-            if (cell->is_locally_owned() && cell->at_boundary())
-              for (unsigned int face_no = 0; face_no < GeometryInfo<dim>::faces_per_cell; ++face_no)
-                if (cell->face(face_no)->at_boundary())
-                  {
-                    if ( cell->face(face_no)->boundary_id() != relevant_boundary)
-                      continue;
-
-                    std::vector<Tensor<1,dim> > vel(face_corners.size());
-                    fe_face_values.reinit(cell, face_no);
-                    fe_face_values[this->introspection().extractors.velocities].get_function_values(this->get_solution(), vel);
-
-                    for (unsigned int corner = 0; corner < face_corners.size(); ++corner)
-                      {
-                        const Point<dim> vertex = fe_face_values.quadrature_point(corner);
-
-                        // Find what x point we're at. Add 1 or 2 depending on if ghost nodes are used.
-                        const double indx = 1+use_ghost_nodes+(vertex(0) - grid_extent[0].first)/dx;
-
-                        // If our x or y index isn't close to a whole number, then it's likely an artifact
-                        // from using an over-resolved quadrature rule, in that case ignore it.
-                        if (abs(indx - round(indx)) >= precision)
-                          continue;
-
-
-                        // If we're in 2D, we want to take the values and apply them to every row of X points.
-                        if (dim == 2)
-                          {
-                            for (int ys=0; ys<ny; ys++)
-                              {
-                                /*
-                                 * FastScape indexes from 1 to n, starting at X and Y = 0, and increases
-                                 * across the X row. At the end of the row, it jumps back to X = 0
-                                 * and up to the next X row in increasing Y direction. We track
-                                 * this to correctly place the variables later on.
-                                 * Nx*ys effectively tells us what row we are in
-                                 * and then indx tells us what position in that row.
-                                 */
-                                const double index = round(indx)+nx*ys;
-
-                                temporary_variables[0].push_back(vertex(dim-1) - grid_extent[dim-1].second);
-                                temporary_variables[1].push_back(index-1);
-
-                                for (unsigned int i=0; i<dim; ++i)
-                                  {
-                                    // Always convert to m/yr for FastScape
-                                    temporary_variables[i+2].push_back(vel[corner][i]*year_in_seconds);
-                                  }
-                              }
-                          }
-                        // 3D case
-                        else
-                          {
-                            // Because indy only gives us the row we're in, we don't need to add 2 for the ghost node.
-                            const double indy = 1+use_ghost_nodes+(vertex(1) - grid_extent[1].first)/dy;
-
-                            if (abs(indy - round(indy)) >= precision)
-                              continue;
-
-                            const double index = round((indy-1))*nx+round(indx);
-
-                            temporary_variables[0].push_back(vertex(dim-1) - grid_extent[dim-1].second);   //z component
-                            temporary_variables[1].push_back(index-1);
-
-                            for (unsigned int i=0; i<dim; ++i)
-                              {
-                                temporary_variables[i+2].push_back(vel[corner][i]*year_in_seconds);
-                              }
-                          }
-                      }
-                  }
+      // FastScape requires multiple specially defined and ordered variables sent to its functions. To make
+      // the transfer of these down to one process easier, we first fill out a vector of temporary variables,
+      // then when we get down to one process we use these temporary variables to fill the double arrays
+      // in the order needed for FastScape.
+      std::vector<std::vector<double>> temporary_variables = get_aspect_values();
 
           // Run FastScape on single process.
           if (Utilities::MPI::this_mpi_process(this->get_mpi_communicator()) == 0)
@@ -652,6 +565,108 @@ namespace aspect
     }
 
     template <int dim>
+    std::vector<std::vector<double>>
+    FastScape<dim>::get_aspect_values() const
+    {
+
+          const types::boundary_id relevant_boundary = this->get_geometry_model().translate_symbolic_boundary_name_to_id ("top");
+          std::vector<std::vector<double>> temporary_variables(dim+2, std::vector<double>());
+
+          // Get a quadrature rule that exists only on the corners, and increase the refinement if specified.
+          const QIterated<dim-1> face_corners (QTrapez<1>(),
+                                               pow(2,additional_refinement+surface_refinement_difference));
+
+          FEFaceValues<dim> fe_face_values (this->get_mapping(),
+                                            this->get_fe(),
+                                            face_corners,
+                                            update_values |
+                                            update_quadrature_points);
+
+          typename DoFHandler<dim>::active_cell_iterator
+          cell = this->get_dof_handler().begin_active(),
+          endc = this->get_dof_handler().end();
+
+          for (; cell != endc; ++cell)
+            if (cell->is_locally_owned() && cell->at_boundary())
+              for (unsigned int face_no = 0; face_no < GeometryInfo<dim>::faces_per_cell; ++face_no)
+                if (cell->face(face_no)->at_boundary())
+                  {
+                    if ( cell->face(face_no)->boundary_id() != relevant_boundary)
+                      continue;
+
+                    std::vector<Tensor<1,dim> > vel(face_corners.size());
+                    fe_face_values.reinit(cell, face_no);
+                    fe_face_values[this->introspection().extractors.velocities].get_function_values(this->get_solution(), vel);
+
+                    for (unsigned int corner = 0; corner < face_corners.size(); ++corner)
+                      {
+                        const Point<dim> vertex = fe_face_values.quadrature_point(corner);
+
+                        // Find what x point we're at. Add 1 or 2 depending on if ghost nodes are used.
+                        const double indx = 1+use_ghost_nodes+(vertex(0) - grid_extent[0].first)/dx;
+
+                        // If our x or y index isn't close to a whole number, then it's likely an artifact
+                        // from using an over-resolved quadrature rule, in that case ignore it.
+                        if (abs(indx - round(indx)) >= precision)
+                          continue;
+
+
+                        // If we're in 2D, we want to take the values and apply them to every row of X points.
+                        if (dim == 2)
+                          {
+                            for (int ys=0; ys<ny; ys++)
+                              {
+                                /*
+                                 * FastScape indexes from 1 to n, starting at X and Y = 0, and increases
+                                 * across the X row. At the end of the row, it jumps back to X = 0
+                                 * and up to the next X row in increasing Y direction. We track
+                                 * this to correctly place the variables later on.
+                                 * Nx*ys effectively tells us what row we are in
+                                 * and then indx tells us what position in that row.
+                                 */
+                                const double index = round(indx)+nx*ys;
+
+                                temporary_variables[0].push_back(vertex(dim-1) - grid_extent[dim-1].second);
+                                temporary_variables[1].push_back(index-1);
+
+                                for (unsigned int i=0; i<dim; ++i)
+                                  {
+                                    // Always convert to m/yr for FastScape
+                                    temporary_variables[i+2].push_back(vel[corner][i]*year_in_seconds);
+                                  }
+                              }
+                          }
+                        // 3D case
+                        else
+                          {
+                            // Because indy only gives us the row we're in, we don't need to add 2 for the ghost node.
+                            const double indy = 1+use_ghost_nodes+(vertex(1) - grid_extent[1].first)/dy;
+
+                            if (abs(indy - round(indy)) >= precision)
+                              continue;
+
+                            const double index = round((indy-1))*nx+round(indx);
+
+                            temporary_variables[0].push_back(vertex(dim-1) - grid_extent[dim-1].second);   //z component
+                            temporary_variables[1].push_back(index-1);
+
+                            for (unsigned int i=0; i<dim; ++i)
+                              {
+                                temporary_variables[i+2].push_back(vel[corner][i]*year_in_seconds);
+                              }
+                          }
+                      }
+                  }
+
+        return temporary_variables;
+    }
+
+   // template <int dim>
+   // void FastScape<dim>::fill_fastscape_arrays(double *h, double *kd, double *kf, double *vx, double *vy, double *vz, std::vector<std::vector<double>> *temporary_variables) const
+   // {
+   //   int i = 0;
+   // }
+    template <int dim>
     void FastScape<dim>::initialize_fastscape(double* h, double *b, double *kd, double *kf) const
     {
       const int current_timestep = this->get_timestep_number ();
@@ -703,7 +718,6 @@ namespace aspect
               // Set time step
               fastscape_set_dt_(&f_dt);
               fastscape_iterations = fastscape_iterations + istep;
-              std::cout<<fastscape_iterations<<"  "<<istep<<std::endl;
               this->get_pcout() << "   Calling FastScape... " << (fastscape_iterations-istep) << " timesteps of " << f_dt << " years." << std::endl;
               {
                 auto t_start = std::chrono::high_resolution_clock::now();
