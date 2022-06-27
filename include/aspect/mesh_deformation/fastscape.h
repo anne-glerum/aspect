@@ -206,12 +206,12 @@ namespace aspect
       void set_ghost_nodes(double *h, double *vx, double *vy, double *vz) const;
 
       /**
-       * Function to intialize or restart FastScape   double *kd, double *kf, double *vx, double *vy, double *vz,
+       * Function to fill the Fastscape arrays (height and velocities) with the data received from ASPECT in the correct index order.
        */
       void fill_fastscape_arrays(double *h, double *kd, double *kf, double *vx, double *vy, double *vz, std::vector<std::vector<double>> temporary_variables) const;
 
       /**
-       * Function to intialize or restart FastScape
+       * Function to get the ASPECT topography and velocities at the surface, and an index for transferring these to FastScape.
        */
       std::vector<std::vector<double>> get_aspect_values() const;
 
@@ -226,9 +226,14 @@ namespace aspect
       void execute_fastscape(double *h, double *kd, int istep) const;
 
       /**
-       * Function to intialize or restart FastScape
+       * Function to apply orographic controls to the FastScape model.
        */
       void apply_orographic_controls(double *h, double *kf, double *kd) const;
+
+      /**
+       * Fill velocity data table to be interpolated back onto the ASPECT mesh.
+       */
+      Table<dim,double> fill_data_table(std::vector<double> values, TableIndices<dim> size_idx, int nx, int ny) const;
 
     private:
       /**
@@ -589,6 +594,11 @@ namespace aspect
        * Flag to stack both orographic controls.
        */
       bool stack_controls;
+
+      /**
+       * Flag to use orographic controls.
+       */
+      bool use_orographic_controls;
 
       /**
        * Flag to use stratigraphic component of FastScape.

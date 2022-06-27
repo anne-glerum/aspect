@@ -303,7 +303,6 @@ namespace aspect
                     }
                 }
 
-
               /*
                * The ghost nodes are added as a single layer of points surrounding the entire model.
                * For example, if ASPECT's surface mesh is a 2D surface that is 3x3 (nx x ny) points,
@@ -314,42 +313,9 @@ namespace aspect
               if (use_ghost_nodes)
                  set_ghost_nodes(h.get(), vx.get(), vy.get(), vz.get());
 
-              //////// Section to apply orographic controls /////////
-	          // First for the wind barrier, we find the maximum height and index
-              // along each line in the x and y direction.
-              // If wind is east or west, we find maximum point for each ny row along x.
-              std::vector<std::vector<double>> hmaxx(2, std::vector<double>(ny, 0.0));
-	          if(wind_direction == 0 || wind_direction == 1)
-              {
-              for (int i=0; i<ny; i++)
-               	    {
-                      for (int j=0; j<nx; j++)
-                        {
-                          if( h[nx*i+j] > hmaxx[0][i])
-                            {
-	                          hmaxx[0][i] = h[nx*i+j];
-                              hmaxx[1][i] = j;
-                            }
-                        }
-                    }
-                }
-
-                // If wind is north or south, we find maximum point for each nx row along y.
-                std::vector<std::vector<double>> hmaxy(2, std::vector<double>(nx, 0.0));
-	            if(wind_direction == 2 || wind_direction == 3)
-		        {
-                  for (int i=0; i<nx; i++)
-                    {
-                      for (int j=0; j<ny; j++)
-                        {
-                          if( h[nx*j+i] > hmaxy[0][i])
-		                    {
-	                          hmaxy[0][i] = h[nx*j+i];
-                              hmaxy[1][i] = j;
-                            }
-                        }
-                     }
-                   }
+              // If specified, apply the orographic controls to the FastScape model.
+              if(use_orographic_controls)
+                 apply_orographic_controls(h.get(), kd.get(), kf.get());
 
               // Get current FastScape timestep.
               int istep = 0;
@@ -413,7 +379,7 @@ namespace aspect
               MPI_Bcast(&V[0], array_size, MPI_DOUBLE, 0, this->get_mpi_communicator());
             }
 
-          // Get the sizes needed for the data table.
+          // Get the sizes needed for a data table of the mesh velocities.
           TableIndices<dim> size_idx;
           for (unsigned int d=0; d<dim; ++d)
             {
@@ -421,71 +387,7 @@ namespace aspect
             }
 
           // Initialize a table to hold all velocity values that will be interpolated back to ASPECT.
-          Table<dim,double> data_table;
-          data_table.TableBase<dim,double>::reinit(size_idx);
-          TableIndices<dim> idx;
-
-          // Loop through the data table and fill it with the velocities from FastScape.
-          if (dim == 2)
-            {
-              std::vector<double> V2(nx);
-
-              for (int i=1; i<(nx-1); i++)
-                {
-                  // If using the center slice, find velocities from the row closest to the center.
-                  if (center_slice)
-                    {
-                      const int index = i+nx*(round((ny-1)/2));
-                      V2[i-1] = V[index];
-                    }
-                  // Here we use average velocities across the y nodes, excluding the ghost nodes (top and bottom row).
-                  // Note: If ghost nodes are turned off, boundary effects may influence this.
-                  else
-                    {
-                      for (int ys=1; ys<(ny-1); ys++)
-                        {
-                          const int index = i+nx*ys;
-                          V2[i-1] += V[index];
-                        }
-                      V2[i-1] = V2[i-1]/(ny-2);
-                    }
-                }
-
-              for (unsigned int i=0; i<data_table.size()[1]; ++i)
-                {
-                  idx[1] = i;
-
-                  for (unsigned int j=0; j<(data_table.size()[0]); ++j)
-                    {
-                      idx[0] = j;
-
-                      // Convert back to m/s.
-                      data_table(idx) = V2[j]/year_in_seconds;
-                    }
-                }
-            }
-          else
-            {
-              // Indexes through z, y, and then x.
-              for (unsigned int k=0; k<data_table.size()[2]; ++k)
-                {
-                  idx[2] = k;
-
-                  for (unsigned int i=0; i<data_table.size()[1]; ++i)
-                    {
-                      idx[1] = i;
-
-                      for (unsigned int j=0; j<data_table.size()[0]; ++j)
-                        {
-                          idx[0] = j;
-
-                          // Convert back to m/s.
-                          data_table(idx) = V[(nx+1)*use_ghost_nodes+nx*i+j]/year_in_seconds;
-
-                        }
-                    }
-                }
-            }
+          Table<dim,double> velocity_table = fill_data_table(V, size_idx, nx, ny);
 
         // As our grid_extent variable end points do not account for the change related to an origin
         // not at 0, we adjust this here into an interpolation extent.
@@ -499,7 +401,7 @@ namespace aspect
           Functions::InterpolatedUniformGridData<dim> *velocities;
           velocities = new Functions::InterpolatedUniformGridData<dim> (interpolation_extent,
                                                                                     table_intervals,
-                                                                                    data_table);
+                                                                                    velocity_table);
 
           VectorFunctionFromScalarFunctionObject<dim> vector_function_object(
             [&](const Point<dim> &p) -> double
@@ -1160,6 +1062,80 @@ namespace aspect
                     }
     }
 
+    template <int dim>
+    Table<dim,double>
+    FastScape<dim>::fill_data_table(std::vector<double> values, TableIndices<dim> size_idx, int nx, int ny) const
+    {
+          // Create data table based off of the given size.
+          Table<dim,double> data_table;
+          data_table.TableBase<dim,double>::reinit(size_idx);
+          TableIndices<dim> idx;
+
+          // Loop through the data table and fill it with the velocities from FastScape.
+          if (dim == 2)
+            {
+              std::vector<double> V2(nx);
+
+              for (int i=1; i<(nx-1); i++)
+                {
+                  // If using the center slice, find velocities from the row closest to the center.
+                  if (center_slice)
+                    {
+                      const int index = i+nx*(round((ny-1)/2));
+                      V2[i-1] = values[index];
+                    }
+                  // Here we use average velocities across the y nodes, excluding the ghost nodes (top and bottom row).
+                  // Note: If ghost nodes are turned off, boundary effects may influence this.
+                  else
+                    {
+                      for (int ys=1; ys<(ny-1); ys++)
+                        {
+                          const int index = i+nx*ys;
+                          V2[i-1] += values[index];
+                        }
+                      V2[i-1] = V2[i-1]/(ny-2);
+                    }
+                }
+
+              for (unsigned int i=0; i<data_table.size()[1]; ++i)
+                {
+                  idx[1] = i;
+
+                  for (unsigned int j=0; j<(data_table.size()[0]); ++j)
+                    {
+                      idx[0] = j;
+
+                      // Convert back to m/s.
+                      data_table(idx) = V2[j]/year_in_seconds;
+                    }
+                }
+            }
+          else
+            {
+              // Indexes through z, y, and then x.
+              for (unsigned int k=0; k<data_table.size()[2]; ++k)
+                {
+                  idx[2] = k;
+
+                  for (unsigned int i=0; i<data_table.size()[1]; ++i)
+                    {
+                      idx[1] = i;
+
+                      for (unsigned int j=0; j<data_table.size()[0]; ++j)
+                        {
+                          idx[0] = j;
+
+                          // Convert back to m/s.
+                          data_table(idx) = values[(nx+1)*use_ghost_nodes+nx*i+j]/year_in_seconds;
+
+                        }
+                    }
+                }
+            }
+
+            return data_table;
+    }
+
     // TODO: Give better explanations of variables and cite the FastScape documentation.
     template <int dim>
     void FastScape<dim>::declare_parameters(ParameterHandler &prm)
@@ -1303,6 +1279,9 @@ namespace aspect
             prm.declare_entry ("Stack orographic controls", "true",
                              Patterns::Bool (),
                              "Whether or not to apply both controls to a point, or only a maximum of one set as the wind barrier.");
+            prm.declare_entry ("Flag to use orographic controls", "false",
+                             Patterns::Bool (),
+                             "Whether or not to apply orographic controls.");
             prm.declare_entry ("Wind direction", "west",
                              Patterns::Selection("east|west|south|north"),
                              "This parameter assumes a wind direction, deciding which side is reduced from the wind barrier.");
@@ -1433,6 +1412,7 @@ namespace aspect
             flat_erosional_factor = prm.get_double("Elevation factor");
             wind_barrier_erosional_factor = prm.get_double("Wind barrier factor");
             stack_controls = prm.get_bool("Stack orographic controls");
+            use_orographic_controls = prm.get_bool("Flag to use orographic controls");
 
            if (!this->convert_output_to_years())
             {
