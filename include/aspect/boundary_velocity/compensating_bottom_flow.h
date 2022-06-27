@@ -106,6 +106,9 @@ namespace aspect
 
         double net_outflow = 0;
 
+
+
+
         /**
          * The ids of the lateral boundaries for which the net in/outflow is computed
          * and compensated through the bottom boundary flow.
@@ -116,8 +119,8 @@ namespace aspect
         /**
          * The boundary velocity objects on the lateral boundaries that need to be compensated.
          */
-        std::map<types::boundary_id, std::vector<std::unique_ptr<BoundaryVelocity::Interface<dim>>>>
-        lateral_boundary_velocity_objects;
+        //std::map<types::boundary_id, std::vector<std::unique_ptr<BoundaryVelocity::Interface<dim>>>>
+        //lateral_boundary_velocity_objects;
     };
   }
 }

@@ -140,7 +140,7 @@ namespace aspect
           {
             bottom_boundary_area = 2. * numbers::PI * inner_radius * dlon / (2. * numbers::PI);
             this->get_pcout() << "   Bottom boundary area " << bottom_boundary_area << 
-              "for an inner radius of " << inner_radius << " and an opening angle of " << dlon / numbers::PI * 180. << std::endl;
+              " for an inner radius of " << inner_radius << " and an opening angle of " << dlon / numbers::PI * 180. << "." << std::endl;
           }
           else
           {
@@ -152,33 +152,55 @@ namespace aspect
           }
         }
 
-      // Get the boundary velocity objects on the vertical boundaries
-      // TODO only keep the objects on lateral boundaries.
-      const std::map<types::boundary_id, std::vector<std::unique_ptr<BoundaryVelocity::Interface<dim>>>> &lateral_boundary_velocity_objects =
-        this->get_boundary_velocity_manager().get_active_boundary_velocity_conditions();
-
-      std::set<types::boundary_id> tmp_boundary_ids;
-      for (const auto &p : lateral_boundary_velocity_objects)
-        {
-          if (vertical_boundary_indicators.find(p.first) != vertical_boundary_indicators.end())
-            tmp_boundary_ids.insert(p.first);
-          //lateral_boundary_velocity_objects.erase(p.first);
-        }
-
-      AssertThrow(tmp_boundary_ids.size() != 0,
-                  ExcMessage("The Compensating Bottom Flow velocity boundary conditions plugin requires prescribed velocity boundary conditions on at least one lateral boundary."));
-      AssertThrow(tmp_boundary_ids.size() == vertical_boundary_indicators.size(),
-                  ExcMessage("The Compensating Bottom Flow velocity boundary conditions plugin requires prescribed velocity boundary conditions for each user-defined compensation boundary."));
+        bottom_boundary_indicator = this->get_geometry_model().translate_symbolic_boundary_name_to_id("bottom");
     }
 
     template <int dim>
     void
     CompensatingBottomFlow<dim>::update ()
     {
+      // We have do to this checks here instead of in initialize()
+      // otherwise not all active boundaries have been set in some cases.
+      if (this->get_timestep_number() == 0 or !this->simulator_is_past_initialization())
+      {
+      //const std::map<types::boundary_id, std::pair<std::string, std::vector<std::string>>> &active_names = this->get_boundary_velocity_manager().get_active_boundary_velocity_names();
+
+      //for (const auto &n : active_names)
+      //{
+      //  std::cout << "CBF Active BC names for BI " << n.first << std::endl;
+      //  for (const auto &np : n.second.second)
+      //    std::cout << "CBF Active BC names " << np << std::endl;
+      //}
+      // Get the boundary velocity objects on the vertical boundaries
+      // TODO only keep the objects on lateral boundaries.
+      const std::map<types::boundary_id, std::vector<std::unique_ptr<BoundaryVelocity::Interface<dim>>>> &
+          lateral_boundary_velocity_objects =
+              this->get_boundary_velocity_manager().get_active_boundary_velocity_conditions();
+
+      std::set<types::boundary_id> tmp_boundary_ids;
+      for (const auto &p : lateral_boundary_velocity_objects)
+      {
+        //std::cout << "CBF Found " << p.first << " with size " << p.second.size() << std::endl;
+        if (vertical_boundary_indicators.find(p.first) != vertical_boundary_indicators.end())
+          tmp_boundary_ids.insert(p.first);
+        //lateral_boundary_velocity_objects.erase(p.first);
+      }
+
+      //std::cout << "CBF Nr of user-defined lateral comp boundaries: " << vertical_boundary_indicators.size() << std::endl;
+      //std::cout << "CBF Nr of boundaries with active vel BC: " << lateral_boundary_velocity_objects.size() << std::endl;
+      //std::cout << "CBF Nr of boundaries with active vel BC names: " << active_names.size() << std::endl;
+      //std::cout << "CBF B ID of active vel BC: " << lateral_boundary_velocity_objects.begin()->first << std::endl;
+
+      AssertThrow(tmp_boundary_ids.size() != 0, ExcMessage("The Compensating Bottom Flow velocity boundary conditions plugin requires prescribed velocity boundary conditions on at least one lateral boundary."));
+      AssertThrow(tmp_boundary_ids.size() == vertical_boundary_indicators.size(),
+                  ExcMessage("The Compensating Bottom Flow velocity boundary conditions plugin requires prescribed velocity boundary conditions for each user-defined compensation boundary."));
+
+      }
+
       // Compute the net flow through the lateral boundaries
       net_outflow = compute_net_outflow();
       std::string unit = dim == 2 ? " m2/s" : " m3/s";
-      this->get_pcout() << "    Current net outflow is " << net_outflow << unit << std::endl;
+      this->get_pcout() << "   Current net outflow is " << net_outflow << unit << std::endl;
     }
 
 
@@ -215,6 +237,10 @@ namespace aspect
 
       std::map<types::boundary_id, double> local_boundary_fluxes;
 
+      const std::map<types::boundary_id, std::vector<std::unique_ptr<BoundaryVelocity::Interface<dim>>>> &
+      lateral_boundary_velocity_objects =
+        this->get_boundary_velocity_manager().get_active_boundary_velocity_conditions();
+
       typename DoFHandler<dim>::active_cell_iterator
       cell = this->get_dof_handler().begin_active(),
       endc = this->get_dof_handler().end();
@@ -236,8 +262,7 @@ namespace aspect
                 typename std::map<types::boundary_id, std::vector<std::unique_ptr<BoundaryVelocity::Interface<dim>>>>::const_iterator boundary_plugins =
                   lateral_boundary_velocity_objects.find(id);
 
-                AssertThrow(boundary_plugins != lateral_boundary_velocity_objects.end(),
-                  ExcMessage("There is no active boundary velocity object for the user-defined lateral boundary."));
+                AssertThrow(boundary_plugins != lateral_boundary_velocity_objects.end(), ExcMessage("There is no active boundary velocity object for the user-defined lateral boundary: " + Utilities::int_to_string(id) + "."));
 
                 double local_normal_flux = 0;
                 for (unsigned int q=0; q<fe_face_values.n_quadrature_points; ++q)
