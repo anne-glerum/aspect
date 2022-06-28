@@ -91,11 +91,11 @@ namespace aspect
                 stress_0[0][1] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_xy")];
 
                 if (dim == 3)
-                {
-                  stress_0[2][2] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_zz")];
-                  stress_0[0][2] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_xz")];
-                  stress_0[1][2] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_yz")];
-                }
+                  {
+                    stress_0[2][2] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_zz")];
+                    stress_0[0][2] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_xz")];
+                    stress_0[1][2] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_yz")];
+                  }
 
                 const MaterialModel::ElasticAdditionalOutputs<dim> *elastic_out = out.template get_additional_output<MaterialModel::ElasticAdditionalOutputs<dim>>();
 
@@ -104,10 +104,10 @@ namespace aspect
                 // $\eta_{el} = G \Delta t_{el}$
                 double elastic_viscosity = this->get_timestep() * shear_modulus;
                 if (Plugins::plugin_type_matches<MaterialModel::ViscoPlastic<dim>>(this->get_material_model()))
-                {
-                  const MaterialModel::ViscoPlastic<dim> &vp = Plugins::get_plugin_as_type<const MaterialModel::ViscoPlastic<dim>>(this->get_material_model());
-                  elastic_viscosity = vp.get_elastic_viscosity(shear_modulus);
-                }
+                  {
+                    const MaterialModel::ViscoPlastic<dim> &vp = Plugins::get_plugin_as_type<const MaterialModel::ViscoPlastic<dim>>(this->get_material_model());
+                    elastic_viscosity = vp.get_elastic_viscosity(shear_modulus);
+                  }
 
                 // The total stress of timestep t.
                 stress = 2. * eta * (deviatoric_strain_rate + stress_0 / (2. * elastic_viscosity));

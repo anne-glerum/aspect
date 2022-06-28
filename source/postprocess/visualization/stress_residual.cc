@@ -45,7 +45,7 @@ namespace aspect
                             std::vector<Vector<double>> &computed_quantities) const
       {
         AssertThrow(Plugins::plugin_type_matches<const MaterialModel::ViscoPlastic<dim>>(this->get_material_model()),
-                         ExcMessage("This postprocessor only works with the viscoplastic material model. "));
+                    ExcMessage("This postprocessor only works with the viscoplastic material model. "));
 
         const unsigned int n_quadrature_points = input_data.solution_values.size();
         Assert(computed_quantities.size() == n_quadrature_points, ExcInternalError());
@@ -106,8 +106,8 @@ namespace aspect
                     elastic_viscosity = vp.get_elastic_viscosity(shear_modulus);
                   }
 
-                  // Apply the stress update to get the total stress of timestep t.
-                  stress = 2. * eta * (deviatoric_strain_rate + stress_0 / (2. * elastic_viscosity));
+                // Apply the stress update to get the total stress of timestep t.
+                stress = 2. * eta * (deviatoric_strain_rate + stress_0 / (2. * elastic_viscosity));
               }
 
             // Compute the deviatoric stress
