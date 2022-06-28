@@ -68,32 +68,48 @@ namespace aspect
 
         for (unsigned int q = 0; q < n_quadrature_points; ++q)
           {
-            // Compressive stress is positive in geoscience applications.
-            SymmetricTensor<2, dim> stress = in.pressure[q] * unit_symmetric_tensor<dim>();
-
-            // Add elastic stresses if existent.
-            if (this->get_parameters().enable_elasticity == true)
-              {
-                stress[0][0] += in.composition[q][this->introspection().compositional_index_for_name("ve_stress_xx")];
-                stress[1][1] += in.composition[q][this->introspection().compositional_index_for_name("ve_stress_yy")];
-                stress[0][1] += in.composition[q][this->introspection().compositional_index_for_name("ve_stress_xy")];
-
-                if (dim == 3)
-                  {
-                    stress[2][2] += in.composition[q][this->introspection().compositional_index_for_name("ve_stress_zz")];
-                    stress[0][2] += in.composition[q][this->introspection().compositional_index_for_name("ve_stress_xz")];
-                    stress[1][2] += in.composition[q][this->introspection().compositional_index_for_name("ve_stress_yz")];
-                  }
-              }
-            else
-              {
-                const SymmetricTensor<2, dim> strain_rate = in.strain_rate[q];
-                const SymmetricTensor<2, dim> deviatoric_strain_rate = (this->get_material_model().is_compressible()
+            const SymmetricTensor<2, dim> strain_rate = in.strain_rate[q];
+            const SymmetricTensor<2, dim> deviatoric_strain_rate = (this->get_material_model().is_compressible()
                                                                         ? strain_rate - 1. / 3 * trace(strain_rate) * unit_symmetric_tensor<dim>()
                                                                         : strain_rate);
 
-                const double eta = out.viscosities[q];
+            const double eta = out.viscosities[q];
 
+            // Compressive stress is positive in geoscience applications.
+            SymmetricTensor<2, dim> stress = in.pressure[q] * unit_symmetric_tensor<dim>();
+
+            if (this->get_parameters().enable_elasticity == true)
+              {
+                // Visco-elastic stresses are stored on the fields
+                SymmetricTensor<2, dim> stress_0;
+                stress_0[0][0] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_xx")];
+                stress_0[1][1] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_yy")];
+                stress_0[0][1] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_xy")];
+
+                if (dim == 3)
+                {
+                  stress_0[2][2] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_zz")];
+                  stress_0[0][2] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_xz")];
+                  stress_0[1][2] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_yz")];
+                }
+
+                const MaterialModel::ElasticAdditionalOutputs<dim> *elastic_out = out.template get_additional_output<MaterialModel::ElasticAdditionalOutputs<dim>>();
+
+                const double shear_modulus = elastic_out->elastic_shear_moduli[q];
+
+                // $\eta_{el} = G \Delta t_{el}$
+                double elastic_viscosity = this->get_timestep() * shear_modulus;
+                if (Plugins::plugin_type_matches<MaterialModel::ViscoPlastic<dim>>(this->get_material_model()))
+                {
+                  const MaterialModel::ViscoPlastic<dim> &vp = Plugins::get_plugin_as_type<const MaterialModel::ViscoPlastic<dim>>(this->get_material_model());
+                  elastic_viscosity = vp.get_elastic_viscosity(shear_modulus);
+                }
+
+                // Apply the stress update to get the total stress of timestep t.
+                stress = 2. * eta * (deviatoric_strain_rate + stress_0 / (2. * elastic_viscosity));
+              }
+            else
+              {
                 stress += -2. * eta * deviatoric_strain_rate;
               }
 

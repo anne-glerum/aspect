@@ -34,7 +34,6 @@ namespace aspect
     std::pair<std::string,std::string>
     StressComponentStatistics<dim>::execute (TableHandler &statistics)
     {
-      // TODO: this postprocessor is no longer necessary and can be removed from the PR.
       if (this->n_compositional_fields() == 0)
         return std::pair<std::string,std::string>();
 
@@ -205,7 +204,11 @@ namespace aspect
   {
     ASPECT_REGISTER_POSTPROCESSOR(StressComponentStatistics,
                                   "stress component statistics",
-                                  "A postprocessor that computes some statistics about "
-                                  "the components of the stress tensor.")
+                                  "A postprocessor that computes the minimum and maximum values "
+                                  "of the components of the stress tensor, including the elastic "
+                                  "stress update that internally only occurs in an operator splitting "
+                                  "step at the beginning of the next timestep. "
+                                  "These values therefore differ from values outputted by the "
+                                  "'composition statistics' postprocessor. ")
   }
 }

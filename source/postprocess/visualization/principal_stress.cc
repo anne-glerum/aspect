@@ -21,6 +21,8 @@
 #include <aspect/postprocess/visualization/principal_stress.h>
 
 #include <deal.II/base/symmetric_tensor.h>
+#include <aspect/material_model/rheology/elasticity.h>
+#include <aspect/material_model/visco_plastic.h>
 
 namespace aspect
 {
@@ -131,16 +133,33 @@ namespace aspect
             // Add elastic stresses if existent
             if (this->get_parameters().enable_elasticity == true)
               {
-                stress[0][0] += in.composition[q][this->introspection().compositional_index_for_name("ve_stress_xx")];
-                stress[1][1] += in.composition[q][this->introspection().compositional_index_for_name("ve_stress_yy")];
-                stress[0][1] += in.composition[q][this->introspection().compositional_index_for_name("ve_stress_xy")];
+                // Visco-elastic stresses are stored on the fields
+                SymmetricTensor<2, dim> stress_0;
+                stress_0[0][0] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_xx")];
+                stress_0[1][1] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_yy")];
+                stress_0[0][1] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_xy")];
 
                 if (dim == 3)
                   {
-                    stress[2][2] += in.composition[q][this->introspection().compositional_index_for_name("ve_stress_zz")];
-                    stress[0][2] += in.composition[q][this->introspection().compositional_index_for_name("ve_stress_xz")];
-                    stress[1][2] += in.composition[q][this->introspection().compositional_index_for_name("ve_stress_yz")];
+                    stress_0[2][2] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_zz")];
+                    stress_0[0][2] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_xz")];
+                    stress_0[1][2] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_yz")];
                   }
+
+                const MaterialModel::ElasticAdditionalOutputs<dim> *elastic_out = out.template get_additional_output<MaterialModel::ElasticAdditionalOutputs<dim> >();
+
+                const double shear_modulus = elastic_out->elastic_shear_moduli[q];
+
+                // $\eta_{el} = G \Delta t_{el}$
+                double elastic_viscosity = this->get_timestep() * shear_modulus;
+                if (Plugins::plugin_type_matches<MaterialModel::ViscoPlastic<dim>>(this->get_material_model()))
+                  {
+                    const MaterialModel::ViscoPlastic<dim> &vp = Plugins::get_plugin_as_type<const MaterialModel::ViscoPlastic<dim>>(this->get_material_model());
+                    elastic_viscosity = vp.get_elastic_viscosity(shear_modulus);
+                  }
+
+                // Apply the stress update to get the total stress of timestep t.
+                stress = 2. * eta * (deviatoric_strain_rate + stress_0 / (2. * elastic_viscosity));
               }
 
             if (use_deviatoric_stress == true)

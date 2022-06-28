@@ -83,11 +83,10 @@ namespace aspect
             SymmetricTensor<2,dim> stress = -2.*eta*deviatoric_strain_rate +
                                             in.pressure[q] * unit_symmetric_tensor<dim>();
 
-            // Add elastic stresses if existent
             if (this->get_parameters().enable_elasticity == true)
               {
+                // Visco-elastic stresses are stored on the fields
                 SymmetricTensor<2, dim> stress_0;
-
                 stress_0[0][0] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_xx")];
                 stress_0[1][1] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_yy")];
                 stress_0[0][1] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_xy")];
@@ -111,7 +110,7 @@ namespace aspect
                     elastic_viscosity = vp.get_elastic_viscosity(shear_modulus);
                   }
 
-                // The total stress of timestep t.
+                // Apply the stress update to get the total stress of timestep t.
                 stress = 2. * eta * (deviatoric_strain_rate + stress_0 / (2. * elastic_viscosity));
               }
 

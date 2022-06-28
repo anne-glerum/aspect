@@ -44,8 +44,9 @@ namespace aspect
       evaluate_vector_field(const DataPostprocessorInputs::Vector<dim> &input_data,
                             std::vector<Vector<double>> &computed_quantities) const
       {
-        //      AssertThrow(Plugins::plugin_type_matches<const MaterialModel::ViscoPlastic<dim>>(this->get_material_model()),
-        //                 ExcMessage("This postprocessor only works with the viscoplastic material model. "));
+        AssertThrow(Plugins::plugin_type_matches<const MaterialModel::ViscoPlastic<dim>>(this->get_material_model()),
+                         ExcMessage("This postprocessor only works with the viscoplastic material model. "));
+
         const unsigned int n_quadrature_points = input_data.solution_values.size();
         Assert(computed_quantities.size() == n_quadrature_points, ExcInternalError());
         Assert(computed_quantities[0].size() == 1, ExcInternalError());
@@ -78,11 +79,10 @@ namespace aspect
             SymmetricTensor<2, dim> stress = -2. * eta * deviatoric_strain_rate +
                                              in.pressure[q] * unit_symmetric_tensor<dim>();
 
-            // Add elastic stresses if existent
             if (this->get_parameters().enable_elasticity == true)
               {
+                // Visco-elastic stresses are stored on the fields
                 SymmetricTensor<2, dim> stress_0;
-
                 stress_0[0][0] += in.composition[q][this->introspection().compositional_index_for_name("ve_stress_xx")];
                 stress_0[1][1] += in.composition[q][this->introspection().compositional_index_for_name("ve_stress_yy")];
                 stress_0[0][1] += in.composition[q][this->introspection().compositional_index_for_name("ve_stress_xy")];
@@ -106,12 +106,11 @@ namespace aspect
                     elastic_viscosity = vp.get_elastic_viscosity(shear_modulus);
                   }
 
-                // The total stress of timestep t.
-                stress = 2. * eta * (deviatoric_strain_rate + stress_0 / (2. * elastic_viscosity));
+                  // Apply the stress update to get the total stress of timestep t.
+                  stress = 2. * eta * (deviatoric_strain_rate + stress_0 / (2. * elastic_viscosity));
               }
 
-            // Compute the deviatoric stress after adding the elastic stresses that might have added
-            // diagonal components
+            // Compute the deviatoric stress
             const SymmetricTensor<2, dim> deviatoric_stress = deviator(stress);
 
             // Compute the second moment invariant of the deviatoric stress
@@ -147,7 +146,9 @@ namespace aspect
                                                   "stress residual",
                                                   "A visualization output object that generates output "
                                                   "for the difference between the second moment invariant "
-                                                  "of the deviatoric stress tensor and the yield stress.")
+                                                  "of the deviatoric stress tensor and the yield stress. "
+                                                  "Note that this plugin currently only works when the "
+                                                  "'viscoplastic' material model is used. ")
     }
   }
 }
