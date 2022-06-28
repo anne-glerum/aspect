@@ -24,11 +24,23 @@ set Dimension                              = 2
 set Start time                             = 0
 set End time                               = 1e3
 set Use years in output instead of seconds = true
-set Nonlinear solver scheme                = single Advection, single Stokes
+set Nonlinear solver scheme                = iterated Advection and Stokes
 set CFL number                             = 0.1
 set Maximum time step                      = 5
 set Output directory                       = output-viscoelastic_plate_flexure
 set Pressure normalization                 = no
+
+# To update the elastic stresses,
+# we do 1 operator splitting step.
+set Use operator splitting                 = true
+
+subsection Solver parameters
+  # Make sure to do only 1 splitting step
+  subsection Operator splitting parameters
+    set Reaction time step                     = 5000 # larger than maximum Stokes time step
+    set Reaction time steps per advection step = 1
+  end
+end
 
 # Model geometry (500 m initial resolution)
 subsection Geometry model
