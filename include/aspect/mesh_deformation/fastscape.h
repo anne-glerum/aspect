@@ -29,13 +29,13 @@ namespace aspect
 
   namespace MeshDeformation
   {
-/**
- * Define FastScape functions as C functions. Must use exact same function/variable name
- * and type as used in FastScape. All function names must be made lowercase, and an
- * underscore added at the end. Types must be defined as pointers, and sent to
- * FastScape as a reference. Additional functions are available within FastScape,
- * see https://fastscape.org/fastscapelib-fortran/ for a list of all functions.
- */    
+    /**
+     * Define FastScape functions as C functions. Must use exact same function/variable name
+     * and type as used in FastScape. All function names must be made lowercase, and an
+     * underscore added at the end. Types must be defined as pointers, and sent to
+     * FastScape as a reference. Additional functions are available within FastScape,
+     * see https://fastscape.org/fastscapelib-fortran/ for a list of all functions.
+     */
 #ifdef __cplusplus
     extern"C" {
 #endif
@@ -102,12 +102,12 @@ namespace aspect
      */
     void fastscape_set_h_(double *hp);
 
-     /**
-     * Set FastScape basement. This can be set between timesteps. Sediment within FastScape
-     * is considered as the difference between the topography and basement, though this may differ
-     * from sediment as seen in ASPECT because the FastScape basement only takes the surface
-     * velocities into consideration.
-     */
+    /**
+    * Set FastScape basement. This can be set between timesteps. Sediment within FastScape
+    * is considered as the difference between the topography and basement, though this may differ
+    * from sediment as seen in ASPECT because the FastScape basement only takes the surface
+    * velocities into consideration.
+    */
     void fastscape_set_basement_(double *b);
 
     /**
@@ -169,12 +169,12 @@ namespace aspect
        */
       virtual void initialize ();
 
-     /**
-       * A function that creates constraints for the velocity of certain mesh
-       * vertices (e.g. the surface vertices) for a specific boundary.
-       * The calling class will respect
-       * these constraints when computing the new vertex positions.
-       */
+      /**
+        * A function that creates constraints for the velocity of certain mesh
+        * vertices (e.g. the surface vertices) for a specific boundary.
+        * The calling class will respect
+        * these constraints when computing the new vertex positions.
+        */
       virtual
       void
       compute_velocity_constraints_on_boundary(const DoFHandler<dim> &mesh_deformation_dof_handler,
@@ -366,7 +366,7 @@ namespace aspect
       /**
        * Check whether FastScape is initialized at the surface.
        */
-      //std::map<types::boundary_id, std::vector<std::string> > mesh_deformation_boundary_indicators_map;
+      //std::map<types::boundary_id, std::vector<std::string>> mesh_deformation_boundary_indicators_map;
 
       /**
        * Whether or not to use the ghost nodes.
@@ -558,7 +558,7 @@ namespace aspect
        * Flag to use the marine component of FastScape.
        */
       bool use_marine;
-      
+
       // Orographic parameters //
       /**
        * Set a flat height (m) after which the flat_erosional_factor
