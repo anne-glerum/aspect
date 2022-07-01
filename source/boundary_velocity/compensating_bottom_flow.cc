@@ -26,7 +26,10 @@
 #include <aspect/boundary_velocity/compensating_bottom_flow.h>
 #include <aspect/geometry_model/spherical_shell.h>
 #include <aspect/geometry_model/chunk.h>
+#include <aspect/geometry_model/box.h>
 #include <aspect/geometry_model/ellipsoidal_chunk.h>
+#include <aspect/geometry_model/interface.h>
+#include <aspect/gravity_model/interface.h>
 
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/fe/fe_values.h>
