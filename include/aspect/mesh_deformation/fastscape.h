@@ -235,6 +235,16 @@ namespace aspect
        */
       Table<dim,double> fill_data_table(std::vector<double> values, TableIndices<dim> size_idx, int nx, int ny) const;
 
+      /**
+       * Read data from file for restarting.
+       */
+      void read_restart_files(double *h, double *b) const;
+
+      /**
+       * Save data to file for restarting.
+       */
+      void save_restart_files(const double *h, double *b, int istep) const;
+
     private:
       /**
        * First attempt at the number of steps to run FastScape for every ASPECT timestep,

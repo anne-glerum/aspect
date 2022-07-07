@@ -182,12 +182,6 @@ namespace aspect
           std::unique_ptr<double[]> b (new double[array_size]());
           std::vector<double> h_old(array_size);
 
-          // Create variables for output directory and restart file
-          std::string dirname = this->get_output_directory();
-          const std::string restart_filename = dirname + "fastscape_h_restart.txt";
-          const std::string restart_step_filename = dirname + "fastscape_steps_restart.txt";
-          const std::string restart_filename_basement = dirname + "fastscape_b_restart.txt";
-
           fill_fastscape_arrays(h.get(), kd.get(), kf.get(), vx.get(), vy.get(), vz.get(), temporary_variables);
 
           if (current_timestep == 1 || restart)
@@ -198,50 +192,7 @@ namespace aspect
               // If we are restarting from a checkpoint, load h values for FastScape instead of using the ASPECT values.
               if (restart)
                 {
-                  this->get_pcout() << "      Loading FastScape restart file... " << std::endl;
-
-                  // Load in h values.
-                  std::ifstream in;
-                  in.open(restart_filename.c_str());
-                  if (in)
-                    {
-                      int line = 0;
-
-                      while (line < array_size)
-                        {
-                          in >> h[line];
-                          line++;
-                        }
-
-                      in.close();
-                    }
-
-                  // Load in b values.
-                  std::ifstream in_b;
-                  in_b.open(restart_filename_basement.c_str());
-                  if (in_b)
-                    {
-                      int line = 0;
-
-                      while (line < array_size)
-                        {
-                          in_b >> b[line];
-                          line++;
-                        }
-
-                      in_b.close();
-                    }
-
-                  // Now load the FastScape istep at time of restart.
-                  // Reinitializing FastScape always resets this to 0, so here
-                  // we keep it in a separate variable to keep track for visualization files.
-                  std::ifstream in_step;
-                  in_step.open(restart_step_filename.c_str());
-                  if (in_step)
-                    {
-                      in_step >> restart_step;
-                      in_step.close();
-                    }
+                  read_restart_files(h.get(), b.get());
 
                   restart = false;
                 }
@@ -311,32 +262,14 @@ namespace aspect
           int istep = 0;
           fastscape_get_step_(&istep);
 
-          // Write a file to store h & step in case of restart.
-          // TODO: It would be good to roll this isnto the general ASPECT checkpointing,
-          // and when we take this needs to be changed.
+          // Write a file to store h, b & step in case of restart.
+          // TODO: It would be good to roll this into the general ASPECT checkpointing,
+          // and when we do this needs to be changed.
           if ((this->get_parameters().checkpoint_time_secs == 0) &&
               (this->get_parameters().checkpoint_steps > 0) &&
               (current_timestep % this->get_parameters().checkpoint_steps == 0))
             {
-
-              std::ofstream out_h (restart_filename.c_str());
-              std::ofstream out_step (restart_step_filename.c_str());
-              std::ofstream out_b (restart_filename_basement.c_str());
-              std::stringstream bufferb;
-              std::stringstream bufferh;
-
-              fastscape_copy_basement_(b.get());
-
-              out_step << (istep+restart_step) << "\n";
-
-              for (int i=0; i<array_size; i++)
-                {
-                  bufferh << h[i] << "\n";
-                  bufferb << b[i] << "\n";
-                }
-
-              out_h << bufferh.str();
-              out_b << bufferb.str();
+              save_restart_files(h.get(), b.get(), istep);
             }
 
           // Set velocity components.
@@ -1116,6 +1049,92 @@ namespace aspect
       return data_table;
     }
 
+
+
+    template <int dim>
+    void FastScape<dim>::read_restart_files(double *h, double *b) const
+    {
+      this->get_pcout() << "      Loading FastScape restart file... " << std::endl;
+
+      // Create variables for output directory and restart file
+      std::string dirname = this->get_output_directory();
+      const std::string restart_filename = dirname + "fastscape_h_restart.txt";
+      const std::string restart_step_filename = dirname + "fastscape_steps_restart.txt";
+      const std::string restart_filename_basement = dirname + "fastscape_b_restart.txt";
+      // Load in h values.
+      std::ifstream in;
+      in.open(restart_filename.c_str());
+      if (in)
+        {
+          int line = 0;
+
+          while (line < array_size)
+            {
+              in >> h[line];
+              line++;
+            }
+
+          in.close();
+        }
+
+      // Load in b values.
+      std::ifstream in_b;
+      in_b.open(restart_filename_basement.c_str());
+      if (in_b)
+        {
+          int line = 0;
+
+          while (line < array_size)
+            {
+              in_b >> b[line];
+              line++;
+            }
+
+          in_b.close();
+        }
+
+      // Now load the FastScape istep at time of restart.
+      // Reinitializing FastScape always resets this to 0, so here
+      // we keep it in a separate variable to keep track for visualization files.
+      std::ifstream in_step;
+      in_step.open(restart_step_filename.c_str());
+      if (in_step)
+        {
+          in_step >> restart_step;
+          in_step.close();
+        }
+    }
+
+    template <int dim>
+    void FastScape<dim>::save_restart_files(const double *h, double *b, int istep) const
+    {
+      this->get_pcout() << "      Writing FastScape restart file... " << std::endl;
+
+      // Create variables for output directory and restart file
+      std::string dirname = this->get_output_directory();
+      const std::string restart_filename = dirname + "fastscape_h_restart.txt";
+      const std::string restart_step_filename = dirname + "fastscape_steps_restart.txt";
+      const std::string restart_filename_basement = dirname + "fastscape_b_restart.txt";
+
+      std::ofstream out_h(restart_filename.c_str());
+      std::ofstream out_step(restart_step_filename.c_str());
+      std::ofstream out_b(restart_filename_basement.c_str());
+      std::stringstream bufferb;
+      std::stringstream bufferh;
+
+      fastscape_copy_basement_(b);
+
+      out_step << (istep + restart_step) << "\n";
+
+      for (int i = 0; i < array_size; i++)
+        {
+          bufferh << h[i] << "\n";
+          bufferb << b[i] << "\n";
+        }
+
+      out_h << bufferh.str();
+      out_b << bufferb.str();
+    }
 
     template <int dim>
     void FastScape<dim>::declare_parameters(ParameterHandler &prm)
