@@ -262,16 +262,6 @@ namespace aspect
           int istep = 0;
           fastscape_get_step_(&istep);
 
-          // Write a file to store h, b & step in case of restart.
-          // TODO: It would be good to roll this into the general ASPECT checkpointing,
-          // and when we do this needs to be changed.
-          if ((this->get_parameters().checkpoint_time_secs == 0) &&
-              (this->get_parameters().checkpoint_steps > 0) &&
-              (current_timestep % this->get_parameters().checkpoint_steps == 0))
-            {
-              save_restart_files(h.get(), b.get(), istep);
-            }
-
           // Set velocity components.
           if (use_velocities)
             {
@@ -285,6 +275,17 @@ namespace aspect
 
           // Find  timestep size, run fastscape, and make visualizations.
           execute_fastscape(h.get(), kd.get(), istep);
+
+          // Write a file to store h, b & step for restarting.
+          // TODO: It would be good to roll this into the general ASPECT checkpointing,
+          // and when we do this needs to be changed.
+            if (((this->get_parameters().checkpoint_time_secs == 0) &&
+                 (this->get_parameters().checkpoint_steps > 0) &&
+                 ((current_timestep + 1) % this->get_parameters().checkpoint_steps == 0)) ||
+                (this->get_time() + a_dt >= end_time && this->get_timestepping_manager().need_checkpoint_on_terminate()))
+            {
+              save_restart_files(h.get(), b.get(), istep);
+            }
 
           // Find out our velocities from the change in height.
           // Where V is a vector of array size that exists on all processes.
