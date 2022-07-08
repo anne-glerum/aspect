@@ -288,6 +288,13 @@ namespace aspect
               save_restart_files(h.get(), b.get(), sf.get(), istep);
             }
 
+            // If we've reached the end time, destroy FastScape.
+            if (this->get_time() + this->get_timestep() > end_time)
+            {
+              this->get_pcout() << "      Destroying FastScape..." << std::endl;
+              fastscape_destroy_();
+            }
+
           // Find out our velocities from the change in height.
           // Where V is a vector of array size that exists on all processes.
           for (int i=0; i<array_size; i++)
@@ -621,13 +628,6 @@ namespace aspect
         {
           this->get_pcout() << "      Writing VTK..." << std::endl;
           fastscape_named_vtk_(kd, &vexp, &visualization_step, c, &length);
-        }
-
-      // If we've reached the end time, destroy FastScape.
-      if (this->get_time()+this->get_timestep() > end_time)
-        {
-          this->get_pcout() << "      Destroying FastScape..." << std::endl;
-          fastscape_destroy_();
         }
     }
 
