@@ -180,6 +180,7 @@ namespace aspect
           std::unique_ptr<double[]> kf (new double[array_size]());
           std::unique_ptr<double[]> kd (new double[array_size]());
           std::unique_ptr<double[]> b (new double[array_size]());
+          std::unique_ptr<double[]> sf (new double[array_size]());
           std::vector<double> h_old(array_size);
 
           fill_fastscape_arrays(h.get(), kd.get(), kf.get(), vx.get(), vy.get(), vz.get(), temporary_variables);
@@ -192,12 +193,12 @@ namespace aspect
               // If we are restarting from a checkpoint, load h values for FastScape instead of using the ASPECT values.
               if (restart)
                 {
-                  read_restart_files(h.get(), b.get());
+                  read_restart_files(h.get(), b.get(), sf.get());
 
                   restart = false;
                 }
 
-              initialize_fastscape(h.get(), b.get(), kd.get(), kf.get());
+              initialize_fastscape(h.get(), b.get(), kd.get(), kf.get(), sf.get());
             }
           else
             {
@@ -284,7 +285,7 @@ namespace aspect
                  ((current_timestep + 1) % this->get_parameters().checkpoint_steps == 0)) ||
                 (this->get_time() + a_dt >= end_time && this->get_timestepping_manager().need_checkpoint_on_terminate()))
             {
-              save_restart_files(h.get(), b.get(), istep);
+              save_restart_files(h.get(), b.get(), sf.get(), istep);
             }
 
           // Find out our velocities from the change in height.
@@ -499,7 +500,7 @@ namespace aspect
 
 
     template <int dim>
-    void FastScape<dim>::initialize_fastscape(double *h, double *b, double *kd, double *kf) const
+    void FastScape<dim>::initialize_fastscape(double *h, double *b, double *kd, double *kf, double *sf) const
     {
       const int current_timestep = this->get_timestep_number ();
 
@@ -521,9 +522,14 @@ namespace aspect
       if (use_marine)
         fastscape_set_marine_parameters_(&sl, &p1, &p2, &z1, &z2, &r, &l, &kds1, &kds2);
 
-      // Only set the basement if it's a restart
+      // Only set the basement and silt_fraction if it's a restart
       if (current_timestep != 1)
+      {
         fastscape_set_basement_(b);
+        if (use_marine)
+          fastscape_init_f_(sf);
+      }
+
     }
 
 
@@ -1053,7 +1059,7 @@ namespace aspect
 
 
     template <int dim>
-    void FastScape<dim>::read_restart_files(double *h, double *b) const
+    void FastScape<dim>::read_restart_files(double *h, double *b, double *sf) const
     {
       this->get_pcout() << "      Loading FastScape restart file... " << std::endl;
 
@@ -1062,6 +1068,8 @@ namespace aspect
       const std::string restart_filename = dirname + "fastscape_h_restart.txt";
       const std::string restart_step_filename = dirname + "fastscape_steps_restart.txt";
       const std::string restart_filename_basement = dirname + "fastscape_b_restart.txt";
+      const std::string restart_filename_silt_fraction = dirname + "fastscape_sf_restart.txt";
+
       // Load in h values.
       std::ifstream in;
       in.open(restart_filename.c_str());
@@ -1094,6 +1102,24 @@ namespace aspect
           in_b.close();
         }
 
+        // Load in silt_fraction values if
+        // marine sediment transport and deposition is active.
+        std::ifstream in_sf;
+        in_sf.open(restart_filename_silt_fraction.c_str());
+        if (use_marine && in_sf)
+        {
+          std::cout << "Reading SF " << std::endl;
+          int line = 0;
+
+          while (line < array_size)
+          {
+            in_sf >> sf[line];
+            line++;
+          }
+
+          in_sf.close();
+        }
+
       // Now load the FastScape istep at time of restart.
       // Reinitializing FastScape always resets this to 0, so here
       // we keep it in a separate variable to keep track for visualization files.
@@ -1107,7 +1133,7 @@ namespace aspect
     }
 
     template <int dim>
-    void FastScape<dim>::save_restart_files(const double *h, double *b, int istep) const
+    void FastScape<dim>::save_restart_files(const double *h, double *b, double *sf, int istep) const
     {
       this->get_pcout() << "      Writing FastScape restart file... " << std::endl;
 
@@ -1116,14 +1142,22 @@ namespace aspect
       const std::string restart_filename = dirname + "fastscape_h_restart.txt";
       const std::string restart_step_filename = dirname + "fastscape_steps_restart.txt";
       const std::string restart_filename_basement = dirname + "fastscape_b_restart.txt";
+      const std::string restart_filename_silt_fraction = dirname + "fastscape_sf_restart.txt";
 
       std::ofstream out_h(restart_filename.c_str());
       std::ofstream out_step(restart_step_filename.c_str());
       std::ofstream out_b(restart_filename_basement.c_str());
+      std::ofstream out_sf(restart_filename_silt_fraction.c_str());
       std::stringstream bufferb;
       std::stringstream bufferh;
+      std::stringstream buffersf;
 
       fastscape_copy_basement_(b);
+
+      // If marine sediment transport and deposition is active,
+      // we also need to store the silt fraction.
+      if (use_marine)
+        fastscape_copy_f_(sf);
 
       out_step << (istep + restart_step) << "\n";
 
@@ -1131,10 +1165,14 @@ namespace aspect
         {
           bufferh << h[i] << "\n";
           bufferb << b[i] << "\n";
+          if (use_marine)
+            buffersf << sf[i] << "\n";
         }
 
       out_h << bufferh.str();
       out_b << bufferb.str();
+      if (use_marine)
+        out_sf << buffersf.str();
     }
 
     template <int dim>

@@ -75,6 +75,11 @@ namespace aspect
     void fastscape_init_h_(double *hp);
 
     /**
+     * Initialize FastScape silt fraction during a restart.
+     */
+    void fastscape_init_f_(double *sf);
+
+    /**
      * Set FastScape erosional parameters on land. These parameters will apply to the stream power law (SPL)
      * and hillslope diffusion for basement and sediment. This can be set between timesteps.
      */
@@ -135,6 +140,11 @@ namespace aspect
      * Copy the current FastScape basement.
      */
     void fastscape_copy_basement_(double *b);
+
+    /**
+     * Copy the current FastScape silt fraction.
+     */
+    void fastscape_copy_f_(double *sf);
 
     /**
      * Initialize the straigraphy component of FastScape.
@@ -218,7 +228,7 @@ namespace aspect
       /**
        * Function to intialize or restart FastScape
        */
-      void initialize_fastscape(double *h, double *b, double *kd, double *kf) const;
+      void initialize_fastscape(double *h, double *b, double *kd, double *kf, double *sf) const;
 
       /**
        * Execute FastScape
@@ -238,12 +248,12 @@ namespace aspect
       /**
        * Read data from file for restarting.
        */
-      void read_restart_files(double *h, double *b) const;
+      void read_restart_files(double *h, double *b, double *sf) const;
 
       /**
        * Save data to file for restarting.
        */
-      void save_restart_files(const double *h, double *b, int istep) const;
+      void save_restart_files(const double *h, double *b, double *sf, int istep) const;
 
     private:
       /**
