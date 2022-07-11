@@ -1066,7 +1066,7 @@ namespace aspect
     template <int dim>
     void FastScape<dim>::read_restart_files(double *h, double *b, double *sf) const
     {
-      this->get_pcout() << "      Loading FastScape restart file... " << std::endl;
+      this->get_pcout() << "   Loading FastScape restart file... " << std::endl;
 
       // Create variables for output directory and restart file
       std::string dirname = this->get_output_directory();
@@ -1114,7 +1114,7 @@ namespace aspect
       if (use_marine && in_sf)
         {
           if (p1 > 0. || p2 > 0.)
-            this->get_pcout() << "  Restarting runs with nonzero porosity can lead to a different system after restart. " << std::endl;
+            this->get_pcout() << "   Restarting runs with nonzero porosity can lead to a different system after restart. " << std::endl;
 
           int line = 0;
 
@@ -1142,7 +1142,7 @@ namespace aspect
     template <int dim>
     void FastScape<dim>::save_restart_files(const double *h, double *b, double *sf, int istep) const
     {
-      this->get_pcout() << "      Writing FastScape restart file... " << std::endl;
+      this->get_pcout() << "   Writing FastScape restart file... " << std::endl;
 
       // Create variables for output directory and restart file
       std::string dirname = this->get_output_directory();
