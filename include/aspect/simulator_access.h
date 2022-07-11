@@ -147,29 +147,29 @@ namespace aspect
     template <int dim> class Manager;
   }
 
-      /**
-   * SimulatorAccess is a base class for different plugins like postprocessors.
-   * It provides access to the various variables of the main class that
-   * plugins may want to use in their evaluations, such as solution vectors,
-   * the current time, time step sizes, material models, or the triangulations
-   * and DoFHandlers that correspond to solutions.
-   *
-   * This class is the interface between plugins and the main simulator class.
-   * Using this insulation layer, the plugins need not know anything about the
-   * internal details of the simulation class.
-   *
-   * Every Postprocessor is required to derive from SimulatorAccess. It is
-   * optional for other plugins like MaterialModel, GravityModel, etc..
-   *
-   * Since the functions providing access to details of the simulator class
-   * are meant to be used only by derived classes of this class (rather than
-   * becoming part of the public interface of these classes), the functions of
-   * this class are made @p protected.
-   *
-   * @ingroup Simulator
-   */
-      template <int dim>
-      class SimulatorAccess
+  /**
+  * SimulatorAccess is a base class for different plugins like postprocessors.
+  * It provides access to the various variables of the main class that
+  * plugins may want to use in their evaluations, such as solution vectors,
+  * the current time, time step sizes, material models, or the triangulations
+  * and DoFHandlers that correspond to solutions.
+  *
+  * This class is the interface between plugins and the main simulator class.
+  * Using this insulation layer, the plugins need not know anything about the
+  * internal details of the simulation class.
+  *
+  * Every Postprocessor is required to derive from SimulatorAccess. It is
+  * optional for other plugins like MaterialModel, GravityModel, etc..
+  *
+  * Since the functions providing access to details of the simulator class
+  * are meant to be used only by derived classes of this class (rather than
+  * becoming part of the public interface of these classes), the functions of
+  * this class are made @p protected.
+  *
+  * @ingroup Simulator
+  */
+  template <int dim>
+  class SimulatorAccess
   {
     public:
       /**
