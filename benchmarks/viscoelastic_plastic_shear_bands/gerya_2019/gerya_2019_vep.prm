@@ -11,6 +11,11 @@ subsection Formulation
   set Enable elasticity = true
 end
 
+subsection Discretization
+  # DG for viscoelastic stresses
+  set Use discontinuous composition discretization = true
+end
+
 # Number and name of compositional fields
 subsection Compositional fields
   set Number of fields = 6

@@ -34,6 +34,12 @@ subsection Formulation
   set Enable elasticity = true
 end
 
+subsection Discretization
+  # DG for viscoelastic stresses
+  set Use discontinuous composition discretization = true
+end
+
+
 # Material model (values for background material)
 subsection Material model
   set Model name = visco plastic

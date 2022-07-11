@@ -64,6 +64,8 @@ subsection Discretization
   set Composition polynomial degree     = 2
   set Stokes velocity polynomial degree = 2
   set Temperature polynomial degree     = 1
+  # DG for viscoelastic stresses
+  set Use discontinuous composition discretization = true
 end
 
 # Formulation classification

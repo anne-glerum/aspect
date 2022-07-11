@@ -54,6 +54,7 @@ subsection Solver parameters
 end
 
 subsection Discretization
+  # DG for viscoelastic stresses
   set Use discontinuous composition discretization = true
 end
 
