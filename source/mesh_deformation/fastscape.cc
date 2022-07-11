@@ -83,6 +83,11 @@ namespace aspect
             AssertThrow(false,ExcMessage("Cannot open basement file to restart FastScape."));
           in.close();
 
+          in.open(dirname + "fastscape_sf_restart.txt");
+          if (in.fail())
+            AssertThrow(false, ExcMessage("Cannot open silt_fraction file to restart FastScape."));
+          in.close();
+
           in.open(dirname + "fastscape_steps_restart.txt");
           if (in.fail())
             AssertThrow(false,ExcMessage("Cannot open steps file to restart FastScape."));
@@ -280,16 +285,16 @@ namespace aspect
           // Write a file to store h, b & step for restarting.
           // TODO: It would be good to roll this into the general ASPECT checkpointing,
           // and when we do this needs to be changed.
-            if (((this->get_parameters().checkpoint_time_secs == 0) &&
-                 (this->get_parameters().checkpoint_steps > 0) &&
-                 ((current_timestep + 1) % this->get_parameters().checkpoint_steps == 0)) ||
-                (this->get_time() + a_dt >= end_time && this->get_timestepping_manager().need_checkpoint_on_terminate()))
+          if (((this->get_parameters().checkpoint_time_secs == 0) &&
+               (this->get_parameters().checkpoint_steps > 0) &&
+               ((current_timestep + 1) % this->get_parameters().checkpoint_steps == 0)) ||
+              (this->get_time() + a_dt >= end_time && this->get_timestepping_manager().need_checkpoint_on_terminate()))
             {
               save_restart_files(h.get(), b.get(), sf.get(), istep);
             }
 
-            // If we've reached the end time, destroy FastScape.
-            if (this->get_time() + this->get_timestep() > end_time)
+          // If we've reached the end time, destroy FastScape.
+          if (this->get_time() + this->get_timestep() > end_time)
             {
               this->get_pcout() << "      Destroying FastScape..." << std::endl;
               fastscape_destroy_();
@@ -531,11 +536,11 @@ namespace aspect
 
       // Only set the basement and silt_fraction if it's a restart
       if (current_timestep != 1)
-      {
-        fastscape_set_basement_(b);
-        if (use_marine)
-          fastscape_init_f_(sf);
-      }
+        {
+          fastscape_set_basement_(b);
+          if (use_marine)
+            fastscape_init_f_(sf);
+        }
 
     }
 
@@ -1102,20 +1107,22 @@ namespace aspect
           in_b.close();
         }
 
-        // Load in silt_fraction values if
-        // marine sediment transport and deposition is active.
-        std::ifstream in_sf;
-        in_sf.open(restart_filename_silt_fraction.c_str());
-        if (use_marine && in_sf)
+      // Load in silt_fraction values if
+      // marine sediment transport and deposition is active.
+      std::ifstream in_sf;
+      in_sf.open(restart_filename_silt_fraction.c_str());
+      if (use_marine && in_sf)
         {
-          std::cout << "Reading SF " << std::endl;
+          if (p1 > 0. || p2 > 0.)
+            this->get_pcout() << "  Restarting runs with nonzero porosity can lead to a different system after restart. " << std::endl;
+
           int line = 0;
 
           while (line < array_size)
-          {
-            in_sf >> sf[line];
-            line++;
-          }
+            {
+              in_sf >> sf[line];
+              line++;
+            }
 
           in_sf.close();
         }
