@@ -160,10 +160,12 @@ namespace aspect
                       stabilization_time_scale_factor == 1. &&
                       !use_stress_averaging &&
                       elastic_damper_viscosity == 0. &&
-                      this->get_parameters().use_operator_splitting,
+                      this->get_parameters().use_operator_splitting &&
+                      this->get_parameters().use_discontinuous_composition_discretization,
                       ExcMessage("The visco-plastic material model with elasticity enabled requires "
                                  "an elastic timestep equal to the computational timestep, operator splitting "
-                                 "no timestep stabilization and no elastic damping."));
+                                 "no timestep stabilization, no elastic damping and the use of discontinuous "
+                                 "elements for composition."));
 
         AssertThrow(this->get_parameters().enable_elasticity == true,
                     ExcMessage("Material model Viscoelastic only works if 'Enable elasticity' is set to true"));
