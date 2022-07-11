@@ -13,13 +13,17 @@ base = r"/Users/acglerum/Documents/Postdoc/SB_CRYSTALS/HLRN/HLRN/fix_stresses_el
 
 # Change file name modifiers as needed depending on your file structure
 names = [
-         "ve_relaxation_dt125yr_dh10km"
+         "ve_relaxation_dt125yr_dh10km",
+         "ve_relaxation_dt125yr_dh10km_100NI",
+         "VE_ve_relaxation_dt125yr_dh10km"
         ]
 tail = r"/statistics"
 
 # The labels the graphs will get in the plot
 labels = [
-          'dt = 125yr, dh = 10km'
+          'dt = 125yr, dh = 10km',
+          'dt = 125yr, dh = 10km, NI = 100',
+          'dt = 125yr, dh = 10km, VE'
          ]
 # Set the colors available for plotting
 colors = ['#1f77b4','#ff7f0e','#2ca02c','#d62728']
@@ -45,6 +49,8 @@ for name in names:
   # categorical batlow colors.
   ax[0].plot(time/1e3,stress_xx_min/1e6,label=labels[counter],color=colors[counter])
   ax[1].plot(time/1e3,(stress_xx_min-(20e6*np.exp(-1e10*time*yr_in_secs/1e22)))/(20e6*np.exp(-1e10*time*yr_in_secs/1e22))*100.,label=labels[counter],color=colors[counter])
+  
+  counter += 1
 
 # Plot the analytical solution
 # tau_xx(t) = tau_xx_t0 * exp(-mu*t/eta_viscous), 
@@ -54,7 +60,7 @@ ax[0].plot(time/1e3,20*np.exp(-1e10*time*yr_in_secs/1e22),label='analytical',col
 # Labelling of plot
 ax[1].set_xlabel("Time [ky]")
 ax[0].set_ylabel(r"Viscoelastic stress $\tau_{xx}$ [MPa]")
-ax[1].set_ylabel(r"Error with the analytical solution [%]")
+ax[1].set_ylabel(r"Error [%]")
 # Manually place legend in lower right corner. 
 ax[0].legend(loc='upper right')
 ax[1].legend(loc='lower right')
@@ -71,6 +77,10 @@ ax[0].set_xlim(0,250) # kyr
 ax[0].set_ylim(0,21) # MPa
 ax[1].set_xlim(0,250) # kyr
 ax[1].set_ylim(0,2) # %
+
+# Add labels a) and b)
+ax[0].text(-13,20,"a)")
+ax[1].text(-13,1.8,"b)")
 
 plt.tight_layout()
 
