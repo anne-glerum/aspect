@@ -6,6 +6,7 @@ include $ASPECT_SOURCE_DIR/benchmarks/viscoelastic_plastic_shear_bands/gerya_201
 #  Global parameters
 set End time                               = 500
 set Output directory                       = output_gerya_2019_vep
+set Nonlinear solver scheme                = iterated Advection and Stokes
 
 subsection Formulation
   set Enable elasticity = true

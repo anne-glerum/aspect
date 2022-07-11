@@ -3,6 +3,7 @@ include $ASPECT_SOURCE_DIR/tests/visco_plastic_yield_plastic_viscous_strain_weak
 # Global parameters
 set Dimension                              = 2
 set End time                               = 1000
+set Nonlinear solver scheme                = iterated Advection and Stokes
 set Max nonlinear iterations               = 2
 set Output directory                       = viscoelastoplastic_yield_plastic_viscous_strain_weakening
 
