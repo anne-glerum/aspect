@@ -14,6 +14,17 @@ set Maximum time step                      = 5
 set Timing output frequency                = 1
 set Pressure normalization                 = no
 
+# One operator splitting step to update the stresses
+set Use operator splitting                 = true
+
+subsection Solver parameters
+  # Make sure to do only 1 splitting step
+  subsection Operator splitting parameters
+    set Reaction time step                     = 5000 # larger than maximum Stokes time step
+    set Reaction time steps per advection step = 1
+  end
+end
+
 # Solver parameters
 subsection Solver parameters
   subsection Stokes solver parameters
