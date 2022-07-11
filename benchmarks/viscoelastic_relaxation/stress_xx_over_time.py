@@ -24,7 +24,12 @@ labels = [
 # Set the colors available for plotting
 colors = ['#1f77b4','#ff7f0e','#2ca02c','#d62728']
 
+# Set up a row of two plots, one with absolute stress values
+# and one with the percentage difference to the analytical solution
+fig = plt.figure(figsize=(10, 6))
+ax = [fig.add_subplot(2, 1, i) for i in range(1, 3)]
 
+yr_in_secs = 3600. * 24. * 365.2425
 counter = 0 
 
 # Create file path
@@ -38,27 +43,34 @@ for name in names:
 
   # Plot the stress elements in MPa against time in ky in
   # categorical batlow colors.
-  plt.plot(time/1e3,stress_xx_min/1e6,label=labels[counter],color=colors[counter])
+  ax[0].plot(time/1e3,stress_xx_min/1e6,label=labels[counter],color=colors[counter])
+  ax[1].plot(time/1e3,(stress_xx_min-(20e6*np.exp(-1e10*time*yr_in_secs/1e22)))/(20e6*np.exp(-1e10*time*yr_in_secs/1e22))*100.,label=labels[counter],color=colors[counter])
 
 # Plot the analytical solution
 # tau_xx(t) = tau_xx_t0 * exp(-mu*t/eta_viscous), 
 # with tau_xx_t0 = 20 MPa, eta_viscous = 1e22 Pas, mu = 1e10 Pa.
-yr_in_secs = 3600. * 24. * 365.2425
-plt.plot(time/1e3,20*np.exp(-1e10*time*yr_in_secs/1e22),label='analytical',color='black',linestyle='dashed')
+ax[0].plot(time/1e3,20*np.exp(-1e10*time*yr_in_secs/1e22),label='analytical',color='black',linestyle='dashed')
 
 # Labelling of plot
-plt.xlabel("Time [ky]")
-plt.ylabel(r"Viscoelastic stress $\tau_{xx}$ [MPa]")
+ax[1].set_xlabel("Time [ky]")
+ax[0].set_ylabel(r"Viscoelastic stress $\tau_{xx}$ [MPa]")
+ax[1].set_ylabel(r"Error with the analytical solution [%]")
 # Manually place legend in lower right corner. 
-plt.legend(loc='upper right')
+ax[0].legend(loc='upper right')
+ax[1].legend(loc='lower right')
 # Grid and tickes
-plt.grid(axis='x',color='0.95')
-plt.yticks([0,5,10,15,20])
-plt.grid(axis='y',color='0.95')
+ax[0].grid(axis='x',color='0.95')
+ax[0].set_yticks([0,5,10,15,20])
+ax[0].grid(axis='y',color='0.95')
+ax[1].grid(axis='x',color='0.95')
+ax[1].grid(axis='y',color='0.95')
+ax[1].set_yticks([0,0.5,1,1.5,2])
 
 # Ranges of the axes
-plt.xlim(0,250) # kyr
-plt.ylim(0,21) # MPa
+ax[0].set_xlim(0,250) # kyr
+ax[0].set_ylim(0,21) # MPa
+ax[1].set_xlim(0,250) # kyr
+ax[1].set_ylim(0,2) # %
 
 plt.tight_layout()
 
