@@ -25,6 +25,7 @@
 #include <deal.II/base/parameter_handler.h>
 #include <aspect/utilities.h>
 #include <aspect/material_model/visco_plastic.h>
+#include <aspect/material_model/viscoelastic.h>
 
 #include <deal.II/base/quadrature_lib.h>
 
@@ -151,11 +152,10 @@ namespace aspect
         // is not correct. The way the effective viscosity is computed is only valid
         // in the absence of a damper and for a yield stress that can be expressed as
         // some value of the second invariant of the deviatoric stress.
-        // The visco_plastic material model also requires an operator splitting
+        // The visco_plastic and viscoelastic material models also require an operator splitting
         // step to update the stresses stored.
-        // TODO: also update the viscoelastic material model and adapt
-        // conditions here accordingly.
-        if (Plugins::plugin_type_matches<MaterialModel::ViscoPlastic<dim>>(this->get_material_model()))
+        if (Plugins::plugin_type_matches<MaterialModel::ViscoPlastic<dim>>(this->get_material_model()) ||
+            Plugins::plugin_type_matches<MaterialModel::Viscoelastic<dim>>(this->get_material_model()))
           AssertThrow(!use_fixed_elastic_time_step &&
                       stabilization_time_scale_factor == 1. &&
                       !use_stress_averaging &&
