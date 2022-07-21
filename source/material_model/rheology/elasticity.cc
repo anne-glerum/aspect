@@ -142,24 +142,17 @@ namespace aspect
           fixed_elastic_time_step *= year_in_seconds;
 
         // When using the visco_plastic material model,
-        // make sure that use_fixed_elastic_timestep == false
-        // and stabilization_time_scale_factor == 1, because
-        // the current implementation does not support
-        // an elastic timestep that is not equal to the computational
-        // timepstep. For the same reasons, make sure that stress
-        // averaging is turned off and no damping is applied.
+        // make sure that no damping is applied.
         // If a damper is used, the current implementation in visco_plastic
         // is not correct. The way the effective viscosity is computed is only valid
         // in the absence of a damper and for a yield stress that can be expressed as
         // some value of the second invariant of the deviatoric stress.
         // The visco_plastic and viscoelastic material models also require an operator splitting
-        // step to update the stresses stored.
+        // step to update the stresses stored, and a discontinuous element to accommodate discontinuous
+        // strain rates that feed into the stored stresses. 
         if (Plugins::plugin_type_matches<MaterialModel::ViscoPlastic<dim>>(this->get_material_model()) ||
             Plugins::plugin_type_matches<MaterialModel::Viscoelastic<dim>>(this->get_material_model()))
-          AssertThrow(!use_fixed_elastic_time_step &&
-                      stabilization_time_scale_factor == 1. &&
-                      !use_stress_averaging &&
-                      elastic_damper_viscosity == 0. &&
+          AssertThrow(elastic_damper_viscosity == 0. &&
                       this->get_parameters().use_operator_splitting &&
                       this->get_parameters().use_discontinuous_composition_discretization,
                       ExcMessage("The visco-plastic material model with elasticity enabled requires "
@@ -185,6 +178,16 @@ namespace aspect
             AssertThrow(this->introspection().compositional_index_for_name("ve_stress_xy") == 2,
                         ExcMessage("Rheology model Elasticity only works if the third "
                                    "compositional field is called ve_stress_xy."));
+
+            AssertThrow(this->introspection().compositional_index_for_name("ve_stress_xx_old") == 3,
+                        ExcMessage("Rheology model Elasticity only works if the fourth "
+                                   "compositional field is called ve_stress_xx_old."));
+            AssertThrow(this->introspection().compositional_index_for_name("ve_stress_yy_old") == 4,
+                        ExcMessage("Rheology model Elasticity only works if the fifth "
+                                   "compositional field is called ve_stress_yy_old."));
+            AssertThrow(this->introspection().compositional_index_for_name("ve_stress_xy_old") == 5,
+                        ExcMessage("Rheology model Elasticity only works if the sixth "
+                                   "compositional field is called ve_stress_xy_old."));
           }
         else if (dim == 3)
           {
@@ -200,6 +203,25 @@ namespace aspect
             AssertThrow(this->introspection().compositional_index_for_name("ve_stress_yz") == 5,
                         ExcMessage("Rheology model Elasticity only works if the sixth "
                                    "compositional field is called ve_stress_yz."));
+
+            AssertThrow(this->introspection().compositional_index_for_name("ve_stress_xx_old") == 6,
+                        ExcMessage("Rheology model Elasticity only works if the seventh "
+                                   "compositional field is called ve_stress_xx_old."));
+            AssertThrow(this->introspection().compositional_index_for_name("ve_stress_yy_old") == 7,
+                        ExcMessage("Rheology model Elasticity only works if the eighth "
+                                   "compositional field is called ve_stress_yy_old."));
+            AssertThrow(this->introspection().compositional_index_for_name("ve_stress_zz_old") == 8,
+                        ExcMessage("Rheology model Elasticity only works if the ninth "
+                                   "compositional field is called ve_stress_zz_old."));
+            AssertThrow(this->introspection().compositional_index_for_name("ve_stress_xy_old") == 9,
+                        ExcMessage("Rheology model Elasticity only works if the tenth "
+                                   "compositional field is called ve_stress_xy_old."));
+            AssertThrow(this->introspection().compositional_index_for_name("ve_stress_xz_old") == 10,
+                        ExcMessage("Rheology model Elasticity only works if the eleventh "
+                                   "compositional field is called ve_stress_xz_old."));
+            AssertThrow(this->introspection().compositional_index_for_name("ve_stress_yz_old") == 11,
+                        ExcMessage("Rheology model Elasticity only works if the twelfth "
+                                   "compositional field is called ve_stress_yz_old."));
           }
         else
           AssertThrow(false, ExcNotImplemented());
@@ -298,6 +320,12 @@ namespace aspect
                 for (unsigned int j=0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
                   stress_0_advected[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
 
+                // Get the old stress that is used to interpolate to timestep $t+\Delta t_c$. It is stored on the
+                // second set of n_independent_components fields, e.g. in 2D on field 3, 4 and 5.
+                SymmetricTensor<2, dim> stress_old;
+                for (unsigned int j = SymmetricTensor<2, dim>::n_independent_components; j < 2 * SymmetricTensor<2, dim>::n_independent_components; ++j)
+                  stress_old[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
+
                 // Average effective creep viscosity
                 // Use the viscosity corresponding to the stresses selected above.
                 // out.viscosities is computed during the assembly of the Stokes equations
@@ -305,9 +333,13 @@ namespace aspect
                 // nonlinear Stokes iteration.
                 const double effective_creep_viscosity = out.viscosities[i];
 
-                // Fill elastic force outputs $\frac{-\eta_{effcreep} \ tau_{0adv}}{\eta_{e}}$.
-                force_out->elastic_force[i] = -1. * effective_creep_viscosity / calculate_elastic_viscosity(average_elastic_shear_moduli[i])
-                                              * stress_0_advected;
+                // Fill elastic force outputs $\frac{-\eta_{effcreep} \tau_{0adv}}{\eta_{e}}$.
+                // Scale with $\Delta t_c / \Delta t_{el}$ because we computed the stress at the previous
+                // computational timestep $t+\Delta t_c$, not $t+\Delta t_el$.
+                const double timestep_ratio = get_timestep() / elastic_timestep();
+                const double viscosity_ratio = effective_creep_viscosity / calculate_elastic_viscosity(average_elastic_shear_moduli[i]);
+                force_out->elastic_force[i] = -1. * (viscosity_ratio * stress_0_advected 
+                                                     + (1. - timestep_ratio) * (1. - viscosity_ratio) * stress_old);
               }
       }
 
@@ -322,7 +354,7 @@ namespace aspect
         if (in.current_cell.state() == IteratorState::valid
             && in.requests_property(MaterialProperties::reaction_terms))
           {
-            // Get velocity gradients of the current timestep $t+dt=t+dte$
+            // Get velocity gradients of the current timestep $t+dt=t+dtc$
             // and the compositions from the previous timestep $t$,
             // both at the requested location in in.position.
             std::vector<Point<dim>> quadrature_positions(in.n_evaluation_points());
@@ -385,8 +417,6 @@ namespace aspect
                     dealii::internal::FEPointEvaluation::EvaluatorTypeTraits<dim, n_independent_components, double>::access(composition_values, c);
               }
 
-            const double dte = elastic_timestep();
-
             Assert(out.reaction_terms.size() == in.n_evaluation_points(), ExcMessage("Out reaction terms not equal to n eval points."));
 
             for (unsigned int i = 0; i < in.n_evaluation_points(); ++i)
@@ -397,9 +427,9 @@ namespace aspect
                 const Tensor<2, dim> rotation = 0.5 * (evaluator->get_gradient(i) - transpose(evaluator->get_gradient(i)));
 
                 // stress_0 (i.e., $\tau^{0}$) is the combination of the elastic stress tensor stored at the end of the last time step
-                // and the change in that stress generated by local rotation.
+                // and the change in that stress generated by local rotation over the computational timestep $\Delta t_c$.
                 const SymmetricTensor<2, dim> stress_0 = (stress_t[i] +
-                                                          dte * (symmetrize(rotation * Tensor<2, dim>(stress_t[i])) - symmetrize(Tensor<2, dim>(stress_t[i]) * rotation)));
+                                                          this->get_timestep() * (symmetrize(rotation * Tensor<2, dim>(stress_t[i])) - symmetrize(Tensor<2, dim>(stress_t[i]) * rotation)));
 
                 // Stress averaging scheme to account for difference between fixed elastic time step
                 // and numerical time step (see equation 32 in Moresi et al., 2003, J. Comp. Phys.).
@@ -467,7 +497,13 @@ namespace aspect
                 for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
                   stress_0_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
 
-                // $\eta^{t}_{effcreep}
+                // Get the old stress that is used to interpolate to timestep $t+\Delta t_c$. It is stored on the
+                // second set of n_independent_components fields, e.g. in 2D on field 3, 4 and 5.
+                SymmetricTensor<2, dim> stress_old;
+                for (unsigned int j = SymmetricTensor<2, dim>::n_independent_components; j < 2 * SymmetricTensor<2, dim>::n_independent_components; ++j)
+                  stress_old[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
+
+                // $\eta^{t}_{effcreep}$
                 const double effective_creep_viscosity = out.viscosities[i];
 
                 // $\eta_{el} = G \Delta t_{el}$
@@ -476,11 +512,15 @@ namespace aspect
                 // The total stress of timestep t.
                 // TODO: Do we somehow need to take into account the user-set minimum value for the
                 // sqrt of the second invariant of the strain rate?
+                // Scale with $\Delta t_c / \Delta t_{el}$ because we computed the stress at the previous
+                // computational timestep $t+\Delta t_c$, not $t+\Delta t_el$.
+                const double timestep_ratio = get_old_timestep() / elastic_timestep();
                 const SymmetricTensor<2, dim>
-                stress_t = 2. * effective_creep_viscosity * (deviator(in.strain_rate[i]) + stress_0_t / (2. * elastic_viscosity));
+                stress_t = 2. * effective_creep_viscosity * timestep_ratio * deviator(in.strain_rate[i]) 
+                           + effective_creep_viscosity / elastic_viscosity * stress_0_t
+                           + (1. - timestep_ratio) * (1. - effective_creep_viscosity / elastic_viscosity) * stress_old;
 
                 // Fill reaction rates.
-                // Assume dte is always equal to dt, as is asserted in parse_parameters.
                 // During this timestep, the reaction rates will be multiplied
                 // with the current timestep size to turn the rate of change into a change.
                 // However, this update belongs
@@ -513,9 +553,6 @@ namespace aspect
         //
         // We also use this parameter when we are still *before* the first time step,
         // i.e., if the time step number is numbers::invalid_unsigned_int.
-        //
-        // With the visco-plastic material model and elasticity, we only allow for dte = dt.
-        // This is enforced in parse_parameters.
         const double dte = ( ( this->get_timestep_number() > 0 &&
                                this->simulator_is_past_initialization() &&
                                use_fixed_elastic_time_step == false )
