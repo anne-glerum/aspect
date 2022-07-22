@@ -112,8 +112,9 @@ namespace aspect
         output_parameters.composition_viscosities.resize(volume_fractions.size(), numbers::signaling_nan<double>());
         output_parameters.current_friction_angles.resize(volume_fractions.size(), numbers::signaling_nan<double>());
 
-        // Assemble stress tensor if elastic behavior is enabled
+        // Assemble current and old stress tensor if elastic behavior is enabled
         SymmetricTensor<2, dim> stress_0_advected = numbers::signaling_nan<SymmetricTensor<2, dim>>();
+        SymmetricTensor<2, dim> stress_old = numbers::signaling_nan<SymmetricTensor<2, dim>>();
         double elastic_shear_modulus = numbers::signaling_nan<double>();
         if (use_elasticity == true)
           {
@@ -121,6 +122,11 @@ namespace aspect
             // which is when the viscosity matters for the Stokes system.
             for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
               stress_0_advected[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
+
+            // The old stresses are only changed in the operator splitting step and are stored in the second
+            // set of n_independent_components.
+            for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
+              stress_old[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)] = in.composition[i][SymmetricTensor<2, dim>::n_independent_components+j];
 
             // Average the compositional contributions to elastic_shear_moduli here and use
             // a volume-averaged shear modulus in the loop over the compositions below.
@@ -264,15 +270,17 @@ namespace aspect
                     // and advected stresses from the advection solve ($\tau^{0adv}$).
                     // The square root of the second moment invariant is returned.
                     const double viscoelastic_strain_rate_invariant = elastic_rheology.calculate_viscoelastic_strain_rate(in.strain_rate[i],
-                                                                      stress_0_advected,
-                                                                      elastic_shear_modulus);
+                                                                                                                          stress_0_advected,
+                                                                                                                          stress_old,
+                                                                                                                          viscosity_pre_yield,
+                                                                                                                          elastic_shear_modulus);
 
                     current_edot_ii = std::max(viscoelastic_strain_rate_invariant,
                                                min_strain_rate);
                   }
 
                 // Step 3a: calculate viscoelastic (effective) viscosity
-                viscosity_pre_yield = elastic_rheology.calculate_viscoelastic_viscosity(viscosity_pre_yield,
+                viscosity_pre_yield = this->get_timestep() / elastic_rheology.elastic_timestep() * elastic_rheology.calculate_viscoelastic_viscosity(viscosity_pre_yield,
                                                                                         elastic_shear_modulus);
               }
 
@@ -514,7 +522,8 @@ namespace aspect
 
         if (use_elasticity)
           {
-            for (unsigned int i = 0; i < SymmetricTensor<2,dim>::n_independent_components ; ++i)
+            // First n_independent_components are the stress, the next the old_stress
+            for (unsigned int i = 0; i < 2*SymmetricTensor<2,dim>::n_independent_components ; ++i)
               composition_mask.set(i,false);
           }
 

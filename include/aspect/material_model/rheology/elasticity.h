@@ -144,9 +144,11 @@ namespace aspect
            * strain rate tensor, including viscoelastic stresses.
            */
           double
-          calculate_viscoelastic_strain_rate (const SymmetricTensor<2,dim> &strain_rate,
-                                              const SymmetricTensor<2,dim> &stress,
-                                              const double shear_modulus) const;
+          calculate_viscoelastic_strain_rate(const SymmetricTensor<2, dim> &strain_rate,
+                                             const SymmetricTensor<2, dim> &stress,
+                                             const SymmetricTensor<2, dim> &stress_old,
+                                             const double viscosity_pre_yield,
+                                             const double shear_modulus) const;
 
           /**
            * Compute the elastic time step.

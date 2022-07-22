@@ -323,8 +323,8 @@ namespace aspect
                 // Get the old stress that is used to interpolate to timestep $t+\Delta t_c$. It is stored on the
                 // second set of n_independent_components fields, e.g. in 2D on field 3, 4 and 5.
                 SymmetricTensor<2, dim> stress_old;
-                for (unsigned int j = SymmetricTensor<2, dim>::n_independent_components; j < 2 * SymmetricTensor<2, dim>::n_independent_components; ++j)
-                  stress_old[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
+                for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
+                  stress_old[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)] = in.composition[i][SymmetricTensor<2, dim>::n_independent_components+j];
 
                 // Average effective creep viscosity
                 // Use the viscosity corresponding to the stresses selected above.
@@ -336,7 +336,7 @@ namespace aspect
                 // Fill elastic force outputs $\frac{-\eta_{effcreep} \tau_{0adv}}{\eta_{e}}$.
                 // Scale with $\Delta t_c / \Delta t_{el}$ because we computed the stress at the previous
                 // computational timestep $t+\Delta t_c$, not $t+\Delta t_el$.
-                const double timestep_ratio = get_timestep() / elastic_timestep();
+                const double timestep_ratio = this->get_timestep() / elastic_timestep();
                 const double viscosity_ratio = effective_creep_viscosity / calculate_elastic_viscosity(average_elastic_shear_moduli[i]);
                 force_out->elastic_force[i] = -1. * (viscosity_ratio * stress_0_advected 
                                                      + (1. - timestep_ratio) * (1. - viscosity_ratio) * stress_old);
@@ -500,8 +500,8 @@ namespace aspect
                 // Get the old stress that is used to interpolate to timestep $t+\Delta t_c$. It is stored on the
                 // second set of n_independent_components fields, e.g. in 2D on field 3, 4 and 5.
                 SymmetricTensor<2, dim> stress_old;
-                for (unsigned int j = SymmetricTensor<2, dim>::n_independent_components; j < 2 * SymmetricTensor<2, dim>::n_independent_components; ++j)
-                  stress_old[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
+                for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
+                  stress_old[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)] = in.composition[i][SymmetricTensor<2, dim>::n_independent_components+j];
 
                 // $\eta^{t}_{effcreep}$
                 const double effective_creep_viscosity = out.viscosities[i];
@@ -514,7 +514,7 @@ namespace aspect
                 // sqrt of the second invariant of the strain rate?
                 // Scale with $\Delta t_c / \Delta t_{el}$ because we computed the stress at the previous
                 // computational timestep $t+\Delta t_c$, not $t+\Delta t_el$.
-                const double timestep_ratio = get_old_timestep() / elastic_timestep();
+                const double timestep_ratio = this->get_old_timestep() / elastic_timestep();
                 const SymmetricTensor<2, dim>
                 stress_t = 2. * effective_creep_viscosity * timestep_ratio * deviator(in.strain_rate[i]) 
                            + effective_creep_viscosity / elastic_viscosity * stress_0_t
@@ -537,6 +537,11 @@ namespace aspect
                   reaction_rate_out->reaction_rates[i][j] = (-stress_0_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)]
                                                              + stress_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)])
                                                             / current_dt;
+
+                // Also update stress_old with the newly computed stress, which in the rest of the timestep will be the old stress.
+                for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
+                  reaction_rate_out->reaction_rates[i][SymmetricTensor<2, dim>::n_independent_components+j] = (-stress_old[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)]
+                                                                                                               + stress_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)]) / current_dt;
               }
           }
       }
@@ -601,6 +606,8 @@ namespace aspect
       Elasticity<dim>::
       calculate_viscoelastic_strain_rate(const SymmetricTensor<2,dim> &strain_rate,
                                          const SymmetricTensor<2,dim> &stress_0_advected,
+                                         const SymmetricTensor<2,dim> &stress_old,
+                                         const double viscosity_pre_yield,
                                          const double shear_modulus) const
       {
         // The second term in the following expression corresponds to the
@@ -609,8 +616,13 @@ namespace aspect
         // which is equal to 0.5 * stress / viscosity.
         // in.composition contains $\tau^{0}$, so that we can compute
         // $\dot\varepsilon_T + \frac{\tau^{0adv}}{2 \eta_{el}}$.
-        const SymmetricTensor<2,dim> edot_deviator = deviator(strain_rate) + 0.5*stress_0_advected /
-                                                     calculate_elastic_viscosity(shear_modulus);
+        const double timestep_ratio = this->get_timestep() / elastic_timestep();
+        const double elastic_viscosity = timestep_ratio * calculate_elastic_viscosity(shear_modulus);
+        const double creep_viscosity = timestep_ratio *  calculate_viscoelastic_viscosity(viscosity_pre_yield, shear_modulus);
+
+        const SymmetricTensor<2, dim>
+            edot_deviator = deviator(strain_rate) + 0.5 * stress_0_advected / elastic_viscosity 
+                            + 0.5 * (1. - timestep_ratio) * (1.  - creep_viscosity/elastic_viscosity) * stress_old / creep_viscosity;
 
         // TODO: should we return this or the full tensor?
         return std::sqrt(std::max(-second_invariant(edot_deviator), 0.));
