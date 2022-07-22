@@ -54,9 +54,9 @@ namespace aspect
 
       std::vector<double> compositional_values(n_q_points);
 
-      std::vector<double> local_min_stress_components(this->n_compositional_fields(),
+      std::vector<double> local_min_stress_components(SymmetricTensor<2, dim>::n_independent_components,
                                                       std::numeric_limits<double>::max());
-      std::vector<double> local_max_stress_components(this->n_compositional_fields(),
+      std::vector<double> local_max_stress_components(SymmetricTensor<2, dim>::n_independent_components,
                                                       std::numeric_limits<double>::lowest());
 
       typename MaterialModel::Interface<dim>::MaterialModelInputs in(n_q_points,
@@ -144,10 +144,10 @@ namespace aspect
           }
 
       // now do the reductions over all processors
-      std::vector<double> global_min_stress_components (this->n_compositional_fields(),
+      std::vector<double> global_min_stress_components (SymmetricTensor<2, dim>::n_independent_components,
                                                         std::numeric_limits<double>::max());
-      std::vector<double> global_max_stress_components (this->n_compositional_fields(),
-                                                        std::numeric_limits<double>::lowest());
+      std::vector<double> global_max_stress_components (SymmetricTensor<2, dim>::n_independent_components,
+                                                       std::numeric_limits<double>::lowest());
       {
         Utilities::MPI::min (local_min_stress_components,
                              this->get_mpi_communicator(),
@@ -158,17 +158,17 @@ namespace aspect
       }
 
       // finally produce something for the statistics file
-      for (unsigned int c=0; c<this->n_compositional_fields(); ++c)
-        {
-          statistics.add_value ("Minimal value for stress component " + this->introspection().name_for_compositional_index(c),
-                                global_min_stress_components[c]);
-          statistics.add_value ("Maximal value for stress component " + this->introspection().name_for_compositional_index(c),
-                                global_max_stress_components[c]);
+      for (unsigned int c = 0; c < SymmetricTensor<2, dim>::n_independent_components; ++c)
+      {
+        statistics.add_value("Minimal value for stress component " + this->introspection().name_for_compositional_index(c),
+                             global_min_stress_components[c]);
+        statistics.add_value("Maximal value for stress component " + this->introspection().name_for_compositional_index(c),
+                             global_max_stress_components[c]);
         }
 
       // also make sure that the other columns filled by this object
       // all show up with sufficient accuracy and in scientific notation
-      for (unsigned int c=0; c<this->n_compositional_fields(); ++c)
+        for (unsigned int c = 0; c < SymmetricTensor<2, dim>::n_independent_components; ++c)
         {
           const std::string columns[] = { "Minimal value for stress component " + this->introspection().name_for_compositional_index(c),
                                           "Maximal value for stress component " + this->introspection().name_for_compositional_index(c)
@@ -182,12 +182,12 @@ namespace aspect
 
       std::ostringstream output;
       output.precision(4);
-      for (unsigned int c=0; c<this->n_compositional_fields(); ++c)
-        {
-          output << global_min_stress_components[c] << '/'
-                 << global_max_stress_components[c];
-          if (c+1 != this->n_compositional_fields())
-            output << " // ";
+      for (unsigned int c = 0; c < SymmetricTensor<2, dim>::n_independent_components; ++c)
+      {
+        output << global_min_stress_components[c] << '/'
+               << global_max_stress_components[c];
+        if (c + 1 != SymmetricTensor<2, dim>::n_independent_components)
+          output << " // ";
         }
 
       return std::pair<std::string, std::string> ("Stress component min/max:",
