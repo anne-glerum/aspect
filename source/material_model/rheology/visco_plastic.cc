@@ -384,6 +384,7 @@ namespace aspect
                                                              );
             output_parameters.composition_viscosities[j] = std::min(std::max(viscosity_yield, minimum_viscosity_for_composition), maximum_viscosity_for_composition);
 
+            std::cout << "Comp viscosities " << output_parameters.composition_viscosities[j] << std::endl;
             // TODO: Assert that:
             // 1. The decomposed strain rates sum up to the total strain rate
             // 2. $tau^{t+\Delta te} == \eta_{eff} D^{t+\Delta te}_{eff}$
