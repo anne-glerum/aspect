@@ -199,6 +199,8 @@ namespace aspect
 
         double get_elastic_viscosity (const double shear_modulus) const;
 
+        double get_elastic_timestep () const;
+
         static
         void
         declare_parameters (ParameterHandler &prm);

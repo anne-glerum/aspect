@@ -308,6 +308,21 @@ namespace aspect
 
 
     template <int dim>
+    double
+    ViscoPlastic<dim>::
+    get_elastic_timestep() const
+    {
+      if (rheology->use_elasticity)
+        {
+          return rheology->elastic_rheology.elastic_timestep();
+        }
+      else
+        {
+          AssertThrow(false, ExcMessage("The material model is asked for the elastic time step, but elasticity is not enabled."));
+        }
+    }
+
+    template <int dim>
     bool
     ViscoPlastic<dim>::
     is_compressible () const
