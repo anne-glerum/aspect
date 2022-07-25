@@ -149,7 +149,7 @@ namespace aspect
         // some value of the second invariant of the deviatoric stress.
         // The visco_plastic and viscoelastic material models also require an operator splitting
         // step to update the stresses stored, and a discontinuous element to accommodate discontinuous
-        // strain rates that feed into the stored stresses. 
+        // strain rates that feed into the stored stresses.
         if (Plugins::plugin_type_matches<MaterialModel::ViscoPlastic<dim>>(this->get_material_model()) ||
             Plugins::plugin_type_matches<MaterialModel::Viscoelastic<dim>>(this->get_material_model()))
           AssertThrow(elastic_damper_viscosity == 0. &&
@@ -344,10 +344,8 @@ namespace aspect
                   dtc = std::min(std::min(this->get_parameters().maximum_time_step, this->get_parameters().maximum_first_time_step), elastic_timestep());
                 const double timestep_ratio = dtc / elastic_timestep();
                 const double viscosity_ratio = effective_creep_viscosity / (calculate_elastic_viscosity(average_elastic_shear_moduli[i]) * timestep_ratio);
-                force_out->elastic_force[i] = -1. * (viscosity_ratio * stress_0_advected 
+                force_out->elastic_force[i] = -1. * (viscosity_ratio * stress_0_advected
                                                      + (1. - timestep_ratio) * (1. - viscosity_ratio) * stress_old);
-
-                std::cout << "Force: " << force_out->elastic_force[i] << " eta_creep: " << effective_creep_viscosity << " visocsity_ratio: " << viscosity_ratio << " timestep_ratio: " << timestep_ratio << " timestep " << this->get_timestep() << std::endl;
               }
       }
 
@@ -529,7 +527,7 @@ namespace aspect
                 // TODO: Do we somehow need to take into account the user-set minimum value for the
                 // sqrt of the second invariant of the strain rate?
                 const SymmetricTensor<2, dim>
-                stress_t = 2. * effective_creep_viscosity * deviator(in.strain_rate[i]) 
+                stress_t = 2. * effective_creep_viscosity * deviator(in.strain_rate[i])
                            + effective_creep_viscosity / elastic_viscosity * stress_0_t
                            + (1. - timestep_ratio) * (1. - effective_creep_viscosity / elastic_viscosity) * stress_old;
 
@@ -554,7 +552,7 @@ namespace aspect
                 // Also update stress_old with the newly computed stress, which in the rest of the timestep will be the old stress.
                 for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
                   reaction_rate_out->reaction_rates[i][SymmetricTensor<2, dim>::n_independent_components+j] = (-stress_old[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)]
-                                                                                                               + stress_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)]) / current_dt;
+                      + stress_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)]) / current_dt;
               }
           }
       }
@@ -637,16 +635,14 @@ namespace aspect
         // using the maximum timestep parameters capped by the elastic timestep.
         double dtc = this->get_timestep();
         if (this->get_timestep_number() == 0 && this->get_timestep() == 0)
-           dtc = std::min(std::min(this->get_parameters().maximum_time_step, this->get_parameters().maximum_first_time_step), elastic_timestep());
+          dtc = std::min(std::min(this->get_parameters().maximum_time_step, this->get_parameters().maximum_first_time_step), elastic_timestep());
         const double timestep_ratio = dtc / elastic_timestep();
         const double elastic_viscosity = timestep_ratio * calculate_elastic_viscosity(shear_modulus);
         const double creep_viscosity = timestep_ratio *  calculate_viscoelastic_viscosity(viscosity_pre_yield, shear_modulus);
 
         const SymmetricTensor<2, dim>
-            edot_deviator = deviator(strain_rate) + 0.5 * stress_0_advected / elastic_viscosity 
-                            + 0.5 * (1. - timestep_ratio) * (1.  - creep_viscosity/elastic_viscosity) * stress_old / creep_viscosity;
-
-        std::cout << "edot_deviator: "  << edot_deviator << " timestep ratio " << timestep_ratio << std::endl;
+        edot_deviator = deviator(strain_rate) + 0.5 * stress_0_advected / elastic_viscosity
+                        + 0.5 * (1. - timestep_ratio) * (1.  - creep_viscosity/elastic_viscosity) * stress_old / creep_viscosity;
 
         // TODO: should we return this or the full tensor?
         return std::sqrt(std::max(-second_invariant(edot_deviator), 0.));

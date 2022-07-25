@@ -154,8 +154,8 @@ subsection Postprocess
     set Load balancing strategy     = remove and add particles
     set Update ghost particles      = true
     set Time between data output    = 500
-    set Data output format          = vtu 
-  end 
+    set Data output format          = vtu
+  end
 
 end
 
