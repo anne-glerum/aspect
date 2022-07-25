@@ -270,18 +270,22 @@ namespace aspect
                     // and advected stresses from the advection solve ($\tau^{0adv}$).
                     // The square root of the second moment invariant is returned.
                     const double viscoelastic_strain_rate_invariant = elastic_rheology.calculate_viscoelastic_strain_rate(in.strain_rate[i],
-                                                                                                                          stress_0_advected,
-                                                                                                                          stress_old,
-                                                                                                                          viscosity_pre_yield,
-                                                                                                                          elastic_shear_modulus);
+                                                                      stress_0_advected,
+                                                                      stress_old,
+                                                                      viscosity_pre_yield,
+                                                                      elastic_shear_modulus);
 
                     current_edot_ii = std::max(viscoelastic_strain_rate_invariant,
                                                min_strain_rate);
                   }
 
                 // Step 3a: calculate viscoelastic (effective) viscosity
-                viscosity_pre_yield = this->get_timestep() / elastic_rheology.elastic_timestep() * elastic_rheology.calculate_viscoelastic_viscosity(viscosity_pre_yield,
-                                                                                        elastic_shear_modulus);
+                // Estimate the timestep size when in timestep 0
+                double dtc = this->get_timestep();
+                if (this->get_timestep_number() == 0 && this->get_timestep() == 0)
+                  dtc = std::min(std::min(this->get_parameters().maximum_time_step, this->get_parameters().maximum_first_time_step), elastic_rheology.elastic_timestep());
+                viscosity_pre_yield = dtc / elastic_rheology.elastic_timestep() * elastic_rheology.calculate_viscoelastic_viscosity(viscosity_pre_yield,
+                                      elastic_shear_modulus);
               }
 
             // Step 3b: calculate current (viscous or viscous + elastic) stress magnitude
@@ -384,7 +388,6 @@ namespace aspect
                                                              );
             output_parameters.composition_viscosities[j] = std::min(std::max(viscosity_yield, minimum_viscosity_for_composition), maximum_viscosity_for_composition);
 
-            std::cout << "Comp viscosities " << output_parameters.composition_viscosities[j] << std::endl;
             // TODO: Assert that:
             // 1. The decomposed strain rates sum up to the total strain rate
             // 2. $tau^{t+\Delta te} == \eta_{eff} D^{t+\Delta te}_{eff}$
