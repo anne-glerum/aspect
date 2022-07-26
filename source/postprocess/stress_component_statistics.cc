@@ -21,6 +21,7 @@
 #include <aspect/postprocess/stress_component_statistics.h>
 #include <aspect/material_model/rheology/elasticity.h>
 #include <aspect/material_model/visco_plastic.h>
+#include <aspect/material_model/viscoelastic.h>
 
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/fe/fe_values.h>
@@ -130,7 +131,6 @@ namespace aspect
                     const double shear_modulus = elastic_out->elastic_shear_moduli[q];
 
                     // $\eta_{el} = G \Delta t_{el}$
-                    // TODO get the correct elastic_timestep when the VP MM is not used.
                     double elastic_timestep = this->get_timestep();
                     double elastic_viscosity = elastic_timestep * shear_modulus;
                     if (Plugins::plugin_type_matches<MaterialModel::ViscoPlastic<dim>>(this->get_material_model()))
@@ -139,6 +139,15 @@ namespace aspect
                         elastic_viscosity = vp.get_elastic_viscosity(shear_modulus);
                         elastic_timestep = vp.get_elastic_timestep();
                       }
+                    else if (Plugins::plugin_type_matches<MaterialModel::Viscoelastic<dim>>(this->get_material_model()))
+                      {
+                        const MaterialModel::Viscoelastic<dim> &ve = Plugins::get_plugin_as_type<const MaterialModel::Viscoelastic<dim>>(this->get_material_model());
+                        elastic_viscosity = ve.get_elastic_viscosity(shear_modulus);
+                        elastic_timestep = ve.get_elastic_timestep();
+                      }
+                    else
+                      AssertThrow(false, ExcMessage("The stress component statistics postprocessor cannot be used with elasticity for material models other than ViscoPlastic and Viscoelastic."));
+
                     if (dtc == 0 && this->get_timestep_number() == 0)
                       dtc = std::min(std::min(this->get_parameters().maximum_time_step, this->get_parameters().maximum_first_time_step), elastic_timestep);
                     const double timestep_ratio = dtc / elastic_timestep;
