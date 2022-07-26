@@ -630,7 +630,6 @@ namespace aspect
         // which is equal to 0.5 * stress / viscosity.
         // in.composition contains $\tau^{0}$, so that we can compute
         // $\dot\varepsilon_T + \frac{\tau^{0adv}}{2 \eta_{el}}$.
-        // The input parameter viscosity_pre_yield has not yet been scaled with the timestep ratio dtc/dte.
         // During assembly in timestep 0, get_timestep() returns 0. Therefore we have to make an estimated guess
         // using the maximum timestep parameters capped by the elastic timestep.
         double dtc = this->get_timestep();
@@ -638,7 +637,7 @@ namespace aspect
           dtc = std::min(std::min(this->get_parameters().maximum_time_step, this->get_parameters().maximum_first_time_step), elastic_timestep());
         const double timestep_ratio = dtc / elastic_timestep();
         const double elastic_viscosity = timestep_ratio * calculate_elastic_viscosity(shear_modulus);
-        const double creep_viscosity = timestep_ratio *  calculate_viscoelastic_viscosity(viscosity_pre_yield, shear_modulus);
+        const double creep_viscosity = viscosity_pre_yield; //timestep_ratio *  calculate_viscoelastic_viscosity(viscosity_pre_yield, shear_modulus);
 
         const SymmetricTensor<2, dim>
         edot_deviator = deviator(strain_rate) + 0.5 * stress_0_advected / elastic_viscosity

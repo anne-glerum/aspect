@@ -257,6 +257,14 @@ namespace aspect
 
             if (use_elasticity)
               {
+
+                // Step 3a: calculate viscoelastic (effective) viscosity
+                // Estimate the timestep size when in timestep 0
+                double dtc = this->get_timestep();
+                if (this->get_timestep_number() == 0 && this->get_timestep() == 0)
+                  dtc = std::min(std::min(this->get_parameters().maximum_time_step, this->get_parameters().maximum_first_time_step), elastic_rheology.elastic_timestep());
+                viscosity_pre_yield = dtc / elastic_rheology.elastic_timestep() * elastic_rheology.calculate_viscoelastic_viscosity(viscosity_pre_yield, elastic_shear_modulus);
+
                 if (use_reference_strainrate == true)
                   current_edot_ii = ref_strain_rate;
                 else
@@ -279,13 +287,6 @@ namespace aspect
                                                min_strain_rate);
                   }
 
-                // Step 3a: calculate viscoelastic (effective) viscosity
-                // Estimate the timestep size when in timestep 0
-                double dtc = this->get_timestep();
-                if (this->get_timestep_number() == 0 && this->get_timestep() == 0)
-                  dtc = std::min(std::min(this->get_parameters().maximum_time_step, this->get_parameters().maximum_first_time_step), elastic_rheology.elastic_timestep());
-                viscosity_pre_yield = dtc / elastic_rheology.elastic_timestep() * elastic_rheology.calculate_viscoelastic_viscosity(viscosity_pre_yield,
-                                      elastic_shear_modulus);
               }
 
             // Step 3b: calculate current (viscous or viscous + elastic) stress magnitude
