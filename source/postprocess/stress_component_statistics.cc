@@ -78,7 +78,7 @@ namespace aspect
                       this->introspection(),
                       this->get_solution());
 
-            in.requested_properties = MaterialModel::MaterialProperties::viscosity;
+            in.requested_properties = MaterialModel::MaterialProperties::viscosity | MaterialModel::MaterialProperties::additional_outputs;
 
             this->get_material_model().fill_additional_material_model_inputs(in,
                                                                              this->get_solution(),
