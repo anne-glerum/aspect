@@ -22,7 +22,9 @@
 
 #include <aspect/postprocess/visualization/stress_second_invariant.h>
 
-
+#include <aspect/material_model/rheology/elasticity.h>
+#include <aspect/material_model/visco_plastic.h>
+#include <aspect/material_model/viscoelastic.h>
 
 namespace aspect
 {
