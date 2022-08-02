@@ -297,56 +297,56 @@ namespace aspect
           return;
 
         if (in.requests_property(MaterialProperties::additional_outputs))
-            for (unsigned int i=0; i < in.n_evaluation_points(); ++i)
-              {
-                // Get stress from timestep $t$ rotated and advected into the current
-                // timestep $t+\Delta te$ from the compositional fields.
-                // This function is evaluated before the assembly of the Stokes equations
-                // (the force term goes into the rhs of the momentum equation).
-                // This is after the advection equations have been solved, and hence in.composition
-                // contains the rotated and advected stresses $tau^{0adv}$.
-                // Only at the beginning of the next timestep do we add the stress update of the
-                // current timestep to the stress stored in the compositional fields, giving
-                // $\tau{t+\Delta te}$ with $t+\Delta te}$ being the current timestep.
-                //
-                // Moresi et al. (2003) use the full stresses at $t$ in the force term (Eq.  30),
-                // which is incorrect, it should be $tau^{0adv}$, which is the stress from time $t$
-                // rotated and advected to time $t+\Delta te$. See also Farrington et al. (2014).
-                // The force term should be computed as:
-                // $\frac{-\eta_{effcreep} \tau_{0adv}}{\eta_{e}}$, where $\eta_{effcreep}$ is the
-                // current harmonic average of the viscous and elastic viscosity, or the yield stress
-                // divided by two times the second invariant of the deviatoric strain rate.
-                SymmetricTensor<2,dim> stress_0_advected;
-                for (unsigned int j=0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
-                  stress_0_advected[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
+          for (unsigned int i=0; i < in.n_evaluation_points(); ++i)
+            {
+              // Get stress from timestep $t$ rotated and advected into the current
+              // timestep $t+\Delta te$ from the compositional fields.
+              // This function is evaluated before the assembly of the Stokes equations
+              // (the force term goes into the rhs of the momentum equation).
+              // This is after the advection equations have been solved, and hence in.composition
+              // contains the rotated and advected stresses $tau^{0adv}$.
+              // Only at the beginning of the next timestep do we add the stress update of the
+              // current timestep to the stress stored in the compositional fields, giving
+              // $\tau{t+\Delta te}$ with $t+\Delta te}$ being the current timestep.
+              //
+              // Moresi et al. (2003) use the full stresses at $t$ in the force term (Eq.  30),
+              // which is incorrect, it should be $tau^{0adv}$, which is the stress from time $t$
+              // rotated and advected to time $t+\Delta te$. See also Farrington et al. (2014).
+              // The force term should be computed as:
+              // $\frac{-\eta_{effcreep} \tau_{0adv}}{\eta_{e}}$, where $\eta_{effcreep}$ is the
+              // current harmonic average of the viscous and elastic viscosity, or the yield stress
+              // divided by two times the second invariant of the deviatoric strain rate.
+              SymmetricTensor<2,dim> stress_0_advected;
+              for (unsigned int j=0; j < SymmetricTensor<2,dim>::n_independent_components; ++j)
+                stress_0_advected[SymmetricTensor<2,dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
 
-                // Get the old stress that is used to interpolate to timestep $t+\Delta t_c$. It is stored on the
-                // second set of n_independent_components fields, e.g. in 2D on field 3, 4 and 5.
-                SymmetricTensor<2, dim> stress_old;
-                for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
-                  stress_old[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)] = in.composition[i][SymmetricTensor<2, dim>::n_independent_components+j];
+              // Get the old stress that is used to interpolate to timestep $t+\Delta t_c$. It is stored on the
+              // second set of n_independent_components fields, e.g. in 2D on field 3, 4 and 5.
+              SymmetricTensor<2, dim> stress_old;
+              for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
+                stress_old[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)] = in.composition[i][SymmetricTensor<2, dim>::n_independent_components+j];
 
-                // Average effective creep viscosity
-                // Use the viscosity corresponding to the stresses selected above.
-                // out.viscosities is computed during the assembly of the Stokes equations
-                // based on the current_linearization_point. This means that it will be updated after every
-                // nonlinear Stokes iteration.
-                // The effective creep viscosity has already been scaled with the timestep ratio dtc/dte.
-                const double effective_creep_viscosity = out.viscosities[i];
+              // Average effective creep viscosity
+              // Use the viscosity corresponding to the stresses selected above.
+              // out.viscosities is computed during the assembly of the Stokes equations
+              // based on the current_linearization_point. This means that it will be updated after every
+              // nonlinear Stokes iteration.
+              // The effective creep viscosity has already been scaled with the timestep ratio dtc/dte.
+              const double effective_creep_viscosity = out.viscosities[i];
 
-                // Fill elastic force outputs $\frac{-\eta_{effcreep} \tau_{0adv}}{\eta_{e}}$.
-                // Scale with $\Delta t_c / \Delta t_{el}$ because we computed the stress at the previous
-                // computational timestep $t+\Delta t_c$, not $t+\Delta t_el$.
-                // During assembly in timestep 0, get_timestep() returns 0. Therefore we have to make an estimated guess
-                // using the maximum timestep parameters capped by the elastic timestep.
-                double dtc = this->get_timestep();
-                if (this->get_timestep_number() == 0 && this->get_timestep() == 0)
-                  dtc = std::min(std::min(this->get_parameters().maximum_time_step, this->get_parameters().maximum_first_time_step), elastic_timestep());
-                const double timestep_ratio = dtc / elastic_timestep();
-                const double viscosity_ratio = effective_creep_viscosity / (calculate_elastic_viscosity(average_elastic_shear_moduli[i]) * timestep_ratio);
-                force_out->elastic_force[i] = -1. * (viscosity_ratio * stress_0_advected
-                                                     + (1. - timestep_ratio) * (1. - viscosity_ratio) * stress_old);
-              }
+              // Fill elastic force outputs $\frac{-\eta_{effcreep} \tau_{0adv}}{\eta_{e}}$.
+              // Scale with $\Delta t_c / \Delta t_{el}$ because we computed the stress at the previous
+              // computational timestep $t+\Delta t_c$, not $t+\Delta t_el$.
+              // During assembly in timestep 0, get_timestep() returns 0. Therefore we have to make an estimated guess
+              // using the maximum timestep parameters capped by the elastic timestep.
+              double dtc = this->get_timestep();
+              if (this->get_timestep_number() == 0 && this->get_timestep() == 0)
+                dtc = std::min(std::min(this->get_parameters().maximum_time_step, this->get_parameters().maximum_first_time_step), elastic_timestep());
+              const double timestep_ratio = dtc / elastic_timestep();
+              const double viscosity_ratio = effective_creep_viscosity / (calculate_elastic_viscosity(average_elastic_shear_moduli[i]) * timestep_ratio);
+              force_out->elastic_force[i] = -1. * (viscosity_ratio * stress_0_advected
+                                                   + (1. - timestep_ratio) * (1. - viscosity_ratio) * stress_old);
+            }
       }
 
 

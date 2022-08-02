@@ -98,7 +98,7 @@ namespace aspect
                     stress_0[1][2] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_yz")];
                   }
 
-                const MaterialModel::ElasticAdditionalOutputs<dim> *elastic_out = out.template get_additional_output<MaterialModel::ElasticAdditionalOutputs<dim> >();
+                const MaterialModel::ElasticAdditionalOutputs<dim> *elastic_out = out.template get_additional_output<MaterialModel::ElasticAdditionalOutputs<dim>>();
 
                 const double shear_modulus = elastic_out->elastic_shear_moduli[q];
 

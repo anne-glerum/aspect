@@ -191,48 +191,48 @@ namespace aspect
          * @}
          */
 
-                 /**
-         * @name Functions used in dealing with run-time parameters
-         * @{
-         */
+        /**
+        * @name Functions used in dealing with run-time parameters
+        * @{
+        */
 
-                 /**
-         * Declare the parameters this class takes through input files.
-         */
-                 static void
-                 declare_parameters(ParameterHandler &prm);
+        /**
+        * Declare the parameters this class takes through input files.
+        */
+        static void
+        declare_parameters(ParameterHandler &prm);
 
-                 /**
-         * Read the parameters this class declares from the parameter file.
-         */
-                 void
-                 parse_parameters(ParameterHandler &prm) override;
-                 /**
-         * @}
-         */
+        /**
+        * Read the parameters this class declares from the parameter file.
+        */
+        void
+        parse_parameters(ParameterHandler &prm) override;
+        /**
+        * @}
+        */
 
-                 void
-                 create_additional_named_outputs(MaterialModel::MaterialModelOutputs<dim> &out) const override;
+        void
+        create_additional_named_outputs(MaterialModel::MaterialModelOutputs<dim> &out) const override;
 
-               private:
-                 /**
-         * Enumeration for selecting which viscosity averaging scheme to use.
-         */
-                 MaterialUtilities::CompositionalAveragingOperation viscosity_averaging;
+      private:
+        /**
+        * Enumeration for selecting which viscosity averaging scheme to use.
+        */
+        MaterialUtilities::CompositionalAveragingOperation viscosity_averaging;
 
-                 EquationOfState::MulticomponentIncompressible<dim> equation_of_state;
+        EquationOfState::MulticomponentIncompressible<dim> equation_of_state;
 
-                 /**
-         * Vector for field viscosities, read from parameter file.
-         */
-                 std::vector<double> viscosities;
+        /**
+        * Vector for field viscosities, read from parameter file.
+        */
+        std::vector<double> viscosities;
 
-                 /**
-         * Vector for field thermal conductivities, read from parameter file.
-         */
-                 std::vector<double> thermal_conductivities;
+        /**
+        * Vector for field thermal conductivities, read from parameter file.
+        */
+        std::vector<double> thermal_conductivities;
 
-                 Rheology::Elasticity<dim> elastic_rheology;
+        Rheology::Elasticity<dim> elastic_rheology;
     };
 
   }

@@ -81,7 +81,7 @@ namespace aspect
             dtc = std::min(std::min(this->get_parameters().maximum_time_step, this->get_parameters().maximum_first_time_step), elastic_rheology.elastic_timestep());
           const double timestep_ratio = dtc / elastic_rheology.elastic_timestep();
           out.viscosities[i] = timestep_ratio * elastic_rheology.calculate_viscoelastic_viscosity(average_viscosity,
-                                                                                 average_elastic_shear_moduli[i]);
+                               average_elastic_shear_moduli[i]);
 
           // Fill the material properties that are part of the elastic additional outputs
           if (ElasticAdditionalOutputs<dim> *elastic_out = out.template get_additional_output<ElasticAdditionalOutputs<dim>>())
