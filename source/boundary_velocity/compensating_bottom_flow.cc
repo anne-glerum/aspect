@@ -83,10 +83,10 @@ namespace aspect
           dlon = gm->longitude_range();
           // colat
           if (dim == 3)
-          {
-          min_lat = 0.5 * numbers::PI - gm->north_latitude();
-          max_lat = 0.5 * numbers::PI - gm->south_latitude();
-          }
+            {
+              min_lat = 0.5 * numbers::PI - gm->north_latitude();
+              max_lat = 0.5 * numbers::PI - gm->south_latitude();
+            }
         }
       else if (const GeometryModel::EllipsoidalChunk<dim> *gm = dynamic_cast<const GeometryModel::EllipsoidalChunk<dim>*> (&this->get_geometry_model()))
         {
@@ -140,22 +140,22 @@ namespace aspect
         {
           // Compute the area of the bottom boundary
           if (dim == 2)
-          {
-            bottom_boundary_area = 2. * numbers::PI * inner_radius * dlon / (2. * numbers::PI);
-            this->get_pcout() << "   Bottom boundary area " << bottom_boundary_area << 
-              " for an inner radius of " << inner_radius << " and an opening angle of " << dlon / numbers::PI * 180. << "." << std::endl;
-          }
+            {
+              bottom_boundary_area = 2. * numbers::PI * inner_radius * dlon / (2. * numbers::PI);
+              this->get_pcout() << "   Bottom boundary area " << bottom_boundary_area <<
+                                " for an inner radius of " << inner_radius << " and an opening angle of " << dlon / numbers::PI * 180. << "." << std::endl;
+            }
           else
-          {
-          // the integral over longitude interval dlon and latitude interval dlat of R0*R0*sin(lat)
-          bottom_boundary_area = inner_radius * inner_radius * dlon * (std::cos(min_lat) - std::cos(max_lat));
-          // TODO adapt for 2D as well
-          this->get_pcout() << "   Bottom boundary area " << bottom_boundary_area << " for R, dlon, mincolat, maxcolat " << 
-            inner_radius << ", " << dlon / numbers::PI * 180. << ", " << min_lat / numbers::PI * 180. << ", " << max_lat / numbers::PI * 180. << std::endl;
-          }
+            {
+              // the integral over longitude interval dlon and latitude interval dlat of R0*R0*sin(lat)
+              bottom_boundary_area = inner_radius * inner_radius * dlon * (std::cos(min_lat) - std::cos(max_lat));
+              // TODO adapt for 2D as well
+              this->get_pcout() << "   Bottom boundary area " << bottom_boundary_area << " for R, dlon, mincolat, maxcolat " <<
+                                inner_radius << ", " << dlon / numbers::PI * 180. << ", " << min_lat / numbers::PI * 180. << ", " << max_lat / numbers::PI * 180. << std::endl;
+            }
         }
 
-        bottom_boundary_indicator = this->get_geometry_model().translate_symbolic_boundary_name_to_id("bottom");
+      bottom_boundary_indicator = this->get_geometry_model().translate_symbolic_boundary_name_to_id("bottom");
     }
 
     template <int dim>
@@ -165,40 +165,42 @@ namespace aspect
       // We have do to this checks here instead of in initialize()
       // otherwise not all active boundaries have been set in some cases.
       if (this->get_timestep_number() == 0 or !this->simulator_is_past_initialization())
-      {
-      //const std::map<types::boundary_id, std::pair<std::string, std::vector<std::string>>> &active_names = this->get_boundary_velocity_manager().get_active_boundary_velocity_names();
+        {
+          //const std::map<types::boundary_id, std::pair<std::string, std::vector<std::string>>> &active_names = this->get_boundary_velocity_manager().get_active_boundary_velocity_names();
 
-      //for (const auto &n : active_names)
-      //{
-      //  std::cout << "CBF Active BC names for BI " << n.first << std::endl;
-      //  for (const auto &np : n.second.second)
-      //    std::cout << "CBF Active BC names " << np << std::endl;
-      //}
-      // Get the boundary velocity objects on the vertical boundaries
-      // TODO only keep the objects on lateral boundaries.
-      const std::map<types::boundary_id, std::vector<std::unique_ptr<BoundaryVelocity::Interface<dim>>>> &
+          //for (const auto &n : active_names)
+          //{
+          //  std::cout << "CBF Active BC names for BI " << n.first << std::endl;
+          //  for (const auto &np : n.second.second)
+          //    std::cout << "CBF Active BC names " << np << std::endl;
+          //}
+          // Get the boundary velocity objects on the vertical boundaries
+          // TODO only keep the objects on lateral boundaries.
+          const std::map<types::boundary_id, std::vector<std::unique_ptr<BoundaryVelocity::Interface<dim>>>> &
           lateral_boundary_velocity_objects =
-              this->get_boundary_velocity_manager().get_active_boundary_velocity_conditions();
+            this->get_boundary_velocity_manager().get_active_boundary_velocity_conditions();
 
-      std::set<types::boundary_id> tmp_boundary_ids;
-      for (const auto &p : lateral_boundary_velocity_objects)
-      {
-        //std::cout << "CBF Found " << p.first << " with size " << p.second.size() << std::endl;
-        if (vertical_boundary_indicators.find(p.first) != vertical_boundary_indicators.end())
-          tmp_boundary_ids.insert(p.first);
-        //lateral_boundary_velocity_objects.erase(p.first);
-      }
+          std::set<types::boundary_id> tmp_boundary_ids;
+          for (const auto &p : lateral_boundary_velocity_objects)
+            {
+              //std::cout << "CBF Found " << p.first << " with size " << p.second.size() << std::endl;
+              if (vertical_boundary_indicators.find(p.first) != vertical_boundary_indicators.end())
+                tmp_boundary_ids.insert(p.first);
+              //lateral_boundary_velocity_objects.erase(p.first);
+            }
 
-      //std::cout << "CBF Nr of user-defined lateral comp boundaries: " << vertical_boundary_indicators.size() << std::endl;
-      //std::cout << "CBF Nr of boundaries with active vel BC: " << lateral_boundary_velocity_objects.size() << std::endl;
-      //std::cout << "CBF Nr of boundaries with active vel BC names: " << active_names.size() << std::endl;
-      //std::cout << "CBF B ID of active vel BC: " << lateral_boundary_velocity_objects.begin()->first << std::endl;
+          //std::cout << "CBF Nr of user-defined lateral comp boundaries: " << vertical_boundary_indicators.size() << std::endl;
+          //std::cout << "CBF Nr of boundaries with active vel BC: " << lateral_boundary_velocity_objects.size() << std::endl;
+          //std::cout << "CBF Nr of boundaries with active vel BC names: " << active_names.size() << std::endl;
+          //std::cout << "CBF B ID of active vel BC: " << lateral_boundary_velocity_objects.begin()->first << std::endl;
 
-      AssertThrow(tmp_boundary_ids.size() != 0, ExcMessage("The Compensating Bottom Flow velocity boundary conditions plugin requires prescribed velocity boundary conditions on at least one lateral boundary."));
-      AssertThrow(tmp_boundary_ids.size() == vertical_boundary_indicators.size(),
-                  ExcMessage("The Compensating Bottom Flow velocity boundary conditions plugin requires prescribed velocity boundary conditions for each user-defined compensation boundary."));
+          AssertThrow(tmp_boundary_ids.size() != 0, ExcMessage("The Compensating Bottom Flow velocity boundary conditions plugin requires prescribed velocity boundary conditions on at least one lateral boundary."));
+          AssertThrow(tmp_boundary_ids.size() == vertical_boundary_indicators.size(),
+                      ExcMessage("The Compensating Bottom Flow velocity boundary conditions plugin requires prescribed velocity boundary conditions for each user-defined compensation boundary."));
 
-      }
+          initial_domain_volume = this->get_volume();
+          this->get_pcout() << "    Initial domain volume: " << initial_domain_volume << std::endl;
+        }
 
       // Compute the net flow through the lateral boundaries
       net_outflow = compute_net_outflow();
@@ -221,7 +223,12 @@ namespace aspect
       const Tensor<1, dim>
       upward_normal = -this->get_gravity_model().gravity_vector(position) / this->get_gravity_model().gravity_vector(position).norm();
 
-      return (net_outflow / bottom_boundary_area) * upward_normal;
+      // Compensate for prescribed velocity on the lateral boundaries (net_outflow)
+      // and for volume loss/gain through other boundary conditions (like FastScape) if requested by the user.
+      if (maintain_constant_domain_volume)
+        return ((net_outflow - (this->get_volume() - initial_domain_volume)) / bottom_boundary_area) * upward_normal;
+      else
+        return (net_outflow / bottom_boundary_area) * upward_normal;
     }
 
 
@@ -315,6 +322,11 @@ namespace aspect
                              "A comma separated list of lateral boundary indicators "
                              "specifying which vertical boundaries are used for computing "
                              "a net in/outflow that will be compensated through bottom out/inflow. ");
+          prm.declare_entry("Maintain constant domain volume", "false",
+                            Patterns::Bool (),
+                            "Whether or not the bottom boundary flow should be such that the "
+                            "total domain volume stays constant over time, despite the  "
+                            "prescribed in/outflow on the lateral boundaries. ");
         }
         prm.leave_subsection();
       }
@@ -351,7 +363,7 @@ namespace aspect
                                                   + error));
                 }
             }
-
+          maintain_constant_domain_volume = prm.get_bool("Maintain constant domain volume");
 
           AssertThrow (vertical_boundary_indicators.size() != 0,
                        ExcMessage("The Compensating Bottom Flow boundary velocity plugin requires at least one lateral boundary to be selected by the user for compensating through bottom flow."));

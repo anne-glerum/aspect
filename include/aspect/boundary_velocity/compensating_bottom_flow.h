@@ -106,7 +106,9 @@ namespace aspect
 
         double net_outflow = 0;
 
+        bool maintain_constant_domain_volume = false;
 
+        double initial_domain_volume = 0;
 
 
         /**
