@@ -29,6 +29,7 @@
 #include <aspect/geometry_model/box.h>
 #include <aspect/geometry_model/ellipsoidal_chunk.h>
 #include <aspect/geometry_model/interface.h>
+#include <aspect/geometry_model/initial_topography_model/zero_topography.h>
 #include <aspect/gravity_model/interface.h>
 
 #include <deal.II/base/quadrature_lib.h>
@@ -164,7 +165,7 @@ namespace aspect
     {
       // We have do to this checks here instead of in initialize()
       // otherwise not all active boundaries have been set in some cases.
-      if (this->get_timestep_number() == 0 or !this->simulator_is_past_initialization())
+      if (this->get_timestep_number() == 0 || !this->simulator_is_past_initialization())
         {
           //const std::map<types::boundary_id, std::pair<std::string, std::vector<std::string>>> &active_names = this->get_boundary_velocity_manager().get_active_boundary_velocity_names();
 
@@ -200,6 +201,15 @@ namespace aspect
 
           initial_domain_volume = this->get_volume();
           this->get_pcout() << "    Initial domain volume: " << initial_domain_volume << std::endl;
+        }
+
+      // For box geometries, initial topography is added at the end of the first timestep. This could
+      // change the domain volume.
+      if (this->get_timestep_number() == 0 &&
+          !Plugins::plugin_type_matches<const InitialTopographyModel::ZeroTopography<dim>>(this->get_initial_topography_model()))
+        {
+          initial_domain_volume = this->get_volume();
+          this->get_pcout() << "    Initial domain volume after initial topography: " << initial_domain_volume << std::endl;
         }
 
       // Compute the net flow through the lateral boundaries
