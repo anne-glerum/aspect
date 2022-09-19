@@ -234,9 +234,10 @@ namespace aspect
       upward_normal = -this->get_gravity_model().gravity_vector(position) / this->get_gravity_model().gravity_vector(position).norm();
 
       // Compensate for prescribed velocity on the lateral boundaries (net_outflow)
-      // and for volume loss/gain through other boundary conditions (like FastScape) if requested by the user.
+      // and for volume loss/gain through other boundary conditions (like FastScape) 
+      // over the last timestep if requested by the user.
       if (maintain_constant_domain_volume)
-        return ((net_outflow - (this->get_volume() - initial_domain_volume)) / bottom_boundary_area) * upward_normal;
+        return ((net_outflow - (this->get_volume() - initial_domain_volume) / this->get_timestep()) / bottom_boundary_area) * upward_normal;
       else
         return (net_outflow / bottom_boundary_area) * upward_normal;
     }
