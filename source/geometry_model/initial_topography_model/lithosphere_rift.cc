@@ -119,16 +119,16 @@ namespace aspect
       // Again this cannot be done in initialize, because the initial topography
       // initialize function is evaluated before the pointer is created.
       if (!this->simulator_is_past_initialization())
-      { 
-      const std::vector<std::string> active_initial_composition_models = this->get_initial_composition_manager().get_active_initial_composition_names();
-      AssertThrow(std::find(active_initial_composition_models.begin(),active_initial_composition_models.end(), "lithosphere with rift") != active_initial_composition_models.end(),
-                  ExcMessage("The lithosphere with rift initial mesh refinement plugin requires the lithosphere with rift initial composition plugin."));
+        {
+          if (initial_composition_manager == nullptr)
+            const_cast<std::shared_ptr<const aspect::InitialComposition::Manager<dim>>&>(initial_composition_manager)
+              = this->get_initial_composition_manager_pointer();
 
-      if(initial_composition_manager == nullptr)
-        const_cast<std::shared_ptr<const aspect::InitialComposition::Manager<dim>>&>(initial_composition_manager) 
-          = this->get_initial_composition_manager_pointer();
-      std::cout << "Set pointer initial composition " << std::endl;
-      }
+          const std::vector<std::string> active_initial_composition_models = initial_composition_manager->get_active_initial_composition_names();
+          AssertThrow(std::find(active_initial_composition_models.begin(),active_initial_composition_models.end(), "lithosphere with rift") != active_initial_composition_models.end(),
+                      ExcMessage("The lithosphere with rift initial mesh refinement plugin requires the lithosphere with rift initial composition plugin."));
+
+        }
 
       // When cartesian, position contains x(,y); when spherical, position contains lon(,lat) (in degrees);
       // Turn into a Point<dim-1>
@@ -139,7 +139,7 @@ namespace aspect
       // Get the distance to the line segments along a path parallel to the surface
       double distance_to_rift_axis = 1e23;
       std::pair<double,unsigned int> distance_to_L_polygon;
-      for (typename std::list<std::unique_ptr<InitialComposition::Interface<dim> > >::const_iterator it = initial_composition_manager->get_active_initial_composition_conditions().begin();
+      for (typename std::list<std::unique_ptr<InitialComposition::Interface<dim>>>::const_iterator it = initial_composition_manager->get_active_initial_composition_conditions().begin();
            it != initial_composition_manager->get_active_initial_composition_conditions().end();
            ++it)
         if ( InitialComposition::LithosphereRift<dim> *ic = dynamic_cast<InitialComposition::LithosphereRift<dim> *> ((*it).get()))

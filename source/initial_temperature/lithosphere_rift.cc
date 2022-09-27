@@ -70,7 +70,7 @@ namespace aspect
       double distance_to_rift_axis = 1e23;
       Point<dim-1> surface_position;
       std::pair<double, unsigned int> distance_to_L_polygon;
-      for (typename std::list<std::unique_ptr<InitialComposition::Interface<dim> > >::const_iterator it = this->get_initial_composition_manager().get_active_initial_composition_conditions().begin();
+      for (typename std::list<std::unique_ptr<InitialComposition::Interface<dim>>>::const_iterator it = this->get_initial_composition_manager().get_active_initial_composition_conditions().begin();
            it != this->get_initial_composition_manager().get_active_initial_composition_conditions().end();
            ++it)
         if ( InitialComposition::LithosphereRift<dim> *ic = dynamic_cast<InitialComposition::LithosphereRift<dim> *> ((*it).get()))

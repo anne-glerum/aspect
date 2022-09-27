@@ -121,7 +121,7 @@ namespace aspect
         /**
          * Vector for the reference field thicknesses away from the rift.
          */
-        std::vector<std::vector<double> > polygon_thicknesses;
+        std::vector<std::vector<double>> polygon_thicknesses;
 
         /**
          * The standard deviation of the Gaussian amplitude of the lithospheric thicknesses.

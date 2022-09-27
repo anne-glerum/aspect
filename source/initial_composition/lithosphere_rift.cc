@@ -75,7 +75,6 @@ namespace aspect
                                                          +(0.5-0.5*std::tanh(distance_to_L_polygon.first/sigma_polygon))*thicknesses[2])
                                                         *  (!blend_rift_and_polygon && distance_to_L_polygon.first > 0.-2.*sigma_polygon ? 1. : (1.0 - A[2] * std::exp((-std::pow(distance_to_rift_axis,2)/(2.0*std::pow(sigma_rift,2))))));
 
-      std::cout << "Initial compo " << position[0] << " " << compositional_index << " " << local_upper_crust_thickness << " " << local_lower_crust_thickness << " " << local_mantle_lithosphere_thickness << std::endl;
 
       // Compute depth
       const double depth = this->get_geometry_model().depth(position);
@@ -160,10 +159,8 @@ namespace aspect
           else
             {
               temp_distance = Utilities::signed_distance_to_polygon<dim>(polygon_point_list[n], Point<2>(surface_position[0],surface_position[dim-2]));
-              std::cout << "Distance to polygon " << n << " " << surface_position << " " << temp_distance << std::endl;
             }
 
-//          std::cout << "Distance to polygon " << dim << " " << surface_position << " " << temp_distance << std::endl;
           if (temp_distance > max_distance)
             {
               max_distance = temp_distance;
@@ -333,11 +330,6 @@ namespace aspect
               AssertThrow(polygon_thicknesses[i_polygons].size()==3,
                           ExcMessage ("The number of layer thicknesses should be equal to 3 for polygon: " + Utilities::int_to_string(i_polygons) +
                                       " but it is " + Utilities::int_to_string(polygon_thicknesses[i_polygons].size())));
-
-              std::cout << "polygon thicknesses ";
-              for (unsigned int q=0; q<polygon_thicknesses[i_polygons].size(); ++q)
-                std::cout << polygon_thicknesses[i_polygons][q] << " ";
-              std::cout << std::endl;
 
               // Split the string into point strings
               const std::vector<std::string> temp_points = Utilities::split_string_list(temp_polygons[i_polygons],'>');
