@@ -314,7 +314,7 @@ namespace aspect
             // Step 5: plastic yielding
 
             // Determine if the pressure used in Drucker Prager plasticity will be capped at 0 (default).
-            // This may be necessary in models without gravity and the dynamic stresses are much higher
+            // This may be necessary in models without gravity and when the dynamic stresses are much higher
             // than the lithostatic pressure.
 
             double pressure_for_plasticity = in.pressure[i];
@@ -346,7 +346,6 @@ namespace aspect
                   // rescale the viscosity back to yield surface
                   if (current_stress >= yield_stress)
                     {
-                      // TODO: Appendix E omits the sqrt of the viscoelastic_strain_rate_invariant.
                       viscosity_yield = drucker_prager_plasticity.compute_viscosity(current_cohesion,
                                                                                     current_friction,
                                                                                     pressure_for_plasticity,
@@ -369,7 +368,7 @@ namespace aspect
             // proposed stress is zero (up to a certain tolerance).
             // Explanation: The variables in Eq. 36 of Moresi et al. (2003) for the effective viscosity
             // can depend on the strain rate. In this case (i.e. for dislocation creep or strain-dependent weakening),
-            // local iterations are needed to find to be performed to find lambda.
+            // local iterations are needed to find lambda.
             // We won't do this for now, we will first fix the strain-independent case.
 
             // Step 6: limit the viscosity with specified minimum and maximum bounds

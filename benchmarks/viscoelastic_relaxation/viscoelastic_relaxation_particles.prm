@@ -145,7 +145,7 @@ subsection Postprocess
   end
 
   subsection Particles
-    set Number of particles         = 30e2
+    set Number of particles         = 3000
     set Minimum particles per cell  = 25
     set Maximum particles per cell  = 35
     set Particle generator name     = random uniform

@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Tue Sep 21 by Anne Glerum
-"""
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import rc
