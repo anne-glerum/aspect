@@ -110,6 +110,8 @@ namespace aspect
 
         double initial_domain_volume = 0;
 
+        double maximum_first_time_step;
+        double maximum_time_step;
 
         /**
          * The ids of the lateral boundaries for which the net in/outflow is computed

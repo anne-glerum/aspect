@@ -50,12 +50,6 @@ namespace aspect
     void
     CompensatingBottomFlow<dim>::initialize ()
     {
-      // AssertThrow (/*((dynamic_cast<const GeometryModel::SphericalShell<dim>*> (&this->get_geometry_model())) != 0)
-      //              || */((dynamic_cast<const GeometryModel::Chunk<dim>*> (&this->get_geometry_model())) != 0)
-      //              || ((dynamic_cast<const GeometryModel::EllipsoidalChunk<dim>*> (&this->get_geometry_model())) != 0),
-      //              ExcMessage ("This Euler pole plugin can only be used when using "
-      //                  "a (ellipsoidal) chunk geometry."));
-
       double dlon = 0;
       double min_lat = 0, max_lat = 0;
 
@@ -167,14 +161,6 @@ namespace aspect
       // otherwise not all active boundaries have been set in some cases.
       if (this->get_timestep_number() == 0 || !this->simulator_is_past_initialization())
         {
-          //const std::map<types::boundary_id, std::pair<std::string, std::vector<std::string>>> &active_names = this->get_boundary_velocity_manager().get_active_boundary_velocity_names();
-
-          //for (const auto &n : active_names)
-          //{
-          //  std::cout << "CBF Active BC names for BI " << n.first << std::endl;
-          //  for (const auto &np : n.second.second)
-          //    std::cout << "CBF Active BC names " << np << std::endl;
-          //}
           // Get the boundary velocity objects on the vertical boundaries
           // TODO only keep the objects on lateral boundaries.
           const std::map<types::boundary_id, std::vector<std::unique_ptr<BoundaryVelocity::Interface<dim>>>> &
@@ -184,23 +170,16 @@ namespace aspect
           std::set<types::boundary_id> tmp_boundary_ids;
           for (const auto &p : lateral_boundary_velocity_objects)
             {
-              //std::cout << "CBF Found " << p.first << " with size " << p.second.size() << std::endl;
               if (vertical_boundary_indicators.find(p.first) != vertical_boundary_indicators.end())
                 tmp_boundary_ids.insert(p.first);
-              //lateral_boundary_velocity_objects.erase(p.first);
             }
-
-          //std::cout << "CBF Nr of user-defined lateral comp boundaries: " << vertical_boundary_indicators.size() << std::endl;
-          //std::cout << "CBF Nr of boundaries with active vel BC: " << lateral_boundary_velocity_objects.size() << std::endl;
-          //std::cout << "CBF Nr of boundaries with active vel BC names: " << active_names.size() << std::endl;
-          //std::cout << "CBF B ID of active vel BC: " << lateral_boundary_velocity_objects.begin()->first << std::endl;
 
           AssertThrow(tmp_boundary_ids.size() != 0, ExcMessage("The Compensating Bottom Flow velocity boundary conditions plugin requires prescribed velocity boundary conditions on at least one lateral boundary."));
           AssertThrow(tmp_boundary_ids.size() == vertical_boundary_indicators.size(),
                       ExcMessage("The Compensating Bottom Flow velocity boundary conditions plugin requires prescribed velocity boundary conditions for each user-defined compensation boundary."));
 
           initial_domain_volume = this->get_volume();
-          this->get_pcout() << "    Initial domain volume: " << initial_domain_volume << std::endl;
+          this->get_pcout() << "   Initial domain volume: " << initial_domain_volume << std::endl;
         }
 
       // For box geometries, initial topography is added at the end of the first timestep. This could
@@ -209,7 +188,7 @@ namespace aspect
           !Plugins::plugin_type_matches<const InitialTopographyModel::ZeroTopography<dim>>(this->get_initial_topography_model()))
         {
           initial_domain_volume = this->get_volume();
-          this->get_pcout() << "    Initial domain volume after initial topography: " << initial_domain_volume << std::endl;
+          this->get_pcout() << "   Initial domain volume after initial topography: " << initial_domain_volume << std::endl;
         }
 
       // Compute the net flow through the lateral boundaries
@@ -234,10 +213,21 @@ namespace aspect
       upward_normal = -this->get_gravity_model().gravity_vector(position) / this->get_gravity_model().gravity_vector(position).norm();
 
       // Compensate for prescribed velocity on the lateral boundaries (net_outflow)
-      // and for volume loss/gain through other boundary conditions (like FastScape) 
+      // and for volume loss/gain through other boundary conditions (like FastScape)
       // over the last timestep if requested by the user.
       if (maintain_constant_domain_volume)
-        return ((net_outflow - (this->get_volume() - initial_domain_volume) / this->get_timestep()) / bottom_boundary_area) * upward_normal;
+        {
+          // Get an estimate of the timestep in case it is
+          // still zero in the first timestep.
+          // In fact, since the volume will not change in the first
+          // timestep, the timestep size does not really matter. 
+          double timestep = this->get_timestep();
+          if (timestep == 0 && this->get_timestep_number() == 0)
+            timestep = std::min(maximum_time_step, maximum_first_time_step);
+          else if (timestep == 0)
+            AssertThrow(false, ExcMessage("The timestep size is zero."));
+          return ((net_outflow - (this->get_volume() - initial_domain_volume) / timestep) / bottom_boundary_area) * upward_normal;
+        }
       else
         return (net_outflow / bottom_boundary_area) * upward_normal;
     }
@@ -349,6 +339,14 @@ namespace aspect
     void
     CompensatingBottomFlow<dim>::parse_parameters (ParameterHandler &prm)
     {
+      maximum_first_time_step = prm.get_double("Maximum first time step");
+      maximum_time_step       = prm.get_double("Maximum time step");
+      if (this->convert_output_to_years())
+        {
+          maximum_time_step *= year_in_seconds;
+          maximum_first_time_step *= year_in_seconds;
+        }
+
       prm.enter_subsection("Boundary velocity model");
       {
         prm.enter_subsection("Compensating bottom flow model");
