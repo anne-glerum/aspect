@@ -23,7 +23,6 @@ set Use operator splitting                 = true
 
 # Solver settings
 subsection Solver parameters
-  set Temperature solver tolerance = 1e-5
   subsection Stokes solver parameters
     set Use direct solver for Stokes system = false
     set Linear solver tolerance = 1e-7
@@ -36,7 +35,6 @@ subsection Solver parameters
   end
 end
 
-# Model geometry (100x100 km, 2 km spacing)
 subsection Geometry model
   set Model name = box
 
@@ -59,7 +57,7 @@ end
 subsection Discretization
   set Composition polynomial degree     = 2
   set Stokes velocity polynomial degree = 2
-  set Temperature polynomial degree     = 1
+  set Temperature polynomial degree     = 2
   set Use discontinuous composition discretization = true
 end
 

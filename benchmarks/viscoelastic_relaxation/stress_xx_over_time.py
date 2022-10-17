@@ -5,10 +5,9 @@ from matplotlib import rc
 rc("pdf", fonttype=42)
 rc("lines", linewidth=5, markersize=3)
 
-# Change path as needed
-base = r"/Users/acglerum/Documents/Postdoc/SB_CRYSTALS/HLRN/HLRN/fix_stresses_elasticity/paper_11072022/"
-
-# Change file name modifiers as needed depending on your file structure
+# Change file name modifiers as needed 
+# This script assumes both the timestep (500, 250, 125 yr)
+# and the uniform resolution (0, 1, 2) have been varied.
 names = [
          "ve_relaxation_dt500yr_dh10km",
          "ve_relaxation_dt500yr_dh5km",
@@ -18,7 +17,7 @@ names = [
          "ve_relaxation_dt250yr_dh2-5km",
          "ve_relaxation_dt125yr_dh10km",
          "ve_relaxation_dt125yr_dh5km",
-         "ve_relaxation_dt125yr_dh2-5km_"
+         "ve_relaxation_dt125yr_dh2-5km"
         ]
 tail = r"/statistics"
 
@@ -59,7 +58,7 @@ counter = 0
 
 # Create file path
 for name in names: 
-  path = base+name+tail
+  path = name+tail
 
   # Read in the time and the minimum xx and yy components of the viscoelastic stress,
   # which are stored on the fields ve_stress_xx and ve_stress_yy.

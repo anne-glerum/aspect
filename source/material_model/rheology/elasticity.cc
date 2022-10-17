@@ -299,14 +299,14 @@ namespace aspect
           for (unsigned int i=0; i < in.n_evaluation_points(); ++i)
             {
               // Get stress from timestep $t$ rotated and advected into the current
-              // timestep $t+\Delta te$ from the compositional fields.
+              // timestep $t+\Delta t$ from the compositional fields.
               // This function is evaluated before the assembly of the Stokes equations
               // (the force term goes into the rhs of the momentum equation).
               // This is after the advection equations have been solved, and hence in.composition
               // contains the rotated and advected stresses $tau^{0adv}$.
               // Only at the beginning of the next timestep do we add the stress update of the
               // current timestep to the stress stored in the compositional fields, giving
-              // $\tau{t+\Delta te}$ with $t+\Delta te$ being the current timestep.
+              // $\tau{t+\Delta t}$ with $t+\Delta t$ being the current timestep.
               //
               // Moresi et al. (2003) use the full stresses at $t$ in the force term (Eq.  30),
               // which is incorrect, it should be $tau^{0adv}$, which is the stress from time $t$
@@ -369,7 +369,7 @@ namespace aspect
             // Get the current velocity gradients, which get
             // updated in each nonlinear iteration.
             std::vector<double> solution_values(this->get_fe().dofs_per_cell);
-            in.current_cell->get_dof_values(this->get_solution(),
+            in.current_cell->get_dof_values(this->get_current_linearization_point(),
                                             solution_values.begin(),
                                             solution_values.end());
 
@@ -416,10 +416,14 @@ namespace aspect
             std::vector<SymmetricTensor<2, dim>> stress_t(in.n_evaluation_points(), SymmetricTensor<2, dim>());
             for (unsigned int i = 0; i < in.n_evaluation_points(); ++i)
               {
-                const typename FEPointEvaluation<n_independent_components, dim>::value_type composition_values = evaluator_composition->get_value(i);
+                //const typename FEPointEvaluation<n_independent_components, dim>::value_type composition_values = evaluator_composition->get_value(i);
+                //for (unsigned int c = 0; c < n_independent_components; ++c)
+                //  stress_t[i][SymmetricTensor<2, dim>::unrolled_to_component_indices(c)] =
+                //    dealii::internal::FEPointEvaluation::EvaluatorTypeTraits<dim, n_independent_components, double>::access(composition_values, c);
+                const Tensor<1,n_independent_components> composition_values = evaluator_composition->get_value(i);
                 for (unsigned int c = 0; c < n_independent_components; ++c)
                   stress_t[i][SymmetricTensor<2, dim>::unrolled_to_component_indices(c)] =
-                    dealii::internal::FEPointEvaluation::EvaluatorTypeTraits<dim, n_independent_components, double>::access(composition_values, c);
+                    composition_values[c];
               }
 
             Assert(out.reaction_terms.size() == in.n_evaluation_points(), ExcMessage("Out reaction terms not equal to n eval points."));
@@ -621,7 +625,8 @@ namespace aspect
           dtc = std::min(std::min(this->get_parameters().maximum_time_step, this->get_parameters().maximum_first_time_step), elastic_timestep());
         const double timestep_ratio = dtc / elastic_timestep();
         const double elastic_viscosity = timestep_ratio * calculate_elastic_viscosity(shear_modulus);
-        const double creep_viscosity = viscosity_pre_yield; //timestep_ratio *  calculate_viscoelastic_viscosity(viscosity_pre_yield, shear_modulus);
+        // viscosity_pre_yield is already scaled by the timestep ratio.
+        const double creep_viscosity = viscosity_pre_yield;
 
         const SymmetricTensor<2, dim>
         edot_deviator = deviator(strain_rate) + 0.5 * stress_0_advected / elastic_viscosity
