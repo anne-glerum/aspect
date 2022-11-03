@@ -66,6 +66,7 @@ namespace aspect
                                this->get_fe(),
                                quadrature_formula,
                                update_values   |
+                               update_gradients   |
                                update_quadrature_points |
                                update_JxW_values);
 
@@ -107,7 +108,7 @@ namespace aspect
                if (sediment_values[q] >= 0.5 &&
                    marine_fraction_values[q] < 0.5 &&
                    silt_fraction_values[q] < 0.5 &&
-                   temperature_values[q] >= 250. + 273.25)
+                   temperature_values[q] >= minimum_host_temperature)
                 {
                  local_host_integral += fe_values.JxW(q);
                  host_present = true;
@@ -116,7 +117,7 @@ namespace aspect
                 // Pelagic sediments with T < 150 C
                if (sediment_values[q] >= 0.5 &&
                    marine_fraction_values[q] >= 0.5 &&
-                   temperature_values[q] < 150. + 273.25)
+                   temperature_values[q] < maximum_cap_temperature)
                 {
                  local_cap_integral += fe_values.JxW(q);
                  cap_present = true;
@@ -136,7 +137,7 @@ namespace aspect
       const double global_fault_integral
         = Utilities::MPI::max (local_fault_integral, this->get_mpi_communicator());
 
-      const std::string units = (dim == true) ? "m^2" : "m^3";
+      const std::string units = (dim == 2) ? "m^2" : "m^3";
       const std::vector<std::string> column_names = {"Host rock (" + units + ")",
                                                      "Cap rock (" + units + ")",
                                                      "Fault rock (" + units + ")"
@@ -209,8 +210,8 @@ namespace aspect
         prm.enter_subsection("Host and cap rock statistics");
         {
           strain_rate_threshold = prm.get_double ("Fault strain rate threshold");
-          minimum_host_temperature = prm.get_double ("Host rock minimum temperature");
-          maximum_cap_temperature = prm.get_double ("Cap rock maximum temperature");
+          minimum_host_temperature = prm.get_double ("Host rock minimum temperature") + 273.25;
+          maximum_cap_temperature = prm.get_double ("Cap rock maximum temperature") + 273.25;
         }
         prm.leave_subsection();
         }
