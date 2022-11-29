@@ -76,8 +76,6 @@ namespace aspect
       std::vector<double> silt_fraction_values(n_q_points);
       std::vector<double> marine_fraction_values(n_q_points);
 
-      std::vector<double> local_compositional_integrals (this->n_compositional_fields());
-
       double local_host_integral = 0;
       double local_cap_integral = 0;
       double local_fault_integral = 0;
@@ -133,9 +131,9 @@ namespace aspect
       const double global_host_integral
         = Utilities::MPI::sum (local_host_integral, this->get_mpi_communicator());
       const double global_cap_integral
-        = Utilities::MPI::max (local_cap_integral, this->get_mpi_communicator());
+        = Utilities::MPI::sum (local_cap_integral, this->get_mpi_communicator());
       const double global_fault_integral
-        = Utilities::MPI::max (local_fault_integral, this->get_mpi_communicator());
+        = Utilities::MPI::sum (local_fault_integral, this->get_mpi_communicator());
 
       const std::string units = (dim == 2) ? "m^2" : "m^3";
       const std::vector<std::string> column_names = {"Host rock (" + units + ")",
