@@ -19,7 +19,7 @@
 */
 
 
-#include <aspect/postprocess/host_cap_statistics.h>
+#include <aspect/postprocess/source_source_fault_statistics.h>
 #include <aspect/material_model/simple.h>
 #include <aspect/global.h>
 
@@ -33,7 +33,7 @@ namespace aspect
   {
     template <int dim>
     std::pair<std::string,std::string>
-    HostCapStatistics<dim>::execute (TableHandler &statistics)
+    SourceHostFaultStatistics<dim>::execute (TableHandler &statistics)
     {
       if (this->n_compositional_fields() == 0)
         return std::pair<std::string,std::string>();
@@ -76,8 +76,8 @@ namespace aspect
       std::vector<double> silt_fraction_values(n_q_points);
       std::vector<double> marine_fraction_values(n_q_points);
 
+      double local_source_integral = 0;
       double local_host_integral = 0;
-      double local_cap_integral = 0;
       double local_fault_integral = 0;
 
       for (const auto &cell : this->get_dof_handler().active_cell_iterators())
@@ -100,51 +100,51 @@ namespace aspect
 
             for (unsigned int q = 0; q < n_q_points; ++q)
               {
+               bool source_present = false;
                bool host_present = false;
-               bool cap_present = false;
                // Sand with T > 250 C
                if (sediment_values[q] >= 0.5 &&
                    marine_fraction_values[q] < 0.5 &&
                    silt_fraction_values[q] < 0.5 &&
-                   temperature_values[q] >= minimum_host_temperature)
+                   temperature_values[q] >= minimum_source_temperature)
                 {
-                 local_host_integral += fe_values.JxW(q);
-                 host_present = true;
+                 local_source_integral += fe_values.JxW(q);
+                 source_present = true;
                 }
 
                 // Pelagic sediments with T < 150 C
                if (sediment_values[q] >= 0.5 &&
                    marine_fraction_values[q] >= 0.5 &&
-                   temperature_values[q] < maximum_cap_temperature)
+                   temperature_values[q] < maximum_host_temperature)
                 {
-                 local_cap_integral += fe_values.JxW(q);
-                 cap_present = true;
+                 local_host_integral += fe_values.JxW(q);
+                 host_present = true;
                 }
  
-               if ((host_present || cap_present) &&
+               if ((source_present || host_present) &&
                    std::sqrt(std::fabs(second_invariant(deviator(strain_rate_values[q])))) >= strain_rate_threshold)
                  local_fault_integral += fe_values.JxW(q);
 
               }
           }
 
+      const double global_source_integral
+        = Utilities::MPI::sum (local_source_integral, this->get_mpi_communicator());
       const double global_host_integral
         = Utilities::MPI::sum (local_host_integral, this->get_mpi_communicator());
-      const double global_cap_integral
-        = Utilities::MPI::sum (local_cap_integral, this->get_mpi_communicator());
       const double global_fault_integral
         = Utilities::MPI::sum (local_fault_integral, this->get_mpi_communicator());
 
       const std::string units = (dim == 2) ? "m^2" : "m^3";
-      const std::vector<std::string> column_names = {"Host rock (" + units + ")",
-                                                     "Cap rock (" + units + ")",
+      const std::vector<std::string> column_names = {"Source rock (" + units + ")",
+                                                     "Host rock (" + units + ")",
                                                      "Fault rock (" + units + ")"
                                                     };
 
       statistics.add_value (column_names[0],
-                            global_host_integral);
+                            global_source_integral);
       statistics.add_value (column_names[1],
-                            global_cap_integral);
+                            global_host_integral);
       statistics.add_value (column_names[2],
                             global_fault_integral);
 
@@ -158,14 +158,14 @@ namespace aspect
 
       std::ostringstream output;
       output.precision(4);
-      output << global_host_integral
+      output << global_source_integral
              << ' ' << units << ", "
-             << global_cap_integral
+             << global_host_integral
              << ' ' << units << ", "
              << global_fault_integral
              << ' ' << units;
 
-      return std::pair<std::string, std::string> ("Host rock, cap rock, fault rock:",
+      return std::pair<std::string, std::string> ("Source rock, host rock, fault rock:",
                                                   output.str());
     }
 
@@ -173,24 +173,24 @@ namespace aspect
 
     template <int dim>
     void
-    HostCapStatistics<dim>::declare_parameters (ParameterHandler &prm)
+    SourceHostFaultStatistics<dim>::declare_parameters (ParameterHandler &prm)
     {
       prm.enter_subsection("Postprocess");
       {
-        prm.enter_subsection("Host and cap rock statistics");
+        prm.enter_subsection("Source and host rock statistics");
         {
           prm.declare_entry ("Fault strain rate threshold", "1e-15",
                              Patterns::Double (0.),
                              "The scalar effective strain rate value that acts "
                              "as the threshold to define a fault. "
                              "Units: 1/s. ");
-          prm.declare_entry ("Host rock minimum temperature", "250",
+          prm.declare_entry ("Source rock minimum temperature", "250",
                              Patterns::Double (0.),
-                             "The minimum temperature that the host rock should have. "
+                             "The minimum temperature that the source rock should have. "
                              "Units: C. ");
-          prm.declare_entry ("Cap rock maximum temperature", "150",
+          prm.declare_entry ("Host rock maximum temperature", "150",
                              Patterns::Double (0.),
-                             "The maximum temperature that the cap rock should have. "
+                             "The maximum temperature that the host rock should have. "
                              "Units: C. ");
         }
         prm.leave_subsection();
@@ -201,15 +201,15 @@ namespace aspect
 
     template <int dim>
     void
-    HostCapStatistics<dim>::parse_parameters (ParameterHandler &prm)
+    SourceHostFaultStatistics<dim>::parse_parameters (ParameterHandler &prm)
     {
       prm.enter_subsection("Postprocess");
       {
-        prm.enter_subsection("Host and cap rock statistics");
+        prm.enter_subsection("Source and host rock statistics");
         {
           strain_rate_threshold = prm.get_double ("Fault strain rate threshold");
-          minimum_host_temperature = prm.get_double ("Host rock minimum temperature") + 273.25;
-          maximum_cap_temperature = prm.get_double ("Cap rock maximum temperature") + 273.25;
+          minimum_source_temperature = prm.get_double ("Source rock minimum temperature") + 273.25;
+          maximum_host_temperature = prm.get_double ("Host rock maximum temperature") + 273.25;
         }
         prm.leave_subsection();
         }
@@ -224,9 +224,9 @@ namespace aspect
 {
   namespace Postprocess
   {
-    ASPECT_REGISTER_POSTPROCESSOR(HostCapStatistics,
-                                  "host cap statistics",
+    ASPECT_REGISTER_POSTPROCESSOR(SourceHostFaultStatistics,
+                                  "source host fault statistics",
                                   "A postprocessor that computes some statistics about the "
-                                  "area/volume of potential host rock and cap rock for ore deposits.")
+                                  "area/volume of potential source rock and host rock for ore deposits.")
   }
 }

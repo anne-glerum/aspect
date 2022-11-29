@@ -19,8 +19,8 @@
 */
 
 
-#ifndef _aspect_postprocess_host_cap_statistics_h
-#define _aspect_postprocess_host_cap_statistics_h
+#ifndef _aspect_postprocess_source_host_statistics_h
+#define _aspect_postprocess_source_host_statistics_h
 
 #include <aspect/postprocess/interface.h>
 #include <aspect/simulator_access.h>
@@ -32,12 +32,12 @@ namespace aspect
 
     /**
      * A postprocessor that computes some statistics about the area/volume
-     * of host and cap rock and any faults in those rocks. 
+     * of source and host rock and any faults in those rocks. 
      *
      * @ingroup Postprocessing
      */
     template <int dim>
-    class HostCapStatistics : public Interface<dim>, public ::aspect::SimulatorAccess<dim>
+    class SourceHostFaultStatistics : public Interface<dim>, public ::aspect::SimulatorAccess<dim>
     {
       public:
         /**
@@ -68,14 +68,14 @@ namespace aspect
 
       private:
         /**
-         * The maximum temperature that the cap rock can have.
+         * The maximum temperature that the host rock can have.
          */
-        double maximum_cap_temperature;
+        double maximum_host_temperature;
 
         /**
-         * The minimum temperature that the host rock can have.
+         * The minimum temperature that the source rock must have.
          */
-        double minimum_host_temperature;
+        double minimum_source_temperature;
 
         /**
          * The minimum strain rate that defines a fault.
