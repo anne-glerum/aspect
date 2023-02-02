@@ -339,7 +339,8 @@ namespace aspect
               // During assembly in timestep 0, get_timestep() returns 0. Therefore we have to make an estimated guess
               // using the maximum timestep parameters capped by the elastic timestep.
               double dtc = this->get_timestep();
-              if (this->get_timestep_number() == 0 && this->get_timestep() == 0)
+              if (!this->simulator_is_past_initialization() ||
+                  (this->get_timestep_number() == 0 && this->get_timestep() == 0))
                 dtc = std::min(std::min(this->get_parameters().maximum_time_step, this->get_parameters().maximum_first_time_step), elastic_timestep());
               const double timestep_ratio = dtc / elastic_timestep();
               const double viscosity_ratio = effective_creep_viscosity / (calculate_elastic_viscosity(average_elastic_shear_moduli[i]) * timestep_ratio);
@@ -506,7 +507,8 @@ namespace aspect
                 // During assembly in timestep 0, get_timestep() returns 0. Therefore we have to make an estimated guess
                 // using the maximum timestep parameters capped by the elastic timestep.
                 double dtc = this->get_timestep();
-                if (this->get_timestep_number() == 0 && this->get_timestep() == 0)
+                if (!this->simulator_is_past_initialization() ||
+                    (this->get_timestep_number() == 0 && this->get_timestep() == 0))
                   dtc = std::min(std::min(this->get_parameters().maximum_time_step, this->get_parameters().maximum_first_time_step), elastic_timestep());
                 const double timestep_ratio = dtc / elastic_timestep();
                 const double elastic_viscosity = timestep_ratio * calculate_elastic_viscosity(average_elastic_shear_moduli[i]);
@@ -621,7 +623,8 @@ namespace aspect
         // During assembly in timestep 0, get_timestep() returns 0. Therefore we have to make an estimated guess
         // using the maximum timestep parameters capped by the elastic timestep.
         double dtc = this->get_timestep();
-        if (this->get_timestep_number() == 0 && this->get_timestep() == 0)
+        if (!this->simulator_is_past_initialization() ||
+            (this->get_timestep_number() == 0 && this->get_timestep() == 0))
           dtc = std::min(std::min(this->get_parameters().maximum_time_step, this->get_parameters().maximum_first_time_step), elastic_timestep());
         const double timestep_ratio = dtc / elastic_timestep();
         const double elastic_viscosity = timestep_ratio * calculate_elastic_viscosity(shear_modulus);

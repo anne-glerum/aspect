@@ -261,7 +261,8 @@ namespace aspect
                 // Step 3a: calculate viscoelastic (effective) viscosity
                 // Estimate the timestep size when in timestep 0
                 double dtc = this->get_timestep();
-                if (this->get_timestep_number() == 0 && this->get_timestep() == 0)
+                if (!this->simulator_is_past_initialization() ||
+                    (this->get_timestep_number() == 0 && this->get_timestep() == 0))
                   dtc = std::min(std::min(this->get_parameters().maximum_time_step, this->get_parameters().maximum_first_time_step), elastic_rheology.elastic_timestep());
                 viscosity_pre_yield = dtc / elastic_rheology.elastic_timestep() * elastic_rheology.calculate_viscoelastic_viscosity(viscosity_pre_yield, elastic_shear_modulus);
 

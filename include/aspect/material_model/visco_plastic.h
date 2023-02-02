@@ -205,7 +205,7 @@ namespace aspect
 
         /**
          * Return the elastic timestep, which can be larger than the
-         * computational timestep. 
+         * computational timestep.
          */
         double get_elastic_timestep () const;
 
