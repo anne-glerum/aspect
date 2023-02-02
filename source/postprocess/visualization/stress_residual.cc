@@ -109,22 +109,11 @@ namespace aspect
                 const double shear_modulus = elastic_out->elastic_shear_moduli[q];
 
                 // $\eta_{el} = G \Delta t_{el}$
-                double elastic_timestep = this->get_timestep();
-                double elastic_viscosity = elastic_timestep * shear_modulus;
-                if (Plugins::plugin_type_matches<MaterialModel::ViscoPlastic<dim>>(this->get_material_model()))
-                  {
-                    const MaterialModel::ViscoPlastic<dim> &vp = Plugins::get_plugin_as_type<const MaterialModel::ViscoPlastic<dim>>(this->get_material_model());
-                    elastic_viscosity = vp.get_elastic_viscosity(shear_modulus);
-                    elastic_timestep = vp.get_elastic_timestep();
-                  }
-                else if (Plugins::plugin_type_matches<MaterialModel::Viscoelastic<dim>>(this->get_material_model()))
-                  {
-                    const MaterialModel::Viscoelastic<dim> &ve = Plugins::get_plugin_as_type<const MaterialModel::Viscoelastic<dim>>(this->get_material_model());
-                    elastic_viscosity = ve.get_elastic_viscosity(shear_modulus);
-                    elastic_timestep = ve.get_elastic_timestep();
-                  }
-                else
-                  AssertThrow(false, ExcMessage("The stress residual postprocessor cannot be used with elasticity for material models other than ViscoPlastic and Viscoelastic."));
+                //double elastic_timestep = this->get_timestep();
+                //double elastic_viscosity = elastic_timestep * shear_modulus;
+                const MaterialModel::ViscoPlastic<dim> &vp = Plugins::get_plugin_as_type<const MaterialModel::ViscoPlastic<dim>>(this->get_material_model());
+                double elastic_viscosity = vp.get_elastic_viscosity(shear_modulus);
+                const double elastic_timestep = vp.get_elastic_timestep();
 
                 if (dtc == 0 && this->get_timestep_number() == 0)
                   dtc = std::min(std::min(this->get_parameters().maximum_time_step, this->get_parameters().maximum_first_time_step), elastic_timestep);
