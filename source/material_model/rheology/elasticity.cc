@@ -389,7 +389,7 @@ namespace aspect
             // Get the compositional fields from the previous timestep $t$,
             // but only those that represent the stress tensor.
             // The 'old_solution' has been updated to the full stress tensor
-            // of time $t$ by the iterator splitting step at the beginning
+            // of time $t$ by the operator splitting step at the beginning
             // of the current timestep.
             std::vector<double> old_solution_values(this->get_fe().dofs_per_cell);
             in.current_cell->get_dof_values(this->get_old_solution(),
