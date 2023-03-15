@@ -336,12 +336,41 @@ namespace aspect
           }
       }
 
+
+    // If the field is a stress field, we want to include all stress components in the computation of the residual
+    double stress_initial_residual = 0.0;
+    std::vector<unsigned int> stress_indices;
+    stress_indices.push_back(introspection.compositional_index_for_name("ve_stress_xx"));
+    stress_indices.push_back(introspection.compositional_index_for_name("ve_stress_yy"));
+    if (dim == 2)
+      {
+       stress_indices.push_back(introspection.compositional_index_for_name("ve_stress_xy"));
+      }
+    else if (dim == 3)
+      {
+       stress_indices.push_back(introspection.compositional_index_for_name("ve_stress_zz"));
+       stress_indices.push_back(introspection.compositional_index_for_name("ve_stress_xy"));
+       stress_indices.push_back(introspection.compositional_index_for_name("ve_stress_xz"));
+       stress_indices.push_back(introspection.compositional_index_for_name("ve_stress_yz"));
+      }
+
+
+    if (compute_initial_residual)
+      {
+        const double n_stress_fields = stress_indices.size();
+        for (auto &c : stress_indices)
+          stress_initial_residual += system_rhs.block(introspection.block_indices.compositional_fields[c]).l2_norm() / n_stress_fields;
+      }
+
     // for consistency we update the current linearization point only after we have solved
     // all fields, so that we use the same point in time for every field when solving
     for (unsigned int c=0; c<introspection.n_compositional_fields; ++c)
       {
         current_linearization_point.block(introspection.block_indices.compositional_fields[c])
           = solution.block(introspection.block_indices.compositional_fields[c]);
+
+        if (compute_initial_residual && std::find(stress_indices.begin(), stress_indices.end(), c) != stress_indices.end())
+          (*initial_residual)[c] = stress_initial_residual;
 
         if ((initial_residual != nullptr) && (*initial_residual)[c] > 0)
           current_residual[c] /= (*initial_residual)[c];
