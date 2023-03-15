@@ -448,7 +448,8 @@ namespace aspect
                 // the last and previous to last timesteps. In later iterations, it holds the current solution.
                 for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
                   {
-                    out.reaction_terms[i][j] = -in.composition[i][j] + stress_0[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)];
+                    //out.reaction_terms[i][j] = -in.composition[i][j] + stress_0[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)];
+                    out.reaction_terms[i][j] = -stress_t[i][SymmetricTensor<2, dim>::unrolled_to_component_indices(j)] + stress_0[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)];
                   }
               }
           }
