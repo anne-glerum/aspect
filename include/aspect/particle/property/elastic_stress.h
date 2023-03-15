@@ -96,6 +96,8 @@ namespace aspect
            */
           mutable MaterialModel::MaterialModelInputs<dim> material_inputs;
           mutable MaterialModel::MaterialModelOutputs<dim> material_outputs;
+
+          unsigned int property_position;
       };
     }
   }

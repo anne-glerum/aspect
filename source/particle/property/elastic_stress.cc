@@ -33,7 +33,8 @@ namespace aspect
       ElasticStress<dim>::ElasticStress ()
         :
         material_inputs(1,0),
-        material_outputs(1,0)
+        material_outputs(1,0),
+        property_position(0)
       {}
 
 
@@ -54,6 +55,9 @@ namespace aspect
         AssertThrow(this->get_parameters().enable_elasticity == true,
                     ExcMessage ("This particle property should only be used if 'Enable elasticity' is set to true"));
 
+        // TODO more elegant fix
+        const auto &property_information = this->get_particle_world().get_property_manager().get_data_info();
+        property_position = property_information.get_position_by_field_name("ve_stress_xx");
       }
 
 
@@ -63,25 +67,25 @@ namespace aspect
       ElasticStress<dim>::initialize_one_particle_property(const Point<dim> &position,
                                                            std::vector<double> &data) const
       {
-        // Give each elastic stress field its initial composition if one is prescribed.
-        data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_xx")));
+        // // Give each elastic stress field its initial composition if one is prescribed.
+        // data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_xx")));
 
-        data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_yy")));
+        // data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_yy")));
 
-        if (dim == 2)
-          {
-            data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_xy")));
-          }
-        else if (dim == 3)
-          {
-            data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_zz")));
+        // if (dim == 2)
+        //   {
+        //     data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_xy")));
+        //   }
+        // else if (dim == 3)
+        //   {
+        //     data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_zz")));
 
-            data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_xy")));
+        //     data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_xy")));
 
-            data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_xz")));
+        //     data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_xz")));
 
-            data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_yz")));
-          }
+        //     data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_yz")));
+        //   }
 
       }
 
@@ -120,9 +124,25 @@ namespace aspect
 
         this->get_material_model().evaluate (material_inputs,material_outputs);
 
+
         for (unsigned int i = 0; i < SymmetricTensor<2,dim>::n_independent_components ; ++i)
-          //particle->get_properties()[data_position + i] = material_inputs.composition[0][i] + material_outputs.reaction_terms[0][i];
-          particle->get_properties()[data_position + i] += material_outputs.reaction_terms[0][i];
+          // TODO provide more elegant fix
+          // Instead of using the data_position given as input to this function,
+          // we use the index of the compositional field representing the first stress tensor component.
+          // Each particle property plugin gets its own data position, and when iterating through the
+          // plugins, the data position is moved forward each time. However, here we want to apply
+          // an update to properties that have already been updated by another plugin. I.e., we
+          // want to update the 'composition' properties, which carry the stress tensor components.
+          // In the current plugin however, new 've_stress_*' properties are created and updated. 
+          // The creation of new properties can be removed when we assert that the 'composition' property
+          // plugin is used. This plugin is necessary because it updates the composition properties with the 
+          // newest solution, i.e. the one including the operator splitting update.
+          // The current plugin then applies the reaction term (the rotation). We could also include the
+          // solution update in this plugin and assert that the 'composition' plugin is not active.
+          // For now, as the least invasive hacky fix, I do not create new ve_stress_* properties and 
+          // ask for the data position of the particle property 've_stress_xx', which is created by the
+          // 'composition' property plugin.
+          particle->get_properties()[property_position + i] += material_outputs.reaction_terms[0][i];
       }
 
 
@@ -151,32 +171,32 @@ namespace aspect
       {
         std::vector<std::pair<std::string,unsigned int>> property_information;
 
-        //Check which fields are used in model and make an output for each.
-        if (this->introspection().compositional_name_exists("ve_stress_xx"))
-          property_information.emplace_back("ve_stress_xx",1);
+        // //Check which fields are used in model and make an output for each.
+        // if (this->introspection().compositional_name_exists("ve_stress_xx"))
+        //   property_information.emplace_back("ve_stress_xx",1);
 
-        if (this->introspection().compositional_name_exists("ve_stress_yy"))
-          property_information.emplace_back("ve_stress_yy",1);
+        // if (this->introspection().compositional_name_exists("ve_stress_yy"))
+        //   property_information.emplace_back("ve_stress_yy",1);
 
-        if (dim == 2)
-          {
-            if (this->introspection().compositional_name_exists("ve_stress_xy"))
-              property_information.emplace_back("ve_stress_xy",1);
-          }
-        else if (dim == 3)
-          {
-            if (this->introspection().compositional_name_exists("ve_stress_zz"))
-              property_information.emplace_back("ve_stress_zz",1);
+        // if (dim == 2)
+        //   {
+        //     if (this->introspection().compositional_name_exists("ve_stress_xy"))
+        //       property_information.emplace_back("ve_stress_xy",1);
+        //   }
+        // else if (dim == 3)
+        //   {
+        //     if (this->introspection().compositional_name_exists("ve_stress_zz"))
+        //       property_information.emplace_back("ve_stress_zz",1);
 
-            if (this->introspection().compositional_name_exists("ve_stress_xy"))
-              property_information.emplace_back("ve_stress_xy",1);
+        //     if (this->introspection().compositional_name_exists("ve_stress_xy"))
+        //       property_information.emplace_back("ve_stress_xy",1);
 
-            if (this->introspection().compositional_name_exists("ve_stress_xz"))
-              property_information.emplace_back("ve_stress_xz",1);
+        //     if (this->introspection().compositional_name_exists("ve_stress_xz"))
+        //       property_information.emplace_back("ve_stress_xz",1);
 
-            if (this->introspection().compositional_name_exists("ve_stress_yz"))
-              property_information.emplace_back("ve_stress_yz",1);
-          }
+        //     if (this->introspection().compositional_name_exists("ve_stress_yz"))
+        //       property_information.emplace_back("ve_stress_yz",1);
+        //   }
 
         return property_information;
       }
