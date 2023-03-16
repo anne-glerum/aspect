@@ -19,6 +19,7 @@
  */
 
 #include <aspect/particle/property/elastic_stress.h>
+#include <aspect/particle/world.h>
 #include <aspect/material_model/visco_plastic.h>
 #include <aspect/material_model/viscoelastic.h>
 #include <aspect/initial_composition/interface.h>
