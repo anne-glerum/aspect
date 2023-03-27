@@ -527,7 +527,8 @@ namespace aspect
 
         if (use_elasticity)
           {
-            // First n_independent_components are the stress, the next the old_stress
+            // First n_independent_components are the ve_stress_*, the next the ve_stress_*_old;
+            // they are the first fields, as is asserted in parse_parameters of elasticity.cc
             for (unsigned int i = 0; i < 2*SymmetricTensor<2,dim>::n_independent_components ; ++i)
               composition_mask.set(i,false);
           }

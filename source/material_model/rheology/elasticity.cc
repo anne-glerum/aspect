@@ -150,6 +150,7 @@ namespace aspect
         // The visco_plastic and viscoelastic material models also require an operator splitting
         // step to update the stresses stored, and a discontinuous element to accommodate discontinuous
         // strain rates that feed into the stored stresses.
+        // TODO test damper
         if (Plugins::plugin_type_matches<MaterialModel::ViscoPlastic<dim>>(this->get_material_model()) ||
             Plugins::plugin_type_matches<MaterialModel::Viscoelastic<dim>>(this->get_material_model()))
           AssertThrow(elastic_damper_viscosity == 0. &&
@@ -299,18 +300,18 @@ namespace aspect
           for (unsigned int i=0; i < in.n_evaluation_points(); ++i)
             {
               // Get stress from timestep $t$ rotated and advected into the current
-              // timestep $t+\Delta t$ from the compositional fields.
+              // timestep $t+\Delta t_c$ from the compositional fields.
               // This function is evaluated before the assembly of the Stokes equations
               // (the force term goes into the rhs of the momentum equation).
               // This is after the advection equations have been solved, and hence in.composition
               // contains the rotated and advected stresses $tau^{0adv}$.
               // Only at the beginning of the next timestep do we add the stress update of the
               // current timestep to the stress stored in the compositional fields, giving
-              // $\tau{t+\Delta t}$ with $t+\Delta t$ being the current timestep.
+              // $\tau{t+\Delta t_c}$ with $t+\Delta t_c$ being the current timestep.
               //
               // Moresi et al. (2003) use the full stresses at $t$ in the force term (Eq.  30),
               // which is incorrect, it should be $tau^{0adv}$, which is the stress from time $t$
-              // rotated and advected to time $t+\Delta te$. See also Farrington et al. (2014).
+              // rotated and advected to time $t+\Delta t_c$. See also Farrington et al. (2014).
               // The force term should be computed as:
               // $\frac{-\eta_{effcreep} \tau_{0adv}}{\eta_{e}}$, where $\eta_{effcreep}$ is the
               // current harmonic average of the viscous and elastic viscosity, or the yield stress
@@ -417,10 +418,6 @@ namespace aspect
             std::vector<SymmetricTensor<2, dim>> stress_t(in.n_evaluation_points(), SymmetricTensor<2, dim>());
             for (unsigned int i = 0; i < in.n_evaluation_points(); ++i)
               {
-                //const typename FEPointEvaluation<n_independent_components, dim>::value_type composition_values = evaluator_composition->get_value(i);
-                //for (unsigned int c = 0; c < n_independent_components; ++c)
-                //  stress_t[i][SymmetricTensor<2, dim>::unrolled_to_component_indices(c)] =
-                //    dealii::internal::FEPointEvaluation::EvaluatorTypeTraits<dim, n_independent_components, double>::access(composition_values, c);
                 const Tensor<1,n_independent_components> composition_values = evaluator_composition->get_value(i);
                 for (unsigned int c = 0; c < n_independent_components; ++c)
                   stress_t[i][SymmetricTensor<2, dim>::unrolled_to_component_indices(c)] =
@@ -442,10 +439,11 @@ namespace aspect
                                                           this->get_timestep() * (symmetrize(rotation * Tensor<2, dim>(stress_t[i])) - symmetrize(Tensor<2, dim>(stress_t[i]) * rotation)));
 
                 // Fill reaction terms.
-                // Subtract the current viscoelastic stresses in in.composition, instead of the composition from the
-                // previous timestep that is used as stress_t. in.composition holds the current_linearization_point
+                // Subtract the composition from the previous timestep that is used as stress_t. in.composition holds the current_linearization_point
                 // for the fields, which for the first nonlinear iteration means the extrapolated solution from
                 // the last and previous to last timesteps. In later iterations, it holds the current solution.
+                // This can lead to alternately computing a reaction term that is correct and one that is zero.
+                // Therefore we subtract the old stress stress_t. 
                 for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
                   {
                     //out.reaction_terms[i][j] = -in.composition[i][j] + stress_0[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)];
@@ -455,12 +453,11 @@ namespace aspect
           }
       }
 
-      // Fill the function that computes the reaction rates for the iterator
+      // Fill the function that computes the reaction rates for the operator
       // splitting step that at the beginning of the new timestep updates the
       // stored compositions $tau^{0\mathrm{adv}}$ at time $t$ to $tau^{t}$.
       // $\tau^{t}_T = 2 \eta^{t}_effcreep (\dot{\varepsilon}^{t}_T + \frac{\tau^{t}_{0adv}}{2 G \Delta te}$.
       // rate = tau_T / current_dt.
-      // Can we Assert here that $tau^{t+\Delta te} == \eta_{eff} D^{t+\Delta te}_{eff}$?
       template <int dim>
       void
       Elasticity<dim>::fill_reaction_rates (const MaterialModel::MaterialModelInputs<dim> &in,
@@ -532,18 +529,16 @@ namespace aspect
                 // (rate * previous_dt / current_dt) * current_dt = rate * previous_dt = previous_change.
                 // previous_change = stress_t - stress_0_t.
                 // To compute the rate we should return to the operator splitting scheme,
-                // we therefore divide the change in stress by the current timestep current_dt.
-                const double current_dt  = this->get_timestep();
-
+                // we therefore divide the change in stress by the current timestep current_dt (= dtc).
                 for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
                   reaction_rate_out->reaction_rates[i][j] = (-stress_0_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)]
                                                              + stress_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)])
-                                                            / current_dt;
+                                                            / dtc;
 
                 // Also update stress_old with the newly computed stress, which in the rest of the timestep will be the old stress.
                 for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
                   reaction_rate_out->reaction_rates[i][SymmetricTensor<2, dim>::n_independent_components+j] = (-stress_old[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)]
-                      + stress_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)]) / current_dt;
+                      + stress_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)]) / dtc;
               }
           }
       }
@@ -554,7 +549,7 @@ namespace aspect
       {
         // The elastic time step (dte) is equal to the numerical time step if the time step number
         // is greater than 0 and the parameter 'use_fixed_elastic_time_step' is set to false.
-        // On the first (0) time step the elastic time step is always equal to the value
+        // On the first (0) time step, the elastic time step is always equal to the value
         // specified in 'fixed_elastic_time_step', which is also used in all subsequent time
         // steps if 'use_fixed_elastic_time_step' is set to true.
         //
@@ -615,7 +610,7 @@ namespace aspect
                                          const double viscosity_pre_yield,
                                          const double shear_modulus) const
       {
-        // The second term in the following expression corresponds to the
+        // The second term in the following edot_deviator expression corresponds to the
         // elastic part of the strain rate deviator. Note the parallels with the
         // viscous part of the strain rate deviator,
         // which is equal to 0.5 * stress / viscosity.
