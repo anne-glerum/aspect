@@ -443,7 +443,7 @@ namespace aspect
                 // for the fields, which for the first nonlinear iteration means the extrapolated solution from
                 // the last and previous to last timesteps. In later iterations, it holds the current solution.
                 // This can lead to alternately computing a reaction term that is correct and one that is zero.
-                // Therefore we subtract the old stress stress_t. 
+                // Therefore we subtract the old stress stress_t.
                 for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
                   {
                     //out.reaction_terms[i][j] = -in.composition[i][j] + stress_0[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)];

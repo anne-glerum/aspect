@@ -344,14 +344,14 @@ namespace aspect
     stress_indices.push_back(introspection.compositional_index_for_name("ve_stress_yy"));
     if (dim == 2)
       {
-       stress_indices.push_back(introspection.compositional_index_for_name("ve_stress_xy"));
+        stress_indices.push_back(introspection.compositional_index_for_name("ve_stress_xy"));
       }
     else if (dim == 3)
       {
-       stress_indices.push_back(introspection.compositional_index_for_name("ve_stress_zz"));
-       stress_indices.push_back(introspection.compositional_index_for_name("ve_stress_xy"));
-       stress_indices.push_back(introspection.compositional_index_for_name("ve_stress_xz"));
-       stress_indices.push_back(introspection.compositional_index_for_name("ve_stress_yz"));
+        stress_indices.push_back(introspection.compositional_index_for_name("ve_stress_zz"));
+        stress_indices.push_back(introspection.compositional_index_for_name("ve_stress_xy"));
+        stress_indices.push_back(introspection.compositional_index_for_name("ve_stress_xz"));
+        stress_indices.push_back(introspection.compositional_index_for_name("ve_stress_yz"));
       }
 
 

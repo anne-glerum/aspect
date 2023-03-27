@@ -38,7 +38,7 @@ namespace aspect
 
       // Store which components to exclude during volume fraction computation.
       ComponentMask composition_mask(this->n_compositional_fields(), true);
-      // Assign compositional fields associated with the viscoelastic stress 
+      // Assign compositional fields associated with the viscoelastic stress
       // or the old viscoelastic stress a value of 0.
       // Assume these fields are listed first.
       for (unsigned int i=0; i < 2*SymmetricTensor<2,dim>::n_independent_components; ++i)

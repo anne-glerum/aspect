@@ -119,7 +119,7 @@ namespace aspect
           // plugins, the data position is moved forward each time. However, here we want to apply
           // an update to properties that have already been updated by another plugin. I.e., we
           // want to update the 'composition' properties, which carry the stress tensor components.
-          // This plugin is necessary because it updates the composition properties with the 
+          // This plugin is necessary because it updates the composition properties with the
           // newest solution, i.e. the one including the operator splitting update.
           // The current plugin then applies the reaction term (the rotation). Note that the reaction_terms
           // will be zero for ve_stress_**_old, so we only loop over n_independent_components instead of
@@ -151,8 +151,8 @@ namespace aspect
       std::vector<std::pair<std::string, unsigned int>>
       ElasticStress<dim>::get_property_information() const
       {
-         // No need to return anything.
-         return std::vector<std::pair<std::string, unsigned int>>();
+        // No need to return anything.
+        return std::vector<std::pair<std::string, unsigned int>>();
       }
     }
   }
