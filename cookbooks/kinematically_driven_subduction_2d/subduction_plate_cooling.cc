@@ -75,7 +75,7 @@ namespace aspect
         // lithosphere
         if (position[1] >= 560000.0)
            temperature=Ts+(Tm-Ts)*( ((position[1]-670000.0)/y70) + (2.0/numbers::PI)*(std::exp((-kappa*numbers::PI*numbers::PI*t70)/(y70*y70))*std::sin(numbers::PI*(position[1]-670000.0)/y70) +
-           0.5*std::exp((-kappa*2.0*2.0*numbers::PI*numbers::PI*t40)/(y70*y70))*std::sin(2.0*numbers::PI*(position[1]-670000.0)/y70)));
+           0.5*std::exp((-kappa*2.0*2.0*numbers::PI*numbers::PI*t70)/(y70*y70))*std::sin(2.0*numbers::PI*(position[1]-670000.0)/y70)));
         // sublithospheric mantle
         else
            temperature=-0.25*(position[1]/1000.0)+1713.15;
