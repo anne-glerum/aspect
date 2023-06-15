@@ -26,10 +26,10 @@ namespace aspect
   {
     namespace Property
     {
-      template <int dim>
-      TestParticleUpdate<dim>::TestParticleUpdate ()
-        :
-      {}
+//      template <int dim>
+//      TestParticleUpdate<dim>::TestParticleUpdate ()
+//        :
+//      {}
 
 
 
@@ -57,14 +57,14 @@ namespace aspect
         const unsigned int data_position = particle_world.get_property_manager().get_data_info().get_position_by_field_name("test");
 
         // Get handler
-        const  Particles::ParticleHandler<dim> particle_handler = &particle_world.get_particle_handler();
+        Particle::ParticleHandler<dim> &particle_handler = particle_world.get_particle_handler();
 
         // Loop over all cells and update the particles cell-wise
         for (const auto &cell : this->get_dof_handler().active_cell_iterators())
           if (cell->is_locally_owned())
             {
               typename ParticleHandler<dim>::particle_iterator_range
-              particles_in_cell = particle_handler->particles_in_cell(cell);
+              particles_in_cell = particle_handler.particles_in_cell(cell);
 
                 // Only update particles, if there are any in this cell
                 if (particles_in_cell.begin() != particles_in_cell.end())
@@ -82,7 +82,7 @@ namespace aspect
 
       template <int dim>
       void
-      TestParticleUpdate<dim>::initialize_one_particle_property(const Point<dim> &position,
+      TestParticleUpdate<dim>::initialize_one_particle_property(const Point<dim> &,
                                                            std::vector<double> &data) const
       {
         // Start with a value of 10
@@ -93,10 +93,10 @@ namespace aspect
 
       template <int dim>
       void
-      TestParticleUpdate<dim>::update_particle_property(const unsigned int data_position,
-                                                   const Vector<double> &solution,
-                                                   const std::vector<Tensor<1,dim>> &gradients,
-                                                   typename ParticleHandler<dim>::particle_iterator &particle) const
+      TestParticleUpdate<dim>::update_particle_property(const unsigned int ,
+                                                   const Vector<double> &,
+                                                   const std::vector<Tensor<1,dim>> &,
+                                                   typename ParticleHandler<dim>::particle_iterator &) const
       {
       }
 
@@ -115,7 +115,7 @@ namespace aspect
       UpdateFlags
       TestParticleUpdate<dim>::get_needed_update_flags () const
       {
-        return;
+        return update_values;
       }
 
 

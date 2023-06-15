@@ -46,7 +46,7 @@ namespace aspect
           /**
            * Constructor.
            */
-          TestParticleUpdate ();
+//          TestParticleUpdate ();
 
           void initialize () override;
 

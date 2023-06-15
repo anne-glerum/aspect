@@ -290,7 +290,7 @@ namespace aspect
      * of iterative advection schemes.
      * Parameters are a reference to the ParticleWorld.
      */
-    boost::signals2::signal<void (const Particle::World<dim> &)> post_restore_particles;
+    boost::signals2::signal<void (Particle::World<dim> &)> post_restore_particles;
 
   };
 
