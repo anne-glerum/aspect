@@ -992,6 +992,9 @@ namespace aspect
         if ((particle_world.get() != nullptr) && (nonlinear_iteration > 0))
           particle_world->restore_particles();
 
+        // Apply a particle update if required by the particle properties
+        signals.post_restore_particles(particle_world);
+
         const double relative_temperature_residual =
           assemble_and_solve_temperature(nonlinear_iteration == 0, &initial_temperature_residual);
 
