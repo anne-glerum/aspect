@@ -993,6 +993,7 @@ namespace aspect
           particle_world->restore_particles();
 
         // Apply a particle update if required by the particle properties
+        if (timestep_number > 0)
         signals.post_restore_particles(*particle_world.get());
 
         const double relative_temperature_residual =
@@ -1114,6 +1115,10 @@ namespace aspect
         // iteration (in the assemble_and_solve_composition call).
         if ((particle_world.get() != nullptr) && (nonlinear_iteration > 0))
           particle_world->restore_particles();
+
+        // Apply a particle update if required by the particle properties
+        if (timestep_number > 0)
+        signals.post_restore_particles(*particle_world.get());
 
         const double relative_temperature_residual =
           assemble_and_solve_temperature(nonlinear_iteration == 0, &initial_temperature_residual);
@@ -1265,6 +1270,11 @@ namespace aspect
         // iteration (in the assemble_and_solve_composition call).
         if ((particle_world.get() != nullptr) && (nonlinear_iteration > 0))
           particle_world->restore_particles();
+
+        // Apply a particle update if required by the particle properties
+        // TODO when do we want to apply the update, only after t0?
+        if (timestep_number > 0)
+        signals.post_restore_particles(*particle_world.get());
 
         assemble_and_solve_temperature();
         assemble_and_solve_composition();
