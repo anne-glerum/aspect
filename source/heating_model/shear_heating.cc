@@ -54,9 +54,24 @@ namespace aspect
              :
              material_model_inputs.strain_rate[q]);
 
-          const SymmetricTensor<2,dim> stress =
+          SymmetricTensor<2,dim> stress =
             2 * material_model_outputs.viscosities[q] *
             deviatoric_strain_rate;
+
+          // Replace with viscoelastic stresses if existent
+          if (this->get_parameters().enable_elasticity == true)
+            {
+                stress[0][0] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_xx")];
+                stress[1][1] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_yy")];
+                stress[0][1] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_xy")];
+
+                if (dim == 3)
+                  {
+                    stress[2][2] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_zz")];
+                    stress[0][2] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_xz")];
+                    stress[1][2] = in.composition[q][this->introspection().compositional_index_for_name("ve_stress_yz")];
+                  }
+            }
 
           heating_model_outputs.heating_source_terms[q] = stress * deviatoric_strain_rate;
 
