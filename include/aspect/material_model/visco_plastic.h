@@ -258,7 +258,7 @@ namespace aspect
         /**
          * Whether thermal conductivity should be increased as an approximation
          * of cooling through hydrothermal fluid circulation (if true) or not (default).
-         * The approximation of cooling follows Eq. 8 of Gregg et al.
+         * The approximation of cooling follows Eq. 8 of Gregg et al. (2009)
          * (Melt generation, crystallization, and extraction beneath segmented oceanic transform faults).
          */
         bool use_hydrothermal_cooling_approximation;
