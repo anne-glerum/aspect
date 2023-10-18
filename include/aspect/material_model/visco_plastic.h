@@ -256,6 +256,56 @@ namespace aspect
         std::vector<double> thermal_conductivities;
 
         /**
+         * Whether thermal conductivity should be increased as an approximation
+         * of cooling through hydrothermal fluid circulation (if true) or not (default).
+         * The approximation of cooling follows Eq. 8 of Gregg et al. (2009)
+         * ('Melt generation, crystallization, and extraction beneath segmented oceanic transform faults' in
+         * Journal of Geophysical Research: Solid Earth, 114, B11102).
+         */
+        bool use_hydrothermal_cooling_approximation;
+
+        /**
+         * Temperature up to which hydrothermal fluid circulation is considered to take place.
+         */
+        double cutoff_maximum_temperature;
+
+         /**
+          * Depth up to which hydrothermal fluid circulation is considered to take place.
+          */
+        double cutoff_maximum_depth;
+
+        /**
+         * Nusselt number used for the computation of the approximation of cooling.
+         */
+        double Nusselt_number;
+
+        /**
+         * Smoothing factor used for the computation of the approximation of cooling.
+         * This factor controls the influence of the temperature on the resulting thermal conductivity.
+         */
+        double smoothing_factor_temperature;
+
+
+	/**
+         * Smoothing factor used for the computation of the approximation of cooling.
+         * This factor controls the influence of the depth on the resulting thermal conductivity.
+         */
+        double smoothing_factor_depth;
+
+	/**
+	 * Whether the sea depth should be relevant for the amount of increase in conductivity.
+	 * Only applicable in combination with a two-dimensional box model that uses mesh deformation 
+	 * and has zero initial topography.
+	 */
+	bool use_depth_of_sea;
+
+	/**
+	 * Cutoff value for the depth of the sea at which the thermal conductivity does not increase anymore
+	 * with increasing sea depth.
+	 */
+	double maximum_depth_of_sea;  
+
+        /**
          * Number of phase transitions for each chemical composition (including the background field).
          */
         std::vector<unsigned int> n_phase_transitions_for_each_chemical_composition;

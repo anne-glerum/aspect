@@ -65,11 +65,23 @@ namespace aspect
         void create_coarse_mesh (parallel::distributed::Triangulation<dim> &coarse_grid) const override;
 
         /**
+         * Function to store data on current surface topography.
+         */
+        void update () override;
+
+        /**
          * Return a point that denotes the size of the box in each dimension
          * of the domain.
          */
         virtual
         Point<dim> get_extents () const;
+
+        /**
+         * Return an integer array that denotes the number of repetitions of
+         * the box's coarse mesh.
+         */
+        const std::array<unsigned int, dim> &
+        get_repetitions () const;
 
         /**
          * Return a point that denotes the lower left corner of the box
@@ -104,6 +116,15 @@ namespace aspect
          * surface without initial topography.
          */
         double depth(const Point<dim> &position) const override;
+
+        /**
+         * Function that uses the stored surface topography to calculate the depth
+         * including changes from mesh deformation. This will linearly interpolate
+         * between the two nearest surface points to get a depth for the given
+         * position.
+         */
+        double depth_including_mesh_deformation(const Point<dim> &position) const override;
+
 
         /**
          * Return the height of the given position relative to
@@ -239,6 +260,11 @@ namespace aspect
          * A pointer to the initial topography model.
          */
         InitialTopographyModel::Interface<dim> *topo_model;
+
+        /**
+         * Function to interpolate surface topography.
+         */
+        Functions::InterpolatedTensorProductGridData<dim-1> *surface_function;
     };
   }
 }
