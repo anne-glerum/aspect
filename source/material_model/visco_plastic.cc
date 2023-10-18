@@ -225,7 +225,7 @@ namespace aspect
           if (use_hydrothermal_cooling_approximation  == true)
             { 
 	      double depth_with_respect_to_current_surface = 0.;
-	      double depth_with_respect_to_initial_surface = this->get_geometry_model().depth(in.position[i]);
+	      const double depth_with_respect_to_initial_surface = this->get_geometry_model().depth(in.position[i]);
 	      double depth_of_sea = 0.;
 
 	      //In the case of a two-dimensional box model, there is an updated depth function that returns
