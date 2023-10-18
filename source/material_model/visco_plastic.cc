@@ -233,6 +233,7 @@ namespace aspect
 	      //Therefore, mesh deformation can be taken into account.
               if (this->simulator_is_past_initialization() && Plugins::plugin_type_matches<const GeometryModel::Box<dim>>(this->get_geometry_model()) && dim == 2 && this->get_parameters().mesh_deformation_enabled)
 		{
+		  //Since we consider the initial surface to be the sea level, there has to be zero initial topography.
 		  AssertThrow(Plugins::plugin_type_matches<const InitialTopographyModel::ZeroTopography<dim>>(this->get_initial_topography_model()),
 		  ExcMessage("The usage of the hydrothermal cooling approximation together with mesh deformation is only possible if there is no initial topography")); 
 
@@ -252,18 +253,16 @@ namespace aspect
 		    ExcMessage("Using the hydrothermal cooling approximation together with mesh deformation only works for two dimensional box models."));
 
 		  //If the model does not use mesh deformation, the option 'Use depth of sea for hydrothermal 
-		  //cooling approximation' is not allowed to be set to 'true'. If the user has nevertheless done
-		  //this, it has to be set to 'false'. Otherwise the hydrothermal cooling approximation would have
-		  //no effect on the thermal conductivity, which is not intended.
+		  //cooling approximation' is not allowed to be set to 'true'. Otherwise the hydrothermal cooling 
+		  //approximation would have no effect on the thermal conductivity, which is not intended.
 		  if (!this->get_parameters().mesh_deformation_enabled)
                     AssertThrow(!use_depth_of_sea == false,
                     ExcMessage("The parameter 'Use depth of sea for hydrothermal cooling approximation' can only be set to 'true' for a two-dimensional box model that uses mesh deformaion and has zero initial topography."))
-		  
 		}
               
 	      //If 'Use depth of sea for hydrothermal cooling approximation' is set to 'true', the conductivity will 
 	      //only be adapted at the points, where the surface is below the sea level (initial surface).
-	      if((use_depth_of_sea && depth_of_sea >= 0) || !use_depth_of_sea)
+	      if((use_depth_of_sea && depth_of_sea > 0) || !use_depth_of_sea)
 	        {
 		  out.thermal_conductivities[i] = out.thermal_conductivities[i] + out.thermal_conductivities[i] *
                                                 (Nusselt_number - 1.) * std::exp(smoothing_factor_temperature *
