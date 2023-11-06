@@ -19,7 +19,7 @@
 */
 
 
-#include <aspect/postprocess/source_source_fault_statistics.h>
+#include <aspect/postprocess/source_host_fault_statistics.h>
 #include <aspect/material_model/simple.h>
 #include <aspect/global.h>
 
