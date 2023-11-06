@@ -22,6 +22,8 @@
 #include <aspect/boundary_traction/initial_lithostatic_pressure.h>
 #include <aspect/initial_temperature/interface.h>
 #include <aspect/initial_composition/interface.h>
+#include <aspect/geometry_model/initial_topography_model/zero_topography.h>
+#include <aspect/geometry_model/initial_topography_model/interface.h>
 #include <aspect/gravity_model/interface.h>
 #include <aspect/global.h>
 #include <aspect/utilities.h>
@@ -45,7 +47,6 @@ namespace aspect
     {
       // Ensure the initial lithostatic pressure traction boundary conditions are used,
       // and register for which boundary indicators these conditions are set.
-      std::set<types::boundary_id> traction_bi;
       for (const auto &p : this->get_boundary_traction())
         {
           if (p.second.get() == this)
@@ -57,9 +58,6 @@ namespace aspect
       // The below is adapted from adiabatic_conditions/initial_profile.cc,
       // but we use the initial temperature and composition and only calculate
       // a pressure profile with depth.
-
-      // The spacing of the depth profile
-      delta_z = this->get_geometry_model().maximal_depth() / (n_points-1);
 
       // The number of compositional fields
       const unsigned int n_compositional_fields = this->n_compositional_fields();
@@ -89,10 +87,24 @@ namespace aspect
 
       // Set the radius of the representative point to the surface radius for spherical domains
       // or set the vertical coordinate to the surface value for box domains.
+      // Also get the depth extent without including initial topography, and the vertical coordinate
+      // of the bottom boundary (radius for spherical and z-coordinate for cartesian domains).
+      double depth_extent = 0.;
+      double bottom_vertical_coordinate = 0.;
       if (Plugins::plugin_type_matches<const GeometryModel::SphericalShell<dim>> (this->get_geometry_model()))
+      {
         spherical_representative_point[0] = Plugins::get_plugin_as_type<const GeometryModel::SphericalShell<dim>>(this->get_geometry_model()).outer_radius();
+        // Spherical shell cannot include initial topography
+        depth_extent =  Plugins::get_plugin_as_type<const GeometryModel::SphericalShell<dim>>(this->get_geometry_model()).maximal_depth();
+        bottom_vertical_coordinate = Plugins::get_plugin_as_type<const GeometryModel::SphericalShell<dim>>(this->get_geometry_model()).inner_radius();
+      }
       else if (Plugins::plugin_type_matches<const GeometryModel::Chunk<dim>> (this->get_geometry_model()))
+      {
         spherical_representative_point[0] =  Plugins::get_plugin_as_type<const GeometryModel::Chunk<dim>>(this->get_geometry_model()).outer_radius();
+        // Does not include initial topography
+        depth_extent = Plugins::get_plugin_as_type<const GeometryModel::Chunk<dim>>(this->get_geometry_model()).maximal_depth();
+        bottom_vertical_coordinate = Plugins::get_plugin_as_type<const GeometryModel::Chunk<dim>>(this->get_geometry_model()).inner_radius();
+      }
       else if (Plugins::plugin_type_matches<const GeometryModel::EllipsoidalChunk<dim>> (this->get_geometry_model()))
         {
           const GeometryModel::EllipsoidalChunk<dim> &gm = Plugins::get_plugin_as_type<const GeometryModel::EllipsoidalChunk<dim>> (this->get_geometry_model());
@@ -106,15 +118,55 @@ namespace aspect
           AssertThrow(gm.get_eccentricity() == 0.0, ExcMessage("This initial lithospheric pressure plugin cannot be used with a non-zero eccentricity. "));
 
           spherical_representative_point[0] = gm.get_semi_major_axis_a();
+          // Does not include initial topography
+          depth_extent = gm.maximal_depth();
+          bottom_vertical_coordinate = spherical_representative_point[0] - depth_extent;
         }
       else if (Plugins::plugin_type_matches<const GeometryModel::Sphere<dim>> (this->get_geometry_model()))
+      {
+        AssertThrow(false, ExcMessage("Using the initial lithospheric pressure plugin does not make sense for a Sphere geometry."));
         spherical_representative_point[0] =  Plugins::get_plugin_as_type<const GeometryModel::Sphere<dim>>(this->get_geometry_model()).radius();
+        // Cannot include initial topography. Radius and maximum depth are the same.
+        depth_extent = spherical_representative_point[0];
+        bottom_vertical_coordinate = 0.;
+      }
       else if (Plugins::plugin_type_matches<const GeometryModel::Box<dim>> (this->get_geometry_model()))
+      {
         representative_point[dim-1]=  Plugins::get_plugin_as_type<const GeometryModel::Box<dim>>(this->get_geometry_model()).get_extents()[dim-1];
+        // Maximal_depth includes the maximum topography, while we need the topography at the
+        // representative point. Therefore, we only get the undeformed (uniform) depth.
+        depth_extent = representative_point[dim-1] - Plugins::get_plugin_as_type<const GeometryModel::Box<dim>>(this->get_geometry_model()).get_origin()[dim-1];
+        bottom_vertical_coordinate = Plugins::get_plugin_as_type<const GeometryModel::Box<dim>>(this->get_geometry_model()).get_origin()[dim-1];
+      }
       else if (Plugins::plugin_type_matches<const GeometryModel::TwoMergedBoxes<dim>> (this->get_geometry_model()))
+      {
         representative_point[dim-1]=  Plugins::get_plugin_as_type<const GeometryModel::TwoMergedBoxes<dim>>(this->get_geometry_model()).get_extents()[dim-1];
+        // Maximal_depth includes the maximum topography, while we need the topography at the
+        // representative point. Therefore, we only get the undeformed (uniform) depth.
+        depth_extent = representative_point[dim-1] - Plugins::get_plugin_as_type<const GeometryModel::TwoMergedBoxes<dim>>(this->get_geometry_model()).get_origin()[dim-1];
+        bottom_vertical_coordinate = Plugins::get_plugin_as_type<const GeometryModel::TwoMergedBoxes<dim>>(this->get_geometry_model()).get_origin()[dim-1];
+      }
       else
         AssertThrow(false, ExcNotImplemented());
+
+      // The spacing of the depth profile at the location of the representative point.
+      // If present, retrieve initial topography at the reference point.
+      double topo = 0.;
+      if (!Plugins::plugin_type_matches<const InitialTopographyModel::ZeroTopography<dim>>(this->get_initial_topography_model()))
+      {
+        // Get the surface x (,y) point
+        Point<dim-1> surface_point;
+        for (unsigned int d=0; d<dim-1; d++)
+        {
+          if(this->get_geometry_model().natural_coordinate_system() == Utilities::Coordinates::CoordinateSystem::cartesian)
+            surface_point[d] = representative_point[d];
+          else
+            surface_point[d] = spherical_representative_point[d];
+        }
+        const InitialTopographyModel::Interface<dim> *topo_model = const_cast<InitialTopographyModel::Interface<dim>*>(&this->get_initial_topography_model());
+        topo = topo_model->value(surface_point);
+      }
+      delta_z = (depth_extent + topo) / (n_points-1);
 
       // Set up the input for the density function of the material model.
       typename MaterialModel::Interface<dim>::MaterialModelInputs in0(1, n_compositional_fields);
@@ -223,11 +275,42 @@ namespace aspect
       // We want to set the normal component to the vertical boundary
       // to the lithostatic pressure, the rest of the traction
       // components are left set to zero. We get the lithostatic pressure
-      // from a linear interpolation of the calculated profile.
+      // from a linear interpolation of the calculated profile,
+      // unless we need the traction at the bottom boundary. In this
+      // case we return the deepest pressure computed, as this is the
+      // normal traction component we want to prescribed even though the
+      // depth might not equal the depth of the initial profile because the
+      // surface has been deformed.
+      const bool on_bottom_boundary = point_on_bottom_boundary (p);
       Tensor<1,dim> traction;
-      traction = -interpolate_pressure(p) * normal;
+      if (on_bottom_boundary)
+        traction = -pressure.back() * normal;
+      else
+        traction = -interpolate_pressure(p) * normal;
 
       return traction;
+    }
+
+
+    template <int dim>
+    bool
+    InitialLithostaticPressure<dim>::
+    point_on_bottom_boundary (const Point<dim> &p) const
+    {
+      // The bottom boundary can be identified from the boundary id, but
+      // there might be more boundaries with a traction boundary condition.
+      // In that case we have to compare the point's coordinates with the
+      // height of the bottom boundary.
+      const double epsilon = std::numeric_limits<double>::epsilon();
+     if (traction_bi.size() == 1 && *(traction_bi.begin()) == this->get_geometry_model().translate_symbolic_boundary_name_to_id("bottom"))
+       return true;
+     if (this->get_geometry_model().natural_coordinate_system() == Utilities::Coordinates::CoordinateSystem::cartesian &&
+         std::abs(p[dim-1] - bottom_vertical_coordinate) <= epsilon )
+       return true;
+     if (!(this->get_geometry_model().natural_coordinate_system() == Utilities::Coordinates::CoordinateSystem::cartesian) &&
+         std::abs(Utilities::Coordinates::cartesian_to_spherical_coordinates<dim>(p)[0] - bottom_vertical_coordinate) <= epsilon )
+       return true;
+     return false;
     }
 
     template <int dim>
@@ -241,14 +324,23 @@ namespace aspect
       // Check that depth does not exceed the maximal depth.
       if (z >= this->get_geometry_model().maximal_depth())
         {
-          Assert (z <= this->get_geometry_model().maximal_depth() + delta_z,
+          // If mesh deformation is allowed, the depth can become
+          // larger then the initial maximal depth.
+          // However, the returned depth is capped at the initial
+          // maximal depth by the geometry models.
+          AssertThrow (z <= this->get_geometry_model().maximal_depth() + delta_z &&
+                       this->get_parameters().mesh_deformation_enabled == false,
                   ExcInternalError());
           // Return deepest (last) pressure
           return pressure.back();
         }
 
       const unsigned int i = static_cast<unsigned int>(z/delta_z);
-      Assert ((z/delta_z) >= 0, ExcInternalError());
+      // If mesh deformation is allowed, the depth can become
+      // negative. However, the returned depth is capped at 0
+      // by the geometry models
+      // and thus always positive.
+      AssertThrow ((z/delta_z) >= 0, ExcInternalError());
       Assert (i+1 < pressure.size(), ExcInternalError());
 
       // Now do the linear interpolation.
@@ -345,7 +437,19 @@ namespace aspect
                                             "the number of integration points. "
                                             "The lateral coordinates of the point are used to calculate "
                                             "the lithostatic pressure profile with depth. This means that "
-                                            "the depth coordinate is not used."
+                                            "the depth coordinate is not used. "
+                                            "Note that when initial topography is included, the initial "
+                                            "topopgraphy at the user-provided representative point is used "
+                                            "to compute the profile. If at other points the (initial) topography is "
+                                            "is higher, the behavior depends on the domain geometry and the "
+                                            "boundary on which the traction is prescribed. "
+                                            "A bottom boundary is prescribed the deepest pressure computed at "
+                                            "the representative point. For lateral boundaries, the depth is "
+                                            "first computed, which does (box geometries) or does not (spherical "
+                                            "geometries) include the initial topography. This depth is used "
+                                            "to interpolate between the points of the reference pressure profile. "
+                                            "Depths outside the reference profile get returned the pressure value "
+                                            "of the closest profile depth. "
                                             "\n\n"
                                             "Gravity is expected to point along the depth direction. ")
   }
