@@ -77,6 +77,7 @@ namespace aspect
       std::vector<double> marine_fraction_values(n_q_points);
 
       double local_source_integral = 0;
+      double local_marine_integral = 0;
       double local_host_integral = 0;
       double local_fault_integral = 0;
 
@@ -112,13 +113,18 @@ namespace aspect
                  source_present = true;
                 }
 
-                // Pelagic sediments with T < 150 C
+               // Marine sediments
                if (sediment_values[q] >= 0.5 &&
-                   marine_fraction_values[q] >= 0.5 &&
-                   temperature_values[q] < maximum_host_temperature)
+                   marine_fraction_values[q] >= 0.5)
                 {
+                   local_marine_integral += fe_values.JxW(q);
+
+                   // Pelagic sediments with T < 150 C
+                   if(temperature_values[q] < maximum_host_temperature)
+                     {
                  local_host_integral += fe_values.JxW(q);
                  host_present = true;
+                     } 
                 }
  
                if ((source_present || host_present) &&
@@ -130,6 +136,8 @@ namespace aspect
 
       const double global_source_integral
         = Utilities::MPI::sum (local_source_integral, this->get_mpi_communicator());
+      const double global_marine_integral
+        = Utilities::MPI::sum (local_marine_integral, this->get_mpi_communicator());
       const double global_host_integral
         = Utilities::MPI::sum (local_host_integral, this->get_mpi_communicator());
       const double global_fault_integral
@@ -137,12 +145,15 @@ namespace aspect
 
       const std::string units = (dim == 2) ? "m^2" : "m^3";
       const std::vector<std::string> column_names = {"Source rock (" + units + ")",
+                                                     "Marine rock (" + units + ")",
                                                      "Host rock (" + units + ")",
                                                      "Fault rock (" + units + ")"
                                                     };
 
       statistics.add_value (column_names[0],
                             global_source_integral);
+      statistics.add_value (column_names[0],
+                            global_marine_integral);
       statistics.add_value (column_names[1],
                             global_host_integral);
       statistics.add_value (column_names[2],
@@ -160,12 +171,14 @@ namespace aspect
       output.precision(4);
       output << global_source_integral
              << ' ' << units << ", "
+             << global_marine_integral
+             << ' ' << units << ", "
              << global_host_integral
              << ' ' << units << ", "
              << global_fault_integral
              << ' ' << units;
 
-      return std::pair<std::string, std::string> ("Source rock, host rock, fault rock:",
+      return std::pair<std::string, std::string> ("Source rock, marine rock, host rock, fault rock:",
                                                   output.str());
     }
 
@@ -226,7 +239,8 @@ namespace aspect
   {
     ASPECT_REGISTER_POSTPROCESSOR(SourceHostFaultStatistics,
                                   "source host fault statistics",
-                                  "A postprocessor that computes some statistics about the "
-                                  "area/volume of potential source rock and host rock for ore deposits.")
+                                  "A postprocessor that computes the "
+                                  "area/volume of potential source rock and host rock for ore deposits. "
+                                  "It also tracks the total area of marine sediments. ")
   }
 }
