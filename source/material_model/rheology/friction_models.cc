@@ -90,7 +90,7 @@ namespace aspect
       template <int dim>
       double
       FrictionModels<dim>::
-      compute_friction_angle(const double current_edot_ii,
+      compute_friction_angle(const double effective_edot_ii,
                              const unsigned int volume_fraction_index,
                              const std::vector<double> &composition,  // these are the compositional fields not volume_fractions
                              typename DoFHandler<dim>::active_cell_iterator current_cell,
@@ -123,7 +123,7 @@ namespace aspect
               // then updated with the strain rate dependent friction angle which is returned by the function.
               const double mu = (std::tan(dynamic_angles_of_internal_friction[volume_fraction_index])
                                  + (std::tan(static_friction_angle) - std::tan(dynamic_angles_of_internal_friction[volume_fraction_index]))
-                                 / (1. + std::pow((current_edot_ii / dynamic_characteristic_strain_rate),
+                                 / (1. + std::pow((effective_edot_ii / dynamic_characteristic_strain_rate),
                                                   dynamic_friction_smoothness_exponent)));
               const double dynamic_friction_angle = std::atan (mu);
               Assert((mu < 1) && (0 < dynamic_friction_angle) && (dynamic_friction_angle <= 1.6), ExcMessage(
@@ -208,9 +208,9 @@ namespace aspect
                   if (friction_mechanism == slip_rate_dependent_rate_and_state_dependent_friction)
                     {
                       // compute slip-rate dependence following Equations 8 and 9 in \\cite{im_slip-rate-dependent_2020}
-                      rate_and_state_parameter_a += slope_s_for_a * std::log10((ref_v_for_a + current_edot_ii * cellsize)/ref_v_for_a);
+                      rate_and_state_parameter_a += slope_s_for_a * std::log10((ref_v_for_a + effective_edot_ii * cellsize)/ref_v_for_a);
 
-                      critical_slip_distance += slope_s_for_L * std::log10((ref_v_for_L + current_edot_ii * cellsize)/ref_v_for_L);
+                      critical_slip_distance += slope_s_for_L * std::log10((ref_v_for_L + effective_edot_ii * cellsize)/ref_v_for_L);
                     }
 
                   double mu = 0;
@@ -224,10 +224,10 @@ namespace aspect
                           // Calculate regularized rate and state friction (e.g. Herrendörfer 2018) with
                           // mu = a sinh^{-1}[V/(2V_0)exp((mu_0 + b ln(V_0 theta/L))/a)]
                           // Their equation is for friction coefficient.
-                          // As we use strain-rates and current_edot_ii instead of velocities, these
+                          // As we use strain-rates and effective_edot_ii instead of velocities, these
                           // are multiplied by the cellsize.
                           mu = rate_and_state_parameter_a
-                               * std::asinh(current_edot_ii / (2.0 * RSF_ref_velocity / cellsize)
+                               * std::asinh(effective_edot_ii / (2.0 * RSF_ref_velocity / cellsize)
                                             * std::exp((std::tan(static_friction_angle)
                                                         + rate_and_state_parameter_b
                                                         * std::log((theta * RSF_ref_velocity) / critical_slip_distance))
@@ -244,7 +244,7 @@ namespace aspect
                       // Their equation is for friction coefficient.
                       mu = std::tan(static_friction_angle)
                            + rate_and_state_parameter_a
-                           * std::log(current_edot_ii / (RSF_ref_velocity / cellsize))
+                           * std::log(effective_edot_ii / (RSF_ref_velocity / cellsize))
                            + rate_and_state_parameter_b
                            * std::log((theta * RSF_ref_velocity) / critical_slip_distance);
 
@@ -266,7 +266,7 @@ namespace aspect
                            + Utilities::to_string(rate_and_state_parameter_b)+ ", L is: " +  Utilities::to_string(critical_slip_distance) +
                            ",\n friction angle [RAD] is: "+ Utilities::to_string(current_friction)+", friction coeff is: "+Utilities::to_string(mu)+
                            ",\n theta is: "+ Utilities::to_string(theta)+", current edot_ii is: "
-                           + Utilities::to_string(current_edot_ii)+ ".\n The position is:\n dir 0 = "+ Utilities::to_string(coords[0])+
+                           + Utilities::to_string(effective_edot_ii)+ ".\n The position is:\n dir 0 = "+ Utilities::to_string(coords[0])+
                            "\n dir 1 = "+ Utilities::to_string(coords[1])+ "\n dir 2 = "+ Utilities::to_string(coords[2])));*/
                   AssertThrow((std::isinf(mu) || numbers::is_nan(mu)) == false, ExcMessage(
                                 "Your friction coefficient becomes nan or inf. Please check all your friction parameters. In case of "
@@ -276,7 +276,7 @@ namespace aspect
                                 ",\n the volume_fraction_index is: " + Utilities::to_string(volume_fraction_index) +
                                 ",\n friction angle [RAD] is: "+ Utilities::to_string(current_friction)+", friction coeff is: "+Utilities::to_string(mu)+
                                 ",\n theta is: "+ Utilities::to_string(theta)+", current edot_ii is: "
-                                + Utilities::to_string(current_edot_ii)+ ".\n The position is:\n dir 0 = "+ Utilities::to_string(coords[0])+
+                                + Utilities::to_string(effective_edot_ii)+ ".\n The position is:\n dir 0 = "+ Utilities::to_string(coords[0])+
                                 "\n dir 1 = "+ Utilities::to_string(coords[1])+ "\n dir 2 = "+ Utilities::to_string(coords[2])));
 
                   // A negative friction angle, that does not make sense and will get rate-and-state friction
@@ -308,7 +308,7 @@ namespace aspect
       double
       FrictionModels<dim>::
       compute_theta(double theta_old,
-                    const double current_edot_ii,
+                    const double effective_edot_ii,
                     const double cellsize,
                     const double critical_slip_distance) const
       {
@@ -324,15 +324,15 @@ namespace aspect
         // theta_{n+1} = L/V_{n+1} + (theta_n - L/V_{n+1})*exp(-(V_{n+1}dt)/L)
         // This is obtained from Equation (5): dtheta/dt = 1 - (theta V)/L
         // by integration using the assumption that velocities are constant at any time step.
-        current_theta = critical_slip_distance / (cellsize * current_edot_ii ) +
-                        (theta_old - critical_slip_distance / (cellsize * current_edot_ii))
-                        * std::exp( - (current_edot_ii * cellsize) * this->get_timestep() / critical_slip_distance);
+        current_theta = critical_slip_distance / (cellsize * effective_edot_ii ) +
+                        (theta_old - critical_slip_distance / (cellsize * effective_edot_ii))
+                        * std::exp( - (effective_edot_ii * cellsize) * this->get_timestep() / critical_slip_distance);
 
         // At very low strain rates the theta equation simply returns a zero,
         // which physically does not make sense, as one would expect theta
         // to grow at very low strain rates / velocities
         // So here theta is set to its steady state value in this case:
-        if ((current_theta <= 0) && (current_edot_ii < 0.1 * (RSF_ref_velocity / cellsize)))
+        if ((current_theta <= 0) && (effective_edot_ii < 0.1 * (RSF_ref_velocity / cellsize)))
           current_theta = critical_slip_distance / RSF_ref_velocity;
 
         Assert((current_theta > 0) || (theta_old > 0),
@@ -358,7 +358,7 @@ namespace aspect
                                    const MaterialModel::MaterialModelInputs<dim> &in,
                                    const double min_strain_rate,
                                    const double ref_strain_rate,
-                                   const bool use_elasticity,
+                                   const bool enable_elasticity,
                                    const bool use_reference_strainrate,
                                    const double &average_elastic_shear_moduli,
                                    const double dte,
@@ -374,10 +374,10 @@ namespace aspect
             if (fault_volume > 0.5)
               {
                 // q is from a for-loop over n_evaluation_points
-                const double current_edot_ii =
-                  MaterialUtilities::compute_current_edot_ii (in.composition[q], ref_strain_rate,
+                const double effective_edot_ii =
+                  MaterialUtilities::compute_effective_edot_ii (in.composition[q], ref_strain_rate,
                                                               min_strain_rate, in.strain_rate[q],
-                                                              average_elastic_shear_moduli, use_elasticity,
+                                                              average_elastic_shear_moduli, enable_elasticity,
                                                               use_reference_strainrate, dte);
 
                 // the procedure to get the value of theta_old, so theta at the previous
@@ -432,7 +432,7 @@ namespace aspect
                 if (friction_mechanism == steady_state_rate_and_state_dependent_friction)
                   current_theta += critical_slip_distance / steady_state_velocity;
                 else
-                  current_theta += compute_theta(theta_old, current_edot_ii,
+                  current_theta += compute_theta(theta_old, effective_edot_ii,
                                                  in.current_cell->extent_in_direction(0), critical_slip_distance);
 
                 out.reaction_terms[q][theta_composition_index] = current_theta - theta_old;

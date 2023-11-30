@@ -1334,18 +1334,18 @@ namespace aspect
 
 
       template <int dim>
-      double compute_current_edot_ii (const std::vector<double> &composition,
+      double compute_effective_edot_ii (const std::vector<double> &composition,
                                       const double ref_strain_rate,
                                       const double min_strain_rate,
                                       const SymmetricTensor<2,dim> &strain_rate,
                                       const double elastic_shear_module,
-                                      const bool use_elasticity,
+                                      const bool enable_elasticity,
                                       const bool use_reference_strainrate,
                                       const double dte)
       {
         // Assemble stress tensor if elastic behavior is enabled
         SymmetricTensor<2,dim> stress_old = numbers::signaling_nan<SymmetricTensor<2,dim>>();
-        if (use_elasticity == true)
+        if (enable_elasticity == true)
           {
             for (unsigned int q=0; q < SymmetricTensor<2,dim>::n_independent_components; ++q)
               stress_old[SymmetricTensor<2,dim>::unrolled_to_component_indices(q)] = composition[q];
@@ -1361,12 +1361,12 @@ namespace aspect
 
         // Step 2: calculate the viscous stress magnitude
         // and strain rate. If requested compute visco-elastic contributions.
-        double current_edot_ii = edot_ii;
+        double effective_edot_ii = edot_ii;
 
-        if (use_elasticity)
+        if (enable_elasticity)
           {
             if (use_reference_strainrate == true)
-              current_edot_ii = ref_strain_rate;
+              effective_edot_ii = ref_strain_rate;
             else
               {
                 const double viscoelastic_strain_rate_invariant = calculate_viscoelastic_strain_rate(strain_rate,
@@ -1374,7 +1374,7 @@ namespace aspect
                                                                   elastic_shear_module,
                                                                   dte);
 
-                current_edot_ii = std::max(viscoelastic_strain_rate_invariant,
+                effective_edot_ii = std::max(viscoelastic_strain_rate_invariant,
                                            min_strain_rate);
               }
 
@@ -1382,10 +1382,10 @@ namespace aspect
             // viscosity calculation below assumes stress = 2 * viscosity * strain_rate_invariant,
             // whereas the combined viscoelastic + viscous stresses already include the
             // 2x factor (see computation of edot inside elastic_rheology).
-            current_edot_ii /= 2.;
+            effective_edot_ii /= 2.;
           }
 
-        return current_edot_ii;
+        return effective_edot_ii;
       }
 
       template <int dim>
@@ -1603,20 +1603,20 @@ namespace aspect
 
 #undef INSTANTIATE
 
-      template double compute_current_edot_ii (const std::vector<double> &composition,
+      template double compute_effective_edot_ii (const std::vector<double> &composition,
                                                const double ref_strain_rate,
                                                const double min_strain_rate,
                                                const SymmetricTensor<2,2> &strain_rate,
                                                const double elastic_shear_module,
-                                               const bool use_elasticity,
+                                               const bool enable_elasticity,
                                                const bool use_reference_strainrate,
                                                const double dte);
-      template double compute_current_edot_ii (const std::vector<double> &composition,
+      template double compute_effective_edot_ii (const std::vector<double> &composition,
                                                const double ref_strain_rate,
                                                const double min_strain_rate,
                                                const SymmetricTensor<2,3> &strain_rate,
                                                const double elastic_shear_module,
-                                               const bool use_elasticity,
+                                               const bool enable_elasticity,
                                                const bool use_reference_strainrate,
                                                const double dte);
     }

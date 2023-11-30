@@ -105,7 +105,7 @@ namespace aspect
                                 const double angle_internal_friction,
                                 const double pressure,
                                 const double max_yield_stress,
-                                const double current_edot_ii = 0,
+                                const double effective_edot_ii = 0,
                                 const double cellsize = 0,
                                 const bool use_radiation_damping = false,
                                 const bool use_theta = false) const;

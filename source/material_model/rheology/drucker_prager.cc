@@ -70,7 +70,7 @@ namespace aspect
                                                 const double angle_internal_friction,
                                                 const double pressure,
                                                 const double max_yield_stress,
-                                                const double current_edot_ii,
+                                                const double effective_edot_ii,
                                                 const double cellsize,
                                                 const bool use_radiation_damping,
                                                 const bool use_theta) const
@@ -101,7 +101,7 @@ namespace aspect
             //   elastic_shear_moduli[j] / (2.0 * std::sqrt(elastic_shear_moduli[j] / reference_density))
             // or it can be approximated as a constant coefficient as it is done in van den Ende et al. 2018,
             // which is the way it is done here. The radiation damping coefficient is  0.5e6.
-            // Instead of velocity, current_edot_ii*cellsize is used.
+            // Instead of velocity, effective_edot_ii*cellsize is used.
 
             // ToDo: maybe change it to use the material properties at some point.
             // old comments that might become relevant again, if it is changed back:
@@ -110,11 +110,11 @@ namespace aspect
             // - i.e. computed as out.densities[i] = MaterialUtilities::average_value (volume_fractions, eos_outputs.densities, MaterialUtilities::arithmetic);
             // - but at the moment I don't have access to out in this function
             // - const double reference_density = this->get_adiabatic_conditions().density(in.position[0]);
-            // TODO: use the plastic strain rate instead of current_edot_ii
+            // TODO: use the plastic strain rate instead of effective_edot_ii
 
             // ToDo: rethink properly: plus or minus RDT?
 
-            yield_stress += current_edot_ii * cellsize *  0.5e6;
+            yield_stress += effective_edot_ii * cellsize *  0.5e6;
           }
 
         return std::min(yield_stress, max_yield_stress);

@@ -273,7 +273,7 @@ namespace aspect
 
         /**
          * A function that returns the volume fration of the user defined materials that
-         * should use rate-and-state friction properties from the friction_options rheology.
+         * should use rate-and-state friction properties from the friction_models rheology.
          */
         double
         get_fault_volume(const std::vector<double> &composition) const;

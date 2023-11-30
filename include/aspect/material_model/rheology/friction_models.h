@@ -151,7 +151,7 @@ namespace aspect
            * fields, it returns the newly calculated friction angle.
            */
           double
-          compute_friction_angle(const double current_edot_ii,
+          compute_friction_angle(const double effective_edot_ii,
                                  const unsigned int volume_fraction_index,
                                  const std::vector<double> &composition,
                                  typename DoFHandler<dim>::active_cell_iterator current_cell,
@@ -162,7 +162,7 @@ namespace aspect
            * A function that computes the current value for the state variable theta.
            */
           double compute_theta(double theta_old,
-                               const double current_edot_ii,
+                               const double effective_edot_ii,
                                const double cellsize,
                                const double critical_slip_distance) const;
 
@@ -175,7 +175,7 @@ namespace aspect
                                             const MaterialModel::MaterialModelInputs<dim> &in,
                                             const double min_strain_rate,
                                             const double ref_strain_rate,
-                                            bool use_elasticity,
+                                            bool enable_elasticity,
                                             bool use_reference_strainrate,
                                             const double &elastic_shear_moduli,
                                             const double dte,

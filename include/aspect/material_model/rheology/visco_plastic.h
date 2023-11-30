@@ -110,7 +110,7 @@ namespace aspect
       /**
        * the current edot ii - second invariant of the deviatoric stress tensor
        */
-      std::vector<double> current_edot_ii;
+      std::vector<double> effective_edot_ii;
     };
 
     namespace Rheology

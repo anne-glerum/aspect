@@ -226,8 +226,8 @@ namespace aspect
           // to compute the elastic force term.
           bool plastic_yielding = false;
 
-          // initialize vector to be filled with values of current_edot_ii which is needed for friction additional output
-          std::vector<double> current_edot_ii_for_friction_output(volume_fractions.size(),0.);
+          // initialize vector to be filled with values of effective_edot_ii which is needed for friction additional output
+          std::vector<double> effective_edot_ii_for_friction_output(volume_fractions.size(),0.);
           
           IsostrainViscosities isostrain_viscosities;
           if (in.requests_property(MaterialProperties::viscosity) || in.requests_property(MaterialProperties::additional_outputs))
@@ -279,8 +279,8 @@ namespace aspect
                   derivatives->viscosity_derivative_wrt_pressure[i] = numbers::signaling_nan<double>();
                 }
 
-              // Fill vector with values of current_edot_ii which is needed for friction additional output
-              current_edot_ii_for_friction_output = isostrain_viscosities.current_edot_ii;
+              // Fill vector with values of effective_edot_ii which is needed for friction additional output
+              effective_edot_ii_for_friction_output = isostrain_viscosities.effective_edot_ii;
             }
 
           // Now compute changes in the compositional fields (e.g., the accumulated strain).
@@ -316,11 +316,11 @@ namespace aspect
                   const bool use_reference_strainrate = (this->get_timestep_number() == 0) &&
                                                         (in.strain_rate[i].norm() <= std::numeric_limits<double>::min());
                   const double dte = rheology->elastic_rheology.elastic_timestep();
-                  rheology->friction_models.compute_theta_reaction_terms(i, volume_fractions, in, get_min_strain_rate(), rheology->ref_strain_rate, rheology->use_elasticity,
+                  rheology->friction_models.compute_theta_reaction_terms(i, volume_fractions, in, get_min_strain_rate(), rheology->ref_strain_rate, this->get_parameters().enable_elasticity,
                                                                          use_reference_strainrate, average_elastic_shear_moduli[i], dte, out);
 
                   // if rate and state friction is used, fill the additional output fields
-                  rheology->friction_models.fill_friction_outputs(i,volume_fractions,in,out,current_edot_ii_for_friction_output);
+                  rheology->friction_models.fill_friction_outputs(i,volume_fractions,in,out,effective_edot_ii_for_friction_output);
                 }
             }
         }
@@ -532,21 +532,6 @@ namespace aspect
 
     template <int dim>
     void
-    ViscoPlastic<dim>::create_additional_named_outputs (MaterialModel::MaterialModelOutputs<dim> &out) const
-    {
-      rheology->create_plastic_outputs(out);
-
-      if (rheology->use_elasticity)
-        rheology->elastic_rheology.create_elastic_outputs(out);
-
-      if (rheology->friction_models.use_theta())
-        rheology->friction_models.create_friction_outputs(out);
-    }
-
-
-
-    template <int dim>
-    void
     ViscoPlastic<dim>::declare_parameters (ParameterHandler &prm)
     {
       prm.enter_subsection("Material model");
@@ -684,8 +669,8 @@ namespace aspect
       if (this->get_parameters().enable_elasticity)
         rheology->elastic_rheology.create_elastic_outputs(out);
 
-      if (rheology->friction_options.use_theta())
-        rheology->friction_options.create_friction_outputs(out);
+      if (rheology->friction_models.use_theta())
+        rheology->friction_models.create_friction_outputs(out);
     }
 
   }

@@ -384,7 +384,7 @@ namespace aspect
                                                                         update_gradients,
                                                                         this->introspection().component_indices.velocities[0]);
 
-            // Initialize the evaluator for the velocity gradients
+            // Initialize the evaluator for the velocity gradients.
             evaluator->reinit(in.current_cell, quadrature_positions);
             evaluator->evaluate(solution_values,
                                 EvaluationFlags::gradients);
@@ -552,72 +552,7 @@ namespace aspect
           }
       }
 
-      // Fill the function that computes the reaction rates for the iterator
-      // splitting step that at the beginning of the new timestep updates the
-      // stored compositions $tau^{0\mathrm{adv}}$ at time $t$ to $tau^{t}$.
-      // Make sure that the old_solution is used as input to the material model and that
-      // the reaction_rates are take into account the correct timestep that they will be
-      // multiplied with.
-      // Retrieve $\tau^{t}_{0adv}$ from solution, which is contained in in.composition.
-      // $\tau^{t}_T = 2 \eta^{t}_effcreep (\dot{\varepsilon}^{t}_T + \frac{\tau^{t}_{0adv}}{2 G \Delta te}$.
-      // Compute difference $\tau^{t}_T - \tau^{t}_{0adv}$.
-      // Multiply with previous timestep, divide by current timestep.
-      // Can we Assert here that $tau^{t+\Delta te} == \eta_{eff} D^{t+\Delta te}_{eff}$?
-      template <int dim>
-      void
-      Elasticity<dim>::fill_reaction_rates (const MaterialModel::MaterialModelInputs<dim> &in,
-                                              const std::vector<double> &average_elastic_shear_moduli,
-                                              MaterialModel::MaterialModelOutputs<dim> &out) const
-      {
-        ReactionRateOutputs<dim> *reaction_rate_out = out.template get_additional_output<ReactionRateOutputs<dim>>();
 
-        if (reaction_rate_out == nullptr)
-          return;
-
-        // TODO only do this when reaction_rates are required (in.request_property)
-
-        // At the moment when the reaction rate are required (at the beginning of the timestep),
-        // 'solution' holds the solution of the previous timestep, and is the same as 'old_solution'.
-        // MaterialModelInputs are based on 'solution' when calling the MaterialModel for the reaction rates.
-        // This means that we can use 'in' to get to the $\tau^{0}$ and velocity/strain rate of the
-        // previous timestep.
-        if (in.current_cell.state() == IteratorState::valid && this->get_timestep_number() > 0)
-        {
-          for (unsigned int i = 0; i < in.n_evaluation_points(); ++i)
-          {
-            // Get $\tau^{0}$ of the previous timestep t from the compositional fields.
-            // This stress includes the rotation and advection. 
-            SymmetricTensor<2, dim> stress_0_t;
-            for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
-              stress_0_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)] = in.composition[i][j];
-
-            // $\eta^{t}_{effcreep}
-            const double effective_creep_viscosity = out.viscosities[i];
-
-            // $\eta_{el} = G \Delta t_{el}$
-            const double elastic_viscosity = calculate_elastic_viscosity(average_elastic_shear_moduli[i]);
-
-            // The total stress of timestep t.
-            const SymmetricTensor<2, dim> stress_t = 2. * effective_creep_viscosity * (deviator(in.strain_rate[i]) + stress_0_t / (2. * elastic_viscosity));
-
-            // Fill reaction rates.
-            // Assume dte is always equal to dt.
-            // During this timestep, the reaction rates will be multiplied
-            // with the current timestep size to turn the rate of change into a change. 
-            // However, this update belongs
-            // to the previous timestep. Therefore we divide by the
-            // current timestep and multiply with the previous one. 
-            // When multiplied with the current timestep, this will give
-            // rate * previous_dt = previous_change. 
-            const double previous_dt = this->get_old_timestep();
-            const double current_dt  = this->get_timestep();
-            const double timestep_compensation_factor = previous_dt / current_dt;
-
-            for (unsigned int j = 0; j < SymmetricTensor<2, dim>::n_independent_components; ++j)
-              reaction_rate_out->reaction_rates[i][j] = (-stress_0_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)] + stress_t[SymmetricTensor<2, dim>::unrolled_to_component_indices(j)]) * timestep_compensation_factor;
-          }
-        }
-      }
 
       template <int dim>
       double
