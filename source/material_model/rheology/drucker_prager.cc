@@ -135,7 +135,7 @@ namespace aspect
                                              const bool use_theta) const
       {
         const double strain_rate_effective_inv = 1./(2.*effective_strain_rate);
-        
+
         const double yield_stress = compute_yield_stress(cohesion, angle_internal_friction, pressure, max_yield_stress, strain_rate_effective_inv, cellsize, use_radiation_damping, use_theta);
 
         // If there is no damper, the yielding plastic element accommodates all the strain
@@ -283,11 +283,11 @@ namespace aspect
           damper_viscosity = prm.get_double("Plastic damper viscosity");
         else
           damper_viscosity = 0.;
- 
+
         if (Plugins::plugin_type_matches<MaterialModel::ViscoPlastic<dim>>(this->get_material_model())
-                && this->get_parameters().enable_elasticity)
+            && this->get_parameters().enable_elasticity)
           AssertThrow(damper_viscosity == 0. || !use_plastic_damper,
-          ExcMessage("The viscoplastic material with elasticity enabled cannot include a plastic damper."));
+                      ExcMessage("The viscoplastic material with elasticity enabled cannot include a plastic damper."));
 
       }
 

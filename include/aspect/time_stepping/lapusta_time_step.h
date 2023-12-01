@@ -64,7 +64,7 @@ namespace aspect
                                             MaterialModel::MaterialModelInputs<dim> &in,
                                             MaterialModel::MaterialModelOutputs<dim> &out,
                                             const unsigned int n_q_points,
-                                            std::vector<Tensor<1,dim> > velocity_values) const;
+                                            std::vector<Tensor<1,dim>> velocity_values) const;
 
       private:
     };

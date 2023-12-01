@@ -674,13 +674,13 @@ namespace aspect
        */
       template <int dim>
       double compute_effective_edot_ii (const std::vector<double> &composition,
-                                      const double ref_strain_rate,
-                                      const double min_strain_rate,
-                                      const SymmetricTensor<2,dim> &strain_rate,
-                                      const double elastic_shear_module,
-                                      const bool enable_elasticity,
-                                      const bool use_reference_strainrate,
-                                      const double dte);
+                                        const double ref_strain_rate,
+                                        const double min_strain_rate,
+                                        const SymmetricTensor<2,dim> &strain_rate,
+                                        const double elastic_shear_module,
+                                        const bool enable_elasticity,
+                                        const bool use_reference_strainrate,
+                                        const double dte);
 
       /**
        * Calculate the square root of the second moment invariant for the deviatoric

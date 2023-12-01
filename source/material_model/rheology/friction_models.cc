@@ -260,14 +260,14 @@ namespace aspect
                   // ASPECT takes friction angle in radians, so conversion with tan/atan().
                   double current_friction = std::atan (mu);
                   const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(position, coordinate_system_RSF).get_coordinates();
-                 /* Assert((mu < 1) && (0 < current_friction <=1.6), ExcMessage(
-                           "Something is wrong with the tan/atan conversion of friction coefficient to friction angle in RAD. mu is: "+ Utilities::to_string(mu) +
-                           "\n a is: "+  Utilities::to_string(rate_and_state_parameter_a) + ", b is: "
-                           + Utilities::to_string(rate_and_state_parameter_b)+ ", L is: " +  Utilities::to_string(critical_slip_distance) +
-                           ",\n friction angle [RAD] is: "+ Utilities::to_string(current_friction)+", friction coeff is: "+Utilities::to_string(mu)+
-                           ",\n theta is: "+ Utilities::to_string(theta)+", current edot_ii is: "
-                           + Utilities::to_string(effective_edot_ii)+ ".\n The position is:\n dir 0 = "+ Utilities::to_string(coords[0])+
-                           "\n dir 1 = "+ Utilities::to_string(coords[1])+ "\n dir 2 = "+ Utilities::to_string(coords[2])));*/
+                  /* Assert((mu < 1) && (0 < current_friction <=1.6), ExcMessage(
+                            "Something is wrong with the tan/atan conversion of friction coefficient to friction angle in RAD. mu is: "+ Utilities::to_string(mu) +
+                            "\n a is: "+  Utilities::to_string(rate_and_state_parameter_a) + ", b is: "
+                            + Utilities::to_string(rate_and_state_parameter_b)+ ", L is: " +  Utilities::to_string(critical_slip_distance) +
+                            ",\n friction angle [RAD] is: "+ Utilities::to_string(current_friction)+", friction coeff is: "+Utilities::to_string(mu)+
+                            ",\n theta is: "+ Utilities::to_string(theta)+", current edot_ii is: "
+                            + Utilities::to_string(effective_edot_ii)+ ".\n The position is:\n dir 0 = "+ Utilities::to_string(coords[0])+
+                            "\n dir 1 = "+ Utilities::to_string(coords[1])+ "\n dir 2 = "+ Utilities::to_string(coords[2])));*/
                   AssertThrow((std::isinf(mu) || numbers::is_nan(mu)) == false, ExcMessage(
                                 "Your friction coefficient becomes nan or inf. Please check all your friction parameters. In case of "
                                 "rate-and-state like friction, don't forget to check on a,b, and the critical slip distance, or theta."
@@ -376,9 +376,9 @@ namespace aspect
                 // q is from a for-loop over n_evaluation_points
                 const double effective_edot_ii =
                   MaterialUtilities::compute_effective_edot_ii (in.composition[q], ref_strain_rate,
-                                                              min_strain_rate, in.strain_rate[q],
-                                                              average_elastic_shear_moduli, enable_elasticity,
-                                                              use_reference_strainrate, dte);
+                                                                min_strain_rate, in.strain_rate[q],
+                                                                average_elastic_shear_moduli, enable_elasticity,
+                                                                use_reference_strainrate, dte);
 
                 // the procedure to get the value of theta_old, so theta at the previous
                 // timestep is copied and adapted from elasticity.cc
@@ -1099,7 +1099,7 @@ namespace aspect
       void
       FrictionModels<dim>::create_friction_outputs (MaterialModel::MaterialModelOutputs<dim> &out) const
       {
-        if (out.template get_additional_output<FrictionAdditionalOutputs<dim> >() == nullptr)
+        if (out.template get_additional_output<FrictionAdditionalOutputs<dim>>() == nullptr)
           {
             const unsigned int n_points = out.n_evaluation_points();
             out.additional_outputs.push_back(
@@ -1118,7 +1118,7 @@ namespace aspect
                             MaterialModel::MaterialModelOutputs<dim> &out,
                             const std::vector<double> edot_ii) const
       {
-        FrictionAdditionalOutputs<dim> *friction_out = out.template get_additional_output<FrictionAdditionalOutputs<dim> >();
+        FrictionAdditionalOutputs<dim> *friction_out = out.template get_additional_output<FrictionAdditionalOutputs<dim>>();
 
         if (friction_out != nullptr)
           {

@@ -332,7 +332,7 @@ namespace aspect
            * The critical slip distance in rate-and-state friction. Used to calculate the state
            * variable theta.
            */
-          std::unique_ptr<Functions::ParsedFunction<dim> > critical_slip_distance_function;
+          std::unique_ptr<Functions::ParsedFunction<dim>> critical_slip_distance_function;
 
           /**
            * Arbitrary slip rate at which friction equals the reference friction angle in
@@ -353,8 +353,8 @@ namespace aspect
            * Parsed functions that specify the rate-and-state parameters a and b which must be
            * given in the input file using the function method.
            */
-          std::unique_ptr<Functions::ParsedFunction<dim> > rate_and_state_parameter_a_function;
-          std::unique_ptr<Functions::ParsedFunction<dim> > rate_and_state_parameter_b_function;
+          std::unique_ptr<Functions::ParsedFunction<dim>> rate_and_state_parameter_a_function;
+          std::unique_ptr<Functions::ParsedFunction<dim>> rate_and_state_parameter_b_function;
 
           /**
            * Slip-rate dependent rate-and-state friction

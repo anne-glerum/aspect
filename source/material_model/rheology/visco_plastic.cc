@@ -358,9 +358,9 @@ namespace aspect
 
             // Step 5: plastic yielding
 
-              // Determine if the pressure used in Drucker Prager plasticity will be capped at 0 (default).
-              // This may be necessary in models without gravity and the dynamic stresses are much higher
-              // than the lithostatic pressure.
+            // Determine if the pressure used in Drucker Prager plasticity will be capped at 0 (default).
+            // This may be necessary in models without gravity and the dynamic stresses are much higher
+            // than the lithostatic pressure.
 
             double pressure_for_plasticity = in.pressure[i];
             if (allow_negative_pressures_in_plasticity == false)
@@ -464,10 +464,10 @@ namespace aspect
               }
 
             // TODO: Implement brentq or fixed-point iterations until the difference
-            // between the log of the strain rate and the log of the strain rate based on the 
+            // between the log of the strain rate and the log of the strain rate based on the
             // proposed stress is zero (up to a certain tolerance).
             // Explanation: The variables in Eq. 36 of Moresi et al. (2003) for the effective viscosity
-            // can depend on the strain rate. In this case (i.e. for dislocation creep or strain-dependent weakening), 
+            // can depend on the strain rate. In this case (i.e. for dislocation creep or strain-dependent weakening),
             // local iterations are needed to find to be performed to find lambda.
             // We won't do this for now, we will first fix the strain-independent case.
 
@@ -768,9 +768,9 @@ namespace aspect
         friction_models.initialize_simulator (this->get_simulator());
         friction_models.parse_parameters(prm);
 
-        AssertThrow((this->get_parameters().enable_elasticity && friction_models.use_radiation_damping) 
-        || (this->get_parameters().enable_elasticity && friction_models.use_radiation_damping==false) 
-        || (this->get_parameters().enable_elasticity==false && friction_models.use_radiation_damping==false),
+        AssertThrow((this->get_parameters().enable_elasticity && friction_models.use_radiation_damping)
+                    || (this->get_parameters().enable_elasticity && friction_models.use_radiation_damping==false)
+                    || (this->get_parameters().enable_elasticity==false && friction_models.use_radiation_damping==false),
                     ExcMessage("Usage of radiation damping only makes sense when elasticity is enabled."));
 
 

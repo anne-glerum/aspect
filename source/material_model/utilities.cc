@@ -1335,13 +1335,13 @@ namespace aspect
 
       template <int dim>
       double compute_effective_edot_ii (const std::vector<double> &composition,
-                                      const double ref_strain_rate,
-                                      const double min_strain_rate,
-                                      const SymmetricTensor<2,dim> &strain_rate,
-                                      const double elastic_shear_module,
-                                      const bool enable_elasticity,
-                                      const bool use_reference_strainrate,
-                                      const double dte)
+                                        const double ref_strain_rate,
+                                        const double min_strain_rate,
+                                        const SymmetricTensor<2,dim> &strain_rate,
+                                        const double elastic_shear_module,
+                                        const bool enable_elasticity,
+                                        const bool use_reference_strainrate,
+                                        const double dte)
       {
         // Assemble stress tensor if elastic behavior is enabled
         SymmetricTensor<2,dim> stress_old = numbers::signaling_nan<SymmetricTensor<2,dim>>();
@@ -1375,7 +1375,7 @@ namespace aspect
                                                                   dte);
 
                 effective_edot_ii = std::max(viscoelastic_strain_rate_invariant,
-                                           min_strain_rate);
+                                             min_strain_rate);
               }
 
             // The viscoelastic strain rate is divided by 2 here as the Drucker Prager
@@ -1604,21 +1604,21 @@ namespace aspect
 #undef INSTANTIATE
 
       template double compute_effective_edot_ii (const std::vector<double> &composition,
-                                               const double ref_strain_rate,
-                                               const double min_strain_rate,
-                                               const SymmetricTensor<2,2> &strain_rate,
-                                               const double elastic_shear_module,
-                                               const bool enable_elasticity,
-                                               const bool use_reference_strainrate,
-                                               const double dte);
+                                                 const double ref_strain_rate,
+                                                 const double min_strain_rate,
+                                                 const SymmetricTensor<2,2> &strain_rate,
+                                                 const double elastic_shear_module,
+                                                 const bool enable_elasticity,
+                                                 const bool use_reference_strainrate,
+                                                 const double dte);
       template double compute_effective_edot_ii (const std::vector<double> &composition,
-                                               const double ref_strain_rate,
-                                               const double min_strain_rate,
-                                               const SymmetricTensor<2,3> &strain_rate,
-                                               const double elastic_shear_module,
-                                               const bool enable_elasticity,
-                                               const bool use_reference_strainrate,
-                                               const double dte);
+                                                 const double ref_strain_rate,
+                                                 const double min_strain_rate,
+                                                 const SymmetricTensor<2,3> &strain_rate,
+                                                 const double elastic_shear_module,
+                                                 const bool enable_elasticity,
+                                                 const bool use_reference_strainrate,
+                                                 const double dte);
     }
   }
 }

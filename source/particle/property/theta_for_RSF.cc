@@ -74,7 +74,7 @@ namespace aspect
       void
       ThetaRSF<dim>::update_particle_property(const unsigned int data_position,
                                               const Vector<double> &solution,
-                                              const std::vector<Tensor<1,dim> > &gradients,
+                                              const std::vector<Tensor<1,dim>> &gradients,
                                               typename ParticleHandler<dim>::particle_iterator &particle) const
       {
         const MaterialModel::ViscoPlastic<dim> &viscoplastic
@@ -147,10 +147,10 @@ namespace aspect
 
 
       template <int dim>
-      std::vector<std::pair<std::string, unsigned int> >
+      std::vector<std::pair<std::string, unsigned int>>
       ThetaRSF<dim>::get_property_information() const
       {
-        std::vector<std::pair<std::string,unsigned int> > property_information;
+        std::vector<std::pair<std::string,unsigned int>> property_information;
 
         //Check which fields are used in model and make an output for each.
         if (this->introspection().compositional_name_exists("theta"))

@@ -37,7 +37,7 @@ namespace aspect
        * \cite{lapusta_three-dimensional_2009} and \cite{herrendorfer_invariant_2018}.
        */
 
-      const QIterated<dim> quadrature_formula (QTrapez<1>(),
+      const QIterated<dim> quadrature_formula (QTrapezoid<1>(),
                                                this->get_parameters().stokes_velocity_degree);
 
       FEValues<dim> fe_values (this->get_mapping(),
@@ -50,7 +50,7 @@ namespace aspect
       const unsigned int n_q_points = quadrature_formula.size();
 
       // get the velocities and "in" and "out"
-      std::vector<Tensor<1,dim> > velocity_values(n_q_points);
+      std::vector<Tensor<1,dim>> velocity_values(n_q_points);
       MaterialModel::MaterialModelInputs<dim> in(n_q_points,
                                                  this->introspection().n_compositional_fields);
       MaterialModel::MaterialModelOutputs<dim> out(n_q_points,
@@ -147,7 +147,7 @@ namespace aspect
                                                               MaterialModel::MaterialModelInputs<dim> &in,
                                                               MaterialModel::MaterialModelOutputs<dim> &out,
                                                               const unsigned int n_q_points,
-                                                              std::vector<Tensor<1,dim> > velocity_values) const
+                                                              std::vector<Tensor<1,dim>> velocity_values) const
     {
       const MaterialModel::ViscoPlastic<dim> &viscoplastic
         = Plugins::get_plugin_as_type<const MaterialModel::ViscoPlastic<dim>>(this->get_material_model());
