@@ -80,7 +80,6 @@ namespace aspect
          * and viscosity is rescaled back to the yield envelope.
          */
         std::vector<double> yielding;
-
     };
 
     /**
@@ -107,6 +106,11 @@ namespace aspect
        * The current cohesion.
        */
       std::vector<double> current_cohesions;
+
+      /**
+       * the current edot ii - second invariant of the deviatoric stress tensor
+       */
+      std::vector<double> effective_edot_ii;
     };
 
     namespace Rheology
@@ -133,6 +137,7 @@ namespace aspect
           calculate_isostrain_viscosities ( const MaterialModel::MaterialModelInputs<dim> &in,
                                             const unsigned int i,
                                             const std::vector<double> &volume_fractions,
+                                            typename DoFHandler<dim>::active_cell_iterator current_cell,
                                             const std::vector<double> &phase_function_values = std::vector<double>(),
                                             const std::vector<unsigned int> &n_phase_transitions_per_composition =
                                               std::vector<unsigned int>()) const;
@@ -206,6 +211,12 @@ namespace aspect
           double min_strain_rate;
 
           /**
+           * Reference strain rate for the first non-linear iteration
+           * in the first time step.
+           */
+          double ref_strain_rate;
+
+          /**
            * Enumeration for selecting which viscosity averaging scheme to use.
            */
           MaterialUtilities::CompositionalAveragingOperation viscosity_averaging;
@@ -229,12 +240,6 @@ namespace aspect
         private:
 
           /**
-           * Reference strain rate for the first non-linear iteration
-           * in the first time step.
-           */
-          double ref_strain_rate;
-
-          /**
            * Minimum and maximum viscosities used to improve the
            * stability of the rheology model.
            * These parameters contain one value per composition and phase (potentially the same value).
@@ -255,13 +260,22 @@ namespace aspect
           } viscous_flow_law;
 
           /**
+           * Whether to take the minimum of the diffusion and dislocation
+           * creep viscosities (if true), or to compute a composite (if false)
+           * as (viscosity_diffusion * viscosity_dislocation) / (viscosity_diffusion + viscosity_dislocation).
+           */
+          bool use_minimum_creep_viscosity;
+
+          /**
            * Enumeration for selecting which type of yield mechanism to use.
-           * Select between Drucker Prager and stress limiter.
+           * Select between Drucker Prager, stress limiter and Tresca which is sometimes
+           * used in rate and state models, e.g. \\cite{erickson_community_2020}.
            */
           enum YieldScheme
           {
             stress_limiter,
-            drucker_prager
+            drucker_prager,
+            tresca
           } yield_mechanism;
 
           /**

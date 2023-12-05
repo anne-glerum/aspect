@@ -26,6 +26,9 @@
 
 #include <aspect/material_model/utilities.h>
 #include <aspect/simulator_access.h>
+
+#include <aspect/material_model/rheology/friction_models.h>
+
 namespace aspect
 {
   namespace MaterialModel
@@ -101,7 +104,11 @@ namespace aspect
           compute_yield_stress (const double cohesion,
                                 const double angle_internal_friction,
                                 const double pressure,
-                                const double max_yield_stress) const;
+                                const double max_yield_stress,
+                                const double effective_edot_ii = 0,
+                                const double cellsize = 0,
+                                const bool use_radiation_damping = false,
+                                const bool use_theta = false) const;
 
           /**
            * Compute the apparent viscosity using the yield stress and effective strain rate.
@@ -115,7 +122,10 @@ namespace aspect
                              const double pressure,
                              const double effective_strain_rate,
                              const double max_yield_stress,
-                             const double non_yielding_viscosity = std::numeric_limits<double>::infinity()) const;
+                             const double non_yielding_viscosity = std::numeric_limits<double>::infinity(),
+                             const double cellsize = 0,
+                             const bool use_radiation_damping = false,
+                             const bool use_theta = false) const;
 
           /**
            * Compute the strain rate and first stress derivative

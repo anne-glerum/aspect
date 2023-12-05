@@ -197,6 +197,18 @@ namespace aspect
          */
         bool is_compressible () const override;
 
+        /**
+         * Return the elastic viscosity, which equals the shear modulus
+         * times the elastic timestep plus possibly a damper viscosity.
+         */
+        double get_elastic_viscosity (const double shear_modulus) const;
+
+        /**
+         * Return the elastic timestep, which can be larger than the
+         * computational timestep.
+         */
+        double get_elastic_timestep () const;
+
         static
         void
         declare_parameters (ParameterHandler &prm);
@@ -221,7 +233,8 @@ namespace aspect
         is_yielding (const double pressure,
                      const double temperature,
                      const std::vector<double> &composition,
-                     const SymmetricTensor<2,dim> &strain_rate) const;
+                     const SymmetricTensor<2,dim> &strain_rate,
+                     typename DoFHandler<dim>::active_cell_iterator current_cell) const;
 
         /**
          * A function that returns whether the material is plastically
@@ -230,6 +243,46 @@ namespace aspect
          */
         bool
         is_yielding (const MaterialModelInputs<dim> &in) const;
+
+        /**
+         * A function that returns whether a state variable theta is used in
+         * the friction formulation.
+         */
+        bool
+        use_theta () const;
+
+        /** A function that returns delta_theta_max which is needed to calculate the necessary
+         * minimum time step needed for rate-and-state friction models. The calculation of the
+         * timestep is done following \cite{lapusta_elastodynamic_2000},
+        * \cite{lapusta_three-dimensional_2009} and \cite{herrendorfer_invariant_2018}
+         */
+        std::pair<double,double>
+        compute_delta_theta_max (const Point<dim> &position,
+                                 const double delta_x,
+                                 const double pressure,
+                                 const std::vector<double> &composition) const;
+
+        /**
+         * A function to compute the minimum healing time step which is used to calculate the necessary
+                 * minimum time step needed for rate-and-state friction models. The calculation of the
+                 * timestep is done following \cite{lapusta_elastodynamic_2000},
+                * \cite{lapusta_three-dimensional_2009} and \cite{herrendorfer_invariant_2018}
+                 */
+        double
+        compute_min_healing_time_step (const std::vector<double> &composition) const;
+
+        /**
+         * A function that returns the volume fration of the user defined materials that
+         * should use rate-and-state friction properties from the friction_models rheology.
+         */
+        double
+        get_fault_volume(const std::vector<double> &composition) const;
+
+        /**
+         * A function that returns the elastic shear modulus according to the volume fractions
+         */
+        double
+        get_elastic_shear_modulus (const std::vector<double> &composition) const;
 
       private:
 

@@ -90,6 +90,9 @@ namespace aspect
     {
       double new_time_step = std::numeric_limits<double>::max();
 
+      if (min_time_step_size_for_first_time_step)
+        new_time_step = minimum_time_step_size;
+
       for (const auto &plugin : active_plugins)
         {
           const double this_time_step = plugin->execute();
@@ -131,7 +134,7 @@ namespace aspect
       info.next_time_step_size = new_time_step;
 
       AssertThrow (new_time_step > 0,
-                   ExcMessage("The time step length for the each time step needs to be positive, "
+                   ExcMessage("The time step length for each time step needs to be positive, "
                               "but the computed step length was: " + std::to_string(new_time_step) + ". "
                               "Please check the time stepping plugins in use."));
 
@@ -144,6 +147,15 @@ namespace aspect
           reaction = static_cast<Reaction>(std::min(reaction, answer.first));
           repeat_step_size = std::min(repeat_step_size, answer.second);
         }
+
+      // take either the old timestep size times the cutback amount or the previously determined
+      // timestep size if this is smaller. Prevents recalculating and recalculating with continuously
+      // decreasing timestep sizes
+      repeat_step_size = std::min(repeat_step_size, info.next_time_step_size);
+      // make sure to consider the minimum time step size also for the repeated timestep length. Do
+      // only cosider this if we do not terminate after this time step
+      if (info.reduced_by_termination_plugin = false)
+        repeat_step_size = std::max(repeat_step_size, minimum_time_step_size);
 
       reaction = static_cast<Reaction>(Utilities::MPI::min(static_cast<int>(reaction), this->get_mpi_communicator()));
       repeat_step_size = Utilities::MPI::min(repeat_step_size, this->get_mpi_communicator());
@@ -276,6 +288,13 @@ namespace aspect
                           Patterns::Double (0.),
                           "Specify a minimum time step size (or 0 to disable).");
 
+        // This parameter is only needed to speed the trial rate-and-state friction
+        // models up a bit because else they would repeat the first time step several times.
+        // ToDo: Remove, once the models are faster again!
+        prm.declare_entry("Minimum time step size for first time step", "false",
+                          Patterns::Bool (),
+                          "Whether to use the minimum time step size for the very first time step.");
+
         const std::string pattern_of_names
           = std::get<dim>(registered_plugins).get_pattern_of_names ();
 
@@ -313,6 +332,8 @@ namespace aspect
 
         minimum_time_step_size = prm.get_double("Minimum time step size")
                                  * (this->convert_output_to_years() ? year_in_seconds : 1.0);
+
+        min_time_step_size_for_first_time_step = prm.get_bool("Minimum time step size for first time step");
 
         std::vector<std::string>
         model_names
