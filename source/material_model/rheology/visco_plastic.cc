@@ -46,7 +46,7 @@ namespace aspect
     }
 
     template <int dim>
-    PlasticAdditionalOutputs<dim>::PlasticAdditionalOutputs (const unsigned int n_points)
+    PlasticAdditionalOutputs<dim>::PlasticAdditionalOutputs(const unsigned int n_points)
       : NamedAdditionalMaterialOutputs<dim>(make_plastic_additional_outputs_names()),
         cohesions(n_points, numbers::signaling_nan<double>()),
         friction_angles(n_points, numbers::signaling_nan<double>()),
@@ -319,7 +319,7 @@ namespace aspect
             const std::array<double,dim> coords = this->get_geometry_model().cartesian_to_other_coordinates(in.position[i], friction_models.coordinate_system_RSF).get_coordinates();
             double current_friction = drucker_prager_parameters.angle_internal_friction * weakening_factors[1];
 
-            // Steb 4b: calculate friction angle dependent on strain rate if specified
+            // Steb 4b: calculate the friction angle dependent on strain rate if specified
             // apply the strain rate dependence to the friction angle (including strain weakening  if present)
             // Note: Maybe this should also be turned around to first apply strain rate dependence and then
             // the strain weakening to the dynamic friction angle. Didn't come up with a clear argument for
@@ -340,7 +340,7 @@ namespace aspect
               std::cout << std::endl << coords[0] << "-" << coords[1] << "-" << coords[2] << "---" << "before plasticity  : edot_ii: "<<effective_edot_ii<<" non_yielding_stress: "<<non_yielding_stress << std::endl;
             */
 
-            // Steb 4c: calculate friction angle dependent on rate and/or state if specified and we are inside the fault
+            // Step 4c: calculate friction angle dependent on rate and/or state if specified and we are inside the fault
             // or if dynamic friction is used
             // ToDo: like this, we do not take the effective friction factor into account for "independent"
             // friction option. Should we? Would that be useful? -> this comment might be outdated, as "independent" is called "static_friction" in main

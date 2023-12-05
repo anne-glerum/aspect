@@ -277,7 +277,7 @@ namespace aspect
            * function | rate and state dependent friction |
            * rate and state dependent friction plus linear slip weakening |
            * slip rate dependent rate and state dependent friction |
-           * regularized rate and state dependent friction
+           * regularized rate and state dependent friction | function
            */
           FrictionMechanism friction_mechanism;
 
