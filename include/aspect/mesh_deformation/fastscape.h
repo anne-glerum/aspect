@@ -117,6 +117,18 @@ namespace aspect
          */
         void load (const std::map<std::string, std::string> &status_strings) override;
 
+        /**
+         * Return the fraction of marine sediments from background marine sedimentation
+         * of the total marine and continental sediments for a certain point.
+         */
+        double get_marine_fraction(Point<dim> point) const;
+
+        /**
+         * Return the fraction of silt out of the total sand plus silt continental sediments
+         * in the marine domain for a certain point.
+         */
+        double get_silt_fraction(Point<dim> point) const;
+
       private:
         /**
          * Function used to set the FastScape ghost nodes. FastScape boundaries are
@@ -170,6 +182,7 @@ namespace aspect
          * Execute FastScape
          */
         void execute_fastscape(std::vector<double> &elevation,
+                               std::vector<double> &silt_fraction,
                                std::vector<double> &extra_vtk_field,
                                std::vector<double> &velocity_x,
                                std::vector<double> &velocity_y,
@@ -585,9 +598,10 @@ namespace aspect
         double silt_efold_depth;
 
         /**
-         * Sand-silt ratio
+         * Fraction of silt out of the total continental sediments upon
+         * entering the marine domain.
          */
-        double sand_silt_ratio;
+        double initial_silt_fraction;
 
         /**
          * Averaging depth/thickness for sand-silt equation (m).
@@ -659,6 +673,16 @@ namespace aspect
         /**
          * @}
          */
+
+        /**
+         * Function to hold and query the fraction of marine sediments of the total marine and continental sediments.
+         */
+        mutable Functions::InterpolatedUniformGridData<dim> *marine_fractions;
+
+        /**
+         * Function to hold and query the fraction of silt.
+         */
+        mutable Functions::InterpolatedUniformGridData<dim> *silt_fractions;
     };
   }
 }

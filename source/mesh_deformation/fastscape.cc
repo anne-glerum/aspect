@@ -310,7 +310,6 @@ namespace aspect
                                                              AffineConstraints<double> &mesh_velocity_constraints,
                                                              const std::set<types::boundary_id> &boundary_ids) const
     {
-
       // Because there is no increase in time during timestep 0, we return and only
       // initialize and run FastScape from timestep 1 and on.
       if (this->get_timestep_number() == 0)
@@ -334,6 +333,9 @@ namespace aspect
       const unsigned int fastscape_array_size = fastscape_nx*fastscape_ny;
       std::vector<double> mesh_velocity_z(fastscape_array_size);
 
+      std::vector<double> silt_fraction(fastscape_array_size);
+      std::vector<double> marine_fraction(fastscape_array_size);
+
       // FastScape requires multiple specially defined and ordered variables sent to its functions. To make
       // the transfer of these down to one process easier, we first fill out a vector of local_aspect_values,
       // then when we get down to one process we use these local_aspect_values to fill the double arrays
@@ -353,6 +355,10 @@ namespace aspect
           std::vector<double> bedrock_river_incision_rate_array(fastscape_array_size);
           std::vector<double> bedrock_transport_coefficient_array(fastscape_array_size);
           std::vector<double> elevation_old(fastscape_array_size);
+          // The old topography before calling FastScape + the noise
+          std::vector<double> elevation_noise(fastscape_array_size);
+          // The old topography before calling FastScape + the noise + the marine sedimentation
+          std::vector<double> elevation_marine(fastscape_array_size);
 
           fill_fastscape_arrays(elevation,
                                 bedrock_transport_coefficient_array,
@@ -429,6 +435,9 @@ namespace aspect
                       elevation[i] = elevation[i] + elevation_seed;
                     }
 
+                  // Store the old elevation including the noise.
+                  elevation_noise[i] = elevation[i];
+
                   // Here we add the sediment rain (m/yr) as a flat increase in height.
                   // This is done because adding it as an uplift rate would affect the basement.
                   if (sediment_rain > 0 && use_marine_component)
@@ -443,6 +452,9 @@ namespace aspect
                             elevation[i] = std::min(current_sea_level,elevation[i] + sediment_rain*aspect_timestep_in_years);
                         }
                     }
+
+                  // Store the old elevation including the noise and the marine sediments.
+                  elevation_marine[i] = elevation[i];
                 }
             }
 
@@ -544,7 +556,9 @@ namespace aspect
 
           // Find timestep size, run FastScape, and make visualizations.
           execute_fastscape(elevation,
+                            silt_fraction,
                             bedrock_river_incision_rate_array,  // corresponds to FastScape's 'HHHHH' argument
+                            bedrock_transport_coefficient_array,
                             velocity_x,
                             velocity_y,
                             velocity_z,
@@ -555,7 +569,24 @@ namespace aspect
           // Find out our velocities from the change in height.
           // Where mesh_velocity_z is a vector of array size that exists on all processes.
           for (unsigned int i=0; i<fastscape_array_size; ++i)
-            mesh_velocity_z[i] = (elevation[i] - elevation_old[i])/aspect_timestep_in_years;
+            {
+              mesh_velocity_z[i] = (elevation[i] - elevation_old[i])/aspect_timestep_in_years;
+              // Compute the fraction of marine sediments of the total of marine and continental sediments.
+              // The height of marine sediments is easy to calculate from the stored elevation_noise at the beginning
+              // of the timestep and elevation_marine, which is computed based on the background marine sedimentation rate
+              // and the topography_noise with respect to the sea level. The new topography also includes an uplift
+              // from ASPECT's vertical velocity and the deposition of sediments. If we're above sea level, or the topography
+              // has only decreased, the fraction is set to 0.
+              if (elevation_marine[i] - elevation_noise[i] > 0. &&
+                  elevation[i] - (velocity_z[i] * aspect_timestep_in_years) - elevation_noise[i] >= 0.)
+                {
+                  marine_fraction[i] = (elevation_marine[i] - elevation_noise[i]) / (elevation[i] - elevation_noise[i] - (velocity_z[i] * aspect_timestep_in_years));
+                }
+              else
+                {
+                  marine_fraction[i] = 0.;
+                }
+            }
         }
       else
         // For ranks other than the root:
@@ -582,7 +613,7 @@ namespace aspect
       // that will be interpolated back to ASPECT. We need this table on all
       // processes, and can achieve this goal by first filling it on the root process,
       // and then replicating it on all processes (if possible using shared memory).
-      Table<dim,double> velocity_table;
+      Table<dim,double> velocity_table, silt_fraction_table, marine_fraction_table;
       if (Utilities::MPI::this_mpi_process(this->get_mpi_communicator()) == 0)
         {
           TableIndices<dim> size_idx;
@@ -590,8 +621,14 @@ namespace aspect
             size_idx[d] = table_intervals[d]+1;
 
           velocity_table = fill_data_table(mesh_velocity_z, size_idx, fastscape_nx, fastscape_ny);
+          silt_fraction_table = fill_data_table(silt_fraction, size_idx, fastscape_nx, fastscape_ny);
+          marine_fraction_table = fill_data_table(marine_fraction, size_idx, fastscape_nx, fastscape_ny);
         }
       velocity_table.replicate_across_communicator (this->get_mpi_communicator(),
+                                                    /*root_process=*/0);
+      silt_fraction_table.replicate_across_communicator (this->get_mpi_communicator(),
+                                                    /*root_process=*/0);
+      marine_fraction_table.replicate_across_communicator (this->get_mpi_communicator(),
                                                     /*root_process=*/0);
 
       // As our grid_extent variable end points do not account for the change related to an origin
@@ -609,6 +646,14 @@ namespace aspect
       const Functions::InterpolatedUniformGridData<dim> velocities (std::move(interpolation_extent),
                                                                     std::move(table_intervals),
                                                                     std::move(velocity_table));
+
+      silt_fractions = new Functions::InterpolatedUniformGridData<dim> (interpolation_extent,
+                                                                        table_intervals,
+                                                                        silt_fraction_table);
+
+      marine_fractions = new Functions::InterpolatedUniformGridData<dim> (interpolation_extent,
+                                                                          table_intervals,
+                                                                          marine_fraction_table);
 
       VectorFunctionFromScalarFunctionObject<dim> vector_function_object(
         [&](const Point<dim> &p) -> double
@@ -842,7 +887,6 @@ namespace aspect
                               "maximum surface refinement or surface refinement difference are improperly set."));
     }
 
-
     template <int dim>
     void FastScape<dim>::initialize_fastscape(std::vector<double> &elevation,
                                               std::vector<double> &basement,
@@ -870,13 +914,15 @@ namespace aspect
           // These values are only set on a restart
           fastscape_set_basement_(basement.data());
           if (use_marine_component)
-            fastscape_init_f_(silt_fraction.data());
+            {
+              fastscape_init_f_(silt_fraction.data());
+            }
         }
     }
 
-
     template <int dim>
     void FastScape<dim>::execute_fastscape(std::vector<double> &elevation,
+                                           std::vector<double> &silt_fraction,
                                            std::vector<double> &extra_vtk_field,
                                            std::vector<double> &velocity_x,
                                            std::vector<double> &velocity_y,
@@ -962,6 +1008,12 @@ namespace aspect
         // Copy h values.
         fastscape_copy_h_(elevation.data());
 
+        // If marine sediment transport and deposition is active,
+        // we also need to copy the silt fraction.
+        if (use_marine_component)
+          {
+            fastscape_copy_f_(silt_fraction.data());
+          }
 
         // Determine whether to create a VTK file this timestep.
         bool write_vtk = false;
@@ -1513,8 +1565,6 @@ namespace aspect
       return data_table;
     }
 
-
-
     template <int dim>
     template <class Archive>
     void FastScape<dim>::serialize (Archive &ar, const unsigned int)
@@ -1551,6 +1601,9 @@ namespace aspect
 
           silt_fraction.resize(fastscape_array_size);
           fastscape_copy_h_(silt_fraction.data());
+
+          if (sand_surface_porosity > 0. || silt_surface_porosity > 0.)
+            this->get_pcout() << "   Restarting runs with nonzero porosity can lead to a different system after restart. " << std::endl;
         }
 
       // Serialize into a stringstream. Put the following into a code
@@ -1652,6 +1705,46 @@ namespace aspect
     needs_surface_stabilization () const
     {
       return true;
+    }
+
+
+
+    template <int dim>
+    double FastScape<dim>::
+    get_marine_fraction(Point<dim> point) const
+    {
+      // Some plugins might call this function before we have restarted from the
+      // FastScape checkpoints. Therefore, return a guess.
+      if (restart)
+        return 0.;
+      // We cut off the fraction at 1. If it is larger than 1, it means that after the marine deposition
+      // some erosion occurred that left the new surface lower than the marine sediment surface, but higher
+      // than the starting surface of this timestep. Therefore all sediment is marine, and the fraction is 1.
+      // If the fraction is below 1, some other sediments were deposited, these could be eroded marine sediments,
+      // or (eroded) continental sediments.
+      const double fraction = std::min(1., std::max(0., marine_fractions->value(point)));
+      return fraction;
+    }
+
+
+
+    template <int dim>
+    double FastScape<dim>::
+    get_silt_fraction(Point<dim> point) const
+    {
+      // Some plugins might call this function before we have restarted from the
+      // FastScape checkpoints. Therefore, return a guess. Above sea level, the silt fraction
+      // is zero anyway and below set it to the initial value.
+      if (restart)
+        {
+          const GeometryModel::Box<dim> *geometry
+            = dynamic_cast<const GeometryModel::Box<dim>*> (&this->get_geometry_model());
+          return (point[dim - 1] > geometry->get_origin()[dim - 1] + geometry->get_extents()[dim - 1] + sea_level) ?
+                 0. : initial_silt_fraction;
+        }
+      // We cut off the fraction between 0 and 1.
+      const double fraction = std::min(1., std::max(0., silt_fractions->value(point)));
+      return fraction;
     }
 
 
@@ -1893,9 +1986,9 @@ namespace aspect
             prm.declare_entry("Silt e-folding depth", "1e3",
                               Patterns::Double(),
                               "E-folding depth for the exponential of the silt porosity law. Units: ${m}$");
-            prm.declare_entry("Sand-silt ratio", "0.5",
+            prm.declare_entry("Silt fraction", "0.5",
                               Patterns::Double(),
-                              "Ratio of sand to silt for material leaving continent.");
+                              "Fraction of silt of the total sand plus silt material leaving the continent.");
             prm.declare_entry("Depth averaging thickness", "1e2",
                               Patterns::Double(),
                               "Depth averaging for the sand-silt equation. Units: ${m}$");
@@ -2094,7 +2187,7 @@ namespace aspect
             silt_surface_porosity = prm.get_double("Silt porosity");
             sand_efold_depth = prm.get_double("Sand e-folding depth");
             silt_efold_depth = prm.get_double("Silt e-folding depth");
-            sand_silt_ratio = prm.get_double("Sand-silt ratio");
+            initial_silt_fraction = prm.get_double("Silt fraction");
             sand_silt_averaging_depth = prm.get_double("Depth averaging thickness");
             sand_transport_coefficient = prm.get_double("Sand transport coefficient");
             silt_transport_coefficient = prm.get_double("Silt transport coefficient");
