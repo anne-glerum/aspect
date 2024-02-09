@@ -141,7 +141,8 @@ namespace aspect
                                   std::vector<double> &basement,
                                   std::vector<double> &bedrock_transport_coefficient_array,
                                   std::vector<double> &bedrock_river_incision_rate_array,
-                                  std::vector<double> &silt_fraction) const;
+                                  std::vector<double> &silt_fraction,
+                                  std::vector<double> &ratio_marine_continental) const;
 
         /**
          * Execute FastScape
@@ -175,14 +176,16 @@ namespace aspect
          */
         void read_restart_files(std::vector<double> &elevation,
                                 std::vector<double> &basement,
-                                std::vector<double> &silt_fraction) const;
+                                std::vector<double> &silt_fraction,
+                                std::vector<double> &ratio_marine_continental) const;
 
         /**
          * Save data to file for restarting.
          */
         void save_restart_files(const std::vector<double> &elevation,
                                 std::vector<double> &basement,
-                                std::vector<double> &silt_fraction) const;
+                                std::vector<double> &silt_fraction,
+                                std::vector<double> &ratio_marine_continental) const;
 
         /**
          * Suggestion for the number of FastScape steps to run for every ASPECT timestep,

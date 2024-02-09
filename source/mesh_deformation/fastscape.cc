@@ -369,6 +369,7 @@ namespace aspect
           std::vector<double> bedrock_transport_coefficient_array(fastscape_array_size);
           std::vector<double> basement(fastscape_array_size);
           std::vector<double> silt_fraction(fastscape_array_size);
+          std::vector<double> ratio_marine_continental(fastscape_array_size);
           std::vector<double> elevation_old(fastscape_array_size);
 
           fill_fastscape_arrays(elevation,
@@ -398,16 +399,18 @@ namespace aspect
                 {
                   read_restart_files(elevation,
                                      basement,
-                                     silt_fraction);
+                                     silt_fraction,
+                                     ratio_marine_continental);
 
                   restart = false;
                 }
 
-              initialize_fastscape(elevation,
-                                   basement,
-                                   bedrock_transport_coefficient_array,
-                                   bedrock_river_incision_rate_array,
-                                   silt_fraction);
+                initialize_fastscape(elevation,
+                                     basement,
+                                     bedrock_transport_coefficient_array,
+                                     bedrock_river_incision_rate_array,
+                                     silt_fraction,
+                                     ratio_marine_continental);
             }
           else
             {
@@ -523,7 +526,8 @@ namespace aspect
             {
               save_restart_files(elevation,
                                  basement,
-                                 silt_fraction);
+                                 silt_fraction,
+                                 ratio_marine_continental);
             }
 
           // Find out our velocities from the change in height.
@@ -771,13 +775,13 @@ namespace aspect
                               "maximum surface refinement or surface refinement difference are improperly set."));
     }
 
-
     template <int dim>
     void FastScape<dim>::initialize_fastscape(std::vector<double> &elevation,
                                               std::vector<double> &basement,
                                               std::vector<double> &bedrock_transport_coefficient_array,
                                               std::vector<double> &bedrock_river_incision_rate_array,
-                                              std::vector<double> &silt_fraction) const
+                                              std::vector<double> &silt_fraction,
+                                              std::vector<double> &ratio_marine_continental) const
     {
       Assert (Utilities::MPI::this_mpi_process(this->get_mpi_communicator()) == 0, ExcInternalError());
 
@@ -819,12 +823,15 @@ namespace aspect
                                          &sand_transport_coefficient,
                                          &silt_transport_coefficient);
 
-      // Only set the basement and silt_fraction if it's a restart
+      // Only set the basement, silt_fraction and ratio_marine_continental if it's a restart
       if (current_timestep != 1)
         {
           fastscape_set_basement_(basement.data());
           if (use_marine_component)
+            {
             fastscape_init_f_(silt_fraction.data());
+            fastscape_init_f_(ratio_marine_continental.data());
+            }
         }
 
     }
@@ -1461,12 +1468,11 @@ namespace aspect
       return data_table;
     }
 
-
-
     template <int dim>
     void FastScape<dim>::read_restart_files(std::vector<double> &elevation,
                                             std::vector<double> &basement,
-                                            std::vector<double> &silt_fraction) const
+                                            std::vector<double> &silt_fraction,
+                                            std::vector<double> &ratio_marine_continental) const
     {
       this->get_pcout() << "   Loading FastScape restart file... " << std::endl;
 
@@ -1476,6 +1482,7 @@ namespace aspect
       const std::string restart_filename_elevation = dirname + "fastscape_elevation_restart.txt";
       const std::string restart_filename_basement = dirname + "fastscape_basement_restart.txt";
       const std::string restart_filename_silt_fraction = dirname + "fastscape_silt_fraction_restart.txt";
+      const std::string restart_filename_ratio_marine_continental = dirname + "fastscape_ratio_marine_continental_restart.txt";
       const std::string restart_filename_time = dirname + "fastscape_last_output_time.txt";
 
       // Load in h values.
@@ -1517,6 +1524,16 @@ namespace aspect
               in_silt_fraction >> silt_fraction[line];
               line++;
             }
+
+            std::ifstream in_ratio_marine_continental(restart_filename_ratio_marine_continental);
+            AssertThrow(in_ratio_marine_continental, ExcIO());
+
+            unsigned int line = 0;
+            while (line < fastscape_array_size)
+            {
+              in_ratio_marine_continental >> ratio_marine_continental[line];
+              line++;
+            }
         }
 
       // Now load the last output at time of restart.
@@ -1532,7 +1549,8 @@ namespace aspect
     template <int dim>
     void FastScape<dim>::save_restart_files(const std::vector<double> &elevation,
                                             std::vector<double> &basement,
-                                            std::vector<double> &silt_fraction) const
+                                            std::vector<double> &silt_fraction,
+                                            std::vector<double> &ratio_marine_continental) const
     {
       this->get_pcout() << "      Writing FastScape restart file... " << std::endl;
 
@@ -1542,23 +1560,30 @@ namespace aspect
       const std::string restart_filename_elevation = dirname + "fastscape_elevation_restart.txt";
       const std::string restart_filename_basement = dirname + "fastscape_basement_restart.txt";
       const std::string restart_filename_silt_fraction = dirname + "fastscape_silt_fraction_restart.txt";
+      const std::string restart_filename_ratio_marine_continental = dirname + "fastscape_ratio_marine_continental_restart.txt";
       const std::string restart_filename_time = dirname + "fastscape_last_output_time.txt";
 
       std::ofstream out_elevation(restart_filename_elevation);
       std::ofstream out_basement(restart_filename_basement);
       std::ofstream out_silt_fraction(restart_filename_silt_fraction);
+      std::ofstream out_ratio_marine_continental(restart_filename_ratio_marine_continental);
       std::ofstream out_last_output_time(restart_filename_time);
       std::stringstream buffer_basement;
       std::stringstream buffer_elevation;
       std::stringstream buffer_silt_fraction;
+      std::stringstream buffer_ratio_marine_continental;
       std::stringstream buffer_time;
 
       fastscape_copy_basement_(basement.data());
 
       // If marine sediment transport and deposition is active,
-      // we also need to store the silt fraction.
+      // we also need to store the silt fraction and the ratio
+      // between marine and continental sediments.
       if (use_marine_component)
+      {
         fastscape_copy_f_(silt_fraction.data());
+        fastscape_copy_f_(ratio_marine_continental.data());
+      }
 
       out_last_output_time << last_output_time << "\n";
 
@@ -1567,13 +1592,18 @@ namespace aspect
           buffer_elevation << elevation[i] << "\n";
           buffer_basement << basement[i] << "\n";
           if (use_marine_component)
+          {
             buffer_silt_fraction << silt_fraction[i] << "\n";
+            buffer_ratio_marine_continental << ratio_marine_continental[i] << "\n";
+          }
         }
 
       out_elevation << buffer_elevation.str();
       out_basement << buffer_basement.str();
       if (use_marine_component)
-        out_silt_fraction << buffer_silt_fraction.str();
+      {
+        out_ratio_marine_continental << buffer_ratio_marine_continental.str();
+      }
     }
 
 
