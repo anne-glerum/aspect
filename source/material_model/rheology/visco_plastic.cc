@@ -522,7 +522,7 @@ namespace aspect
 
         if (use_iterative_viscosity_dampening)
           {
-            composition_mask.set(this->introspection().compositional_index_for_name("viscosity_field"),false);
+            composition_mask.set(this->introspection().compositional_index_for_name("log_viscosity_field"),false);
           }
 
         return composition_mask;
@@ -780,20 +780,20 @@ namespace aspect
         use_iterative_viscosity_dampening = prm.get_bool ("Use iterative viscosity dampening");
         if (use_iterative_viscosity_dampening)
           {
-            AssertThrow (this->introspection().compositional_name_exists("viscosity_field"),
+            AssertThrow (this->introspection().compositional_name_exists("log_viscosity_field"),
                          ExcMessage("Using an iterative viscosity dampening only works if there is a "
-                                    "compositional field called viscosity_field."));
+                                    "compositional field called log_viscosity_field."));
 
-            const int prescribed_field_index = this->introspection().compositional_index_for_name("viscosity_field");
+            const int prescribed_field_index = this->introspection().compositional_index_for_name("log_viscosity_field");
 
             AssertThrow(this->get_parameters().compositional_field_methods[prescribed_field_index]
                         == Parameters<dim>::AdvectionFieldMethod::prescribed_field,
                         ExcMessage("Using an iterative viscosity dampening only works if the field "
-                                   "viscosity_field follows the prescribed field method."));
+                                   "log_viscosity_field follows the prescribed field method."));
 
             AssertThrow(this->introspection().get_composition_descriptions()[prescribed_field_index].type == CompositionalFieldDescription::generic,
                         ExcMessage("Using an iterative viscosity dampening only works if the field "
-                                   "viscosity_field has a generic field description."));
+                                   "log_viscosity_field has a generic field description."));
 
             AssertThrow (this->get_parameters().nonlinear_solver ==
                          Parameters<dim>::NonlinearSolver::iterated_Advection_and_Stokes

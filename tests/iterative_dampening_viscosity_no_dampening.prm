@@ -61,7 +61,7 @@ end
 # Compositional fields used to track the viscosity
 subsection Compositional fields
   set Number of fields = 1
-  set Names of fields = viscosity_field
+  set Names of fields = log_viscosity_field
   set Compositional field methods = prescribed field
 end
 

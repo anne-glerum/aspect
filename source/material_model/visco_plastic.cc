@@ -285,8 +285,8 @@ namespace aspect
             if (rheology->use_iterative_viscosity_dampening)
               {
                 // Get the viscosity of the previous nonlinear iteration.
-                const int field_index = this->introspection().compositional_index_for_name("viscosity_field");
-                const double old_viscosity = in.composition[i][field_index];
+                const int field_index = this->introspection().compositional_index_for_name("log_viscosity_field");
+                const double old_viscosity = std::pow(10,in.composition[i][field_index]);
 
                 Assert(old_viscosity > 0.0, ExcMessage("The viscosity stored for iterative damping is negative."));
 
@@ -298,14 +298,14 @@ namespace aspect
 
                 // TODO apply user-set min and max viscosity again?
 
-                // Set up variable to interpolate the viscosity output onto the compositional field viscosity_field.
+                // Set up variable to interpolate the viscosity output onto the compositional field log_viscosity_field.
                 PrescribedFieldOutputs<dim> *prescribed_field_out = out.template get_additional_output<PrescribedFieldOutputs<dim>>();
 
                 // If requested, fill the outputs to put the new viscosity onto the compositional field.
                 if (prescribed_field_out != NULL && in.requests_property(MaterialProperties::additional_outputs))
                   {
                     Assert(out.viscosities[i] > 0.0, ExcMessage("The viscosity to store for iterative damping is negative."));
-                    prescribed_field_out->prescribed_field_outputs[i][field_index] = out.viscosities[i];
+                    prescribed_field_out->prescribed_field_outputs[i][field_index] = std::log10(out.viscosities[i]);
                   }
               }
 
