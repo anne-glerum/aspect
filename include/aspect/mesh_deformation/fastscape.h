@@ -82,6 +82,18 @@ namespace aspect
          */
         void parse_parameters (ParameterHandler &prm) override;
 
+        /**
+         * Return the ratio between marine sediments from background marine sedimentation
+         * and continental sediments for a certain point.
+         */
+        double get_marine_to_continental_sediment_ratio(Point<dim> point) const;
+
+        /**
+         * Return the fraction of silt out of the total sand plus silt continental sediments
+         * in the marine domain for a certain point.
+         */
+        double get_silt_fraction(Point<dim> point) const;
+
       private:
         /**
          * Function used to set the FastScape ghost nodes. FastScape boundaries are
@@ -587,6 +599,32 @@ namespace aspect
         /**
          * @}
          */
+
+        /**
+         * The ratio between marine and continental sediments.
+         * We have to temporarily store it in this vector to be
+         * able to restart the ratio table from a file.
+         * TODO Make boost serialization available for Functions::InterpolatedUniformGridData.
+         */
+        mutable std::vector<double> ratio_marine_continental;
+
+        /** 
+         * Function to hold and query the ratio of marine to continental sediments.
+         */
+        mutable Functions::InterpolatedUniformGridData<dim> *ratio_marine_continental_function;
+
+        /**
+         * The fraction of silt out of total sediments.
+         * We have to temporarily store it in this vector to be
+         * able to restart the ratio table from a file.
+         * TODO Make boost serialization available for Functions::InterpolatedUniformGridData.
+         */
+        mutable std::vector<double> silt_fraction;
+
+        /** 
+         * Function to hold and query the fraction of silt.
+         */
+        mutable Functions::InterpolatedUniformGridData<dim> *silt_fraction_function;
     };
   }
 }

@@ -254,6 +254,8 @@ namespace aspect
                           ExcMessage("Cannot open basement file to restart FastScape."));
               AssertThrow(Utilities::fexists(this->get_output_directory() + "fastscape_silt_fraction_restart.txt"),
                           ExcMessage("Cannot open silt fraction file to restart FastScape."));
+              AssertThrow(Utilities::fexists(this->get_output_directory() + "fastscape_ratio_marine_continental_restart.txt"),
+                          ExcMessage("Cannot open ratio_marine_continental file to restart FastScape."));
             }
         }
 
@@ -1578,6 +1580,32 @@ namespace aspect
     needs_surface_stabilization () const
     {
       return true;
+    }
+
+
+
+    template <int dim>
+    double FastScape<dim>::
+    get_marine_to_continental_sediment_ratio(Point<dim> point) const
+    {
+      // We cut off the ratio at 1. If it is larger than 1, it means that after the marine deposition
+      // some erosion occurred that left the new surface lower than the marine sediment surface, but higher
+      // than the starting surface of this timestep. Therefore all sediment is marine, and the ratio is 1.
+      // If the ratio is below 1, some other sediments were deposited, these could be eroded marine sediments,
+      // or (eroded) continental sediments.
+      const double ratio = std::min(1., std::max(0., ratio_marine_continental_function->value(point)));
+      return ratio;
+    }
+
+
+
+    template <int dim>
+    double FastScape<dim>::
+    get_silt_fraction(Point<dim> point) const
+    {
+      // We cut off the fraction between 0 and 1.
+      const double fraction = std::min(1., std::max(0., silt_fraction_function->value(point)));
+      return fraction;
     }
 
 
