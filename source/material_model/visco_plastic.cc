@@ -310,13 +310,13 @@ namespace aspect
                 // If requested, fill the outputs to put the new viscosity onto the compositional field.
                 // This request is made before assembling the Stokes equation during a nonlinear iteration.
                 if (prescribed_field_out != NULL && in.requests_property(MaterialProperties::additional_outputs))
-                {
-                  Assert(dampened_viscosity > 0.0, ExcMessage("The viscosity to store for iterative damping is negative."));
-                  if(this->simulator_is_past_initialization() == true &&
-                     this->get_nonlinear_iteration() >= rheology->iterative_dampening->get_n_nonlinear_iterations_before_damping())
-                    prescribed_field_out->prescribed_field_outputs[i][field_index] = std::log10(dampened_viscosity);
-                  else
-                    prescribed_field_out->prescribed_field_outputs[i][field_index] = std::log10(out.viscosities[i]);
+                  {
+                    Assert(dampened_viscosity > 0.0, ExcMessage("The viscosity to store for iterative damping is negative."));
+                    if (this->simulator_is_past_initialization() == true &&
+                        this->get_nonlinear_iteration() >= rheology->iterative_dampening->get_n_nonlinear_iterations_before_damping())
+                      prescribed_field_out->prescribed_field_outputs[i][field_index] = std::log10(dampened_viscosity);
+                    else
+                      prescribed_field_out->prescribed_field_outputs[i][field_index] = std::log10(out.viscosities[i]);
                   }
               }
 
