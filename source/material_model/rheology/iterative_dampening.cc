@@ -54,7 +54,7 @@ namespace aspect
                            "0 equals using the current viscosity. "
                            "Units: none.");
         prm.declare_entry ("Number of nonlinear iterations before switching on iterative viscosity dampening", "10",
-                           Patterns::Integer (1.),
+                           Patterns::Integer (0.),
                            "How many nonlinear iterations to perform before switching on iterative "
                            "viscosity dampening. "
                            "Units: none.");
