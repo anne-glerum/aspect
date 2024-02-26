@@ -290,11 +290,17 @@ namespace aspect
 
                 Assert(old_viscosity > 0.0, ExcMessage("The viscosity stored for iterative damping is negative."));
 
-                // Dampen the viscosity, but only after the first timestep and after
-                // the first nonlinear iteration of each timestep.
+                // Dampen the viscosity with the viscosity of the previous nonlinear iteration.
+                const double dampened_viscosity = rheology->iterative_dampening->calculate_viscosity(old_viscosity, out.viscosities[i]);
+
+                // Use the dampened viscosity if the user-set threshold of undampened nonlinear iterations
+                // has been exceeded. Also do not apply dampening before initializing, as the initial conditions
+                // need to be set before the damping can be applied.
+                // The old_viscosity contains the dampened viscosity that was stored in the prescribed field
+                // during the current nonlinear iteration. Therefore, we can use it directly.
                 if (this->simulator_is_past_initialization() == true &&
-                    this->get_nonlinear_iteration() > rheology->iterative_dampening->get_n_nonlinear_iterations_before_damping())
-                  out.viscosities[i] = rheology->iterative_dampening->calculate_viscosity(old_viscosity, out.viscosities[i]);
+                    this->get_nonlinear_iteration() >= rheology->iterative_dampening->get_n_nonlinear_iterations_before_damping())
+                  out.viscosities[i] = old_viscosity;
 
                 // TODO apply user-set min and max viscosity again?
 
@@ -302,9 +308,14 @@ namespace aspect
                 PrescribedFieldOutputs<dim> *prescribed_field_out = out.template get_additional_output<PrescribedFieldOutputs<dim>>();
 
                 // If requested, fill the outputs to put the new viscosity onto the compositional field.
+                // This request is made before assembling the Stokes equation during a nonlinear iteration.
                 if (prescribed_field_out != NULL && in.requests_property(MaterialProperties::additional_outputs))
-                  {
-                    Assert(out.viscosities[i] > 0.0, ExcMessage("The viscosity to store for iterative damping is negative."));
+                {
+                  Assert(dampened_viscosity > 0.0, ExcMessage("The viscosity to store for iterative damping is negative."));
+                  if(this->simulator_is_past_initialization() == true &&
+                     this->get_nonlinear_iteration() >= rheology->iterative_dampening->get_n_nonlinear_iterations_before_damping())
+                    prescribed_field_out->prescribed_field_outputs[i][field_index] = std::log10(dampened_viscosity);
+                  else
                     prescribed_field_out->prescribed_field_outputs[i][field_index] = std::log10(out.viscosities[i]);
                   }
               }
