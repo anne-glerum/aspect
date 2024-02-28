@@ -46,15 +46,15 @@ namespace aspect
       void
       IterativeDampening<dim>::declare_parameters (ParameterHandler &prm)
       {
-        prm.declare_entry ("Iterative viscosity dampening factor", "1.0",
+        prm.declare_entry ("Iterative viscosity dampening factor", "0.5",
                            Patterns::Double (0.),
                            "A dampening factor for the viscosity that controls the rate of change "
                            "between the viscosity calculated in the previous and current nonlinear "
-                           "iteration. A value of 1 (default) equals using the previous viscosity, a value of "
-                           "0 equals using the current viscosity. "
+                           "iteration. A value of 1 equals using the previous viscosity, a value of "
+                           "0 equals using the current viscosity. The default is 0.5. "
                            "Units: none.");
         prm.declare_entry ("Number of nonlinear iterations before switching on iterative viscosity dampening", "10",
-                           Patterns::Integer (0.),
+                           Patterns::Integer (1.),
                            "How many nonlinear iterations to perform before switching on iterative "
                            "viscosity dampening. "
                            "Units: none.");
