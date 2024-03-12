@@ -95,6 +95,14 @@ namespace aspect
       {
         return n_nonlinear_iterations_before_damping;
       }
+
+      template <int dim>
+      double
+      IterativeDampening<dim>::
+      get_dampening_factor() const
+      {
+        return iterative_viscosity_dampening_factor;
+      }
     }
   }
 }

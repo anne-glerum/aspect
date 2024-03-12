@@ -299,7 +299,8 @@ namespace aspect
                 // The old_viscosity contains the dampened viscosity that was stored in the prescribed field
                 // during the current nonlinear iteration. Therefore, we can use it directly.
                 if (this->simulator_is_past_initialization() == true &&
-                    this->get_nonlinear_iteration() >= rheology->iterative_dampening->get_n_nonlinear_iterations_before_damping())
+                    this->get_nonlinear_iteration() >= rheology->iterative_dampening->get_n_nonlinear_iterations_before_damping() &&
+                    rheology->iterative_dampening->get_dampening_factor() > 0)
                   out.viscosities[i] = old_viscosity;
 
                 // TODO apply user-set min and max viscosity again?
@@ -313,7 +314,8 @@ namespace aspect
                   {
                     Assert(dampened_viscosity > 0.0, ExcMessage("The viscosity to store for iterative damping is negative."));
                     if (this->simulator_is_past_initialization() == true &&
-                        this->get_nonlinear_iteration() >= rheology->iterative_dampening->get_n_nonlinear_iterations_before_damping())
+                        this->get_nonlinear_iteration() >= rheology->iterative_dampening->get_n_nonlinear_iterations_before_damping() &&
+                        rheology->iterative_dampening->get_dampening_factor() > 0)
                       prescribed_field_out->prescribed_field_outputs[i][field_index] = std::log10(dampened_viscosity);
                     else
                       prescribed_field_out->prescribed_field_outputs[i][field_index] = std::log10(out.viscosities[i]);

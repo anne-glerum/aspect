@@ -72,6 +72,11 @@ namespace aspect
            */
           unsigned int get_n_nonlinear_iterations_before_damping() const;
 
+          /**
+           * A function that returns the dampening factor.
+           */
+          double get_dampening_factor() const;
+
         private:
 
           /**
