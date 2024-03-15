@@ -371,6 +371,10 @@ namespace aspect
           std::vector<double> silt_fraction(fastscape_array_size);
           std::vector<double> ratio_marine_continental(fastscape_array_size);
           std::vector<double> elevation_old(fastscape_array_size);
+          // The old topography before calling FastScape + the noise
+          std::vector<double> elevation_noise(fastscape_array_size);
+          // The old topography before calling FastScape + the noise + the marine sedimentation
+          std::vector<double> elevation_marine(fastscape_array_size);
 
           fill_fastscape_arrays(elevation,
                                 bedrock_transport_coefficient_array,
@@ -451,6 +455,9 @@ namespace aspect
                       elevation[i] = elevation[i] + elevation_seed;
                     }
 
+                    // Store the old elevation including the noise.
+                    elevation_noise[i] = elevation[i];
+
                   // Here we add the sediment rain (m/yr) as a flat increase in height.
                   // This is done because adding it as an uplift rate would affect the basement.
                   if (sediment_rain > 0 && use_marine_component)
@@ -465,6 +472,9 @@ namespace aspect
                             elevation[i] = std::min(sea_level,elevation[i] + sediment_rain*aspect_timestep_in_years);
                         }
                     }
+                  
+                  // Store the old elevation including the noise and the marine sediments.
+                  elevation_marine[i] = elevation[i];
                 }
             }
 
@@ -516,7 +526,29 @@ namespace aspect
                             fastscape_timestep_in_years,
                             fastscape_iterations);
 
-          // Write a file to store h, b & step for restarting.
+          // Find out our velocities from the change in height.
+          // Where mesh_velocity_z is a vector of array size that exists on all processes.
+          for (unsigned int i=0; i<fastscape_array_size; ++i)
+            {
+              mesh_velocity_z[i] = (elevation[i] - elevation_old[i])/aspect_timestep_in_years;
+              // Compute the ratio between marine sediments and continental sediments.
+              // The height of marine sediments is easy to calculate from the stored elevation_noise at the beginning
+              // of the timestep and elevation_marine, which is computed based on the background marine sedimentation rate
+              // and the topography_noise with respect to the sea level. The new topography also includes an uplift
+              // from ASPECT's vertical velocity and the deposition of sediments. If we're above sea level, or the topography
+              // has only decreased, the ratio is set to 0.
+              if (elevation_marine[i] - elevation_noise[i] > 0. &&
+                  elevation[i] - (velocity_z[i] * aspect_timestep_in_years) - elevation_noise[i] >= 0.)
+              {
+                ratio_marine_continental[i] = (elevation_marine[i] - elevation_noise[i]) / (elevation[i] - elevation_noise[i] - (velocity_z[i] * aspect_timestep_in_years));
+              }
+              else
+              {
+                ratio_marine_continental[i] = 0.;
+              }
+            }
+
+          // Write a file to store h, b, silt fraction, marine ratio & step for restarting.
           // TODO: It would be good to roll this into the general ASPECT checkpointing,
           // and when we do this needs to be changed.
           if (((this->get_parameters().checkpoint_time_secs == 0) &&
@@ -530,12 +562,6 @@ namespace aspect
                                  ratio_marine_continental);
             }
 
-          // Find out our velocities from the change in height.
-          // Where mesh_velocity_z is a vector of array size that exists on all processes.
-          for (unsigned int i=0; i<fastscape_array_size; ++i)
-            {
-              mesh_velocity_z[i] = (elevation[i] - elevation_old[i])/aspect_timestep_in_years;
-            }
 
           Utilities::MPI::broadcast(this->get_mpi_communicator(), mesh_velocity_z, 0);
         }
@@ -570,6 +596,8 @@ namespace aspect
 
       // Initialize a table to hold all velocity values that will be interpolated back to ASPECT.
       const Table<dim,double> velocity_table = fill_data_table(mesh_velocity_z, size_idx, fastscape_nx, fastscape_ny);
+      const Table<dim,double> silt_fraction_table = fill_data_table(silt_fraction, size_idx, fastscape_nx, fastscape_ny);
+      const Table<dim,double> ratio_marine_continental_table = fill_data_table(ratio_marine_continental, size_idx, fastscape_nx, fastscape_ny);
 
       // As our grid_extent variable end points do not account for the change related to an origin
       // not at 0, we adjust this here into an interpolation extent.
@@ -584,6 +612,14 @@ namespace aspect
       Functions::InterpolatedUniformGridData<dim> velocities (interpolation_extent,
                                                               table_intervals,
                                                               velocity_table);
+
+      Functions::InterpolatedUniformGridData<dim> silt_fractions (interpolation_extent,
+                                                             table_intervals,
+                                                             silt_fraction_table);
+                                                          
+      Functions::InterpolatedUniformGridData<dim> ratios_marine_continental (interpolation_extent,
+                                                             table_intervals,
+                                                             ratio_marine_continental_table);
 
       VectorFunctionFromScalarFunctionObject<dim> vector_function_object(
         [&](const Point<dim> &p) -> double
@@ -830,7 +866,6 @@ namespace aspect
           if (use_marine_component)
             {
             fastscape_init_f_(silt_fraction.data());
-            fastscape_init_f_(ratio_marine_continental.data());
             }
         }
 
@@ -908,6 +943,12 @@ namespace aspect
         // Copy h values.
         fastscape_copy_h_(elevation.data());
 
+        // If marine sediment transport and deposition is active,
+        // we also need to copy the silt fraction.
+        if (use_marine_component)
+        {
+          fastscape_copy_f_(silt_fraction.data());
+        }
 
         // Determine whether to create a VTK file this timestep.
         bool write_vtk = false;
@@ -1576,15 +1617,6 @@ namespace aspect
 
       fastscape_copy_basement_(basement.data());
 
-      // If marine sediment transport and deposition is active,
-      // we also need to store the silt fraction and the ratio
-      // between marine and continental sediments.
-      if (use_marine_component)
-      {
-        fastscape_copy_f_(silt_fraction.data());
-        fastscape_copy_f_(ratio_marine_continental.data());
-      }
-
       out_last_output_time << last_output_time << "\n";
 
       for (unsigned int i = 0; i < fastscape_array_size; ++i)
@@ -1602,6 +1634,7 @@ namespace aspect
       out_basement << buffer_basement.str();
       if (use_marine_component)
       {
+        out_silt_fraction << buffer_silt_fraction.str();
         out_ratio_marine_continental << buffer_ratio_marine_continental.str();
       }
     }
@@ -1627,7 +1660,7 @@ namespace aspect
       // than the starting surface of this timestep. Therefore all sediment is marine, and the ratio is 1.
       // If the ratio is below 1, some other sediments were deposited, these could be eroded marine sediments,
       // or (eroded) continental sediments.
-      const double ratio = std::min(1., std::max(0., ratio_marine_continental_function->value(point)));
+      const double ratio = std::min(1., std::max(0., ratios_marine_continental->value(point)));
       return ratio;
     }
 
@@ -1638,7 +1671,7 @@ namespace aspect
     get_silt_fraction(Point<dim> point) const
     {
       // We cut off the fraction between 0 and 1.
-      const double fraction = std::min(1., std::max(0., silt_fraction_function->value(point)));
+      const double fraction = std::min(1., std::max(0., silt_fractions->value(point)));
       return fraction;
     }
 
