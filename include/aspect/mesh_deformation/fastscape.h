@@ -619,7 +619,7 @@ namespace aspect
         /**
          * The fraction of silt out of total sediments.
          * We have to temporarily store it in this vector to be
-         * able to restart the ratio table from a file.
+         * able to restart the fraction table from a file.
          * TODO Make boost serialization available for Functions::InterpolatedUniformGridData.
          */
         mutable std::vector<double> silt_fraction;
