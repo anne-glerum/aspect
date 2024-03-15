@@ -611,12 +611,12 @@ namespace aspect
          * able to restart the ratio table from a file.
          * TODO Make boost serialization available for Functions::InterpolatedUniformGridData.
          */
-        mutable std::vector<double> ratio_marine_continental;
+        //mutable std::vector<double> ratio_marine_continental;
 
         /** 
          * Function to hold and query the ratio of marine to continental sediments.
          */
-        mutable Functions::InterpolatedUniformGridData<dim> *ratio_marine_continental_function;
+        //mutable Functions::InterpolatedUniformGridData<dim> *ratios_marine_continental;
 
         /**
          * The fraction of silt out of total sediments.
@@ -629,7 +629,7 @@ namespace aspect
         /** 
          * Function to hold and query the fraction of silt.
          */
-        mutable Functions::InterpolatedUniformGridData<dim> *silt_fraction_function;
+        mutable Functions::InterpolatedUniformGridData<dim> *silt_fractions;
     };
   }
 }
