@@ -529,9 +529,10 @@ namespace aspect
         double silt_efold_depth;
 
         /**
-         * Sand-silt ratio
+         * Fraction of silt out of the total continental sediments upon
+         * entering the marine domain.
          */
-        double sand_silt_ratio;
+        double initial_silt_fraction;
 
         /**
          * Averaging depth/thickness for sand-silt equation (m).
