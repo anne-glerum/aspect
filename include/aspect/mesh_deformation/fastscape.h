@@ -141,8 +141,7 @@ namespace aspect
                                   std::vector<double> &basement,
                                   std::vector<double> &bedrock_transport_coefficient_array,
                                   std::vector<double> &bedrock_river_incision_rate_array,
-                                  std::vector<double> &silt_fraction,
-                                  std::vector<double> &marine_fraction) const;
+                                  std::vector<double> &silt_fraction) const;
 
         /**
          * Execute FastScape

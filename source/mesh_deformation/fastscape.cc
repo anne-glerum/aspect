@@ -321,7 +321,6 @@ namespace aspect
                                                              AffineConstraints<double> &mesh_velocity_constraints,
                                                              const std::set<types::boundary_id> &boundary_ids) const
     {
-
       // Because there is no increase in time during timestep 0, we return and only
       // initialize and run FastScape from timestep 1 and on.
       if (this->get_timestep_number() == 0)
@@ -410,8 +409,7 @@ namespace aspect
                                    basement,
                                    bedrock_transport_coefficient_array,
                                    bedrock_river_incision_rate_array,
-                                   silt_fraction,
-                                   marine_fraction);
+                                   silt_fraction);
             }
           else
             {
@@ -616,13 +614,13 @@ namespace aspect
                                                               table_intervals,
                                                               velocity_table);
 
-      Functions::InterpolatedUniformGridData<dim> silt_fractions (interpolation_extent,
-                                                                  table_intervals,
-                                                                  silt_fraction_table);
+      silt_fractions = new Functions::InterpolatedUniformGridData<dim> (interpolation_extent,
+                                                                        table_intervals,
+                                                                        silt_fraction_table);
 
-      Functions::InterpolatedUniformGridData<dim> marine_fractions (interpolation_extent,
-                                                                    table_intervals,
-                                                                    marine_fraction_table);
+      marine_fractions = new Functions::InterpolatedUniformGridData<dim> (interpolation_extent,
+                                                                          table_intervals,
+                                                                          marine_fraction_table);
 
       VectorFunctionFromScalarFunctionObject<dim> vector_function_object(
         [&](const Point<dim> &p) -> double
@@ -819,8 +817,7 @@ namespace aspect
                                               std::vector<double> &basement,
                                               std::vector<double> &bedrock_transport_coefficient_array,
                                               std::vector<double> &bedrock_river_incision_rate_array,
-                                              std::vector<double> &silt_fraction,
-                                              std::vector<double> &marine_fraction) const
+                                              std::vector<double> &silt_fraction) const
     {
       Assert (Utilities::MPI::this_mpi_process(this->get_mpi_communicator()) == 0, ExcInternalError());
 
