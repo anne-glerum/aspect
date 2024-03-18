@@ -18,6 +18,7 @@
   <http://www.gnu.org/licenses/>.
 */
 
+#ifdef ASPECT_WITH_FASTSCAPE
 
 #include <aspect/boundary_composition/fastscape.h>
 #include <aspect/initial_composition/interface.h>
@@ -44,7 +45,7 @@ namespace aspect
           const std::set<types::boundary_id> boundary_ids
             = this->get_mesh_deformation_handler().get_active_mesh_deformation_boundary_indicators();
           std::map<types::boundary_id, std::vector<std::string>> mesh_deformation_boundary_indicators_map
-                                                              = this->get_mesh_deformation_handler().get_active_mesh_deformation_names();
+            = this->get_mesh_deformation_handler().get_active_mesh_deformation_names();
 
           bool using_fastscape = false;
           // Loop over each mesh deformation boundary, and check FastScape is used.
@@ -217,3 +218,4 @@ namespace aspect
                                                "and 'silt_fraction' are set by the FastScape mesh deformation plugin. ")
   }
 }
+#endiff
