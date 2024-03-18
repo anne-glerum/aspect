@@ -25,7 +25,7 @@
 #include <aspect/boundary_composition/interface.h>
 #include <aspect/simulator_access.h>
 
-
+#ifdef ASPECT_WITH_FASTSCAPE
 namespace aspect
 {
   namespace BoundaryComposition
@@ -116,5 +116,5 @@ namespace aspect
   }
 }
 
-
+#endif
 #endif
