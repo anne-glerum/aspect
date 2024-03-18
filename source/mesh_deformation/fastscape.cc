@@ -228,15 +228,15 @@ namespace aspect
       const std::vector<std::string> chemical_field_names = this->introspection().chemical_composition_field_names();
       if (this->introspection().compositional_name_exists("sediment_age"))
         {
-          AssertThrow(chemical_field_names.find("sediment_age") == std::string::npos,
-                      ExcMessage("There is a field sediment_age that is of type chemical composition. "
-                                 "Please change it to type generic so that it does not affect material properties."));
+//         AssertThrow(chemical_field_names.find("sediment_age") == std::string::npos,
+//                     ExcMessage("There is a field sediment_age that is of type chemical composition. "
+//                                "Please change it to type generic so that it does not affect material properties."));
         }
       if (this->introspection().compositional_name_exists("deposition_depth"))
         {
-          AssertThrow(chemical_field_names.find("deposition_depth") != std::string::npos,
-                      ExcMessage("There is a field deposition_depth that is of type chemical composition. "
-                                 "Please change it to type generic so that it does not affect material properties."));
+//         AssertThrow(chemical_field_names.find("deposition_depth") != std::string::npos,
+//                     ExcMessage("There is a field deposition_depth that is of type chemical composition. "
+//                                "Please change it to type generic so that it does not affect material properties."));
         }
 
       // Initialize parameters for restarting FastScape
@@ -345,6 +345,9 @@ namespace aspect
       const unsigned int fastscape_array_size = fastscape_nx*fastscape_ny;
       std::vector<double> mesh_velocity_z(fastscape_array_size);
 
+      std::vector<double> silt_fraction(fastscape_array_size);
+      std::vector<double> ratio_marine_continental(fastscape_array_size);
+
       // FastScape requires multiple specially defined and ordered variables sent to its functions. To make
       // the transfer of these down to one process easier, we first fill out a vector of local_aspect_values,
       // then when we get down to one process we use these local_aspect_values to fill the double arrays
@@ -364,8 +367,6 @@ namespace aspect
           std::vector<double> bedrock_river_incision_rate_array(fastscape_array_size);
           std::vector<double> bedrock_transport_coefficient_array(fastscape_array_size);
           std::vector<double> basement(fastscape_array_size);
-          std::vector<double> silt_fraction(fastscape_array_size);
-          std::vector<double> ratio_marine_continental(fastscape_array_size);
           std::vector<double> elevation_old(fastscape_array_size);
           // The old topography before calling FastScape + the noise
           std::vector<double> elevation_noise(fastscape_array_size);
@@ -405,12 +406,12 @@ namespace aspect
                   restart = false;
                 }
 
-                initialize_fastscape(elevation,
-                                     basement,
-                                     bedrock_transport_coefficient_array,
-                                     bedrock_river_incision_rate_array,
-                                     silt_fraction,
-                                     ratio_marine_continental);
+              initialize_fastscape(elevation,
+                                   basement,
+                                   bedrock_transport_coefficient_array,
+                                   bedrock_river_incision_rate_array,
+                                   silt_fraction,
+                                   ratio_marine_continental);
             }
           else
             {
@@ -451,8 +452,8 @@ namespace aspect
                       elevation[i] = elevation[i] + elevation_seed;
                     }
 
-                    // Store the old elevation including the noise.
-                    elevation_noise[i] = elevation[i];
+                  // Store the old elevation including the noise.
+                  elevation_noise[i] = elevation[i];
 
                   // Here we add the sediment rain (m/yr) as a flat increase in height.
                   // This is done because adding it as an uplift rate would affect the basement.
@@ -468,7 +469,7 @@ namespace aspect
                             elevation[i] = std::min(sea_level,elevation[i] + sediment_rain*aspect_timestep_in_years);
                         }
                     }
-                  
+
                   // Store the old elevation including the noise and the marine sediments.
                   elevation_marine[i] = elevation[i];
                 }
@@ -515,6 +516,7 @@ namespace aspect
 
           // Find timestep size, run FastScape, and make visualizations.
           execute_fastscape(elevation,
+                            silt_fraction,
                             bedrock_transport_coefficient_array,
                             velocity_x,
                             velocity_y,
@@ -535,13 +537,13 @@ namespace aspect
               // has only decreased, the ratio is set to 0.
               if (elevation_marine[i] - elevation_noise[i] > 0. &&
                   elevation[i] - (velocity_z[i] * aspect_timestep_in_years) - elevation_noise[i] >= 0.)
-              {
-                ratio_marine_continental[i] = (elevation_marine[i] - elevation_noise[i]) / (elevation[i] - elevation_noise[i] - (velocity_z[i] * aspect_timestep_in_years));
-              }
+                {
+                  ratio_marine_continental[i] = (elevation_marine[i] - elevation_noise[i]) / (elevation[i] - elevation_noise[i] - (velocity_z[i] * aspect_timestep_in_years));
+                }
               else
-              {
-                ratio_marine_continental[i] = 0.;
-              }
+                {
+                  ratio_marine_continental[i] = 0.;
+                }
             }
 
           // Write a file to store h, b, silt fraction, marine ratio & step for restarting.
@@ -560,6 +562,8 @@ namespace aspect
 
 
           Utilities::MPI::broadcast(this->get_mpi_communicator(), mesh_velocity_z, 0);
+          Utilities::MPI::broadcast(this->get_mpi_communicator(), silt_fraction, 0);
+          Utilities::MPI::broadcast(this->get_mpi_communicator(), ratio_marine_continental, 0);
         }
       else
         {
@@ -577,10 +581,13 @@ namespace aspect
                             mesh_velocity_z,
                             mesh_velocity_z,
                             mesh_velocity_z,
+                            mesh_velocity_z,
                             aspect_timestep_in_years,
                             fastscape_steps_per_aspect_step);
 
           mesh_velocity_z = Utilities::MPI::broadcast(this->get_mpi_communicator(), mesh_velocity_z, 0);
+          silt_fraction = Utilities::MPI::broadcast(this->get_mpi_communicator(), silt_fraction, 0);
+          ratio_marine_continental = Utilities::MPI::broadcast(this->get_mpi_communicator(), ratio_marine_continental, 0);
         }
 
       // Get the sizes needed for a data table of the mesh velocities.
@@ -610,12 +617,12 @@ namespace aspect
                                                               velocity_table);
 
       Functions::InterpolatedUniformGridData<dim> silt_fractions (interpolation_extent,
-                                                             table_intervals,
-                                                             silt_fraction_table);
-                                                          
+                                                                  table_intervals,
+                                                                  silt_fraction_table);
+
       Functions::InterpolatedUniformGridData<dim> ratios_marine_continental (interpolation_extent,
-                                                             table_intervals,
-                                                             ratio_marine_continental_table);
+                                                                             table_intervals,
+                                                                             ratio_marine_continental_table);
 
       VectorFunctionFromScalarFunctionObject<dim> vector_function_object(
         [&](const Point<dim> &p) -> double
@@ -861,15 +868,15 @@ namespace aspect
           fastscape_set_basement_(basement.data());
           if (use_marine_component)
             {
-            fastscape_init_f_(silt_fraction.data());
+              fastscape_init_f_(silt_fraction.data());
             }
         }
 
     }
 
-
     template <int dim>
     void FastScape<dim>::execute_fastscape(std::vector<double> &elevation,
+                                           std::vector<double> &silt_fraction,
                                            std::vector<double> &extra_vtk_field,
                                            std::vector<double> &velocity_x,
                                            std::vector<double> &velocity_y,
@@ -942,9 +949,9 @@ namespace aspect
         // If marine sediment transport and deposition is active,
         // we also need to copy the silt fraction.
         if (use_marine_component)
-        {
-          fastscape_copy_f_(silt_fraction.data());
-        }
+          {
+            fastscape_copy_f_(silt_fraction.data());
+          }
 
         // Determine whether to create a VTK file this timestep.
         bool write_vtk = false;
@@ -1555,22 +1562,25 @@ namespace aspect
 
           if (sand_surface_porosity > 0. || silt_surface_porosity > 0.)
             this->get_pcout() << "   Restarting runs with nonzero porosity can lead to a different system after restart. " << std::endl;
-          unsigned int line = 0;
-          while (line < fastscape_array_size)
-            {
-              in_silt_fraction >> silt_fraction[line];
-              line++;
-            }
-
-            std::ifstream in_ratio_marine_continental(restart_filename_ratio_marine_continental);
-            AssertThrow(in_ratio_marine_continental, ExcIO());
-
+          {
             unsigned int line = 0;
             while (line < fastscape_array_size)
-            {
-              in_ratio_marine_continental >> ratio_marine_continental[line];
-              line++;
-            }
+              {
+                in_silt_fraction >> silt_fraction[line];
+                line++;
+              }
+          }
+
+          std::ifstream in_ratio_marine_continental(restart_filename_ratio_marine_continental);
+          AssertThrow(in_ratio_marine_continental, ExcIO());
+          {
+            unsigned int line = 0;
+            while (line < fastscape_array_size)
+              {
+                in_ratio_marine_continental >> ratio_marine_continental[line];
+                line++;
+              }
+          }
         }
 
       // Now load the last output at time of restart.
@@ -1620,19 +1630,19 @@ namespace aspect
           buffer_elevation << elevation[i] << "\n";
           buffer_basement << basement[i] << "\n";
           if (use_marine_component)
-          {
-            buffer_silt_fraction << silt_fraction[i] << "\n";
-            buffer_ratio_marine_continental << ratio_marine_continental[i] << "\n";
-          }
+            {
+              buffer_silt_fraction << silt_fraction[i] << "\n";
+              buffer_ratio_marine_continental << ratio_marine_continental[i] << "\n";
+            }
         }
 
       out_elevation << buffer_elevation.str();
       out_basement << buffer_basement.str();
       if (use_marine_component)
-      {
-        out_silt_fraction << buffer_silt_fraction.str();
-        out_ratio_marine_continental << buffer_ratio_marine_continental.str();
-      }
+        {
+          out_silt_fraction << buffer_silt_fraction.str();
+          out_ratio_marine_continental << buffer_ratio_marine_continental.str();
+        }
     }
 
 
