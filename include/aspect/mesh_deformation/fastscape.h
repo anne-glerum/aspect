@@ -148,6 +148,7 @@ namespace aspect
          * Execute FastScape
          */
         void execute_fastscape(std::vector<double> &elevation,
+                               std::vector<double> &silt_fraction,
                                std::vector<double> &extra_vtk_field,
                                std::vector<double> &velocity_x,
                                std::vector<double> &velocity_y,
@@ -613,10 +614,10 @@ namespace aspect
          */
         //mutable std::vector<double> ratio_marine_continental;
 
-        /** 
+        /**
          * Function to hold and query the ratio of marine to continental sediments.
          */
-        //mutable Functions::InterpolatedUniformGridData<dim> *ratios_marine_continental;
+        mutable Functions::InterpolatedUniformGridData<dim> *ratios_marine_continental;
 
         /**
          * The fraction of silt out of total sediments.
@@ -624,9 +625,9 @@ namespace aspect
          * able to restart the fraction table from a file.
          * TODO Make boost serialization available for Functions::InterpolatedUniformGridData.
          */
-        mutable std::vector<double> silt_fraction;
+        //mutable std::vector<double> silt_fraction;
 
-        /** 
+        /**
          * Function to hold and query the fraction of silt.
          */
         mutable Functions::InterpolatedUniformGridData<dim> *silt_fractions;
