@@ -195,7 +195,7 @@ namespace aspect
           prm.enter_subsection("Marine parameters");
           {
             sea_level = prm.get_double("Sea level");
-            continental_silt_fraction = prm.get_double("Sand-shale ratio");
+            continental_silt_fraction = prm.get_double("Silt fraction");
           }
           prm.leave_subsection();
         }
