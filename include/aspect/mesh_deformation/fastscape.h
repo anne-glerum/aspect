@@ -83,10 +83,10 @@ namespace aspect
         void parse_parameters (ParameterHandler &prm) override;
 
         /**
-         * Return the ratio between marine sediments from background marine sedimentation
-         * and continental sediments for a certain point.
+         * Return the fraction of marine sediments from background marine sedimentation
+         * of the total marine and continental sediments for a certain point.
          */
-        double get_marine_to_continental_sediment_ratio(Point<dim> point) const;
+        double get_marine_fraction(Point<dim> point) const;
 
         /**
          * Return the fraction of silt out of the total sand plus silt continental sediments
@@ -142,7 +142,7 @@ namespace aspect
                                   std::vector<double> &bedrock_transport_coefficient_array,
                                   std::vector<double> &bedrock_river_incision_rate_array,
                                   std::vector<double> &silt_fraction,
-                                  std::vector<double> &ratio_marine_continental) const;
+                                  std::vector<double> &marine_fraction) const;
 
         /**
          * Execute FastScape
@@ -178,7 +178,7 @@ namespace aspect
         void read_restart_files(std::vector<double> &elevation,
                                 std::vector<double> &basement,
                                 std::vector<double> &silt_fraction,
-                                std::vector<double> &ratio_marine_continental) const;
+                                std::vector<double> &marine_fraction) const;
 
         /**
          * Save data to file for restarting.
@@ -186,7 +186,7 @@ namespace aspect
         void save_restart_files(const std::vector<double> &elevation,
                                 std::vector<double> &basement,
                                 std::vector<double> &silt_fraction,
-                                std::vector<double> &ratio_marine_continental) const;
+                                std::vector<double> &marine_fraction) const;
 
         /**
          * Suggestion for the number of FastScape steps to run for every ASPECT timestep,
@@ -607,25 +607,9 @@ namespace aspect
          */
 
         /**
-         * The ratio between marine and continental sediments.
-         * We have to temporarily store it in this vector to be
-         * able to restart the ratio table from a file.
-         * TODO Make boost serialization available for Functions::InterpolatedUniformGridData.
+         * Function to hold and query the fraction of marine sediments of the total marine and continental sediments.
          */
-        //mutable std::vector<double> ratio_marine_continental;
-
-        /**
-         * Function to hold and query the ratio of marine to continental sediments.
-         */
-        mutable Functions::InterpolatedUniformGridData<dim> *ratios_marine_continental;
-
-        /**
-         * The fraction of silt out of total sediments.
-         * We have to temporarily store it in this vector to be
-         * able to restart the fraction table from a file.
-         * TODO Make boost serialization available for Functions::InterpolatedUniformGridData.
-         */
-        //mutable std::vector<double> silt_fraction;
+        mutable Functions::InterpolatedUniformGridData<dim> *marine_fractions;
 
         /**
          * Function to hold and query the fraction of silt.

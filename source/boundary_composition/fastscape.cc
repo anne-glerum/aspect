@@ -63,8 +63,8 @@ namespace aspect
           // Only two compositional fields are set in this plugin,
           // check that they exist.
           AssertThrow(using_fastscape, ExcMessage("The boundary composition plugin FastScape requires the mesh deformation plugin FastScape. "));
-          AssertThrow(this->introspection().compositional_name_exists("ratio_marine_continental_sediment"),
-                      ExcMessage("The boundary composition plugin FastScape requires a compositional field called ratio_marine_continental_sediment."));
+          AssertThrow(this->introspection().compositional_name_exists("marine_fraction"),
+                      ExcMessage("The boundary composition plugin FastScape requires a compositional field called marine_fraction."));
           AssertThrow(this->introspection().compositional_name_exists("silt_fraction"),
                       ExcMessage("The boundary composition plugin FastScape requires a compositional field called silt_fraction."));
         }
@@ -78,20 +78,20 @@ namespace aspect
                          const unsigned int compositional_field) const
     {
       // Retrieve the field number of the relevant fields.
-      const unsigned int marine_ratio_field = this->introspection().compositional_index_for_name("ratio_marine_continental_sediment");
+      const unsigned int marine_fraction_field = this->introspection().compositional_index_for_name("marine_fraction");
       const unsigned int silt_fraction_field = this->introspection().compositional_index_for_name("silt_fraction");
 
       const types::boundary_id top_boundary = this->get_geometry_model().translate_symbolic_boundary_name_to_id ("top");
 
       // Only set composition on the top boundary,
-      // and only for the fields 'ratio_marine_continental_sediment' and 'silt_fraction'
-      if (boundary_indicator != top_boundary || (compositional_field != marine_ratio_field && compositional_field != silt_fraction_field))
+      // and only for the fields 'marine_fraction' and 'silt_fraction'
+      if (boundary_indicator != top_boundary || (compositional_field != marine_fraction_field && compositional_field != silt_fraction_field))
         return 0.;
 
       // FastScape is only run in timestep 1.
       // The boundary_composition function is evaluated before mesh deformation,
       // and thus we can only question the FastScape mesh deformation plugin for
-      // the sediment ratio in timestep 2.
+      // the sediment fraction in timestep 2.
       // The silt fraction on land is always 0, but in the marine domain it will
       // initially be the silt fraction that is set by the user for sediments
       // coming from the continent.
@@ -122,8 +122,8 @@ namespace aspect
               for (const auto &model : boundary_and_deformation_objects.second)
                 if (Plugins::plugin_type_matches<const MeshDeformation::FastScape<dim>>(*model))
                   {
-                    if (compositional_field == marine_ratio_field)
-                      result = Plugins::get_plugin_as_type<const MeshDeformation::FastScape<dim>>(*model).get_marine_to_continental_sediment_ratio(position);
+                    if (compositional_field == marine_fraction_field)
+                      result = Plugins::get_plugin_as_type<const MeshDeformation::FastScape<dim>>(*model).get_marine_fraction(position);
                     else if (compositional_field == silt_fraction_field)
                       result = Plugins::get_plugin_as_type<const MeshDeformation::FastScape<dim>>(*model).get_silt_fraction(position);
                   }
@@ -214,8 +214,8 @@ namespace aspect
     ASPECT_REGISTER_BOUNDARY_COMPOSITION_MODEL(FastScape,
                                                "fastscape",
                                                "A model in which the composition at the boundary "
-                                               "for two specific field called 'marine_continental_ratio' "
+                                               "for two specific fields called 'marine_fraction' "
                                                "and 'silt_fraction' are set by the FastScape mesh deformation plugin. ")
   }
 }
-#endiff
+#endif
