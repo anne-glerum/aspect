@@ -237,6 +237,50 @@ namespace aspect
               // of compositional field viscosities is consistent with any averaging scheme.
               out.viscosities[i] = MaterialUtilities::average_value(volume_fractions, isostrain_viscosities.composition_viscosities, rheology->viscosity_averaging);
 
+              // Calculate changes in viscosity with iterative dampening and fill prescribed output.
+              if (rheology->use_iterative_viscosity_dampening)
+                {
+                  // The index of the compositional field that represents the log of the old viscosity.
+                  const int field_index = this->introspection().compositional_index_for_name("log_viscosity_field");
+
+                  // Set up variable to interpolate the viscosity output onto the compositional field log_viscosity_field.
+                  PrescribedFieldOutputs<dim> *prescribed_field_out = out.template get_additional_output<PrescribedFieldOutputs<dim> >();
+
+                  // If requested, fill the outputs to put the undampened viscosity onto the compositional field.
+                  // This request is made during solving for the compositional fields, so before assembling the Stokes equation
+                  // during a nonlinear iteration. This means that the viscosity computed now only differs from the viscosity
+                  // of the previous iteration in terms of an updated temperature. We therefore can call this the old viscosity.
+                  if (prescribed_field_out != NULL && in.requests_property(MaterialProperties::additional_outputs))
+                  {
+                    std::cout << "Storing viscosity " << out.viscosities[i] << " for position x " << in.position[i][0] << " for position y " << in.position[i][1] << " for P " << in.pressure[i] << " T " << in.temperature[i] << " vel x " << in.velocity[i][0] << " vel y " << in.velocity[i][1] << " strain " << in.composition[i][0] << std::endl;
+                    prescribed_field_out->prescribed_field_outputs[i][field_index] = std::log10(out.viscosities[i]);
+                  }
+
+                  // In case we are in the Stokes assembly, we need to get old_viscosity that we stored using
+                  // PrescribedFieldOutputs above during the compositional field solves. 
+                  const double old_viscosity = std::pow(10, in.composition[i][field_index]);
+                  Assert(old_viscosity > 0.0, ExcMessage("The viscosity stored for iterative damping is zero or negative."));
+
+                  // Dampen the viscosity with the viscosity of the previous nonlinear iteration.
+                  const double dampened_viscosity = rheology->iterative_dampening->calculate_viscosity(old_viscosity, out.viscosities[i]);
+                    Assert(dampened_viscosity > 0.0, ExcMessage("The viscosity to store for iterative damping is zero or negative."));
+                  // Use the dampened viscosity if the user-set threshold of undampened nonlinear iterations
+                  // has been exceeded and a dampening factor larger than zero is used. Note that the viscosity
+                  // that is calculated during Stokes assembly differs from the old_viscosity in that the compositional
+                  // fields have now been updated to the current nonlinear iteration. 
+                  // Also do not apply dampening before initializing, as the initial conditions
+                  // need to be set before the damping can be applied.
+                    std::cout << "Undampened viscosity " << out.viscosities[i] << " for position x " << in.position[i][0]  << " for position y " << in.position[i][1]  << " for P " << in.pressure[i] << " T " << in.temperature[i] << " vel x " << in.velocity[i][0] << " vel y " << in.velocity[i][1] << " strain " << in.composition[i][0] << std::endl;
+                    if (this->simulator_is_past_initialization() == true &&
+                        this->get_timestep_number() > 0 &&
+                        this->get_nonlinear_iteration() >= rheology->iterative_dampening->get_n_nonlinear_iterations_before_damping() &&
+                        rheology->iterative_dampening->get_dampening_factor() > 0)
+                    {
+                      std::cout << "Dampened viscosity " << dampened_viscosity << " for position x " << in.position[i][0]  << " for position y " << in.position[i][1]  <<  " for P " << in.pressure[i] << " T " << in.temperature[i] << " vel x " << in.velocity[i][0] << " vel y " << in.velocity[i][1] << " strain " << in.composition[i][0] << std::endl;
+                      out.viscosities[i] = dampened_viscosity;
+                      } 
+                }
+
               // Decide based on the maximum composition if material is yielding.
               // This avoids for example division by zero for harmonic averaging (as plastic_yielding
               // holds values that are either 0 or 1), but might not be consistent with the viscosity
@@ -281,7 +325,7 @@ namespace aspect
 
           // Calculate changes in viscosity with iterative dampening and fill prescribed output.
           // TODO Should the damping be done before compute_viscosity_derivatives in line 254?
-          if (in.requests_property(MaterialProperties::viscosity) || in.requests_property(MaterialProperties::additional_outputs))
+/*           if (in.requests_property(MaterialProperties::viscosity) || in.requests_property(MaterialProperties::additional_outputs))
             if (rheology->use_iterative_viscosity_dampening)
               {
                 // Get the viscosity of the previous nonlinear iteration.
@@ -320,7 +364,7 @@ namespace aspect
                     else
                       prescribed_field_out->prescribed_field_outputs[i][field_index] = std::log10(out.viscosities[i]);
                   }
-              }
+              } */
 
           // Fill plastic outputs if they exist.
           // The values in isostrain_viscosities only make sense when the calculate_isostrain_viscosities function
