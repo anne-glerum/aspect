@@ -260,10 +260,10 @@ namespace aspect
                   // PrescribedFieldOutputs above during the compositional field solves. 
                   const double old_viscosity = std::pow(10, in.composition[i][field_index]);
                   Assert(old_viscosity > 0.0, ExcMessage("The viscosity stored for iterative damping is zero or negative."));
-
+                  std::cout << "Old viscosity " << old_viscosity << " for position x " << in.position[i][0] << " for position y " << in.position[i][1] << " for P " << in.pressure[i] << " T " << in.temperature[i] << " vel x " << in.velocity[i][0] << " vel y " << in.velocity[i][1] << " strain " << in.composition[i][0] << std::endl;
                   // Dampen the viscosity with the viscosity of the previous nonlinear iteration.
                   const double dampened_viscosity = rheology->iterative_dampening->calculate_viscosity(old_viscosity, out.viscosities[i]);
-                    Assert(dampened_viscosity > 0.0, ExcMessage("The viscosity to store for iterative damping is zero or negative."));
+                  Assert(dampened_viscosity > 0.0, ExcMessage("The viscosity to store for iterative damping is zero or negative."));
                   // Use the dampened viscosity if the user-set threshold of undampened nonlinear iterations
                   // has been exceeded and a dampening factor larger than zero is used. Note that the viscosity
                   // that is calculated during Stokes assembly differs from the old_viscosity in that the compositional
