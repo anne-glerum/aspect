@@ -350,7 +350,7 @@ namespace aspect
         else
           current_residual[c] = 0.0;
       }
-
+    tmp_solution = solution;
     return current_residual;
   }
 

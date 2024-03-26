@@ -244,6 +244,7 @@ namespace aspect
         solution.block(blockidx) = initial_solution.block(blockidx);
         old_solution.block(blockidx) = initial_solution.block(blockidx);
         old_old_solution.block(blockidx) = initial_solution.block(blockidx);
+        tmp_solution.block(blockidx) = initial_solution.block(blockidx);
         current_linearization_point.block(blockidx) = initial_solution.block(blockidx);
       }
   }
@@ -422,6 +423,7 @@ namespace aspect
           {
             old_solution.block(blockidx) = particle_solution.block(blockidx);
             old_old_solution.block(blockidx) = particle_solution.block(blockidx);
+            tmp_solution.block(blockidx) = particle_solution.block(blockidx);
           }
       }
 
@@ -528,6 +530,7 @@ namespace aspect
     // set all solution vectors to the same value as the previous solution
     solution = old_solution;
     old_old_solution = old_solution;
+    tmp_solution = old_solution;
   }
 }
 

@@ -1948,7 +1948,7 @@ namespace aspect
         {
           fe_values.reinit (cell);
           cell->get_dof_indices (local_dof_indices);
-          in.reinit(fe_values, cell, introspection, solution);
+          in.reinit(fe_values, cell, introspection, tmp_solution);
 
           material_model->evaluate(in, out);
 
