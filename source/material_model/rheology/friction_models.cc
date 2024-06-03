@@ -107,7 +107,19 @@ namespace aspect
 
               return friction_from_function;
             }
+            case steady_state_RSF:
+            {
+              // Get the values for a and b at the current position for the current composition
+              const std::pair<double,double> RSF_parameters_a_and_b = calculate_depth_dependent_a_and_b(position,volume_fraction_index);
+
+              const double mu = std::tan(static_friction_angle)
+                                + (RSF_parameters_a_and_b.first - RSF_parameters_a_and_b.second)
+                                * std::log(steady_state_velocity / RSF_ref_velocity);
+              return std::atan (mu);
+            }
+            break;
           }
+
         // we should never get here, return something anyway, so the compiler does not complain...
         AssertThrow (false, ExcMessage("Unknown friction model."));
         return static_friction_angle;
@@ -121,6 +133,24 @@ namespace aspect
       get_friction_mechanism() const
       {
         return friction_mechanism;
+      }
+
+
+
+      template <int dim>
+      std::pair<double,double>
+      FrictionModels<dim>::calculate_depth_dependent_a_and_b(const Point<dim> &position, const int volume_fraction_index) const
+      {
+        Utilities::NaturalCoordinate<dim> point =
+          this->get_geometry_model().cartesian_to_other_coordinates(position, RSF_coordinate_system);
+
+        const double rate_and_state_parameter_a =
+          RSF_parameter_a_function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),volume_fraction_index);
+        const double rate_and_state_parameter_b =
+          RSF_parameter_b_function->value(Utilities::convert_array_to_point<dim>(point.get_coordinates()),volume_fraction_index);
+
+        return std::pair<double,double>(rate_and_state_parameter_a,
+                                        rate_and_state_parameter_b);
       }
 
 
@@ -208,6 +238,63 @@ namespace aspect
           Functions::ParsedFunction<dim>::declare_parameters(prm,1);
         }
         prm.leave_subsection();
+
+        prm.enter_subsection("Steady state rate and state friction");
+        {
+          prm.declare_entry ("RSF reference slip rate", "1e-6",
+                             Patterns::Double (0),
+                             "The quasi static or reference slip rate used in rate-and-state friction. It is an "
+                             "arbitrary slip rate at which friction equals the reference friction angle. "
+                             "This happens when slip rate (which is represented in ASPECT as strain rate * cell size) "
+                             "enters a steady state. Friction at this steady state is defined as: "
+                             "$\\mu = \\mu_{st} = \\mu_0 + (a-b)ln\\big( \\frac{V}{V_0} \\big). It should not be "
+                             "confused with the 'dynamic characteristic strain rate' in 'dynamic friction'. "
+                             "Units: \\si{\\meter\\per\\second}.");
+
+          prm.declare_entry ("Steady state velocity for RSF", "1.75e-2",
+                             Patterns::Double (0),
+                             "This is velocity $V_{st}$ used in 'steady state rate and state dependent friction'. "
+                             "In the rate-and-state friction framework, when the velocity remains constant "
+                             "friction will cease to change and evolve to a steady state that depends on a and b. "
+                             "This is the input parameter to choose the desired velocity, which is not the actual "
+                             "velocity in the model but is used to determine the friction angle based on the "
+                             "equation in 'steady state rate and state dependent friction'. So this velocity is "
+                             "assumed to have remained constant over a long period such that the friction angle "
+                             "evolved to a steady state."
+                             "Units: \\si{\\meter\\per\\second}.");
+
+
+          /**
+          * The functions for the rate-and-state parameters a and b, and the critical
+          * slip distance use the same coordinate system. They can be declared in dependence
+          * of depth, cartesian coordinates or spherical coordinates. Note that the order
+          * of spherical coordinates is r,phi,theta and not r,theta,phi, since
+          * this allows for dimension independent expressions.
+          */
+          prm.declare_entry ("Coordinate system for RSF parameters", "cartesian",
+                             Patterns::Selection ("cartesian|spherical|depth"),
+                             "A selection that determines the assumed coordinate "
+                             "system for the function variables. Allowed values "
+                             "are `cartesian', `spherical', and `depth'. `spherical' coordinates "
+                             "are interpreted as r,phi or r,phi,theta in 2D/3D "
+                             "respectively with theta being the polar angle. `depth' "
+                             "will create a function, in which only the first "
+                             "parameter is non-zero, which is interpreted to "
+                             "be the depth of the point.");
+
+          prm.enter_subsection("Rate and state parameter a function");
+          {
+            Functions::ParsedFunction<dim>::declare_parameters(prm,1);
+          }
+          prm.leave_subsection();
+
+          prm.enter_subsection("Rate and state parameter b function");
+          {
+            Functions::ParsedFunction<dim>::declare_parameters(prm,1);
+          }
+          prm.leave_subsection();
+        }
+        prm.leave_subsection();
       }
 
 
@@ -287,6 +374,53 @@ namespace aspect
             prm.leave_subsection();
           }
 
+        if (friction_mechanism == steady_state_RSF)
+          {
+            prm.enter_subsection("Steady state rate and state friction");
+            {
+              RSF_ref_velocity = prm.get_double("Rate and state reference slip rate");
+
+              steady_state_velocity = prm.get_double("Steady state velocity for RSF");
+
+              RSF_coordinate_system = Utilities::Coordinates::string_to_coordinate_system(prm.get("Coordinate system"));
+
+              prm.enter_subsection("Rate and state parameter a function");
+
+              try
+                {
+                  RSF_parameter_a_function
+                    = std::make_unique<Functions::ParsedFunction<dim>>(n_fields);
+                  RSF_parameter_a_function->parse_parameters (prm);
+                }
+              catch (...)
+                {
+                  std::cerr << "FunctionParser failed to parse\n"
+                            << "\t RSF a function\n"
+                            << "with expression \n"
+                            << "\t' " << prm.get("Function expression") << "'";
+                  throw;
+                }
+              prm.leave_subsection();
+
+              prm.enter_subsection("Rate and state parameter b function");
+              try
+                {
+                  RSF_parameter_b_function
+                    = std::make_unique<Functions::ParsedFunction<dim>>(n_fields);
+                  RSF_parameter_b_function->parse_parameters (prm);
+                }
+              catch (...)
+                {
+                  std::cerr << "FunctionParser failed to parse\n"
+                            << "\t RSF b function\n"
+                            << "with expression \n"
+                            << "\t' " << prm.get("Function expression") << "'";
+                  throw;
+                }
+              prm.leave_subsection();
+            }
+            prm.leave_subsection();
+          }
       }
     }
   }

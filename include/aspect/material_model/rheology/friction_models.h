@@ -44,12 +44,18 @@ namespace aspect
        *
        * For the type 'dynamic friction', the friction angle is rate dependent following
        * Equation 13 from \\cite{van_dinther_seismic_2013}.
+       *
+       * For the type 'steady state rate and state dependent friction', the friction angle
+       * is computed as the steady-state friction coefficient in rate-and-state friction
+       * that is reached when state theta evolves toward a steady state $\theta_{ss} = \frac{L}{V}$
+       * at constant slip velocities V.
        */
       enum FrictionMechanism
       {
         static_friction,
         dynamic_friction,
-        function
+        function,
+        steady_state_RSF
       };
 
       template <int dim>
@@ -128,6 +134,41 @@ namespace aspect
            * Possible choices are depth, cartesian and spherical.
            */
           Utilities::Coordinates::CoordinateSystem coordinate_system_friction_function;
+
+          /**
+          * Function to calculate depth-dependent a and b values for state-dependent friction
+          * at a certain depth and for a composition with a certain volume_fraction_index.
+          */
+          std::pair<double,double>
+          calculate_depth_dependent_a_and_b(const Point<dim> &position, const int volume_fraction_index) const;
+
+          /**
+          * Arbitrary slip rate at which friction equals the reference friction angle in
+          * rate-and-state friction. There are different names for this parameter in the
+          * literature varying between steady state slip rate, reference slip rate,
+          * quasi-static slip rate.
+          */
+          double RSF_ref_velocity;
+
+          /**
+          * The velocity used in 'steady state rate and state dependent friction' that is
+          * assumed to have remained constant over a long period such that the friction angle
+          * evolved to a steady-state.
+          */
+          double steady_state_velocity;
+
+          /**
+          * The coordinate representation to evaluate the functions for RSF parameters a and b.
+          * Possible choices are depth, cartesian and spherical.
+          */
+          Utilities::Coordinates::CoordinateSystem RSF_coordinate_system;
+
+          /**
+          * Parsed functions that specify the rate-and-state parameters a and b which must be
+          * given in the input file using the function method.
+          */
+          std::unique_ptr<Functions::ParsedFunction<dim>> RSF_parameter_a_function;
+          std::unique_ptr<Functions::ParsedFunction<dim>> RSF_parameter_b_function;
       };
     }
   }
