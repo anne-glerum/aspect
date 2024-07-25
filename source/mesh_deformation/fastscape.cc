@@ -191,6 +191,7 @@ namespace aspect
     void
     FastScape<dim>::initialize ()
     {
+      std::cout << "Initializing FastScape" << std::endl;
       AssertThrow(Plugins::plugin_type_matches<const GeometryModel::Box<dim>>(this->get_geometry_model()),
                   ExcMessage("FastScape can only be run with a box geometry model."));
 
@@ -1662,6 +1663,10 @@ namespace aspect
     double FastScape<dim>::
     get_marine_fraction(Point<dim> point) const
     {
+      // Some plugins might call this function before we have restarted from the
+      // FastScape checkpoints. Therefore, return a guess.
+      if (restart)
+        return 0.;
       // We cut off the fraction at 1. If it is larger than 1, it means that after the marine deposition
       // some erosion occurred that left the new surface lower than the marine sediment surface, but higher
       // than the starting surface of this timestep. Therefore all sediment is marine, and the fraction is 1.
@@ -1677,6 +1682,16 @@ namespace aspect
     double FastScape<dim>::
     get_silt_fraction(Point<dim> point) const
     {
+      // Some plugins might call this function before we have restarted from the
+      // FastScape checkpoints. Therefore, return a guess. Above sea level, the silt fraction
+      // is zero anyway and below set it to the initial value.
+      if (restart)
+        {
+          const GeometryModel::Box<dim> *geometry
+            = dynamic_cast<const GeometryModel::Box<dim>*> (&this->get_geometry_model());
+          return (point[dim - 1] > geometry->get_origin()[dim - 1] + geometry->get_extents()[dim - 1] + sea_level) ?
+                 0. : initial_silt_fraction;
+        }
       // We cut off the fraction between 0 and 1.
       const double fraction = std::min(1., std::max(0., silt_fractions->value(point)));
       return fraction;
