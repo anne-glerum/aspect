@@ -154,6 +154,12 @@ namespace aspect
           get_elastic_shear_moduli () const;
 
           /**
+           * Return the values of the damper viscosity used in the rheology model.
+           */
+          double
+          get_damper_viscosity() const;
+
+          /**
            * Calculate the effective elastic viscosity (this is the equivalent viscosity of
            * a material which was unstressed at the end of the previous timestep).
            */
