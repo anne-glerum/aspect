@@ -51,7 +51,7 @@ namespace aspect
         AssertThrow(this->get_parameters().enable_elasticity == true,
                     ExcMessage ("This particle property should only be used if 'Enable elasticity' is set to true"));
 
-        const auto &manager = this->get_particle_world().get_property_manager();
+        const auto &manager = this->get_particle_world(this->get_particle_world_index()).get_property_manager();
         AssertThrow(!manager.plugin_name_exists("composition"),
                     ExcMessage("The 'elastic stress' plugin cannot be used in combination with the 'composition' plugin."));
 
