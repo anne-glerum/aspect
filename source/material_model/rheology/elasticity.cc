@@ -751,8 +751,8 @@ namespace aspect
         // we need to scale the elastic viscosity with the timestep ratio dtc/dte:
         // $\eta_{el} = \Delta t_{el} G$
         // $\eta_{el}^{c} = \Delta t_{el} G \frac{\Delta t_c}{\Delta t_{el}} = \Delta t_c G$.
-        // Since we already have a function that returns the timestep ratio $\frac{\Delta t_c}{\Delta t_{el}}$,
-        // use that instead.
+        // Since we already have a function that returns the timestep ratio $\frac{\Delta t_c}{\Delta t_{el}}$
+        // and deals with the special cases where $\Delta t_c$ is not know yet, use that function.
         // The damper is asserted to be zero when using this rheology at the moment. If the
         // damper were to be applied, the user should input the damper viscosity over
         // the computational timestep.
