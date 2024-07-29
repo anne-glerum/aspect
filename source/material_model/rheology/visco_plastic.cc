@@ -864,10 +864,6 @@ namespace aspect
             const std::vector<double> friction_angles_RAD = isostrain_viscosities.current_friction_angles;
             const std::vector<double> cohesions = isostrain_viscosities.current_cohesions;
 
-            double pressure_for_plasticity = in.pressure[i];
-            if (allow_negative_pressures_in_plasticity == false)
-              pressure_for_plasticity = std::max(in.pressure[i],0.0);
-
             // The max yield stress is the same for each composition, so we give the 0th field value.
             const double max_yield_stress = drucker_prager_plasticity.compute_drucker_prager_parameters(0).max_yield_stress;
 
