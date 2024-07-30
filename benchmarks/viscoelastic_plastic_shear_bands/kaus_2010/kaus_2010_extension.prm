@@ -127,7 +127,7 @@ end
 # Number and name of compositional fields
 subsection Compositional fields
   set Number of fields = 8
-  set Names of fields  = ve_stress_xx, ve_stress_yy, ve_stress_xy, ve_stress_xx_old, ve_stress_yy_old, ve_stress_xy_old, plastic strain, inclusion
+  set Names of fields  = ve_stress_xx, ve_stress_yy, ve_stress_xy, ve_stress_xx_old, ve_stress_yy_old, ve_stress_xy_old, plastic_strain, inclusion
   set Types of fields  = stress, stress, stress, stress, stress, stress, strain, chemical composition
   set Compositional field methods = particles
   set Mapped particle properties  = ve_stress_xx: ve_stress_xx, \

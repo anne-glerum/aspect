@@ -136,19 +136,27 @@ subsection Postprocess
   end
 
   subsection Particles
-    set Number of particles         = 3000
-    set Minimum particles per cell  = 25
-    set Maximum particles per cell  = 35
-    set Particle generator name     = random uniform
-    set Interpolation scheme        = cell average
-    set List of particle properties = elastic stress
-    set Load balancing strategy     = remove and add particles
-    set Update ghost particles      = true
     set Time between data output    = 500
     set Data output format          = vtu
   end
-
 end
+
+subsection Particles
+  set Minimum particles per cell  = 25
+  set Maximum particles per cell  = 35
+  set Particle generator name     = random uniform
+  set Interpolation scheme        = cell average
+  set List of particle properties = elastic stress
+  set Load balancing strategy     = remove and add particles
+  set Update ghost particles      = true
+
+  subsection Generator
+    subsection Probability density function
+      set Number of particles = 3000
+    end
+  end
+end
+
 
 # Termination criteria
 subsection Termination criteria
