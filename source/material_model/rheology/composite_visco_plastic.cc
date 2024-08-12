@@ -716,8 +716,6 @@ namespace aspect
 
 
 
-      // TODO: UNCOMMENT
-      /*
       template <int dim>
       void
       CompositeViscoPlastic<dim>::create_elastic_additional_outputs (MaterialModel::MaterialModelOutputs<dim> &out) const
@@ -907,7 +905,6 @@ namespace aspect
             elastic_additional_out->elastic_shear_moduli[i] = (elastic_additional_out->elastic_viscosity[i] - elastic_damper_viscosity)/dtc;
           }
       }
-      */
 
 
       // Rotate the elastic stresses of the previous timestep $t$ into the current timestep $t+dtc$.
