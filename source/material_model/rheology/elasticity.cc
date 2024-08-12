@@ -183,9 +183,9 @@ namespace aspect
         // make sure that no damping is applied. Damping could potentially
         // improve stability under rapidly changing dynamics, but
         // so far it has not been necessary.
-        AssertThrow(elastic_damper_viscosity == 0.,
-                    ExcMessage("The viscoelastic material model and the visco-plastic material model with elasticity enabled require "
-                               "that no elastic damping is applied."));
+        //AssertThrow(elastic_damper_viscosity == 0.,
+        //            ExcMessage("The viscoelastic material model and the visco-plastic material model with elasticity enabled require "
+        //                       "that no elastic damping is applied."));
         // An update of the stored stresses is done in an operator splitting step for fields or by the particle property 'elastic stress'.
         AssertThrow(this->get_parameters().use_operator_splitting || (this->get_parameters().mapped_particle_properties).count(this->introspection().compositional_index_for_name("ve_stress_xx")),
                     ExcMessage("The viscoelastic material model and the visco-plastic material model with elasticity enabled require "

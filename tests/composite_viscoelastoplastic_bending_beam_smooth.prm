@@ -1,0 +1,214 @@
+# This is a modification of
+# the parameter file named 'newVE_Bending_Beam_drop.prm' that Mack 
+# sent EGP on October 23, 2022 at 1620.
+
+# This parameter file modifies the benchmark viscoelastic_bending_beam.prm
+# to use particles, rather than compositional fields, to track viscoleastic 
+# stresses and location of the beam.
+
+# This parameter file reproduces a 2D benchmark for viscoelastic deformation
+# published in "Numerical modelling of magma dynamics coupled to tectonic
+# deformation of lithosphere and crust" by Keller, May and Kaus, 2013,
+# Geophys. J. Int., v. 195,  p. 1406-1422. The model setup and results are
+# described in detail in section B.2.3 and figure B5.
+#
+# The benchmark examines bending and unbending (e.g., recovery) of a
+# viscoelastic beam surrounded by a less dense and viscous (inelastic) fluid.
+# Gravitational forces drive initial bending (elastic strain) of the beam for
+# 50 Kyr, which then recovers its shape over ~ 500 Kyr if gravity is turned
+# off. The recovery is driven by the accumulated elastic stresses and thus
+# provides a basic test for the viscoelasticity implementation.
+#
+# Compositional fields are used to track the viscoelastic stresses and material
+# representing the beam. The elasticity implementation requires
+# a discontinuous discretization for the compositional fields.
+# Significantly, the time step is limited to 500 yr through
+# the "Maximum time step" parameter. Using
+# a constant time step ensures the effective (viscoelastic) viscosity of the
+# viscoelastic beam and viscous fluid remains constants throughout the model run.
+
+# Global parameters
+set Dimension                              = 2
+set Start time                             = 0
+set End time                               = 60e3
+set Use years in output instead of seconds = true
+set Resume computation                     = false
+set CFL number                             = 0.5
+set Maximum time step                      = 125
+set Output directory                       = test_dtcisdte125yr
+set Pressure normalization                 = surface
+set Surface pressure                       = 0.
+
+# Solver settings
+#set Nonlinear solver scheme  = iterated Advection and Newton Stokes
+set Nonlinear solver scheme  = iterated Advection and Stokes
+set Max nonlinear iterations = 3
+set Use operator splitting   = true
+
+subsection Solver parameters
+  subsection Stokes solver parameters
+    set Number of cheap Stokes solver steps = 2000
+#    set Linear solver tolerance = 1e-10
+  end
+  subsection Operator splitting parameters
+    set Reaction time step                     = 2e3
+    set Reaction time steps per advection step = 1 
+  end
+end
+
+# Model geometry (7.5x5 km, 0.1 km spacing)
+# It is important to use these particular
+# repetitions so that the beam aligns with the
+# mesh.
+subsection Geometry model
+  set Model name = box
+
+  subsection Box
+    set X repetitions = 75
+    set Y repetitions = 50
+    set X extent      = 7.5e3
+    set Y extent      = 5e3
+  end
+end
+
+# Mesh refinement specifications
+subsection Mesh refinement
+  set Initial adaptive refinement        = 0
+  set Initial global refinement          = 0
+  set Time steps between mesh refinement = 0
+  set Strategy = minimum refinement function
+  subsection Minimum refinement function
+    set Coordinate system   = cartesian
+    set Variable names      = x,y
+    set Function expression = if (x<=5.2e3 && y>=1.6e3 && y<=3.0e3, 3, 0)
+  end
+end
+
+# Element types
+subsection Discretization
+  set Temperature polynomial degree           = 1
+  set Use discontinuous composition discretization = true
+  subsection Stabilization parameters
+      set Use limiter for discontinuous composition solution = false, false, false, false, false, false, true
+      set Global composition maximum =  5e12,  5e12,  5e12, 5e12,  5e12,  5e12, 1.
+      set Global composition minimum = -5e12, -5e12, -5e12, -5e12, -5e12, -5e12, -0.
+  end
+end
+
+# Formulation classification
+subsection Formulation
+  set Enable elasticity = true
+end
+
+# Velocity boundary conditions
+# Fix the boundary the beam is attached to.
+subsection Boundary velocity model
+  set Zero velocity boundary indicators       = left
+  set Tangential velocity boundary indicators = bottom, top, right
+end
+
+# Number and name of compositional fields
+subsection Compositional fields
+  set Number of fields = 7
+  set Names of fields  = ve_stress_xx, ve_stress_yy, ve_stress_xy, ve_stress_xx_old, ve_stress_yy_old, ve_stress_xy_old, beam
+  set Compositional field methods = field, field, field, field, field, field, field
+  set Types of fields = stress, stress,stress,stress,stress,stress,chemical composition
+end
+
+# Initial location of the beam.
+# All stresses are initialized at zero.
+subsection Initial composition model
+  set Model name = function
+  subsection Function
+    set Variable names      = x,y
+    set Function constants  = dx=100
+    set Function expression = 0; 0; 0; 0; 0; 0; if (x<=4.8e3 && y>=2.2e3 && y<=2.8e3, 1, \
+                                                if (y>=2.2e3-(x-4800) && y<=2.8e3+(x-4800) && x>4800 && x<=4800+dx,1-1/dx*(x-4800), \
+                                                if(x<=4800+dx && y>2800 && y<=2800+dx, 1-1/dx*(y-2800), \
+                                                if(x<=4800+dx && y<2200 && y>=2200-dx, 1/dx*(y-2200+dx),  0))))
+  end
+end
+
+
+# Temperature does not play a role.
+subsection Boundary temperature model
+  set Fixed temperature boundary indicators = bottom, top, left, right
+  set List of model names = box
+  subsection Box
+    set Bottom temperature = 293
+    set Left temperature   = 293
+    set Right temperature  = 293
+    set Top temperature    = 293
+  end
+end
+
+# Temperature initial conditions
+subsection Initial temperature model
+  set Model name = function
+  subsection Function
+    set Function expression = 293
+  end
+end
+
+# Material model
+subsection Material model
+
+  set Material averaging = none
+
+  set Model name = composite visco plastic
+
+  subsection Composite Visco Plastic
+    set Densities            =  2800,  3300
+
+    set Grain size exponents for diffusion creep = 0
+    set Activation energies for diffusion creep = 0
+    set Activation volumes for diffusion creep = 0
+    # set Viscosities          = 1.e18, 1.e24
+    set Prefactors for diffusion creep = 5e-19, 5e-25
+    
+    set Elastic shear moduli = 1.e11, 1.e10
+    set Fixed elastic time step     = 125
+    set Use fixed elastic time step = false
+    set Viscosity averaging scheme  = isostress
+
+    set Include diffusion creep in composite rheology = true
+    set Include dislocation creep in composite rheology = false
+    set Include Peierls creep in composite rheology = false
+    set Include Drucker Prager plasticity in composite rheology = false
+    set Include elasticity in composite rheology = true
+
+    set Minimum viscosity = 1e17
+    set Minimum strain rate = 1.e-20
+    set Elastic damper viscosity = 1e17
+
+    set Thermal diffusivities = 0
+  end
+
+end
+
+
+# Post processing
+subsection Postprocess
+  set List of postprocessors = velocity statistics, visualization, composition statistics, maximum depth of field
+  set Run postprocessors on nonlinear iterations = true
+  subsection Visualization
+    set List of output variables = material properties, strain rate, named additional outputs
+
+    subsection Material properties
+      set List of material properties = density, viscosity
+    end
+
+    set Time between graphical output = 0 #10e3
+    set Interpolate output = true
+    set Write higher order output = true
+  end
+end
+
+# Gravity model
+# Turn off gravity after 50 ky so the beam rebounds
+subsection Gravity model
+  set Model name = function
+  subsection Function
+    set Function expression = 0; if(t<=50000, -10, 0)
+  end
+end
