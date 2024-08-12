@@ -783,7 +783,7 @@ namespace aspect
                 out_copy.viscosities = out.viscosities;
 
                 const MaterialAveraging::AveragingOperation averaging_operation_for_viscosity =
-                  get_averaging_operation_for_viscosity(this->get_parameters().material_averaging);
+                  elasticity->get_averaging_operation_for_viscosity(this->get_parameters().material_averaging);
                 MaterialAveraging::average(averaging_operation_for_viscosity,
                                            in.current_cell,
                                            this->introspection().quadratures.velocities,
