@@ -204,6 +204,13 @@ namespace aspect
           double
           calculate_timestep_ratio() const;
 
+          /**
+           * Determine what averaging option to use for the viscosity,
+           * based on the material averaging, as some limitations apply.
+           */
+          MaterialAveraging::AveragingOperation
+          get_averaging_operation_for_viscosity (const MaterialAveraging::AveragingOperation operation) const;
+
         private:
           /**
            * Get the stored stress of the previous timestep. For fields, use a
