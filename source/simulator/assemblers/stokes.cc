@@ -101,6 +101,14 @@ namespace aspect
             }
         }
 
+      const MaterialModel::PrescribedPlasticDilation<dim>
+      *prescribed_dilation =
+        (this->get_parameters().enable_prescribed_dilation)
+        ? scratch.material_model_outputs.template get_additional_output<MaterialModel::PrescribedPlasticDilation<dim>>()
+        : nullptr;
+
+      const bool material_model_is_compressible = (this->get_material_model().is_compressible());
+
       // Loop over all quadrature points and assemble their contributions to
       // the preconditioner matrix
       for (unsigned int q = 0; q < n_q_points; ++q)
@@ -110,9 +118,14 @@ namespace aspect
               if (introspection.is_stokes_component(fe.system_to_component_index(i).first))
                 {
                   if (this->get_parameters().use_full_A_block_preconditioner == false)
+                  {
                     scratch.grads_phi_u[i_stokes] =
                       scratch.finite_element_values[introspection.extractors
                                                     .velocities].symmetric_gradient(i, q);
+                    scratch.div_phi_u[i_stokes] =
+                      scratch.finite_element_values[introspection.extractors
+                                                    .velocities].divergence(i, q);                  
+                  }
                   scratch.phi_p[i_stokes] = scratch.finite_element_values[introspection
                                                                           .extractors.pressure].value(i, q);
                   if (this->get_parameters().use_bfbt == true)
@@ -126,6 +139,7 @@ namespace aspect
             }
 
           const double eta = scratch.material_model_outputs.viscosities[q];
+          const double eta_two_thirds = eta * 2.0 / 3.0;
           const double one_over_eta = 1. / eta;
 
           const double JxW = scratch.finite_element_values.JxW(q);
@@ -141,6 +155,16 @@ namespace aspect
                                                                 * scratch.grads_phi_u[j]))
                                                  )
                                                  * JxW;
+                      
+                      // Tailored for the incompressible "prescribed dike injection" material model.
+                      // Since this function adds an additional term to the mass equation, we need to 
+                      // use the deviatoric strain rate in the left-hand matrix instead of the default
+                      // full strain rate in the dike injection area.
+                      if (prescribed_dilation != nullptr
+                          && !material_model_is_compressible
+                          && this->get_parameters().enable_dike_injection
+                          && prescribed_dilation->dilation[q] != 0)
+                        data.local_matrix(i, j) += (- eta_two_thirds * (scratch.div_phi_u[i] * scratch.div_phi_u[j])) * JxW;
                     }
 
 
@@ -258,7 +282,7 @@ namespace aspect
               if (introspection.is_stokes_component(fe.system_to_component_index(i).first))
                 {
                   scratch.grads_phi_u[i_stokes] = scratch.finite_element_values[introspection.extractors.velocities].symmetric_gradient(i,q);
-                  scratch.div_phi_u[i_stokes]   = scratch.finite_element_values[introspection.extractors.velocities].divergence (i, q);
+                  scratch.div_phi_u[i_stokes]   = scratch.finite_element_values[introspection.extractors.velocities].divergence(i, q);
 
                   ++i_stokes;
                 }
@@ -368,7 +392,7 @@ namespace aspect
                   if (scratch.rebuild_stokes_matrix)
                     {
                       scratch.grads_phi_u[i_stokes] = scratch.finite_element_values[introspection.extractors.velocities].symmetric_gradient(i,q);
-                      scratch.div_phi_u[i_stokes]   = scratch.finite_element_values[introspection.extractors.velocities].divergence (i, q);
+                      scratch.div_phi_u[i_stokes]   = scratch.finite_element_values[introspection.extractors.velocities].divergence(i, q);
                     }
                   else if (this->get_parameters().enable_elasticity)
                     {
@@ -376,7 +400,7 @@ namespace aspect
                     }
                   else if (prescribed_dilation && !material_model_is_compressible)
                     {
-                      scratch.div_phi_u[i_stokes]   = scratch.finite_element_values[introspection.extractors.velocities].divergence (i, q);
+                      scratch.div_phi_u[i_stokes]   = scratch.finite_element_values[introspection.extractors.velocities].divergence(i, q);
                     }
                   ++i_stokes;
                 }
@@ -436,7 +460,43 @@ namespace aspect
                                        * scratch.div_phi_u[i]
                                      ) * JxW;
 
-              if (scratch.rebuild_stokes_matrix)
+            }
+
+          // This is customized for the dike injection process and assumes that
+          // the dike only opens in the direction of horizontal extension.
+          if (this->get_parameters().enable_dike_injection && prescribed_dilation->dilation[q] != 0)
+            {
+              // If the dike injection is activated in an incompressible model,
+              // we should use the deviatoric strain rate on the left-hand matrix.
+              if (!material_model_is_compressible)
+                {
+                  for (unsigned int i = 0; i < stokes_dofs_per_cell; ++i)
+                    for (unsigned int j = 0; j < stokes_dofs_per_cell; ++j)
+                      {
+                        data.local_matrix(i, j) += (-2.0 / 3.0 * eta * (scratch.div_phi_u[i] * scratch.div_phi_u[j])) * JxW;
+                      }
+                }
+              // We assume the effect of the prescribed dilation term to
+              // occur only in the horizontal x-direction (dike opening).
+              // Therefore, the horizontal (x) momentum equation is then
+              // additionally augmented by the RHS term：- \int 2 eta R, div v
+              for (unsigned int i=0, i_stokes=0; i_stokes<stokes_dofs_per_cell; /*increment at end of loop*/)
+                {
+                  const unsigned int index_horizon=fe.system_to_component_index(i).first;
+                  if (introspection.is_stokes_component(index_horizon))
+                    {
+                      if (index_horizon==0) //horizontal x direction
+                        data.local_rhs(i_stokes) += 2.0 * eta * prescribed_dilation->dilation[q] * scratch.div_phi_u[i_stokes] * JxW;
+
+                      ++i_stokes;
+                    }
+                  ++i;
+                }
+            }
+
+          if (scratch.rebuild_stokes_matrix)
+            {
+              for (unsigned int i=0; i<stokes_dofs_per_cell; ++i)
                 for (unsigned int j=0; j<stokes_dofs_per_cell; ++j)
                   {
                     data.local_matrix(i,j) += ( (eta * 2.0 * (scratch.grads_phi_u[i] * scratch.grads_phi_u[j]))
@@ -451,7 +511,7 @@ namespace aspect
                                               * JxW;
                   }
             }
-
+           
           // If we are using the equal order Q1-Q1 element, then we also need
           // to put the stabilization term into the (P,P) block of the matrix:
           if (scratch.rebuild_stokes_matrix
