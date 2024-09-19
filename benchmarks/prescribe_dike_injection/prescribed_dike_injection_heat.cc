@@ -37,9 +37,9 @@ namespace aspect
         ? material_model_outputs.template get_additional_output<MaterialModel::PrescribedPlasticDilation<dim> >()
         : nullptr;
 
-      // Add the latent heat source term corresponding to prescribed injection
-      // terms in Stokes equations to the rhs of energy conservation equation.
-      double dike_injection_fraction = 0.0;
+      // Add the latent heat source term corresponding to the prescribed injection
+      // terms in the Stokes equations to the rhs of energy conservation equation.
+      double injected_material_amount = 0.0;
 
       for (unsigned int q=0; q<heating_model_outputs.heating_source_terms.size(); ++q)
         {
@@ -48,15 +48,17 @@ namespace aspect
           heating_model_outputs.rates_of_temperature_change[q] = 0.0;
           if (prescribed_dilation != nullptr)
             {
-              // User-defined or timestep-dependent injection ratio
+              // The amount of newly injected material is either user-set or
+              // time-dependent (default) which equals the product of the injection
+              // rate and the current timestep.
               if (this->simulator_is_past_initialization())
-                dike_injection_fraction = prescribed_dilation->dilation[q] * this->get_timestep();
+                injected_material_amount = prescribed_dilation->dilation[q] * this->get_timestep();
 
-              if (dike_material_injection_fraction != 0.0)
-                dike_injection_fraction = dike_material_injection_fraction;
+              if (prescribed_material_injection_amount != 0.0)
+                injected_material_amount = prescribed_material_injection_amount;
 
               // adding the laten heat source team
-              heating_model_outputs.heating_source_terms[q] = dike_injection_fraction * 
+              heating_model_outputs.heating_source_terms[q] = injected_material_amount * 
                                                               prescribed_dilation->dilation[q] * 
                                                               (latent_heat_of_crystallization + 
                                                               (temperature_of_injected_material - 
@@ -80,13 +82,13 @@ namespace aspect
                              "The latent heat of crystallization that is released when material "
                              "is injected into the model. "
                              "Units: J/m$^3$.");
-          prm.declare_entry ("Temperature of the injected material", "1273",
+          prm.declare_entry ("Temperature of the injected material", "873",
                              Patterns::Double(0),
                              "The temperature of the material injected into the model. "
                              "Units: K.");
-          prm.declare_entry("Dike material injection fraction", "0.0",
+          prm.declare_entry("Dike material injection amount", "0.0",
                             Patterns::Double(0),
-                            "Amount of new injected material from the dike. Units: none.");
+                            "Prescribed the amount of newly injected material from the dike. Units: none.");
         }
         prm.leave_subsection();
       }
@@ -105,13 +107,17 @@ namespace aspect
     void
     LatentHeatDikeInjection<dim>::parse_parameters (ParameterHandler &prm)
     {
+      AssertThrow(this->get_parameters().enable_dike_injection,
+                  ExcMessage("Heating model 'Laten heat dike injection' only works if "
+                             "'enable_dike_injection' is true. "));
+
       prm.enter_subsection("Heating model");
       {
         prm.enter_subsection("Latent heat dike injection");
         {
           latent_heat_of_crystallization = prm.get_double ("Latent heat of crystallization");
           temperature_of_injected_material = prm.get_double ("Temperature of the injected material");
-          dike_material_injection_fraction = prm.get_double ("Dike material injection fraction");
+          prescribed_material_injection_amount = prm.get_double ("Dike material injection amount");
         }
         prm.leave_subsection();
       }
@@ -127,11 +133,13 @@ namespace aspect
   {
     ASPECT_REGISTER_HEATING_MODEL(LatentHeatDikeInjection,
                                   "latent heat dike injection",
-                                  "Latent heat releases due to the material injection (e.g., melt) into the model. "
-                                  "This heating model takes the source term added to the Stokes "
-                                  "equation and adds the corresponding source term to the energy "
-                                  "equation. This source term includes both the effect of latent "
-                                  "heat release upon crystallization and the fact that injected "
-                                  "material might have a different temperature.")
+                                  "Latent heat releases due to the material injection (e.g., melt) "
+                                  "into the model. This heating model takes the source term (i.e., "
+                                  "injection_rate) added to the Stokes equation and add the corresponding "
+                                  "source terms to the energy equation. This source term is "
+                                  "(H_crys + (T_inj - T) ** rho * Cp) * injection_rate, where H_crys is "
+                                  "the latent heat release upon crystallization, T_inj is the temperature "
+                                  "of the injected material, T, rho, Cp are temperature, density, and "
+                                  "specific heat, respectively.")
   }
 }

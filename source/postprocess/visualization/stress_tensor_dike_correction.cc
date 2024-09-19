@@ -19,7 +19,7 @@
 */
 
 
-#include <aspect/postprocess/visualization/dev_stress_tensor.h>
+#include <aspect/postprocess/visualization/stress_tensor_dike_correction.h>
 
 
 
@@ -30,10 +30,10 @@ namespace aspect
     namespace VisualizationPostprocessors
     {
       template <int dim>
-      DevStressTensor<dim>::
-      DevStressTensor ()
+      DikeStressTensor<dim>::
+      DikeStressTensor ()
         :
-        DataPostprocessorTensor<dim> ("dev_stress_tensor",
+        DataPostprocessorTensor<dim> ("stress_tensor_dike_correction",
                                       update_values | update_gradients | update_quadrature_points),
         Interface<dim>("Pa")
       {}
@@ -42,7 +42,7 @@ namespace aspect
 
       template <int dim>
       void
-      DevStressTensor<dim>::
+      DikeStressTensor<dim>::
       evaluate_vector_field(const DataPostprocessorInputs::Vector<dim> &input_data,
                             std::vector<Vector<double>> &computed_quantities) const
       {
@@ -79,8 +79,8 @@ namespace aspect
             // sign convention used by the geoscience community.
             SymmetricTensor<2,dim> stress = in.pressure[q] * unit_symmetric_tensor<dim>();
             
-            // Initialization of the deviatoric stress
-            SymmetricTensor<2,dim> deviatoric_sress = stress;
+            // Initialization of the deviatoric stress tensor
+            SymmetricTensor<2,dim> deviatoric_stress = stress;
 
             // If elasticity is enabled, the deviatoric stress is stored
             // in compositional fields, otherwise the deviatoric stress
@@ -98,7 +98,7 @@ namespace aspect
                     stress[1][2] -= in.composition[q][this->introspection().compositional_index_for_name("ve_stress_yz")];
                   }
                 
-                deviatoric_sress = deviator(stress);
+                deviatoric_stress = deviator(stress);
               }
             else
               {
@@ -111,6 +111,7 @@ namespace aspect
                 // times the prescribed values.
                 if (prescribed_dilation != nullptr 
                     && prescribed_dilation->dilation[q] != 0.0
+                    && this->get_parameters().enable_dike_injection
                     && this->get_timestep_number() > 0
                     && std::fabs(strain_rate[0][0]) > 0.9 * prescribed_dilation->dilation[q])
                   strain_rate[0][0] -= prescribed_dilation->dilation[q];
@@ -118,13 +119,13 @@ namespace aspect
                 const SymmetricTensor<2,dim> deviatoric_strain_rate = deviator(strain_rate);
 
                 const double eta = out.viscosities[q];
-                deviatoric_sress -= 2. * eta * deviatoric_strain_rate;
+                deviatoric_stress -= 2. * eta * deviatoric_strain_rate;
               }
 
             for (unsigned int d=0; d<dim; ++d)
               for (unsigned int e=0; e<dim; ++e)
                 computed_quantities[q][Tensor<2,dim>::component_to_unrolled_index(TableIndices<2>(d,e))]
-                  = deviatoric_sress[d][e];
+                  = deviatoric_stress[d][e];
           }
 
         // average the values if requested
@@ -144,11 +145,20 @@ namespace aspect
   {
     namespace VisualizationPostprocessors
     {
-      ASPECT_REGISTER_VISUALIZATION_POSTPROCESSOR(DevStressTensor,
-                                                  "deviatoric stress tensor",
+      ASPECT_REGISTER_VISUALIZATION_POSTPROCESSOR(DikeStressTensor,
+                                                  "stress_tensor_dike",
                                                   "A visualization output object that generates output "
-                                                  "for the 3 (in 2d) or 6 (in 3d) components of the deviatroic stress "
+                                                  "for the 3 (in 2d) or 6 (in 3d) components of the deviatoric stress "
                                                   "tensor, i.e., for the components of the tensor "
+                                                  "$-2\\eta\\varepsilon(\\mathbf u)+pI$ "
+                                                  "in the incompressible case and "
+                                                  "$-2\\eta\\left[\\varepsilon(\\mathbf u)-"
+                                                  "\\tfrac 13(\\textrm{tr}\\;\\varepsilon(\\mathbf u))\\mathbf I\\right]+pI$ "
+                                                  "in the compressible case, corrected for dike injection. If elasticity "
+                                                  "is used, the elastic contribution is being accounted for. "
+                                                  "Note that the convention of positive "
+                                                  "compressive stress is followed."
+                                                  "\n\n"
                                                   "Physical units: \\si{\\pascal}.")
     }
   }

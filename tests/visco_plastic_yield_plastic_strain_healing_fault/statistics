@@ -11,13 +11,15 @@
 # 11: Iterations for Stokes solver
 # 12: Velocity iterations in Stokes preconditioner
 # 13: Schur complement iterations in Stokes preconditioner
-# 14: RMS velocity (m/year)
-# 15: Max. velocity (m/year)
-# 16: Outward mass flux through boundary with indicator 0 ("left") (kg/yr)
-# 17: Outward mass flux through boundary with indicator 1 ("right") (kg/yr)
-# 18: Outward mass flux through boundary with indicator 2 ("bottom") (kg/yr)
-# 19: Outward mass flux through boundary with indicator 3 ("top") (kg/yr)
-# 20: Visualization file name
-0 0.000000000000e+00 0.000000000000e+00 100 1003 441 441 1 0  0 12 14 39 4.08340252e-04 6.90747399e-04 1.65115500e+05 1.65115500e+05 -1.65115500e+05 -1.65115500e+05 output-visco_plastic_yield_plastic_strain_healing_fault/solution/solution-00000 
-1 5.000000000000e+06 5.000000000000e+06 100 1003 441 441 1 0 10 12 14 42 4.08495865e-04 6.90208546e-04 1.65115500e+05 1.65115500e+05 -1.65115500e+05 -1.65115500e+05                                                                              "" 
-2 1.000000000000e+07 5.000000000000e+06 100 1003 441 441 1 0 12 13 15 45 4.08968444e-04 6.88836013e-04 1.65115500e+05 1.65115500e+05 -1.65115500e+05 -1.65115500e+05 output-visco_plastic_yield_plastic_strain_healing_fault/solution/solution-00001 
+# 14: Minimal value for composition plastic_strain
+# 15: Maximal value for composition plastic_strain
+# 16: Global mass for composition plastic_strain
+# 17: RMS velocity (m/year)
+# 18: Max. velocity (m/year)
+# 19: Outward mass flux through boundary with indicator 0 ("left") (kg/yr)
+# 20: Outward mass flux through boundary with indicator 1 ("right") (kg/yr)
+# 21: Outward mass flux through boundary with indicator 2 ("bottom") (kg/yr)
+# 22: Outward mass flux through boundary with indicator 3 ("top") (kg/yr)
+# 23: Visualization file name
+0 0.000000000000e+00 0.000000000000e+00 100 1003 441 441 1 0  0 7 48 9  0.00000000e+00 3.00000000e+00 8.33333333e+08 4.08418869e-04 6.90487833e-04 1.65115500e+05 1.65115500e+05 -1.65115500e+05 -1.65115500e+05 visco_plastic_yield_plastic_strain_healing_fault/solution/solution-00000 
+1 5.000000000000e+06 5.000000000000e+06 100 1003 441 441 1 0 10 7 49 9 -3.81459086e-01 2.52274099e+00 4.78854793e+08 4.08695846e-04 6.89643867e-04 1.65115500e+05 1.65115500e+05 -1.65115500e+05 -1.65115500e+05 visco_plastic_yield_plastic_strain_healing_fault/solution/solution-00001 

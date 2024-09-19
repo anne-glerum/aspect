@@ -1,9 +1,9 @@
-# This is a 2D test model of dike injection bfunction to determine that the
-# prescribed compositional field in the injection area is working prepoerly.
-# This can be used for tracking the motion of injected material. Within the
+# This is a 2D test model of the dike injection functionality to determine that the
+# prescribed compositional field in the injection area is working properly.
+# This field can be used for tracking the motion of injected material. Within the
 # dike, the value of compositional field 'injection_phase' is increased by
-# 0.2 per timestep, while the value of another compositional field is 
-# decreased by 0.2 correspondingly.
+# 0.2 per timestep, while the value of the other compositional field 'another_phase' 
+# is decreased by 0.2 correspondingly.
 
 set Additional shared libraries            = ./libprescribed_dike_injection.debug.so
 set Dimension                              = 2
@@ -34,8 +34,8 @@ subsection Material model
   set Model name = prescribed dike injection
   subsection Prescribed dike injection
     set Base model = simple
-
-    set Dike material injection fraction = 0.2
+    # Prescribe the amount of newly injected material
+    set Dike material injection amount = 0.2
     subsection Dike injection function
       set Function expression  = if(x>=400 && x<=600, 1e-5, 0)
     end
@@ -80,7 +80,7 @@ subsection Boundary velocity model
 end
 
 # We prescribe the lithostatic pressure as a boundary traction on 
-# the right side of the model, so that material can flow out according 
+# both side boundaries of the model, so that material can flow out according 
 # to the inflow induced by the dike injection.   
 subsection Boundary traction model
   set Prescribed traction boundary indicators = right:initial lithostatic pressure, \

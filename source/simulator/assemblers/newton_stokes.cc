@@ -117,7 +117,7 @@ namespace aspect
         ? scratch.material_model_outputs.template get_additional_output<MaterialModel::PrescribedPlasticDilation<dim>>()
         : nullptr;
 
-      bool material_model_is_compressible = (this->get_material_model().is_compressible());
+      const bool material_model_is_compressible = (this->get_material_model().is_compressible());
 
       // Loop over all quadrature points and assemble their contributions to
       // the preconditioner matrix
@@ -180,8 +180,10 @@ namespace aspect
                                                  * (scratch.phi_p[i] * scratch.phi_p[j]))
                                                * JxW;
                       
-                      // Only in the prescribed dike injection case, we wanna the deviatoric
-                      // strain rate on the left-hand matrix if incompressible.
+                      // Tailored for the incompressible "prescribed dike injection" material model.
+                      // Since this function adds an additional term to the mass equation, we need to 
+                      // use the deviatoric strain rate in the left-hand matrix instead of the default
+                      // full strain rate in the dike injection area.
                       if (prescribed_dilation != nullptr
                           && !material_model_is_compressible
                           && this->get_parameters().enable_dike_injection
@@ -246,8 +248,10 @@ namespace aspect
                          )
                          * JxW;
                       
-                      // Only in the prescribed dike injection case, we wanna the deviatoric
-                      // strain rate on the left-hand matrix if incompressible.
+                      // Tailored for the incompressible "prescribed dike injection" material model.
+                      // Since this function adds an additional term to the mass equation, we need to 
+                      // use the deviatoric strain rate in the left-hand matrix instead of the default
+                      // full strain rate in the dike injection area.
                       if (prescribed_dilation != nullptr
                           && !material_model_is_compressible
                           && this->get_parameters().enable_dike_injection
@@ -351,7 +355,7 @@ namespace aspect
                              scratch.material_model_outputs.template get_additional_output<MaterialModel::PrescribedPlasticDilation<dim>>()
                              : nullptr;
 
-      bool material_model_is_compressible = (this->get_material_model().is_compressible());
+      const bool material_model_is_compressible = (this->get_material_model().is_compressible());
 
       const MaterialModel::MaterialModelDerivatives<dim> *derivatives
         = scratch.material_model_outputs.template get_additional_output<MaterialModel::MaterialModelDerivatives<dim>>();
@@ -475,11 +479,12 @@ namespace aspect
                                      ) * JxW;
             }
 
-          // This is customized for the dike injection process that the dike only opens in the direction of horizontal extension.
+          // This is customized for the dike injection process and assumes that
+          // the dike only opens in the direction of horizontal extension.
           if (this->get_parameters().enable_dike_injection && prescribed_dilation->dilation[q] != 0)
             {
-              // If the dike injection is activated in the incompressible model,
-              // we wanna the deviatoric strain rate on the left-hand matrix.
+              // If the dike injection is activated in an incompressible model,
+              // we should use the deviatoric strain rate on the left-hand matrix.
               if (!material_model_is_compressible)
                 {
                   for (unsigned int i = 0; i < stokes_dofs_per_cell; ++i)
@@ -488,10 +493,10 @@ namespace aspect
                         data.local_matrix(i, j) += (-2.0 / 3.0 * eta * (scratch.div_phi_u[i] * scratch.div_phi_u[j])) * JxW;
                       }
                 }
-              // If we expect the effect of the prescribed dilation term to
-              // occur only in the horizontal x-direction (dike opening), the 
-              // horizontal (x) momentum equation is then additionally augmented
-              // by the RHS：- \int 2 eta R, div v
+              // We assume the effect of the prescribed dilation term to
+              // occur only in the horizontal x-direction (dike opening).
+              // Therefore, the horizontal (x) momentum equation is then
+              // additionally augmented by the RHS term：- \int 2 eta R, div v
               for (unsigned int i=0, i_stokes=0; i_stokes<stokes_dofs_per_cell; /*increment at end of loop*/)
                 {
                   const unsigned int index_horizon=fe.system_to_component_index(i).first;

@@ -1,13 +1,13 @@
-# This is a test for enhanceing the thermal conductivity (k)
-# due to the effect of hydrothermal circulation.
+# This is a test that modifies the thermal conductivity (k)
+# to mimic the effect of hydrothermal cooling.
 # k_eff = k0 * (1+ (Nu-1)*exp(2-T/T_cutoff-Depth/D_cutoff))
 # k_eff is the effective thermal conductivity, k0 is the reference
 # thermal conductivity, Nu is the Nusselt number, T_cutoff and
 # D_cutoff are the reference cutoff temperature and refence cutoff
-# depth, respectively. Here, the returned k_eff should rise
-# exponentially from 2 at the bottom (depth = 100e3) to 3.71828
-# at the surface (depth = 0) for the composition 1 and from 4 at
-#the bottom to 7.43656 at the surface for the composition 2.
+# depth, respectively. Here, the returned k_eff should increase
+# exponentially from 2 at the bottom (depth = 100 km) to 3.71828 W/m/K
+# at the surface (depth = 0 km) for composition c1 and from 4 at
+#the bottom to 7.43656 W/m/K at the surface for composition c2.
 
 # Global parameters
 set Dimension                              = 2
@@ -17,7 +17,6 @@ set Use years in output instead of seconds = true
 set Nonlinear solver scheme                = single Advection, iterated Stokes
 set Max nonlinear iterations               = 1
 set Output directory                       = visco_plastic_hydrothermal_cooling
-set Timing output frequency                = 1
 
 # Model geometry (100x100 km, 10 km spacing)
 subsection Geometry model
@@ -38,10 +37,6 @@ subsection Mesh refinement
 end
 
 # Boundary classifications (fixed T boundaries, prescribed velocity)
-# The parameters below this comment were created by the update script
-# as replacement for the old 'Model settings' subsection. They can be
-# safely merged with any existing subsections with the same name.
-
 subsection Boundary temperature model
   set Fixed temperature boundary indicators   = bottom, top, left, right
 end
@@ -100,11 +95,11 @@ subsection Material model
     # Hydrothermal circulation parameters.
     set Define thermal conductivities = true
     set Thermal conductivities = 1.0, 1.0, 2.0
-    set Define hydrothermal circulation = true
+    set Define hydrothermal cooling = true
     set Nusselt numbers = 2
-    set Hydrothermal circulation reference temperatures = 293
-    set Hydrothermal circulation reference depths = 100e3
-    set Hydrothermal circulation smoothing factors = 1.0
+    set Hydrothermal cooling cutoff temperatures = 293
+    set Hydrothermal cooling cutoff depths = 100e3
+    set Hydrothermal cooling smoothing factors = 1.0
   end
 end
 
@@ -118,10 +113,10 @@ end
 
 # Post processing
 subsection Postprocess
-  set List of postprocessors = velocity statistics, mass flux statistics, visualization
+  set List of postprocessors = composition statistics, velocity statistics, mass flux statistics, visualization
   subsection Visualization
     set List of output variables = thermal conductivity
-    set Output format =  gnuplot
+    set Output format = gnuplot
   end
 end
 

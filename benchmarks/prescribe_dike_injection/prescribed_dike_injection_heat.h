@@ -22,7 +22,6 @@
 
 namespace aspect
 {
-  /* Head file for injection latent heat term*/
   namespace HeatingModel
   {
     using namespace dealii;
@@ -76,9 +75,9 @@ namespace aspect
         double temperature_of_injected_material;
 
         /**
-         * Amount of new injected material from the dike
+         * The amount of newly injected material from the dike
          */
-        double dike_material_injection_fraction;
+        double prescribed_material_injection_amount;
     };
   }
 }

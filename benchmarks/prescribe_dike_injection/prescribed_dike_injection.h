@@ -38,7 +38,7 @@ namespace aspect
      * Since the direction of the dike opening is assumed to be the same as 
      * the direction of plate spreading, there should be no volumetric 
      * deformation in the dike, i.e., dike injection has no effect on the
-     * deviatroic strain rate.
+     * deviatoric strain rate.
      *
      * @ingroup MaterialModels
      */
@@ -82,67 +82,63 @@ namespace aspect
          */
         bool is_compressible () const override;
 
-        /**
-         * Method to calculate reference viscosity. Not used anymore.
-         */
-        // double reference_viscosity () const override;
-
         void
         create_additional_named_outputs (MaterialModel::MaterialModelOutputs<dim> &out) const override;
 
       private:
         /**
-         * Parsed function that specifies the region and amount of
-         * material that is injected into the model.
+         * Parsed function that specifies the dike material injection rate
          */
-        Functions::ParsedFunction<dim> injection_function;
+        Functions::ParsedFunction<dim> dike_injection_rate_function;
 
         /**
-         * Amount of new injected material from the dike
+         * The amount of newly injected material from the dike
          */
-        double dike_material_injection_fraction;
+        double prescribed_material_injection_amount;
 
         /**
-         * Temperature at the bottom of the generated dike. 
-         * It usually equals to the temperature at the 
-         * intersection of the brittle-ductile transition 
-         * zone and the dike.
+         * Currently, we assume that the bottom depth of the generated dike is
+         * is the isothermal depth of the brittle-ductile transition (BDT).
+         * Therefore, here we set the temperature at the bottom of that dike
+         * this isotherm.
          */
         double T_bottom_dike;
         
         /**
-         * Whether using the random dike generation or not.
+         * Whether to use the random dike generation (if true) or not (if false).
+         * If true, the location and height of the dikes are varied randomly
+         * within the dike generation zone.
          */
         bool enable_random_dike_generation;
 
         /**
-         * X_coordinate of the center of the dike generation zone.
+         * X-coordinate of the center of the dike generation zone.
          */
         double x_center_dike_generation_zone;
 
         /**
-         * Width of the center of the dike generation zone.
+         * Width of the dike generation zone.
          */
         double width_dike_generation_zone;
 
         /**
-         * x_coordinates of the randomly generated dike
+         * X-coordinates of left and right sides of the randomly generated dikes
          */
-        double x_dike_left_boundary;
-        double x_dike_right_boundary;
+        double x_left_boundary_random_dike;
+        double x_right_boundary_random_dike;
 
         /**
-         * Reference top depth of the randomly generated dike.
+         * Initial top depth of the randomly generated dike.
          */
-        double ref_top_depth_random_dike;
+        double ini_top_depth_random_dike;
 
         /**
-         * full range of dike depth change.
+         * Range of depth variation in randomly generated dikes.
          */
         double range_depth_change_random_dike;
 
         /**
-         * randomly genetrated dike top depth.
+         * Randomly genetrated dike top depth, which changes every timestep
          */
         double top_depth_random_dike;
 
@@ -157,9 +153,9 @@ namespace aspect
         double seed;
 
         /**
-         * The total refinment levels in the model, which equals to
+         * The total refinement levels in the model, which equals to
          * the sum of global refinement levels and adpative refinement
-         * levels. This is used for calcuting the dike location.
+         * levels. This is used in calcuting the dike location.
          */
         double total_refinement_levels;
 

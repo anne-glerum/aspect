@@ -271,34 +271,34 @@ namespace aspect
          */
 
         /**
-         * Whether to activate the hydrothermal cooling.
+         * Whether to activate the approximation of hydrothermal cooling.
          */
         bool define_hydrothermal_cooling;
 
         /**
          * Nusselt numbers are used for increasing the thermal conductivity in the
-         * hydrothermal cooling process. It represents the ratio of the total heat
+         * hydrothermal cooling process. This number represents the ratio of the total heat
          * transport within a permeable layer to heat transfer by conduction alone.
          */
         std::vector<double> Nusselt_number;
 
         /**
-         * Reference cutoff temperatures for hydrothermal cooling.
-         * Hydrothermal activity occurs when the temperature is lower than them.
-         * from Gregg et al., 2009.
+         * Reference cutoff temperatures for the approximation of hydrothermal cooling.
+         * Hydrothermal activity is assumed when the temperature is lower than the cutoff temperatures.
+         * Citation: Gregg et al., 2009.
          */
         std::vector<double> T_cooling;
 
         /**
-         * Reference cutoff depths for hydrothermal cooling.
-         * Hydrothermal activity occurs when the depth is shallower than them.
-         * from Gregg et al., 2009.
+         * Reference cutoff depths for the approximation of hydrothermal cooling.
+         * Hydrothermal activity is assumed when the depth is shallower than the cutoff depths.
+         * Citation: Gregg et al., 2009.
          */
         std::vector<double> D_cooling;
 
         /**
-         * Smoothing factors
-         * from Gregg et al., 2009.
+         * Smoothing factors.
+         * Citation: Gregg et al., 2009.
          */
         std::vector<double> A_smoothing;
 

@@ -1,5 +1,5 @@
-# This is a 2D test model of dike injection function to determine if it is
-# working properly. Material is injected from the left half of the model
+# This is a 2D test model to determine if the dike injection functionality is
+# working properly. Material is injected throughout the left half of the model
 # domain with a rate that corresponds to a velocity divergence of 1e-15 1/s
 # and can flow out through the right-side boundary. This corresponds to a 
 # linear velocity increase from 0 to 500 m * 1e-15 1/yr = 5e-13 m/s in the
@@ -34,7 +34,7 @@ subsection Material model
   subsection Prescribed dike injection
     set Base model = simple
     
-    set Dike material injection fraction = 1.0
+    set Dike material injection amount = 1.0
     subsection Dike injection function
       set Variable names       = x,y,t
       set Function expression  = if(x<=500, 1e-15, 0)

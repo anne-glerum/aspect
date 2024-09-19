@@ -208,13 +208,15 @@ namespace aspect
             {
               // Use thermal conductivity values specified in the parameter file, if this
               // option was selected.
+              out.thermal_conductivities[i] = MaterialUtilities::average_value (volume_fractions, thermal_conductivities, MaterialUtilities::arithmetic);
+
               if (define_hydrothermal_cooling == true)
                 {
                   // Approximate the effect of the simplified hydrothermal cooling process
                   // on the temperature field by enhancing the thermal conductivity.
                   // The smoothing function is from Gregg et al. (2009) JGR-solid earth:
                   // "Melt generation, crystallization, and extraction beneath
-                  // segmented oceanic transform faults"
+                  // segmented oceanic transform faults". DOI: 10.1029/2008JB006100.
                   double current_thermal_conductivity = 0.0;
                   double current_Nusselt_number = 0.0;
                   double current_A_smoothing = 0.0;
@@ -222,7 +224,6 @@ namespace aspect
                   double current_D_cooling = 0.0;
                   for (unsigned int j=0; j < volume_fractions.size(); ++j)
                     {
-                      current_thermal_conductivity += volume_fractions[j] * thermal_conductivities[j];
                       current_Nusselt_number += volume_fractions[j] * Nusselt_number[j];
                       current_A_smoothing += volume_fractions[j] * A_smoothing[j];
                       current_T_cooling += volume_fractions[j] * T_cooling[j];
@@ -242,17 +243,14 @@ namespace aspect
                     {
                       // No smoothing
                       if (current_A_smoothing == 0.0)
-                        out.thermal_conductivities[i] = current_thermal_conductivity * current_Nusselt_number;
+                        out.thermal_conductivities[i] *= current_Nusselt_number;
                       else
-                        out.thermal_conductivities[i] = current_thermal_conductivity * (1 + (current_Nusselt_number - 1.0) * smoothing_part);
+                        out.thermal_conductivities[i] *= (1 + (current_Nusselt_number - 1.0) * smoothing_part);
                     }
                   else
                     out.thermal_conductivities[i] = current_thermal_conductivity;
 
                 }
-              else
-                out.thermal_conductivities[i] = MaterialUtilities::average_value (volume_fractions, thermal_conductivities, MaterialUtilities::arithmetic);
-
             }
 
           out.compressibilities[i] = MaterialUtilities::average_value (volume_fractions, eos_outputs.compressibilities, MaterialUtilities::arithmetic);
@@ -410,8 +408,8 @@ namespace aspect
                              "Units: \\si{\\watt\\per\\meter\\per\\kelvin}.");
           prm.declare_entry ("Define hydrothermal cooling","false",
                              Patterns::Bool (),
-                             "Whether to include the process of hydrothermal cooling in calculating "
-                             "thhermal conductivities for each compositional field instead of directly "
+                             "Whether to include the approximation of hydrothermal cooling in the "
+                             "thermal conductivities for each compositional field instead of only directly "
                              "defining them. ");
           prm.declare_entry ("Nusselt numbers", "1.0",
                              Patterns::List(Patterns::Double(0)),
@@ -422,18 +420,18 @@ namespace aspect
                              "permeable layer to heat transfer by conduction alone. Units: none");
           prm.declare_entry ("Hydrothermal cooling cutoff temperatures", "873",
                              Patterns::List(Patterns::Double(0)),
-                             "List of refernce cutoff temperatures for hydrothermal cooling, for background "
+                             "List of reference cutoff temperatures for hydrothermal cooling, for background "
                              "material and compositional fields, for a total of N+1 values, where N is the "
                              "number of compositional fields. If only one value is given, then all use the "
-                             "same value. Hydrothermal activity occurs when the temperature is lower than it "
-                             "Units: K");
+                             "same value. Hydrothermal activity is assumed when the temperature is lower than "
+                             "the cutoff values. Units: K");
           prm.declare_entry ("Hydrothermal cooling cutoff depths", "6e3",
                              Patterns::List(Patterns::Double(0)),
-                             "List of refernce cutoff depths for hydrothermal cooling, for background "
+                             "List of reference cutoff depths for hydrothermal cooling, for background "
                              "material and compositional fields, for a total of N+1 values, where N is the "
                              "number of compositional fields. If only one value is given, then all use the "
-                             "same value. Hydrothermal activity occurs when the depth is shallower than it "
-                             "Units: m");
+                             "same value. Hydrothermal activity is assumed when the depth is shallower than "
+                             "the cutoff values. Units: m");
           prm.declare_entry ("Hydrothermal cooling smoothing factors", "0.0",
                              Patterns::List(Patterns::Double(0)),
                              "List of hydrothermal cooling smoothing constants, for background "
@@ -501,30 +499,16 @@ namespace aspect
           options.property_name = "Thermal conductivities";
           thermal_conductivities = Utilities::MapParsing::parse_map_to_double_array (prm.get("Thermal conductivities"), options);
 
-          // Retrieve the list of composition names
-          const std::vector<std::string> list_of_composition_names = this->introspection().get_composition_names();
-
-          // Establish that a background field is required here
-          const bool has_background_field = true;
-
-          //Hydrothermal cooling parameters.          
+          //Hydrothermal cooling parameters.
           define_hydrothermal_cooling = prm.get_bool ("Define hydrothermal cooling");
-          Nusselt_number = Utilities::parse_map_to_double_array (prm.get("Nusselt numbers"),
-                                                                 list_of_composition_names,
-                                                                 has_background_field,
-                                                                 "Nusselt numbers");
-          T_cooling = Utilities::parse_map_to_double_array (prm.get("Hydrothermal cooling cutoff temperatures"),
-                                                            list_of_composition_names,
-                                                            has_background_field,
-                                                            "Hydrothermal cooling cutoff temperatures");
-          D_cooling = Utilities::parse_map_to_double_array (prm.get("Hydrothermal cooling cutoff depths"),
-                                                            list_of_composition_names,
-                                                            has_background_field,
-                                                            "Hydrothermal cooling cutoff depths");       
-          A_smoothing = Utilities::parse_map_to_double_array (prm.get("Hydrothermal cooling smoothing factors"),
-                                                              list_of_composition_names,
-                                                              has_background_field,
-                                                              "Hydrothermal cooling smoothing factors");
+          options.property_name = "Nusselt numbers";
+          Nusselt_number = Utilities::MapParsing::parse_map_to_double_array (prm.get("Nusselt numbers"), options);
+          options.property_name = "Hydrothermal cooling cutoff temperatures";
+          T_cooling = Utilities::MapParsing::parse_map_to_double_array (prm.get("Hydrothermal cooling cutoff temperatures"), options);
+          options.property_name = "Hydrothermal cooling cutoff depths";
+          D_cooling = Utilities::MapParsing::parse_map_to_double_array (prm.get("Hydrothermal cooling cutoff depths"), options);
+          options.property_name = "Hydrothermal cooling smoothing factors";
+          A_smoothing = Utilities::MapParsing::parse_map_to_double_array (prm.get("Hydrothermal cooling smoothing factors"), options);
 
           rheology = std::make_unique<Rheology::ViscoPlastic<dim>>();
           rheology->initialize_simulator (this->get_simulator());

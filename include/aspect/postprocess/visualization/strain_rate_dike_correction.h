@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2015 - 2021 by the authors of the ASPECT code.
+  Copyright (C) 2013 - 2024 by the authors of the ASPECT code.
 
   This file is part of ASPECT.
 
@@ -19,8 +19,8 @@
 */
 
 
-#ifndef _aspect_postprocess_visualization_dev_stress_tensor_h
-#define _aspect_postprocess_visualization_dev_stress_tensor_h
+#ifndef _aspect_postprocess_visualization_strain_rate_dike_correction_h
+#define _aspect_postprocess_visualization_strain_rate_dike_correction_h
 
 #include <aspect/postprocess/visualization.h>
 #include <aspect/simulator_access.h>
@@ -36,21 +36,17 @@ namespace aspect
     {
       /**
        * A class derived from DataPostprocessor that takes an output vector
-       * and computes a variable that represents the 3 or 6 independent
-       * components (in 2d and 3d, respectively) of the stress tensor at every
-       * point. The stress is defined as $2 \eta (\varepsilon(\mathbf u)
-       * - \tfrac 13 \textrm{trace}\ \varepsilon(\mathbf u) \mathbf 1) +pI =
-       * 2\eta (\varepsilon(\mathbf u) - \frac 13 (\nabla \cdot \mathbf u)
-       * \mathbf I) + pI$.  The second term in the parentheses is zero if the
-       * model is incompressible.
-       * If elasticity is used, the elastic contribution is being accounted for.
+       * and computes a variable that represents the edot_ii (the square root
+       * of the second moment invariant for the deviatoric strain rate tensor)
+       * at every point, which is corrected for implementing the dike injection
+       * process.
        *
        * The member functions are all implementations of those declared in the
        * base class. See there for their meaning.
        */
       template <int dim>
-      class DevStressTensor
-        : public DataPostprocessorTensor<dim>,
+      class DikeEdotii
+        : public DataPostprocessorScalar<dim>,
           public SimulatorAccess<dim>,
           public Interface<dim>
       {
@@ -58,7 +54,7 @@ namespace aspect
           /**
            * Constructor.
            */
-          DevStressTensor ();
+          DikeEdotii ();
 
           void
           evaluate_vector_field(const DataPostprocessorInputs::Vector<dim> &input_data,

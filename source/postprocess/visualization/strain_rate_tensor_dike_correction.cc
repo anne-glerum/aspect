@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2013 - 2024 by the authors of the ASPECT code.
+  Copyright (C) 2011 - 2022 by the authors of the ASPECT code.
 
   This file is part of ASPECT.
 
@@ -19,8 +19,7 @@
 */
 
 
-#include <aspect/postprocess/visualization/dev_edot_ii.h>
-
+#include <aspect/postprocess/visualization/strain_rate_tensor_dike_correction.h>
 
 
 namespace aspect
@@ -30,10 +29,10 @@ namespace aspect
     namespace VisualizationPostprocessors
     {
       template <int dim>
-      DevEdotii<dim>::
-      DevEdotii ()
+      DikeStrainRateTensor<dim>::
+      DikeStrainRateTensor ()
         :
-        DataPostprocessorScalar<dim> ("dev_edot_ii",
+        DataPostprocessorTensor<dim> ("strain_rate_tensor_dike_correction",
                                       update_values | update_gradients | update_quadrature_points),
         Interface<dim>("1/s")
       {}
@@ -42,18 +41,17 @@ namespace aspect
 
       template <int dim>
       void
-      DevEdotii<dim>::
+      DikeStrainRateTensor<dim>::
       evaluate_vector_field(const DataPostprocessorInputs::Vector<dim> &input_data,
                             std::vector<Vector<double>> &computed_quantities) const
       {
         const unsigned int n_quadrature_points = input_data.solution_values.size();
-        Assert (computed_quantities.size() == n_quadrature_points,    ExcInternalError());
-        Assert (computed_quantities[0].size() == 1,                   ExcInternalError());
-        Assert (input_data.solution_values[0].size() == this->introspection().n_components,
+        Assert (computed_quantities.size() == n_quadrature_points, ExcInternalError());
+        Assert ((computed_quantities[0].size() == Tensor<2,dim>::n_independent_components),
                 ExcInternalError());
-        Assert (input_data.solution_gradients[0].size() == this->introspection().n_components,
-                ExcInternalError());
-
+        Assert (input_data.solution_values[0].size() == this->introspection().n_components,   ExcInternalError());
+        Assert (input_data.solution_gradients[0].size() == this->introspection().n_components, ExcInternalError());
+        
         MaterialModel::MaterialModelInputs<dim> in(input_data,
                                                     this->introspection());
         MaterialModel::MaterialModelOutputs<dim> out(n_quadrature_points,
@@ -79,17 +77,23 @@ namespace aspect
             // times the prescribed values.
             if (prescribed_dilation != nullptr 
                 && prescribed_dilation->dilation[q] != 0.0
+                && this->get_parameters().enable_dike_injection
                 && this->get_timestep_number() > 0
                 && std::fabs(strain_rate[0][0]) > 0.9 * prescribed_dilation->dilation[q])
              strain_rate[0][0] -= prescribed_dilation->dilation[q];
 
-            computed_quantities[q](0) = std::sqrt(std::max(-second_invariant(deviator(strain_rate)), 0.));
+            const SymmetricTensor<2,dim> deviatoric_strain_rate = deviator(strain_rate);
+
+            for (unsigned int d=0; d<dim; ++d)
+              for (unsigned int e=0; e<dim; ++e)
+                computed_quantities[q][Tensor<2,dim>::component_to_unrolled_index(TableIndices<2>(d,e))]
+                  = deviatoric_strain_rate[d][e];
           }
 
-        // average the values if requested
         const auto &viz = this->get_postprocess_manager().template get_matching_postprocessor<Postprocess::Visualization<dim>>();
         if (!viz.output_pointwise_stress_and_strain())
           average_quantities(computed_quantities);
+
       }
     }
   }
@@ -103,16 +107,11 @@ namespace aspect
   {
     namespace VisualizationPostprocessors
     {
-      ASPECT_REGISTER_VISUALIZATION_POSTPROCESSOR(DevEdotii,
-                                                  "deviatoric edot_ii",
+      ASPECT_REGISTER_VISUALIZATION_POSTPROCESSOR(DikeStrainRateTensor,
+                                                  "strain_rate_tensor_dike",
                                                   "A visualization output object that generates output "
-                                                  "for the norm of the deviatoric strain rate, i.e., for the quantity "
-                                                  "$\\sqrt{\\varepsilon(\\mathbf u):\\varepsilon(\\mathbf u)}$ "
-                                                  "in the incompressible case and "
-                                                  "$\\sqrt{[\\varepsilon(\\mathbf u)-\\tfrac 13(\\textrm{tr}\\;\\varepsilon(\\mathbf u))\\mathbf I]:"
-                                                  "[\\varepsilon(\\mathbf u)-\\tfrac 13(\\textrm{tr}\\;\\varepsilon(\\mathbf u))\\mathbf I]}$ "
-                                                  "in the compressible case."
-                                                  "\n\n"
+                                                  "for the 4 (in 2d) or 9 (in 3d) components of the strain rate "
+                                                  "tensor, i.e., for the components of the tensor, corrected for dike injection "
                                                   "Physical units: \\si{\\per\\second}.")
     }
   }
