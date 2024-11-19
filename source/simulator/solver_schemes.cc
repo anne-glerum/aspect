@@ -1006,8 +1006,8 @@ namespace aspect
         // splitting on the particles, and this would need to be
         // applied at the beginning of the timestep and after
         // every restore_particles().
-        for (auto &particle_world : particle_worlds)
-          signals.post_restore_particles(*particle_world.get());
+        for (auto &particle_manager : particle_managers)
+          signals.post_restore_particles(particle_manager);
 
         const double relative_temperature_residual =
           assemble_and_solve_temperature(initial_temperature_residual,
@@ -1176,8 +1176,8 @@ namespace aspect
         // splitting on the particles, and this would need to be
         // applied at the beginning of the timestep and after
         // every restore_particles().
-        for (auto &particle_world : particle_worlds)
-          signals.post_restore_particles(*particle_world.get());
+        for (auto &particle_manager : particle_managers)
+          signals.post_restore_particles(particle_manager);
 
         const double relative_temperature_residual =
           assemble_and_solve_temperature(initial_temperature_residual,

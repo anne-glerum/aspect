@@ -57,7 +57,7 @@ namespace aspect
            * of iterative Advection solver schemes.
            */
           void
-          update_particles (typename Particle::World<dim> &particle_world) const;
+          update_particles (typename Particle::Manager<dim> &particle_manager) const;
 
           /**
            * @copydoc aspect::Particle::Property::Interface::initialize_one_particle_property()
