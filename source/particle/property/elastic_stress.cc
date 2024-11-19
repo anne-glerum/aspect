@@ -51,7 +51,7 @@ namespace aspect
         AssertThrow(this->get_parameters().enable_elasticity == true,
                     ExcMessage ("This particle property should only be used if 'Enable elasticity' is set to true"));
 
-        const auto &manager = this->get_particle_world(this->get_particle_world_index()).get_property_manager();
+        const auto &manager = this->get_particle_manager(this->get_particle_manager_index()).get_property_manager();
         AssertThrow(!manager.plugin_name_exists("composition"),
                     ExcMessage("The 'elastic stress' plugin cannot be used in combination with the 'composition' plugin."));
 
@@ -75,9 +75,9 @@ namespace aspect
         // Connect to the signal after particles are restored at the beginning of
         // a nonlinear iteration of iterative advection schemes.
         this->get_signals().post_restore_particles.connect(
-          [&](typename Particle::World<dim> &particle_world)
+          [&](typename Particle::Manager<dim> &particle_manager)
         {
-          this->update_particles(particle_world);
+          this->update_particles(particle_manager);
         }
         );
       }
@@ -86,33 +86,52 @@ namespace aspect
 
       template <int dim>
       void
-      ElasticStress<dim>::update_particles(typename Particle::World<dim> &particle_world) const
+      ElasticStress<dim>::update_particles(typename Particle::Manager<dim> &particle_manager) const
       {
         // There is no update of the stress to apply during the first (0th) timestep
         if (this->simulator_is_past_initialization() == false || this->get_timestep_number() == 0)
           return;
 
         // Determine the data position of the first stress tensor component
-        const unsigned int data_position = particle_world.get_property_manager().get_data_info().get_position_by_field_name("ve_stress_xx");
+        const unsigned int data_position = particle_manager.get_property_manager().get_data_info().get_position_by_field_name("ve_stress_xx");
 
         // Get handler
-        Particle::ParticleHandler<dim> &particle_handler = particle_world.get_particle_handler();
+        Particle::ParticleHandler<dim> &particle_handler = particle_manager.get_particle_handler();
 
         // Structure for the reaction rates
         MaterialModel::ReactionRateOutputs<dim> *reaction_rate_outputs
           = material_outputs.template get_additional_output<MaterialModel::ReactionRateOutputs<dim>>();
 
-        const UpdateFlags update_flags = get_needed_update_flags();
+        const std::vector<UpdateFlags> update_flags = particle_manager.get_property_manager().get_update_flags();
+
+        // combine all update flags to a single flag, which is the required information
+        // for the mapping inside the solution evaluator
+        UpdateFlags mapping_flags = update_flags[0];
+        for (unsigned int i=1; i<update_flags.size(); ++i)
+          mapping_flags |= update_flags[i];
 
         // Create evaluators that get the old solution (= solution of previous timestep)
         // at the locations of the particles within one cell.
         // The particles have not been advected in the current timestep yet, or have been restored
         // to their pre-advection locations, so they are in their old locations corresponding to the old
         // solution.
-        std::unique_ptr<internal::SolutionEvaluators<dim>> evaluators;
+        std::unique_ptr<SolutionEvaluator<dim>> evaluators = construct_solution_evaluator(*this,
+                                                              mapping_flags);
 
-        evaluators = internal::construct_solution_evaluators(*this,
-                                                             update_flags);
+        // FEPointEvaluation uses different evaluation flags than the common UpdateFlags.
+        // Translate between the two.
+        std::vector<EvaluationFlags::EvaluationFlags> evaluation_flags (update_flags.size(), EvaluationFlags::nothing);
+
+        for (unsigned int i=0; i<update_flags.size(); ++i)
+          {
+            if (update_flags[i] & update_values)
+              evaluation_flags[i] |= EvaluationFlags::values;
+
+            if (update_flags[i] & update_gradients)
+              evaluation_flags[i] |= EvaluationFlags::gradients;
+          }
+
+        small_vector<Point<dim>> positions;
 
         // Loop over all active and owned cells
         for (const auto &cell : this->get_dof_handler().active_cell_iterators())
@@ -128,43 +147,53 @@ namespace aspect
                   const unsigned int n_particles_in_cell = particle_handler.n_particles_in_cell(cell);
 
                   // Get the locations of the particles within the reference cell
-                  std::vector<Point<dim>> positions;
-                  positions.reserve(n_particles_in_cell);
-                  for (auto particle = particles_in_cell.begin(); particle!=particles_in_cell.end(); ++particle)
-                    positions.push_back(particle->get_reference_location());
-
+                  positions.resize(n_particles_in_cell);
+                  //for (auto particle = particles_in_cell.begin(); particle!=particles_in_cell.end(); ++particle)
+                  //  positions.push_back(particle->get_reference_location());
+                  unsigned int p = 0;
+                  for (const auto &particle : particles_in_cell)
+                    {
+                      positions[p] = particle.get_reference_location();
+                      ++p;
+                    }
 
                   // Collect the values of the old solution restricted to the current cell's DOFs
-                  boost::container::small_vector<double, 100> old_solution_values(this->get_fe().dofs_per_cell);
+                  small_vector<double> old_solution_values(this->get_fe().dofs_per_cell);
                   cell->get_dof_values(this->get_old_solution(),
                                        old_solution_values.begin(),
                                        old_solution_values.end());
 
+                  EvaluationFlags::EvaluationFlags evaluation_flags_union = EvaluationFlags::nothing;
+                  for (unsigned int i=0; i<evaluation_flags.size(); ++i)
+                    evaluation_flags_union |= evaluation_flags[i];
+
                   // Update evaluators to the current cell
-                  if (update_flags & (update_values | update_gradients))
-                    evaluators->reinit(cell, positions, {old_solution_values.data(), old_solution_values.size()}, update_flags);
+                  if (evaluation_flags_union & (EvaluationFlags::values | EvaluationFlags::gradients))
+                    {
+                      // Reinitialize and evaluate the requested solution values and gradients
+                      evaluators->reinit(cell, {positions.data(), positions.size()});
+
+                      evaluators->evaluate({old_solution_values.data(),old_solution_values.size()},
+                                           evaluation_flags);
+                    }
 
                   // To store the old solutions
-                  Vector<double> old_solution;
-                  if (update_flags & update_values)
-                    old_solution.reinit(this->introspection().n_components);
+                  std::vector<small_vector<double,50>> old_solution(n_particles_in_cell,small_vector<double,50>(evaluators->n_components(), numbers::signaling_nan<double>()));
 
                   // To store the old gradients
-                  std::vector<Tensor<1,dim>> old_gradients;
-                  if (update_flags & update_gradients)
-                    old_gradients.resize(this->introspection().n_components);
+                  std::vector<small_vector<Tensor<1,dim>,50>> old_gradients(n_particles_in_cell,small_vector<Tensor<1,dim>,50>(evaluators->n_components(), numbers::signaling_nan<Tensor<1,dim>>()));
 
                   // Loop over all particles in the cell
                   auto particle = particles_in_cell.begin();
                   for (unsigned int i = 0; particle!=particles_in_cell.end(); ++particle,++i)
                     {
                       // Evaluate the old solution, but only if it is requested in the update_flags
-                      if (update_flags & update_values)
-                        evaluators->get_solution(i, old_solution);
+                      if (evaluation_flags_union & EvaluationFlags::values)
+                        evaluators->get_solution(i, {&old_solution[i][0],old_solution[i].size()}, evaluation_flags);
 
                       // Evaluate the old gradients, but only if they are requested in the update_flags
-                      if (update_flags & update_gradients)
-                        evaluators->get_gradients(i, old_gradients);
+                      if (evaluation_flags_union & EvaluationFlags::gradients)
+                        evaluators->get_gradients(i, {&old_gradients[i][0],old_gradients[i].size()}, evaluation_flags);
 
                       // Fill material model input
                       // Get the real location of the particle
@@ -173,16 +202,16 @@ namespace aspect
                       material_inputs.current_cell = typename DoFHandler<dim>::active_cell_iterator(*particle->get_surrounding_cell(),
                                                                                                     &(this->get_dof_handler()));
 
-                      material_inputs.temperature[0] = old_solution[this->introspection().component_indices.temperature];
+                      material_inputs.temperature[0] = old_solution[i][this->introspection().component_indices.temperature];
 
-                      material_inputs.pressure[0] = old_solution[this->introspection().component_indices.pressure];
+                      material_inputs.pressure[0] = old_solution[i][this->introspection().component_indices.pressure];
 
                       for (unsigned int d = 0; d < dim; ++d)
-                        material_inputs.velocity[0][d] = old_solution[this->introspection().component_indices.velocities[d]];
+                        material_inputs.velocity[0][d] = old_solution[i][this->introspection().component_indices.velocities[d]];
 
                       // Fill the non-stress composition inputs with the old_solution.
                       for (const unsigned int &n : non_stress_field_indices)
-                        material_inputs.composition[0][n] = old_solution[this->introspection().component_indices.compositional_fields[n]];
+                        material_inputs.composition[0][n] = old_solution[i][this->introspection().component_indices.compositional_fields[n]];
                       // Fill the ve_stress_* composition inputs with the values on the particles.
                       // After the particles have been restored, their properties have the values of the previous timestep.
                       for (unsigned int n = 0; n < 2*SymmetricTensor<2,dim>::n_independent_components; ++n)
@@ -190,7 +219,7 @@ namespace aspect
 
                       Tensor<2,dim> grad_u;
                       for (unsigned int d=0; d<dim; ++d)
-                        grad_u[d] = old_gradients[d];
+                        grad_u[d] = old_gradients[i][d];
                       material_inputs.strain_rate[0] = symmetrize (grad_u);
 
                       // Evaluate the material model to get the reaction rates
