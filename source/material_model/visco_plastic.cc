@@ -211,6 +211,19 @@ namespace aspect
               out.thermal_conductivities[i] = MaterialUtilities::average_value (volume_fractions, thermal_conductivities, MaterialUtilities::arithmetic);
             }
 
+          // Adapt the thermal conductivity to approximate hydrothermal cooling, if this option was selected.
+          // The depth that the geometry model returns is not the actual depth below the subsurface,
+          // but the depth below the initial surface of the model domain.
+          // Therefore, it will not be correct if mesh defomation is used (e.g. free surface).
+          if (use_hydrothermal_cooling_approximation  == true)
+            {
+              out.thermal_conductivities[i] = out.thermal_conductivities[i] + out.thermal_conductivities[i] *
+                                              (Nusselt_number - 1.) * std::exp(smoothing_factor_temperature *
+                                                                             (1. - in.temperature[i] / cutoff_maximum_temperature)) *
+                                              std::exp(smoothing_factor_depth * (1. - this->get_geometry_model().depth(in.position[i])  / cutoff_maximum_depth));
+            }
+
+
           out.compressibilities[i] = MaterialUtilities::average_value (volume_fractions, eos_outputs.compressibilities, MaterialUtilities::arithmetic);
           out.entropy_derivative_pressure[i] = MaterialUtilities::average_value (volume_fractions, eos_outputs.entropy_derivative_pressure, MaterialUtilities::arithmetic);
           out.entropy_derivative_temperature[i] = MaterialUtilities::average_value (volume_fractions, eos_outputs.entropy_derivative_temperature, MaterialUtilities::arithmetic);
@@ -358,12 +371,41 @@ namespace aspect
                              "instead of calculating the values through the specified thermal diffusivities, "
                              "densities, and heat capacities. ");
           prm.declare_entry ("Thermal conductivities", "3.0",
-                             Patterns::List(Patterns::Double(0)),
+                             Patterns::List(Patterns::Double (0.)),
                              "List of thermal conductivities, for background material and compositional fields, "
                              "for a total of N+1 values, where N is the number of all compositional fields or only "
                              "those corresponding to chemical compositions. "
                              "If only one value is given, then all use the same value. "
                              "Units: \\si{\\watt\\per\\meter\\per\\kelvin}.");
+          prm.declare_entry ("Approximate hydrothermal cooling through thermal conductivity", "false",
+                             Patterns::Bool (),
+                             "Whether hydrothermal fluid circulation is considered in the calculation of the "
+                             "conductivity or not.");
+          prm.declare_entry ("Cutoff maximum temperature for hydrothermal cooling approximation", "873.15",
+                             Patterns::Double (0.),
+                             "Temperature up to which the hydrothermal cooling approximation is applied. "
+                             "Units: \\si{\\kelvin}.");
+          prm.declare_entry ("Cutoff maximum depth for hydrothermal cooling approximation", "6000.0",
+                             Patterns::Double (0.),
+                             "Depth up to which the hydrothermal cooling approximation is applied. "
+                             "Units: \\si{\\m}.");
+          prm.declare_entry ("Nusselt number for hydrothermal cooling approximation", "2.0",
+                             Patterns::Double (1.),
+                             "Nusselt number, that is the ratio of convective to conductive heat transfer "
+			     "across the boundary of the crust. "
+			     "Increasing the Nusselt number will mimic the effect of faster circulating fluids and "
+			     "thus increase the thermal conductivity");
+          prm.declare_entry ("Temperature smoothing factor for hydrothermal cooling approximation", "0.75",
+                             Patterns::Double (0.),
+                             "Smoothing factor that controls the influence of the temperature "
+			     "on the hydrothermal cooling. If it is set to zero, the temperature is not considered "
+			     "in the calculation of the thermal conductivity");
+	  prm.declare_entry ("Depth smoothing factor for hydrothermal cooling approximation", "0.75",
+                             Patterns::Double (0.),
+                             "Smoothing factor that controls the influence of the depth "
+                             "on the hydrothermal cooling. If it is set to zero, the temperature is not considered "
+                             "in the calculation of the thermal conductivity");
+
         }
         prm.leave_subsection();
       }
@@ -412,6 +454,14 @@ namespace aspect
 
           options.property_name = "Thermal conductivities";
           thermal_conductivities = Utilities::MapParsing::parse_map_to_double_array (prm.get("Thermal conductivities"), options);
+	  
+  	  use_hydrothermal_cooling_approximation = prm.get_bool ("Approximate hydrothermal cooling through thermal conductivity");
+	  cutoff_maximum_temperature = prm.get_double ("Cutoff maximum temperature for hydrothermal cooling approximation");
+	  cutoff_maximum_depth = prm.get_double ("Cutoff maximum depth for hydrothermal cooling approximation");
+	  Nusselt_number = prm.get_double ("Nusselt number for hydrothermal cooling approximation");
+	  smoothing_factor_temperature = prm.get_double ("Temperature smoothing factor for hydrothermal cooling approximation");
+	  smoothing_factor_depth = prm.get_double ("Depth smoothing factor for hydrothermal cooling approximation")
+;
 
           rheology = std::make_unique<Rheology::ViscoPlastic<dim>>();
           rheology->initialize_simulator (this->get_simulator());

@@ -256,6 +256,42 @@ namespace aspect
         std::vector<double> thermal_conductivities;
 
         /**
+         * Whether thermal conductivity should be increased as an approximation
+         * of cooling through hydrothermal fluid circulation (if true) or not (default).
+         * The approximation of cooling follows Eq. 8 of Gregg et al. (2009)
+         * (Melt generation, crystallization, and extraction beneath segmented oceanic transform faults).
+         */
+        bool use_hydrothermal_cooling_approximation;
+
+        /**
+         * Temperature up to which hydrothermal fluid circulation is considered to take place.
+         */
+        double cutoff_maximum_temperature;
+
+         /**
+          * Depth up to which hydrothermal fluid circulation is considered to take place.
+          */
+        double cutoff_maximum_depth;
+
+        /**
+         * Nusselt number used for the computation of the approximation of cooling.
+         */
+        double Nusselt_number;
+
+        /**
+         * Smoothing factor used for the computation of the approximation of cooling.
+         * Controls the influence of the temperature on the resultig thermal conductivity.
+         */
+        double smoothing_factor_temperature;
+
+
+	/**
+         * Smoothing factor used for the computation of the approximation of cooling.
+         * Controls the influence of the depth on the resulting thermal conductivity.
+         */
+        double smoothing_factor_depth;
+
+        /**
          * Number of phase transitions for each chemical composition (including the background field).
          */
         std::vector<unsigned int> n_phase_transitions_for_each_chemical_composition;
