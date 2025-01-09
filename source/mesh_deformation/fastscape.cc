@@ -613,10 +613,23 @@ namespace aspect
         // For ranks other than the root:
         {
           for (unsigned int i=0; i<local_aspect_values.size(); ++i)
-            MPI_Ssend(&local_aspect_values[i][0], local_aspect_values[i].size(), MPI_DOUBLE,
-                      /* destination is root= */ 0,
-                      /* tag= */ 42,
-                      this->get_mpi_communicator());
+          {
+            // Check if the inner vector at index i contains data before accessing it
+            // to prevent segmentation fault or undefined behavior when trying to access
+            // empty vectors during MPI communication.
+            if (!local_aspect_values[i].empty())
+              MPI_Ssend(&local_aspect_values[i][0], local_aspect_values[i].size(), MPI_DOUBLE,
+                        /* destination is root= */ 0,
+                        /* tag= */ 42,
+                        this->get_mpi_communicator());
+            else
+              {
+                // If local_aspect_values[i] is empty (no data), still sends the same length of data, 
+                // filled with zeros here to maintain protocol uniformity
+                double empty_data=0;
+                MPI_Ssend(&empty_data, local_aspect_values[1].size(), MPI_DOUBLE, 0, 42, this->get_mpi_communicator());
+              }
+          }
 
           // Check whether the FastScape mesh was filled with data.
           const bool fastscape_mesh_filled = Utilities::MPI::broadcast (this->get_mpi_communicator(), true, 0);
@@ -823,10 +836,25 @@ namespace aspect
             }
 
           for (unsigned int i=0; i<local_aspect_values.size(); ++i)
-            MPI_Recv(&local_aspect_values[i][0], incoming_size, MPI_DOUBLE,
-                     /* sender= */ p,
-                     /* tag = */ 42,
-                     this->get_mpi_communicator(), &status);
+          {
+            // Check if the inner vector at index i contains data before accessing it
+            // to prevent segmentation fault or undefined behavior when trying to access
+            // empty vectors during MPI communication.
+            if (!local_aspect_values[i].empty())
+              {
+                MPI_Recv(&local_aspect_values[i][0], incoming_size, MPI_DOUBLE,
+                         /* sender= */ p,
+                         /* tag = */ 42,
+                         this->get_mpi_communicator(), &status);
+              }
+            else
+              {
+                // If local_aspect_values[i] is empty (no data), still sends the same length of data, 
+                // filled with zeros here to maintain protocol uniformity
+                double empty_data=0;
+                MPI_Recv(&empty_data, incoming_size, MPI_DOUBLE, p, 42, this->get_mpi_communicator(), &status);
+              }
+          }
 
           // Now, place the numbers into the correct place based off the index.
           for (unsigned int i=0; i<local_aspect_values[1].size(); ++i)
