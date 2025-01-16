@@ -1,0 +1,32 @@
+-----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+Number of active cells: 100 (on 1 levels)
+Number of degrees of freedom: 2,326 (882+121+441+441+441)
+
+*** Timestep 0:  t=0 years, dt=0 years
+   Solving temperature system... 0 iterations.
+   Solving c1 system ... 0 iterations.
+   Solving c2 system ... 0 iterations.
+   Solving Stokes system... 0+7 iterations.
+      Relative nonlinear residual (Stokes system) after nonlinear iteration 1: 0.439484
+
+
+   Postprocessing:
+     Compositions min/max/mass:          0/1/5.167e+09 // 0/1/4.833e+09
+     RMS, max velocity:                  0.000408 m/year, 0.000691 m/year
+     Mass fluxes through boundary parts: 1.65e+05 kg/yr, 1.65e+05 kg/yr, -1.65e+05 kg/yr, -1.65e+05 kg/yr
+     Writing graphical output:           visco_plastic_hydrothermal_cooling/solution/solution-00000
+
+Termination requested by criterion: end time
+
+
++----------------------------------------------+------------+------------+
++----------------------------------+-----------+------------+------------+
++----------------------------------+-----------+------------+------------+
+
+-- Total wallclock time elapsed including restarts: 0s
+-----------------------------------------------------------------------------
+-----------------------------------------------------------------------------

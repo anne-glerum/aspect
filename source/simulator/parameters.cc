@@ -711,6 +711,10 @@ namespace aspect
                          "Whether to include additional terms on the right-hand side of "
                          "the Stokes equation to set a given compression term specified in the "
                          "MaterialModel output PrescribedPlasticDilation.");
+      prm.declare_entry ("Enable dike injection", "false",
+                         Patterns::Bool (),
+                         "Whether to limit material injected through the dike to be released only horizontally. "
+                         "Note that the prerequisite for this is that “Enable prescribed dilation” is set to true.");                         
     }
     prm.leave_subsection();
 
@@ -1685,6 +1689,7 @@ namespace aspect
       enable_additional_stokes_rhs = prm.get_bool ("Enable additional Stokes RHS");
       enable_elasticity = prm.get_bool("Enable elasticity");
       enable_prescribed_dilation = prm.get_bool("Enable prescribed dilation");
+      enable_dike_injection = prm.get_bool("Enable dike injection");
     }
     prm.leave_subsection ();
 
