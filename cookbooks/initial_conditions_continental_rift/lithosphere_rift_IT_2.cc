@@ -49,8 +49,10 @@ namespace aspect
       AssertThrow(std::find(heating_models.begin(), heating_models.end(), "compositional heating") != heating_models.end(),
                   ExcMessage("The lithosphere with rift initial temperature plugin requires the compositional heating plugin."));
 
+      // Check if dike injection is not enabled. If so,
       // Check that the required material model ("visco plastic") is used.
-      AssertThrow(Plugins::plugin_type_matches<const MaterialModel::ViscoPlastic<dim>> (this->get_material_model()),
+      if (!this->get_parameters().enable_dike_injection)
+        AssertThrow(Plugins::plugin_type_matches<const MaterialModel::ViscoPlastic<dim>> (this->get_material_model()),
                   ExcMessage("The lithosphere with rift initial temperature plugin requires the viscoplastic material model plugin."));
 
       // The simulator only keeps the initial conditions around for

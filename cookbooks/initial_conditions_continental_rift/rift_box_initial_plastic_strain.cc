@@ -37,8 +37,10 @@ namespace aspect
     void
     RiftBoxInitialPlasticStrain<dim>::initialize ()
     {
-      AssertThrow(Plugins::plugin_type_matches<MaterialModel::ViscoPlastic<dim>>(this->get_material_model()),
-                  ExcMessage("This initial condition only makes sense in combination with the visco_plastic material model."));
+      // Check if dike injection is not enabled
+      if (!this->get_parameters().enable_dike_injection)
+        AssertThrow(Plugins::plugin_type_matches<MaterialModel::ViscoPlastic<dim>>(this->get_material_model()),
+                    ExcMessage("This initial condition only makes sense in combination with the visco_plastic material model."));
 
 
       // From shear_bands.cc
