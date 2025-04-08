@@ -212,12 +212,14 @@ namespace aspect
                         material_inputs.velocity[0][d] = old_solution[i][this->introspection().component_indices.velocities[d]];
 
                       // Fill the non-stress composition inputs with the old_solution.
-                      for (const unsigned int &n : non_stress_field_indices)
+                      //for (const unsigned int &n : non_stress_field_indices)
+                      // Fill all composition inputs with the old_solution.
+                      for (unsigned int n = 0; n < this->n_compositional_fields(); ++n)
                         material_inputs.composition[0][n] = old_solution[i][this->introspection().component_indices.compositional_fields[n]];
                       // Fill the ve_stress_* composition inputs with the values on the particles.
                       // After the particles have been restored, their properties have the values of the previous timestep.
-                      for (unsigned int n = 0; n < 2*SymmetricTensor<2,dim>::n_independent_components; ++n)
-                        material_inputs.composition[0][stress_field_indices[n]] = particle->get_properties()[data_position + n];
+                      //for (unsigned int n = 0; n < 2*SymmetricTensor<2,dim>::n_independent_components; ++n)
+                      //  material_inputs.composition[0][stress_field_indices[n]] = particle->get_properties()[data_position + n];
 
                       Tensor<2,dim> grad_u;
                       for (unsigned int d=0; d<dim; ++d)
@@ -230,7 +232,8 @@ namespace aspect
                       // Add the reaction_rates * timestep = update to the corresponding stress
                       // tensor components
                       for (unsigned int p = 0; p < 2*SymmetricTensor<2,dim>::n_independent_components ; ++p)
-                        particle->get_properties()[data_position + p] += reaction_rate_outputs->reaction_rates[0][stress_field_indices[p]] * this->get_timestep();
+                        //particle->get_properties()[data_position + p] += reaction_rate_outputs->reaction_rates[0][stress_field_indices[p]] * this->get_timestep();
+                        particle->get_properties()[data_position + p] = material_inputs.composition[0][stress_field_indices[p]] + reaction_rate_outputs->reaction_rates[0][stress_field_indices[p]] * this->get_timestep();
                     }
                 }
             }
@@ -307,11 +310,13 @@ namespace aspect
               material_inputs.velocity[0][d] = inputs.solution[p][this->introspection().component_indices.velocities[d]];
 
             // Fill the non-stress composition inputs with the solution.
-            for (const unsigned int &n : non_stress_field_indices)
+            //for (const unsigned int &n : non_stress_field_indices)
+            // Fill the non-stress composition inputs with the solution.
+            for (unsigned int n = 0; n < this->n_compositional_fields(); ++n)
               material_inputs.composition[0][n] = inputs.solution[p][this->introspection().component_indices.compositional_fields[n]];
             // For the stress composition we use the ve_stress_* stored on the particles.
-            for (unsigned int n = 0; n < 2*SymmetricTensor<2,dim>::n_independent_components; ++n)
-              material_inputs.composition[0][stress_field_indices[n]] = particle.get_properties()[this->data_position + n];
+            //for (unsigned int n = 0; n < 2*SymmetricTensor<2,dim>::n_independent_components; ++n)
+            //  material_inputs.composition[0][stress_field_indices[n]] = particle.get_properties()[this->data_position + n];
 
             Tensor<2,dim> grad_u;
             for (unsigned int d=0; d<dim; ++d)
@@ -322,7 +327,7 @@ namespace aspect
 
             // Apply the stress rotation to the ve_stress_* fields, not the ve_stress_*_old fields.
             for (unsigned int i = 0; i < SymmetricTensor<2,dim>::n_independent_components ; ++i)
-              particle.get_properties()[this->data_position + i] += material_outputs.reaction_terms[0][stress_field_indices[i]];
+              particle.get_properties()[this->data_position + i] =  material_inputs.composition[0][stress_field_indices[i]] + material_outputs.reaction_terms[0][stress_field_indices[i]];
 
             ++p;
           }
