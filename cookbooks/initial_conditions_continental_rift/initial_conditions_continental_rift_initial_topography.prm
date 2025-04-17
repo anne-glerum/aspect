@@ -1,5 +1,5 @@
 #### This is an adaptation of the Continental Extension Cookbook
-#### using new plugins for the initial composition, temperature, 
+#### using new plugins for the initial composition, temperature,
 #### topography and initial strain of an incipient continental rift system.
 #### Additionally, we use FastScape and traction boundary condition.
 
@@ -13,7 +13,7 @@ set Nonlinear solver scheme                = single Advection, iterated Stokes
 set Nonlinear solver tolerance             = 1e-5
 set Max nonlinear iterations               = 2
 set CFL number                             = 0.5
-set Maximum time step                      = 5000 
+set Maximum time step                      = 5000
 set Output directory                       = output-initial_conditions_continental_rift_initial_topography_with_craton
 set Pressure normalization                 = no
 set Adiabatic surface temperature          = 1573
@@ -79,7 +79,7 @@ subsection Mesh deformation
   subsection Free surface
     set Free surface stabilization theta = 1
   end
-  
+
   subsection Fastscape
     set Vertical exaggeration = -1
     set Maximum timestep length = 500
