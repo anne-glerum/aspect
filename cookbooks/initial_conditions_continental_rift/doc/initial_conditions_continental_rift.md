@@ -7,12 +7,12 @@ lithosphere and can eventually lead to full break-up of that lithosphere
 and seafloor spreading at a mid-ocean ridge {cite}[e.g., ][]`brune:2023`.
 We can simulate continental rifting under far-field extensional
 forces by prescribing certain velocities or stresses on the lateral
-boundaries of our model domain (as in, for example, section 
+boundaries of our model domain (as in, for example, section
 {ref}`sec:cookbooks:continental_extension`).
 Here we choose to prescribe outward horizontal velocities on
 the lateral boundaries.
-In order to localize deformation under this prescribed 
-extension (and avoid localizing at the model boundaries), 
+In order to localize deformation under this prescribed
+extension (and avoid localizing at the model boundaries),
 we have to introduce initial weaknesses to the
 model setup. The plugins prescribed in this cookbook set up
 a lithospheric (upper crust, lower crust and mantle lithosphere) and asthenosphere
@@ -22,11 +22,11 @@ at user-specified locations and by 2) adding initial plastic
 strain around these same locations. This strain represents
 inherited weakness from for example prior deformation phases.
 To represent other deviations of the reference lithosphere,
-such as cratonic lithosphere, 
+such as cratonic lithosphere,
 additional regions of different lithospheric layer thicknesses
 can be specified.
 In case the perturbations of the lithosphere in combination with
-a free surface or another type of mesh deformation induce large initial 
+a free surface or another type of mesh deformation induce large initial
 velocities, an initial topography plugin approximates the topography resulting from
 isostatic equilibrium with respect to the reference (unperturbed) lithosphere.
 
@@ -45,14 +45,14 @@ Lithospheric structure with perturbations that represent an
 incipient rift and a cratonic region.
 ```
 To set up the reference lithospheric structure, we specify the Layer thicknesses
-of the upper crust, lower crust and mantle lithosphere within the Lithosphere with rift 
+of the upper crust, lower crust and mantle lithosphere within the Lithosphere with rift
 subsection (see input-file snippet below). The perturbations of these lithospheric layers - representing an
-incipient rift and localizing deformation - follow Gaussian curves. 
+incipient rift and localizing deformation - follow Gaussian curves.
 We can either thicken or thin the layers, depending on
 the sign of each Gaussian amplitude specified: a negative amplitude thickens
 the corresponding layer and vice versa. The width of the perturbation
 is determined by the sigma of the Gaussians. The centre of the Gaussian
-curve will be the rift centre and is set with the parameter Rift axis line segments: 
+curve will be the rift centre and is set with the parameter Rift axis line segments:
 
 
 ```{literalinclude} initial_composition_lithosphere.prm
@@ -81,7 +81,7 @@ temperature profile (see snippet above). The geotherm implementation is based on
 of Turcotte and Schubert. For each x-coordinate, it solves a steady-state
 heat conduction equation taking into account the respective densities,
 heat productivities and thermal conductivities of the three lithospheric
-layers and the user-set temperature at the top (Surface temperature) and 
+layers and the user-set temperature at the top (Surface temperature) and
 bottom of the lithosphere (LAB isotherm temperature). Below the lithosphere a NaN is returned, such that we can replace
 this NaN by an adiabatic temperature profile. Care has to be taken to match
 the user-specified LAB temperature and the adiabatic temperature at the same
@@ -126,7 +126,7 @@ Sometimes the combination of a free surface with lateral variations in the
 lithospheric thicknesses leads to very high velocities in the first timesteps.
 To avoid a drunken sailor effect and/or very small timesteps, we can then
 prescribe initial topography that roughly fulfills isostatic equilibrium (Fig. {numref}`fig:initial_topography`).
-The required topography is computed using the reference density for each material, 
+The required topography is computed using the reference density for each material,
 so it neglects temperature effects on the density.
 
 
@@ -143,16 +143,16 @@ so it neglects temperature effects on the density.
 ```
 Extension is driven by outward horizontal velocities on the left and
 right boundary of the model domain. To compensate for this outflow,
-we open the bottom boundary to flow by prescribing a traction. The 
-prescribed traction is computed as the initial lithostatic pressure 
+we open the bottom boundary to flow by prescribing a traction. The
+prescribed traction is computed as the initial lithostatic pressure
 at a user-specified point. We pick this point to lie in the reference
 (unperturbed) lithosphere close to the left domain boundary.
 
 For the top boundary, we pick the mesh deformation plugin fastscape,
 which provides an interface to the FastScape landscape evolution model.
 This plugin computes changes to the mesh's surface topography based on
-river incision, hill slope diffusion, sediment deposition and marine diffusion. 
-For all the different parameters relating to FastScape, have a look at 
+river incision, hill slope diffusion, sediment deposition and marine diffusion.
+For all the different parameters relating to FastScape, have a look at
 section {ref}`sec:cookbooks:fastscape_eroding_box`. We allow the top corner
 of the right boundary to move with the surface, but not the left top corner point,
 as this is our reference location.

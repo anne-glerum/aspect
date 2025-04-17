@@ -70,7 +70,7 @@ subsection Mesh deformation
   subsection Free surface
     set Free surface stabilization theta = 1
   end
-  
+
   subsection Fastscape
     set Vertical exaggeration = -1
     set Maximum timestep length = 500
