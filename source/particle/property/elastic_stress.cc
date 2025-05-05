@@ -94,6 +94,9 @@ namespace aspect
 
         // Determine the data position of the first stress tensor component
         const unsigned int data_position = particle_manager.get_property_manager().get_data_info().get_position_by_field_name("ve_stress_xx");
+        std::cout << "Data position ve_xx: " << data_position << std::endl;
+        const unsigned int data_position2 = this->data_position;
+        std::cout << "Data position property: " << data_position2 << std::endl;
 
         // Get handler
         Particle::ParticleHandler<dim> &particle_handler = particle_manager.get_particle_handler();
@@ -220,6 +223,10 @@ namespace aspect
                       // After the particles have been restored, their properties have the values of the previous timestep.
                       //for (unsigned int n = 0; n < 2*SymmetricTensor<2,dim>::n_independent_components; ++n)
                       //  material_inputs.composition[0][stress_field_indices[n]] = particle->get_properties()[data_position + n];
+                      for (auto &index: stress_field_indices)
+                      std::cout << "stress_field_indices: " << index << std::endl;
+                      for (unsigned int n = 0; n < 2*SymmetricTensor<2,dim>::n_independent_components; ++n)
+                      std::cout << "stress_field_indices n: " << stress_field_indices[n] << std::endl;
 
                       Tensor<2,dim> grad_u;
                       for (unsigned int d=0; d<dim; ++d)
@@ -362,6 +369,7 @@ namespace aspect
       {
         std::vector<std::pair<std::string,unsigned int>> property_information;
 
+// ve_stress_xx, ve_stress_yy, ve_stress_zz, ve_stress_xy, ve_stress_xz, ve_stress_yz, ve_stress_xx_old, ve_stress_yy_old, ve_stress_zz_old, ve_stress_xy_old, ve_stress_xz_old, ve_stress_yz_old
         property_information.emplace_back("ve_stress_xx",1);
         property_information.emplace_back("ve_stress_yy",1);
 
