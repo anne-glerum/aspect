@@ -215,7 +215,8 @@ namespace aspect
                         material_inputs.velocity[0][d] = old_solution[i][this->introspection().component_indices.velocities[d]];
 
                       // Fill the non-stress composition inputs with the old_solution.
-                      //for (const unsigned int &n : non_stress_field_indices)
+                      for (const unsigned int &n : non_stress_field_indices)
+                        std::cout << "non_stress_field_indices: " << n << std::endl;
                       // Fill all composition inputs with the old_solution.
                       for (unsigned int n = 0; n < this->n_compositional_fields(); ++n)
                         material_inputs.composition[0][n] = old_solution[i][this->introspection().component_indices.compositional_fields[n]];
@@ -223,6 +224,19 @@ namespace aspect
                       // After the particles have been restored, their properties have the values of the previous timestep.
                       //for (unsigned int n = 0; n < 2*SymmetricTensor<2,dim>::n_independent_components; ++n)
                       //  material_inputs.composition[0][stress_field_indices[n]] = particle->get_properties()[data_position + n];
+                      std::vector<double> field_stress_values(2*SymmetricTensor<2,dim>::n_independent_components);
+                      std::vector<double> particle_stress_values(2*SymmetricTensor<2,dim>::n_independent_components);
+                      std::vector<double> stress_values(2*SymmetricTensor<2,dim>::n_independent_components);
+                      const double particle_weight = 0.5;
+                      for (unsigned int n = 0; n < 2*SymmetricTensor<2,dim>::n_independent_components; ++n)
+                      {
+                        particle_stress_values[n] = particle->get_properties()[data_position + n];
+                        field_stress_values[n] = old_solution[i][this->introspection().component_indices.compositional_fields[stress_field_indices[n]]];
+                        std::cout << "particle, field stress value: " << particle_stress_values[n] << ", " << field_stress_values[n] << std::endl;
+                        stress_values[n] = particle_weight * particle_stress_values[n] + (1-particle_weight) * field_stress_values[n];
+                        std::cout << "weighted stress value: " << stress_values[n] << std::endl;
+                      }
+
                       for (auto &index: stress_field_indices)
                       std::cout << "stress_field_indices: " << index << std::endl;
                       for (unsigned int n = 0; n < 2*SymmetricTensor<2,dim>::n_independent_components; ++n)
