@@ -211,27 +211,25 @@ namespace aspect
                       for (unsigned int d = 0; d < dim; ++d)
                         material_inputs.velocity[0][d] = old_solution[i][this->introspection().component_indices.velocities[d]];
 
-                      // Use a composite of the stress values carried on the particles and interpolated onto the fields
+                      // Fill the non-stress composition inputs with the old_solution.
+                      for (const unsigned int &n : non_stress_field_indices)
+                        {
+                          material_inputs.composition[0][n] = old_solution[i][this->introspection().component_indices.compositional_fields[n]];
+                        }
+
+                      // Store the ve_stress_* composition inputs from the particles and fields.
+                      // Fill the material model inputs with a weigthed average of the two.
+                      // After the particles have been restored, their properties have the values of the previous timestep.
                       std::vector<double> field_stress_values(2*SymmetricTensor<2,dim>::n_independent_components);
                       std::vector<double> particle_stress_values(2*SymmetricTensor<2,dim>::n_independent_components);
                       std::vector<double> stress_values(2*SymmetricTensor<2,dim>::n_independent_components);
-                      // Fill the non-stress composition inputs with the old_solution.
-                      for (const unsigned int &n : non_stress_field_indices)
-                      {
-                        material_inputs.composition[0][n] = old_solution[i][this->introspection().component_indices.compositional_fields[n]];
-                        std::cout << "non_stress_field_indices: " << n << std::endl;
-                      } 
-                      // Store the ve_stress_* composition inputs from the particles and fields.
-                      // Fill the material model inputs with an averaged value of the two.
-                      // After the particles have been restored, their properties have the values of the previous timestep.
-                      const double particle_weight = 0.5;
                       for (unsigned int n = 0; n < 2*SymmetricTensor<2,dim>::n_independent_components; ++n)
-                      {
-                        particle_stress_values[n] = particle->get_properties()[data_position + n];
-                        field_stress_values[n] = old_solution[i][this->introspection().component_indices.compositional_fields[stress_field_indices[n]]];
-                        stress_values[n] = particle_weight * particle_stress_values[n] + (1-particle_weight) * field_stress_values[n];
-                        material_inputs.composition[0][stress_field_indices[n]] = stress_values[n];
-                      }
+                        {
+                          particle_stress_values[n] = particle->get_properties()[data_position + n];
+                          field_stress_values[n] = old_solution[i][this->introspection().component_indices.compositional_fields[stress_field_indices[n]]];
+                          stress_values[n] = particle_weight * particle_stress_values[n] + (1-particle_weight) * field_stress_values[n];
+                          material_inputs.composition[0][stress_field_indices[n]] = stress_values[n];
+                        }
 
                       Tensor<2,dim> grad_u;
                       for (unsigned int d=0; d<dim; ++d)
@@ -403,6 +401,41 @@ namespace aspect
 
         return property_information;
       }
+
+
+      template <int dim>
+      void
+      ElasticStress<dim>::declare_parameters (ParameterHandler &prm)
+      {
+        prm.enter_subsection("Elastic stress");
+        {
+          prm.declare_entry ("Particle stress value weight", "1.0",
+                             Patterns::Double(0.),
+                             "The weight given to the value of the stress tensor components "
+                             "stored on the particles in the weighted average of those "
+                             "values and the values of the compositional fields evaluated on the "
+                             "particle location. The average is used in the Material Model inputs "
+                             "used to compute the reaction rates and to update the particle property "
+                             "with the reaction rates. In some cases, using the field values "
+                             "leads to more stable results.");
+
+        }
+        prm.leave_subsection();
+      }
+
+
+
+      template <int dim>
+      void
+      ElasticStress<dim>::parse_parameters (ParameterHandler &prm)
+      {
+        prm.enter_subsection("Elastic stress");
+        {
+          particle_weight = prm.get_double("Particle stress value weight");
+        }
+        prm.leave_subsection();
+      }
+
     }
   }
 }
