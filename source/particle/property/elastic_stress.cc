@@ -94,9 +94,6 @@ namespace aspect
 
         // Determine the data position of the first stress tensor component
         const unsigned int data_position = particle_manager.get_property_manager().get_data_info().get_position_by_field_name("ve_stress_xx");
-        std::cout << "Data position ve_xx: " << data_position << std::endl;
-        const unsigned int data_position2 = this->data_position;
-        std::cout << "Data position property: " << data_position2 << std::endl;
 
         // Get handler
         Particle::ParticleHandler<dim> &particle_handler = particle_manager.get_particle_handler();
@@ -214,33 +211,27 @@ namespace aspect
                       for (unsigned int d = 0; d < dim; ++d)
                         material_inputs.velocity[0][d] = old_solution[i][this->introspection().component_indices.velocities[d]];
 
-                      // Fill the non-stress composition inputs with the old_solution.
-                      for (const unsigned int &n : non_stress_field_indices)
-                        std::cout << "non_stress_field_indices: " << n << std::endl;
-                      // Fill all composition inputs with the old_solution.
-                      for (unsigned int n = 0; n < this->n_compositional_fields(); ++n)
-                        material_inputs.composition[0][n] = old_solution[i][this->introspection().component_indices.compositional_fields[n]];
-                      // Fill the ve_stress_* composition inputs with the values on the particles.
-                      // After the particles have been restored, their properties have the values of the previous timestep.
-                      //for (unsigned int n = 0; n < 2*SymmetricTensor<2,dim>::n_independent_components; ++n)
-                      //  material_inputs.composition[0][stress_field_indices[n]] = particle->get_properties()[data_position + n];
+                      // Use a composite of the stress values carried on the particles and interpolated onto the fields
                       std::vector<double> field_stress_values(2*SymmetricTensor<2,dim>::n_independent_components);
                       std::vector<double> particle_stress_values(2*SymmetricTensor<2,dim>::n_independent_components);
                       std::vector<double> stress_values(2*SymmetricTensor<2,dim>::n_independent_components);
+                      // Fill the non-stress composition inputs with the old_solution.
+                      for (const unsigned int &n : non_stress_field_indices)
+                      {
+                        material_inputs.composition[0][n] = old_solution[i][this->introspection().component_indices.compositional_fields[n]];
+                        std::cout << "non_stress_field_indices: " << n << std::endl;
+                      } 
+                      // Store the ve_stress_* composition inputs from the particles and fields.
+                      // Fill the material model inputs with an averaged value of the two.
+                      // After the particles have been restored, their properties have the values of the previous timestep.
                       const double particle_weight = 0.5;
                       for (unsigned int n = 0; n < 2*SymmetricTensor<2,dim>::n_independent_components; ++n)
                       {
                         particle_stress_values[n] = particle->get_properties()[data_position + n];
                         field_stress_values[n] = old_solution[i][this->introspection().component_indices.compositional_fields[stress_field_indices[n]]];
-                        std::cout << "particle, field stress value: " << particle_stress_values[n] << ", " << field_stress_values[n] << std::endl;
                         stress_values[n] = particle_weight * particle_stress_values[n] + (1-particle_weight) * field_stress_values[n];
-                        std::cout << "weighted stress value: " << stress_values[n] << std::endl;
+                        material_inputs.composition[0][stress_field_indices[n]] = stress_values[n];
                       }
-
-                      for (auto &index: stress_field_indices)
-                      std::cout << "stress_field_indices: " << index << std::endl;
-                      for (unsigned int n = 0; n < 2*SymmetricTensor<2,dim>::n_independent_components; ++n)
-                      std::cout << "stress_field_indices n: " << stress_field_indices[n] << std::endl;
 
                       Tensor<2,dim> grad_u;
                       for (unsigned int d=0; d<dim; ++d)
@@ -253,7 +244,6 @@ namespace aspect
                       // Add the reaction_rates * timestep = update to the corresponding stress
                       // tensor components
                       for (unsigned int p = 0; p < 2*SymmetricTensor<2,dim>::n_independent_components ; ++p)
-                        //particle->get_properties()[data_position + p] += reaction_rate_outputs->reaction_rates[0][stress_field_indices[p]] * this->get_timestep();
                         particle->get_properties()[data_position + p] = material_inputs.composition[0][stress_field_indices[p]] + reaction_rate_outputs->reaction_rates[0][stress_field_indices[p]] * this->get_timestep();
                     }
                 }
@@ -331,13 +321,11 @@ namespace aspect
               material_inputs.velocity[0][d] = inputs.solution[p][this->introspection().component_indices.velocities[d]];
 
             // Fill the non-stress composition inputs with the solution.
-            //for (const unsigned int &n : non_stress_field_indices)
-            // Fill the non-stress composition inputs with the solution.
-            for (unsigned int n = 0; n < this->n_compositional_fields(); ++n)
+            for (const unsigned int &n : non_stress_field_indices)
               material_inputs.composition[0][n] = inputs.solution[p][this->introspection().component_indices.compositional_fields[n]];
             // For the stress composition we use the ve_stress_* stored on the particles.
-            //for (unsigned int n = 0; n < 2*SymmetricTensor<2,dim>::n_independent_components; ++n)
-            //  material_inputs.composition[0][stress_field_indices[n]] = particle.get_properties()[this->data_position + n];
+            for (unsigned int n = 0; n < 2*SymmetricTensor<2,dim>::n_independent_components; ++n)
+              material_inputs.composition[0][stress_field_indices[n]] = particle.get_properties()[this->data_position + n];
 
             Tensor<2,dim> grad_u;
             for (unsigned int d=0; d<dim; ++d)
@@ -348,7 +336,7 @@ namespace aspect
 
             // Apply the stress rotation to the ve_stress_* fields, not the ve_stress_*_old fields.
             for (unsigned int i = 0; i < SymmetricTensor<2,dim>::n_independent_components ; ++i)
-              particle.get_properties()[this->data_position + i] =  material_inputs.composition[0][stress_field_indices[i]] + material_outputs.reaction_terms[0][stress_field_indices[i]];
+              particle.get_properties()[this->data_position + i] += material_outputs.reaction_terms[0][stress_field_indices[i]];
 
             ++p;
           }
@@ -383,7 +371,6 @@ namespace aspect
       {
         std::vector<std::pair<std::string,unsigned int>> property_information;
 
-// ve_stress_xx, ve_stress_yy, ve_stress_zz, ve_stress_xy, ve_stress_xz, ve_stress_yz, ve_stress_xx_old, ve_stress_yy_old, ve_stress_zz_old, ve_stress_xy_old, ve_stress_xz_old, ve_stress_yz_old
         property_information.emplace_back("ve_stress_xx",1);
         property_information.emplace_back("ve_stress_yy",1);
 
