@@ -1515,16 +1515,16 @@ namespace aspect
     constraints.reinit(introspection.index_sets.system_relevant_set);
 #endif
 
+    //  Make hanging node constraints:
+    DoFTools::make_hanging_node_constraints (dof_handler,
+                                             constraints);
+
     // Set up the constraints for periodic boundary conditions:
 
     // Note: this has to happen _before_ we do hanging node constraints,
     // because inconsistent constraints could be generated in parallel otherwise.
     geometry_model->make_periodicity_constraints(dof_handler,
                                                  constraints);
-
-    //  Make hanging node constraints:
-    DoFTools::make_hanging_node_constraints (dof_handler,
-                                             constraints);
 
 
     compute_initial_velocity_boundary_constraints(constraints);
