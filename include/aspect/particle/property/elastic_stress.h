@@ -51,14 +51,6 @@ namespace aspect
           void initialize () override;
 
           /**
-           * Function to update the stresses on the particles after the
-           * nonlinear solver, similar to the operator split for stresses
-           * carried on fields.
-           */
-          void
-          update_particles (typename Particle::Manager<dim> &particle_manager) const;
-
-          /**
            * @copydoc aspect::Particle::Property::Interface::initialize_one_particle_property()
            */
           void
@@ -104,6 +96,14 @@ namespace aspect
           parse_parameters (ParameterHandler &prm) override;
 
         private:
+          /**
+           * Function to update the stresses on the particles, after
+           * the usual update has been carried out. Similar
+           * to the operator split for stresses carried on fields.
+           */
+          void
+          update_particles (typename Particle::Manager<dim> &particle_manager) const;
+
           /**
            * Objects that are used to compute the particle property. Since the
            * object is expensive to create and is needed often it is kept as a

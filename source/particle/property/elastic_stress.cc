@@ -77,7 +77,7 @@ namespace aspect
 
         // Connect to the signal after the nonlinear solver to apply
         // the stress update of the current time step.
-        this->get_signals().post_nonlinear_solver_loop.connect(
+        this->get_signals().post_update_particles.connect(
           [&](typename Particle::Manager<dim> &particle_manager)
         {
           this->update_particles(particle_manager);

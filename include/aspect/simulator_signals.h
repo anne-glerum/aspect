@@ -331,6 +331,13 @@ namespace aspect
      */
     boost::signals2::signal<void (Particle::Manager<dim> &)> post_restore_particles;
 
+    /**
+     * A signal that is triggered after particle properties have been updated, but before
+     * they have been interpolated to compositional fields. This happens
+     * in each iteration of iterative advection schemes.
+     * Parameters are a reference to a ParticleManager.
+     */
+    boost::signals2::signal<void (Particle::Manager<dim> &)> post_update_particles;
 
     /**
      * A signal that is triggered after particles have been restored to their position
