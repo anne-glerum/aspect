@@ -68,8 +68,9 @@ namespace aspect
 
         // Get the indices of those compositions that correspond to stress tensor elements.
         stress_field_indices = this->introspection().get_indices_for_fields_of_type(CompositionalFieldDescription::stress);
-        AssertThrow((stress_field_indices.size() == 2*SymmetricTensor<2,dim>::n_independent_components),
-                    ExcMessage("The number of stress tensor element fields in the 'elastic stress' plugin does not equal twice the number of independent components."));
+        AssertThrow((stress_field_indices.size() == 2*SymmetricTensor<2,dim>::n_independent_components ||
+                     stress_field_indices.size() == SymmetricTensor<2,dim>::n_independent_components),
+                    ExcMessage("The number of stress tensor element fields in the 'elastic stress' plugin does not equal the number of expected components."));
 
         // Get the indices of all compositions that do not correspond to stress tensor elements.
         std::vector<unsigned int> all_field_indices(this->n_compositional_fields());
@@ -107,23 +108,26 @@ namespace aspect
             data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_yz")));
           }
 
-        data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_xx_old")));
-
-        data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_yy_old")));
-
-        if (dim == 2)
+        if (stress_field_indices.size() == 2*SymmetricTensor<2,dim>::n_independent_components)
           {
-            data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_xy_old")));
-          }
-        else if (dim == 3)
-          {
-            data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_zz_old")));
+            data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_xx_old")));
 
-            data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_xy_old")));
+            data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_yy_old")));
 
-            data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_xz_old")));
+            if (dim == 2)
+              {
+                data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_xy_old")));
+              }
+            else if (dim == 3)
+              {
+                data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_zz_old")));
 
-            data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_yz_old")));
+                data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_xy_old")));
+
+                data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_xz_old")));
+
+                data.push_back(this->get_initial_composition_manager().initial_composition(position,this->introspection().compositional_index_for_name("ve_stress_yz_old")));
+              }
           }
       }
 
@@ -136,6 +140,8 @@ namespace aspect
       {
         const std::shared_ptr<MaterialModel::ReactionRateOutputs<dim>> reaction_rate_outputs
           = material_outputs.template get_additional_output_object<MaterialModel::ReactionRateOutputs<dim>>();
+
+        const unsigned int n_total_stress_components = stress_field_indices.size();
 
         unsigned int p = 0;
         for (auto &particle: particles)
@@ -156,7 +162,7 @@ namespace aspect
             for (const unsigned int &n : non_stress_field_indices)
               material_inputs.composition[0][n] = inputs.solution[p][this->introspection().component_indices.compositional_fields[n]];
             // For the stress composition we use the ve_stress_* stored on the particles.
-            for (unsigned int n = 0; n < 2*SymmetricTensor<2,dim>::n_independent_components; ++n)
+            for (unsigned int n = 0; n < n_total_stress_components; ++n)
               material_inputs.composition[0][stress_field_indices[n]] = particle.get_properties()[this->data_position + n];
 
             Tensor<2,dim> grad_u;
@@ -166,20 +172,20 @@ namespace aspect
 
             this->get_material_model().evaluate (material_inputs,material_outputs);
 
-            // Apply the stress rotation to the ve_stress_* fields, not the ve_stress_*_old fields
+            // Apply the stress rotation to the ve_stress_* fields (not the ve_stress_*_old fields if they exist)
             // and update the corresponding material model inputs as well.
             for (unsigned int i = 0; i < SymmetricTensor<2,dim>::n_independent_components ; ++i)
-            {
-              particle.get_properties()[this->data_position + i] += material_outputs.reaction_terms[0][stress_field_indices[i]];
-              material_inputs.composition[0][stress_field_indices[i]] += material_outputs.reaction_terms[0][stress_field_indices[i]];
-            }
+              {
+                particle.get_properties()[this->data_position + i] += material_outputs.reaction_terms[0][stress_field_indices[i]];
+                material_inputs.composition[0][stress_field_indices[i]] += material_outputs.reaction_terms[0][stress_field_indices[i]];
+              }
 
             // Evaluate the material model again, this time with the rotated stresses
             this->get_material_model().evaluate (material_inputs,material_outputs);
 
             // Add the reaction_rates * timestep = update to the corresponding stress
             // tensor components of current and old stresses.
-            for (unsigned int i = 0; i < 2*SymmetricTensor<2,dim>::n_independent_components ; ++i)
+            for (unsigned int i = 0; i < n_total_stress_components; ++i)
               particle.get_properties()[this->data_position + i] += reaction_rate_outputs->reaction_rates[0][stress_field_indices[i]] * this->get_timestep();
 
             ++p;
@@ -230,19 +236,22 @@ namespace aspect
             property_information.emplace_back("ve_stress_yz",1);
           }
 
-        property_information.emplace_back("ve_stress_xx_old",1);
-        property_information.emplace_back("ve_stress_yy_old",1);
+        if  (stress_field_indices.size() == 2*SymmetricTensor<2,dim>::n_independent_components)
+          {
+            property_information.emplace_back("ve_stress_xx_old",1);
+            property_information.emplace_back("ve_stress_yy_old",1);
 
-        if (dim == 2)
-          {
-            property_information.emplace_back("ve_stress_xy_old",1);
-          }
-        else if (dim == 3)
-          {
-            property_information.emplace_back("ve_stress_zz_old",1);
-            property_information.emplace_back("ve_stress_xy_old",1);
-            property_information.emplace_back("ve_stress_xz_old",1);
-            property_information.emplace_back("ve_stress_yz_old",1);
+            if (dim == 2)
+              {
+                property_information.emplace_back("ve_stress_xy_old",1);
+              }
+            else if (dim == 3)
+              {
+                property_information.emplace_back("ve_stress_zz_old",1);
+                property_information.emplace_back("ve_stress_xy_old",1);
+                property_information.emplace_back("ve_stress_xz_old",1);
+                property_information.emplace_back("ve_stress_yz_old",1);
+              }
           }
 
         return property_information;
