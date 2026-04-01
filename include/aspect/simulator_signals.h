@@ -331,7 +331,6 @@ namespace aspect
      */
     boost::signals2::signal<void (Particle::Manager<dim> &)> post_restore_particles;
 
-
     /**
      * A signal that is triggered after particles have been restored to their position
      * and property values from the beginning of the current timestep. This happens
