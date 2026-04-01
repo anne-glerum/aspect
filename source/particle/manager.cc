@@ -923,7 +923,6 @@ namespace aspect
 
               }
 
-          this->get_signals().post_update_particles(*this);
           this->get_computing_timer().leave_subsection("Particles: Update properties");
         }
     }
