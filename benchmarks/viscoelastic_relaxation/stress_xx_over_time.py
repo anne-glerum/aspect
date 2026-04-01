@@ -9,29 +9,17 @@ rc("lines", linewidth=5, markersize=3)
 # This script assumes both the timestep (500, 250, 125 yr)
 # and the uniform resolution (0, 1, 2) have been varied.
 names = [
-         "ve_relaxation_dt500yr_dh10km",
-         "ve_relaxation_dt500yr_dh5km",
-         "ve_relaxation_dt500yr_dh2-5km",
-         "ve_relaxation_dt250yr_dh10km",
-         "ve_relaxation_dt250yr_dh5km",
-         "ve_relaxation_dt250yr_dh2-5km",
-         "ve_relaxation_dt125yr_dh10km",
-         "ve_relaxation_dt125yr_dh5km",
-         "ve_relaxation_dt125yr_dh2-5km"
-        ]
+         "ve_relaxation_dt500yr_refinement_0",
+         "ve_relaxation_dt250yr_refinement_0",
+         "ve_relaxation_dt125yr_refinement_0"
+         ]
 tail = r"/statistics"
 
 # The labels the graphs will get in the plot
 labels = [
           'dt = 500 yr, dh = 10 km',
-          'dt = 500 yr, dh = 5 km',
-          'dt = 500 yr, dh = 2.5 km',
           'dt = 250 yr, dh = 10 km',
-          'dt = 250 yr, dh = 5 km',
-          'dt = 250 yr, dh = 2.5 km',
-          'dt = 125 yr, dh = 10 km',
-          'dt = 125 yr, dh = 5 km',
-          'dt = 125 yr, dh = 2.5 km'
+          'dt = 125 yr, dh = 10 km'
          ]
 # Set the colors available for plotting
 color1=[0.0051932, 0.098238, 0.34984]
@@ -63,7 +51,7 @@ for name in names:
   # Read in the time and the minimum xx and yy components of the viscoelastic stress,
   # which are stored on the fields ve_stress_xx and ve_stress_yy.
   # The correct columns are selected with usecols.
-  time,stress_xx_min = np.genfromtxt(path, comments='#', usecols=(1,15), unpack=True)
+  time,stress_xx_min = np.genfromtxt(path, comments='#', usecols=(1,18), unpack=True)
 
   # Plot the stress elements in MPa against time in ky in
   # categorical batlow colors.
