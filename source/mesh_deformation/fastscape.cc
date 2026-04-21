@@ -334,7 +334,7 @@ namespace aspect
       std::vector<double> mesh_velocity_z(fastscape_array_size);
 
       std::vector<double> silt_fraction(fastscape_array_size);
-      std::vector<double> marine_fraction(fastscape_array_size);
+      marine_fraction.resize(fastscape_array_size);
 
       // FastScape requires multiple specially defined and ordered variables sent to its functions. To make
       // the transfer of these down to one process easier, we first fill out a vector of local_aspect_values,
@@ -506,7 +506,7 @@ namespace aspect
                                              &silt_surface_porosity,
                                              &sand_efold_depth,
                                              &silt_efold_depth,
-                                             &sand_silt_ratio,
+                                             &initial_silt_fraction,
                                              &sand_silt_averaging_depth,
                                              &sand_transport_coefficient,
                                              &silt_transport_coefficient);
@@ -558,7 +558,6 @@ namespace aspect
           execute_fastscape(elevation,
                             silt_fraction,
                             bedrock_river_incision_rate_array,  // corresponds to FastScape's 'HHHHH' argument
-                            bedrock_transport_coefficient_array,
                             velocity_x,
                             velocity_y,
                             velocity_z,
@@ -647,13 +646,13 @@ namespace aspect
                                                                     std::move(table_intervals),
                                                                     std::move(velocity_table));
 
-      silt_fractions = new Functions::InterpolatedUniformGridData<dim> (interpolation_extent,
-                                                                        table_intervals,
-                                                                        silt_fraction_table);
+      silt_fractions = new Functions::InterpolatedUniformGridData<dim> (std::move(interpolation_extent),
+                                                                        std::move(table_intervals),
+                                                                        std::move(silt_fraction_table));
 
-      marine_fractions = new Functions::InterpolatedUniformGridData<dim> (interpolation_extent,
-                                                                          table_intervals,
-                                                                          marine_fraction_table);
+      marine_fractions = new Functions::InterpolatedUniformGridData<dim> (std::move(interpolation_extent),
+                                                                          std::move(table_intervals),
+                                                                          std::move(marine_fraction_table));
 
       VectorFunctionFromScalarFunctionObject<dim> vector_function_object(
         [&](const Point<dim> &p) -> double
@@ -1713,10 +1712,6 @@ namespace aspect
     double FastScape<dim>::
     get_marine_fraction(Point<dim> point) const
     {
-      // Some plugins might call this function before we have restarted from the
-      // FastScape checkpoints. Therefore, return a guess.
-      if (restart)
-        return 0.;
       // We cut off the fraction at 1. If it is larger than 1, it means that after the marine deposition
       // some erosion occurred that left the new surface lower than the marine sediment surface, but higher
       // than the starting surface of this timestep. Therefore all sediment is marine, and the fraction is 1.
@@ -1735,13 +1730,13 @@ namespace aspect
       // Some plugins might call this function before we have restarted from the
       // FastScape checkpoints. Therefore, return a guess. Above sea level, the silt fraction
       // is zero anyway and below set it to the initial value.
-      if (restart)
-        {
-          const GeometryModel::Box<dim> *geometry
-            = dynamic_cast<const GeometryModel::Box<dim>*> (&this->get_geometry_model());
-          return (point[dim - 1] > geometry->get_origin()[dim - 1] + geometry->get_extents()[dim - 1] + sea_level) ?
-                 0. : initial_silt_fraction;
-        }
+      //if (restart)
+      //  {
+      //    const GeometryModel::Box<dim> *geometry
+      //      = dynamic_cast<const GeometryModel::Box<dim>*> (&this->get_geometry_model());
+      //    return (point[dim - 1] > geometry->get_origin()[dim - 1] + geometry->get_extents()[dim - 1] + sea_level) ?
+      //           0. : initial_silt_fraction;
+      //  }
       // We cut off the fraction between 0 and 1.
       const double fraction = std::min(1., std::max(0., silt_fractions->value(point)));
       return fraction;

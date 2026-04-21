@@ -683,6 +683,11 @@ namespace aspect
          * Function to hold and query the fraction of silt.
          */
         mutable Functions::InterpolatedUniformGridData<dim> *silt_fractions;
+
+        /**
+         * Function to store the fraction of marine sediments before it is checkpointed.
+         */
+        std::vector<double> marine_fraction;
     };
   }
 }
