@@ -687,7 +687,7 @@ namespace aspect
         /**
          * Function to store the fraction of marine sediments before it is checkpointed.
          */
-        std::vector<double> marine_fraction;
+        //std::vector<double> marine_fraction;
     };
   }
 }

@@ -334,7 +334,7 @@ namespace aspect
       std::vector<double> mesh_velocity_z(fastscape_array_size);
 
       std::vector<double> silt_fraction(fastscape_array_size);
-      marine_fraction.resize(fastscape_array_size);
+      std::vector<double> marine_fraction(fastscape_array_size);
 
       // FastScape requires multiple specially defined and ordered variables sent to its functions. To make
       // the transfer of these down to one process easier, we first fill out a vector of local_aspect_values,
