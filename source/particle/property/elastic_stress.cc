@@ -155,9 +155,21 @@ namespace aspect
             // Fill the non-stress composition inputs with the solution.
             for (const unsigned int &n : non_stress_field_indices)
               material_inputs.composition[0][n] = inputs.solution[p][this->introspection().component_indices.compositional_fields[n]];
-            // For the stress composition we use the ve_stress_* stored on the particles.
+            // For the stress composition we use the ve_stress_* stored on the particles
+            // to compute the reaction terms.
             for (unsigned int n = 0; n < 2*SymmetricTensor<2,dim>::n_independent_components; ++n)
               material_inputs.composition[0][stress_field_indices[n]] = particle.get_properties()[this->data_position + n];
+
+            // Store a weighted average of the ve_stress_* values from the particles and fields
+            // to later fill the material model inputs for the reaction rates.
+            // In some cases, using the field value for the reaction rates leads to more stable results.
+            std::vector<double> weighted_stress(2*SymmetricTensor<2,dim>::n_independent_components);
+            for (unsigned int n = 0; n < 2*SymmetricTensor<2,dim>::n_independent_components; ++n)
+              {
+                const double particle_stress_value = particle.get_properties()[this->data_position + n];
+                const double field_stress_value = inputs.solution[p][this->introspection().component_indices.compositional_fields[stress_field_indices[n]]];
+                weighted_stress[n] = particle_weight * particle_stress_value + (1-particle_weight) * field_stress_value;
+              }
 
             Tensor<2,dim> grad_u;
             for (unsigned int d=0; d<dim; ++d)
@@ -167,12 +179,18 @@ namespace aspect
             this->get_material_model().evaluate (material_inputs,material_outputs);
 
             // Apply the stress rotation to the ve_stress_* fields, not the ve_stress_*_old fields
-            // and update the corresponding material model inputs as well.
+            // and update the corresponding material model inputs with the updated weighted stress value.
+            // TODO this mixes the weighted_stress with a particle update, instead of using the full
+            // field value (interpolated particle values) for a particle weight of 0.
             for (unsigned int i = 0; i < SymmetricTensor<2,dim>::n_independent_components ; ++i)
-            {
-              particle.get_properties()[this->data_position + i] += material_outputs.reaction_terms[0][stress_field_indices[i]];
-              material_inputs.composition[0][stress_field_indices[i]] += material_outputs.reaction_terms[0][stress_field_indices[i]];
-            }
+              {
+                particle.get_properties()[this->data_position + i] += material_outputs.reaction_terms[0][stress_field_indices[i]];
+                weighted_stress[i] += material_outputs.reaction_terms[0][stress_field_indices[i]];
+              }
+            for (unsigned int i = 0; i < 2*SymmetricTensor<2,dim>::n_independent_components ; ++i)
+              {
+                material_inputs.composition[0][stress_field_indices[i]] = weighted_stress[i];
+              }
 
             // Evaluate the material model again, this time with the rotated stresses
             this->get_material_model().evaluate (material_inputs,material_outputs);
