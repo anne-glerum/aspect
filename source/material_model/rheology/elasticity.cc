@@ -26,6 +26,7 @@
 #include <aspect/utilities.h>
 
 #include <deal.II/base/quadrature_lib.h>
+#include <aspect/simulator_signals.h>
 
 
 namespace aspect
@@ -227,6 +228,20 @@ namespace aspect
                                "averaging schemes 'none', 'harmonic average only viscosity' and "
                                "'geometric average only viscosity'. This parameter ('Material averaging') "
                                "is located within the 'Material model' subsection."));
+
+#if !DEAL_II_VERSION_GTE(9, 8, 0)
+        // Work around a memory leak in deal.II fixed in 9.8.0-pre
+        // (see dealii/dealii#19328) by dropping cached FEPointEvaluation
+        // objects at the start of every timestep so they are rebuilt fresh.
+        // The original workaround in #6877 only reset evaluator_composition;
+        // the velocity-gradient evaluator (used for vorticity in stress
+        // rotation) is also reset here since it would otherwise keep leaking.
+        this->get_signals().start_timestep.connect([&](const SimulatorAccess<dim> &)
+        {
+          evaluator.reset();
+          evaluator_composition.reset();
+        });
+#endif
       }
 
 

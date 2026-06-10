@@ -27,6 +27,7 @@
 #include <aspect/postprocess/particles.h>
 #include <aspect/particle/property/interface.h>
 #include <aspect/simulator.h>
+#include <aspect/simulator_signals.h>
 
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/numerics/fe_field_function.h>
@@ -431,6 +432,23 @@ namespace aspect
         strain_healing_temperature_dependent_recovery_rate = prm.get_double ("Strain healing temperature dependent recovery rate");
 
         strain_healing_temperature_dependent_prefactor = prm.get_double ("Strain healing temperature dependent prefactor");
+
+#if !DEAL_II_VERSION_GTE(9, 8, 0)
+        // Work around a memory leak in deal.II fixed in 9.8.0-pre
+        // (see dealii/dealii#19328) by dropping cached FEPointEvaluation
+        // objects at the start of every timestep so they are rebuilt fresh.
+        // The original workaround in #6877 only reset composition_evaluators;
+        // the velocity-gradient evaluator is also reset here since it is
+        // used for tensor-component strain weakening and would otherwise
+        // keep leaking.
+        this->get_signals().start_timestep.connect([&](const SimulatorAccess<dim> &)
+        {
+          evaluator.reset();
+          for (auto &composition_evaluator : composition_evaluators)
+            composition_evaluator.reset();
+        });
+#endif
+
       }
 
 
