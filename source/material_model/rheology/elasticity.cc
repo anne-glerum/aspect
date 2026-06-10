@@ -239,7 +239,6 @@ namespace aspect
         this->get_signals().start_timestep.connect([&](const SimulatorAccess<dim> &)
         {
           evaluator.reset();
-          evaluator_composition.reset();
         });
 #endif
       }
