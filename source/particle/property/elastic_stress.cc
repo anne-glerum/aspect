@@ -207,13 +207,24 @@ namespace aspect
         // Evaluate the material model again, this time with the rotated stresses
         this->get_material_model().evaluate (material_inputs_cell,material_outputs_cell);
 
+        // Average the reaction rates of all the particles in the cell
+        std::vector <double> cell_averaged_reaction_rates (2*SymmetricTensor<2,dim>::n_independent_components);
+        p = 0;
+        for (auto &particle: particles)
+          {
+            for (unsigned int i = 0; i < 2*SymmetricTensor<2,dim>::n_independent_components; ++i)
+              cell_averaged_reaction_rates[i] += (1. / n_particles_in_cell) * reaction_rate_outputs->reaction_rates[p][stress_field_indices[i]];
+            ++p;
+          }
+
         p = 0;
         for (auto &particle: particles)
           {
             // Add the reaction_rates * timestep = update to the corresponding stress
             // tensor components of current and old stresses.
             for (unsigned int i = 0; i < 2*SymmetricTensor<2,dim>::n_independent_components ; ++i)
-              particle.get_properties()[this->data_position + i] += reaction_rate_outputs->reaction_rates[p][stress_field_indices[i]] * this->get_timestep();
+              //particle.get_properties()[this->data_position + i] += reaction_rate_outputs->reaction_rates[p][stress_field_indices[i]] * this->get_timestep();
+              particle.get_properties()[this->data_position + i] += cell_averaged_reaction_rates[i] * this->get_timestep();
 
             ++p;
           }
