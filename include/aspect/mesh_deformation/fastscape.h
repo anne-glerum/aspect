@@ -377,6 +377,12 @@ namespace aspect
         mutable double last_output_time;
 
         /**
+         * Consecutively counted number indicating the how-manyth time we will
+         * create output the next time we get to it.
+         */
+        mutable unsigned int output_file_number;
+
+        /**
          * @name Fastscape boundary conditions
          * @{
          */
@@ -734,6 +740,7 @@ namespace aspect
          * This variable is read from the parameter file through a parameter called 'Flag to use orographic controls'.
          */
         bool use_orographic_controls;
+        
         /**
          * @}
          */
