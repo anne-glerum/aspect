@@ -155,7 +155,6 @@ namespace aspect
                                 const unsigned int *model_dim,
                                 const double *adjustment,
                                 const double *time);
-
 #endif
 
       /**

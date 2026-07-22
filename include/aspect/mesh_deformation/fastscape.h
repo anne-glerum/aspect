@@ -740,7 +740,6 @@ namespace aspect
          * This variable is read from the parameter file through a parameter called 'Flag to use orographic controls'.
          */
         bool use_orographic_controls;
-        
         /**
          * @}
          */
