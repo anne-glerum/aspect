@@ -740,6 +740,16 @@ namespace aspect
          * This variable is read from the parameter file through a parameter called 'Flag to use orographic controls'.
          */
         bool use_orographic_controls;
+
+        /**
+         * Whether to output the basement visualization.
+         */
+        bool output_basement;
+
+        /**
+         * Whether to output the basement visualization.
+         */
+        bool output_sealevel;
         /**
          * @}
          */
