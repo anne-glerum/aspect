@@ -82,6 +82,13 @@ namespace aspect
          */
         std::vector<double> yielding;
 
+        /**
+         * Dilation angles at the evaluation points passed to
+         * the instance of MaterialModel::Interface::evaluate() that fills
+         * the current object.
+         */
+        std::vector<double> dilation_angles;
+
     };
 
     /**

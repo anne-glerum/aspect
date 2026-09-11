@@ -42,6 +42,7 @@ namespace aspect
         names.emplace_back("current_friction_angles");
         names.emplace_back("current_yield_stresses");
         names.emplace_back("plastic_yielding");
+        names.emplace_back("current_dilation_angles");
         return names;
       }
     }
@@ -52,7 +53,8 @@ namespace aspect
         cohesions(n_points, numbers::signaling_nan<double>()),
         friction_angles(n_points, numbers::signaling_nan<double>()),
         yield_stresses(n_points, numbers::signaling_nan<double>()),
-        yielding(n_points, numbers::signaling_nan<double>())
+        yielding(n_points, numbers::signaling_nan<double>()),
+        dilation_angles(n_points, numbers::signaling_nan<double>())
     {}
 
 
@@ -61,7 +63,7 @@ namespace aspect
     std::vector<double>
     PlasticAdditionalOutputs<dim>::get_nth_output(const unsigned int idx) const
     {
-      AssertIndexRange (idx, 4);
+      AssertIndexRange (idx, 5);
       switch (idx)
         {
           case 0:
@@ -75,6 +77,9 @@ namespace aspect
 
           case 3:
             return yielding;
+
+          case 4:
+            return dilation_angles;
 
           default:
             AssertThrow(false, ExcInternalError());
@@ -1031,6 +1036,11 @@ namespace aspect
             plastic_out->friction_angles[i] = 0;
             plastic_out->yield_stresses[i] = 0;
             plastic_out->yielding[i] = plastic_yielding ? 1 : 0;
+            // Dilation is not always used, so only change the dilation angles
+            // from the signaling NaN if the dilation output object has been created.
+            const bool enable_dilation = this->get_parameters().enable_prescribed_dilation;
+            if (enable_dilation)
+              plastic_out->dilation_angles[i] = 0;
 
             double pressure_for_plasticity = in.pressure[i];
 
@@ -1051,6 +1061,10 @@ namespace aspect
 
                 plastic_out->yield_stresses[i] += volume_fractions[j] * drucker_prager_plasticity.compute_yield_stress(pressure_for_plasticity,
                                                   drucker_prager_parameters);
+
+                if (enable_dilation)
+                  // Also convert radians to degrees
+                  plastic_out->dilation_angles[i] += constants::radians_to_degree * volume_fractions[j] * drucker_prager_parameters.angle_dilation;
               }
           }
       }
