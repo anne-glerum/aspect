@@ -55,7 +55,9 @@ namespace aspect
       NamedAdditionalMaterialOutputs<dim>(make_elastic_additional_outputs_names()),
       elastic_shear_moduli(n_points, numbers::signaling_nan<double>()),
       elastic_viscosity(n_points, numbers::signaling_nan<double>()),
-      deviatoric_stress(n_points, SymmetricTensor<2,dim>())
+      deviatoric_stress(n_points, SymmetricTensor<2,dim>()),
+      plastic_strain_rate(n_points, SymmetricTensor<2,dim>()),
+      rotation_tensor(n_points, Tensor<2,dim>())
     {}
 
 
@@ -380,12 +382,16 @@ namespace aspect
         const std::shared_ptr<MaterialModel::ElasticOutputs<dim>>
         elastic_out = out.template get_additional_output_object<MaterialModel::ElasticOutputs<dim>>();
 
+        // Create a reference to the structure for the elastic additional outputs
+        const std::shared_ptr<MaterialModel::ElasticAdditionalOutputs<dim>>
+        elastic_additional_out = out.template get_additional_output_object<MaterialModel::ElasticAdditionalOutputs<dim>>();
+
         // Create a reference to the structure for the prescribed shear heating outputs.
         // The structure is created during the advection assembly.
         const std::shared_ptr<HeatingModel::PrescribedShearHeatingOutputs<dim>>
         heating_out = out.template get_additional_output_object<HeatingModel::PrescribedShearHeatingOutputs<dim>>();
 
-        if (elastic_out == nullptr && heating_out == nullptr)
+        if (elastic_out == nullptr && heating_out == nullptr && elastic_additional_out == nullptr)
           return;
 
         // TODO should a RHS term be a separate MaterialProperties?
@@ -454,6 +460,13 @@ namespace aspect
                 // The elastic viscosity has also already been scaled with the timestep ratio.
                 const double viscosity_ratio = effective_creep_viscosity / calculate_elastic_viscosity(average_elastic_shear_moduli[i]);
 
+                SymmetricTensor<2, dim> viscoelastic_strain_rate;
+                if (elastic_out != nullptr || elastic_additional_out != nullptr)
+                  {
+                    viscoelastic_strain_rate = calculate_viscoelastic_strain_rate(
+                                                 in.strain_rate[i], stress_0_advected, stress_old, effective_creep_viscosity, average_elastic_shear_moduli[i]);
+                  }
+
                 if (elastic_out != nullptr)
                   {
                     elastic_out->elastic_force[i] = -1. * (viscosity_ratio * stress_0_advected
@@ -462,10 +475,16 @@ namespace aspect
                     // The viscoelastic strain rate is needed only when the Newton method is selected.
                     const typename Parameters<dim>::NonlinearSolver::Kind nonlinear_solver = this->get_parameters().nonlinear_solver;
                     if ((nonlinear_solver == Parameters<dim>::NonlinearSolver::iterated_Advection_and_Newton_Stokes) ||
-                        (nonlinear_solver == Parameters<dim>::NonlinearSolver::single_Advection_iterated_Newton_Stokes))
-                      elastic_out->viscoelastic_strain_rate[i] = calculate_viscoelastic_strain_rate(
-                                                                   in.strain_rate[i], stress_0_advected, stress_old, effective_creep_viscosity, average_elastic_shear_moduli[i]);
+                        (nonlinear_solver == Parameters<dim>::NonlinearSolver::single_Advection_iterated_Newton_Stokes) )
+                      {
+                        elastic_out->viscoelastic_strain_rate[i] = viscoelastic_strain_rate;
+                      }
                   }
+                if (elastic_additional_out != nullptr)
+                  {
+                    elastic_additional_out->plastic_strain_rate[i] = deviatoric_strain_rate - viscoelastic_strain_rate;
+                  }
+
 
                 // Apply the stress update to get the total stress of timestep t.
                 const SymmetricTensor<2, dim> stress = 2. * effective_creep_viscosity * deviatoric_strain_rate + viscosity_ratio * stress_0_advected +
@@ -536,8 +555,13 @@ namespace aspect
                                               const std::vector<double> &,
                                               MaterialModel::MaterialModelOutputs<dim> &out) const
       {
+        const std::shared_ptr<MaterialModel::ElasticAdditionalOutputs<dim>>
+        elastic_additional_out = out.template get_additional_output_object<MaterialModel::ElasticAdditionalOutputs<dim>>();
+
         if (in.current_cell.state() == IteratorState::valid
-            && in.requests_property(MaterialProperties::reaction_terms))
+            && (in.requests_property(MaterialProperties::reaction_terms)
+                ||
+                (in.requests_property(MaterialProperties::additional_outputs) && elastic_additional_out != nullptr)))
           {
             // Get the velocity gradients of the current timestep $t+dtc$
             // at the requested location in in.position.
@@ -578,6 +602,9 @@ namespace aspect
 
                 // Rotation (vorticity) tensor (equation 25 in Moresi et al., 2003, J. Comp. Phys.)
                 const Tensor<2, dim> rotation = 0.5 * (evaluator->get_gradient(i) - transpose(evaluator->get_gradient(i)));
+
+                if (elastic_additional_out != nullptr)
+                  elastic_additional_out->rotation_tensor[i] = rotation;
 
                 // stress_0 (i.e., $\tau^{0}$) is the sum of the stress tensor stored at the end of the last time step (stress_t)
                 // and the change in that stress generated by local rotation over the computational timestep $\Delta t_c$:

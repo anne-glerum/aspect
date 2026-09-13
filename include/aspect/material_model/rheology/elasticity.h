@@ -67,6 +67,20 @@ namespace aspect
          * that fills the current object.
          */
         std::vector<SymmetricTensor<2,dim>> deviatoric_stress;
+
+        /**
+         * The plastic strain rate at the evaluation points
+         * passed to the instance of MaterialModel::Interface::evaluate()
+         * that fills the current object.
+         */
+        std::vector<SymmetricTensor<2,dim>> plastic_strain_rate;
+
+        /**
+         * The rotation tensor at the evaluation points
+         * passed to the instance of MaterialModel::Interface::evaluate()
+         * that fills the current object.
+         */
+        std::vector<Tensor<2,dim>> rotation_tensor;
     };
 
 
