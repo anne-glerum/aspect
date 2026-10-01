@@ -260,6 +260,17 @@ namespace aspect
       Assert(residual->size() == introspection.n_compositional_fields, ExcInternalError());
 
     std::vector<AdvectionField> fields_advected_by_particles;
+    std::vector<AdvectionField> fields_not_advected_by_particles;
+    // First add the temperature field
+    fields_not_advected_by_particles.push_back(AdvectionField::temperature());
+    // Then add all compositional fields that are not tracked by particles,
+    // if we need a list of them for operator splitting.
+    if (parameters.use_operator_splitting)
+      for (unsigned int c=0; c<introspection.n_compositional_fields; ++c)
+        {
+          if (parameters.compositional_field_methods[c] != Parameters<dim>::AdvectionFieldMethod::particles)
+            fields_not_advected_by_particles.push_back(AdvectionField::composition(c));
+        }
     std::vector<AdvectionField> fields_interpolated_from_material_output;
 
     for (unsigned int c=0; c < introspection.n_compositional_fields; ++c)
@@ -323,20 +334,8 @@ namespace aspect
                   if (c == last_entropy_field_index)
                     {
                       if (parameters.use_operator_splitting)
-                        {
-                          std::vector<AdvectionField> advection_fields;
-                          // First add the temperature field
-                          advection_fields.push_back(AdvectionField::temperature());
-                          // Then add all compositional fields that are not tracked by particles.
-                          for (unsigned int c=0; c<introspection.n_compositional_fields; ++c)
-                            {
-                              if (parameters.compositional_field_methods[c] != Parameters<dim>::AdvectionFieldMethod::particles)
-                                advection_fields.push_back(AdvectionField::composition(c));
-                            }
-                          compute_reactions (advection_fields);
-                        }
-                      const AdvectionField T_field (AdvectionField::temperature());
-                      interpolate_material_output_into_advection_field({T_field});
+                        compute_reactions (fields_not_advected_by_particles);
+                      interpolate_material_output_into_advection_field({fields_not_advected_by_particles[0]});
                     }
                 }
 

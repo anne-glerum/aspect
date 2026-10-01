@@ -1637,7 +1637,8 @@ namespace aspect
   template <int dim>
   void Simulator<dim>::compute_reactions (const std::vector<AdvectionField> &advection_fields_with_reactions)
   {
-    // If the time step has a length of zero, there are no reactions.
+    // If the time step has a length of zero, or the list of fields is empty,
+    // there are no reactions.
     if (time_step == 0 || advection_fields_with_reactions.size() == 0)
       return;
 
@@ -1822,7 +1823,7 @@ namespace aspect
                 copy_rates_into_one_vector (*reaction_rate_outputs, heating_model_outputs, ydot);
               };
 
-              // Make the reaction time steps: We have to update the values of compositional fields with reactions and the temperature
+              // Make the reaction time steps: We have to update the values of compositional fields with reactions and the temperature.
               // We can reuse the same material model inputs and outputs structure for each reaction time step.
               // We store the computed updates to temperature and composition in a separate (accumulated_reactions) vector,
               // so that we can later copy it over to the solution vector.
@@ -1864,7 +1865,13 @@ namespace aspect
                     {
                       for (const auto &field : advection_fields_with_reactions)
                         {
-                          if (!field.is_temperature())
+                          if (field.is_temperature())
+                            {
+                              in.temperature[j] = in.temperature[j]
+                                                  + reaction_time_step_size * heating_model_outputs.rates_of_temperature_change[j];
+                              accumulated_reactions_T[j] += reaction_time_step_size * heating_model_outputs.rates_of_temperature_change[j];
+                            }
+                          else
                             {
                               const unsigned int c = field.field_index() - 1;
                               // simple forward euler
@@ -1873,9 +1880,6 @@ namespace aspect
                               accumulated_reactions_C[j][c] += reaction_time_step_size * reaction_rate_outputs->reaction_rates[j][c];
                             }
                         }
-                      in.temperature[j] = in.temperature[j]
-                                          + reaction_time_step_size * heating_model_outputs.rates_of_temperature_change[j];
-                      accumulated_reactions_T[j] += reaction_time_step_size * heating_model_outputs.rates_of_temperature_change[j];
                     }
                 }
             }
